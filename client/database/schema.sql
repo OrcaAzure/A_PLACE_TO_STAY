@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS users (
     role ENUM(
         'Super Admin',
         'Admin',
-        'Housing Admin',
         'GNC View Only',
         'Faculty',
         'Staff',
