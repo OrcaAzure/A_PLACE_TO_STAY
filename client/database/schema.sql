@@ -91,8 +91,8 @@ CREATE TABLE IF NOT EXISTS room_rates (
 
 CREATE TABLE IF NOT EXISTS facilities (
     id INT AUTO_INCREMENT PRIMARY KEY,
-    category VARCHAR(100) NOT NULL,
-    item VARCHAR(150) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    item VARCHAR(100) NOT NULL,
     season ENUM('Regular', 'Peak', 'N/A') NOT NULL DEFAULT 'N/A',
     rate DECIMAL(10,2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
