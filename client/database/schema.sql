@@ -350,34 +350,49 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 -- ============================================
 
 INSERT INTO facilities (category, item, season, rate) VALUES
-    -- Food Service
     ('Food Service', 'Breakfast', 'N/A', 175.00),
-    ('Food Service', 'Lunch',     'N/A', 225.00),
-    ('Food Service', 'Dinner',    'N/A', 225.00),
-    ('Food Service', 'Snack',     'N/A',  85.00),
-
-    -- Laundry
+    ('Food Service', 'Lunch', 'N/A', 225.00),
+    ('Food Service', 'Dinner', 'N/A', 225.00),
+    ('Food Service', 'Snack', 'N/A', 85.00),
     ('Laundry', 'Wash, Spin, and Dry (per load 5.0 kg)', 'N/A', 200.00),
-    ('Laundry', 'Bleach, additional per load',           'N/A',  50.00),
-    ('Laundry', 'Spin Only Washer (per load 5.0 kg)',    'N/A',  75.00),
-
-    -- Laundry-Iron
-    ('Laundry-Iron', 'Short Sleeved Shirts / Blouses',                        'N/A', 25.00),
+    ('Laundry', 'Bleach, additional per load', 'N/A', 50.00),
+    ('Laundry', 'Spin Only Washer (per load 5.0 kg)', 'N/A', 75.00),
+    ('Laundry-Iron', 'Short Sleeved Shirts / Blouses', 'N/A', 25.00),
     ('Laundry-Iron', 'Long Sleeved Shirts / Blouses / Light Slacks / Skirts', 'N/A', 30.00),
-    ('Laundry-Iron', 'Heavy Slacks / Pants / Skirts',                         'N/A', 35.00),
-    ('Laundry-Iron', 'Dresses',                                                'N/A', 45.00),
-
-    -- Garden
+    ('Laundry-Iron', 'Heavy Slacks / Pants / Skirts', 'N/A', 35.00),
+    ('Laundry-Iron', 'Dresses', 'N/A', 45.00),
     ('Garden', 'Osgood Garden (up to 150 persons)', 'Regular', 17500.00),
-    ('Garden', 'Osgood Garden (up to 150 persons)', 'Peak',    20000.00),
-
-    -- GMC Chapel
-    ('GMC Chapel', 'Church (4 hrs)',  'Regular', 13000.00),
-    ('GMC Chapel', 'Church (4 hrs)',  'Peak',    16200.00),
+    ('Garden', 'Osgood Garden (up to 150 persons)', 'Peak', 20000.00),
+    ('GMC Chapel', 'Church (4 hrs)', 'Regular', 13000.00),
+    ('GMC Chapel', 'Church (4 hrs)', 'Peak', 16200.00),
     ('GMC Chapel', 'Wedding (4 hrs)', 'Regular', 28000.00),
-    ('GMC Chapel', 'Wedding (4 hrs)', 'Peak',    33000.00),
-    ('GMC Chapel', 'Aircon (4 hrs)',  'Regular',  1100.00),
-    ('GMC Chapel', 'Aircon (4 hrs)',  'Peak',     1100.00),
-
-    -- Burdine Commons
-    ('Burdine Commons', 'Meeting and other functions',       'Regular',  4500.0
+    ('GMC Chapel', 'Wedding (4 hrs)', 'Peak', 33000.00),
+    ('GMC Chapel', 'Aircon (4 hrs)', 'Regular', 1100.00),
+    ('GMC Chapel', 'Aircon (4 hrs)', 'Peak', 1100.00),
+    ('Burdine Commons', 'Meeting and other functions', 'Regular', 4500.00),
+    ('Burdine Commons', 'Meeting and other functions', 'Peak', 5500.00),
+    ('Burdine Commons', 'Wedding and/or reception (4 hrs)', 'Regular', 16500.00),
+    ('Burdine Commons', 'Wedding and/or reception (4 hrs)', 'Peak', 19000.00),
+    ('GMC', 'Russ Turney Educational Center (up to 100 persons)', 'Regular', 4500.00),
+    ('GMC', 'Russ Turney Educational Center (up to 100 persons)', 'Peak', 5500.00),
+    ('GMC', 'Classroom / Multi-Purpose Room (up to 30 persons)', 'Regular', 3000.00),
+    ('GMC', 'Classroom / Multi-Purpose Room (up to 30 persons)', 'Peak', 3500.00),
+    ('GMC', 'Conference Room (15 persons)', 'Regular', 2100.00),
+    ('GMC', 'Conference Room (15 persons)', 'Peak', 2500.00),
+    ('Prayer Mountain', 'Four Hour minimum', 'Regular', 24000.00),
+    ('Prayer Mountain', 'Four Hour minimum', 'Peak', 26000.00),
+    ('Prayer Mountain', 'Extra hour', 'Regular', 6000.00),
+    ('Prayer Mountain', 'Extra hour', 'Peak', 6500.00),
+    ('Prayer Tower', 'Function', 'Regular', 5500.00),
+    ('Prayer Tower', 'Function', 'Peak', 6000.00),
+    ('Prayer Tower', 'Baptism', 'Regular', 1000.00),
+    ('Prayer Tower', 'Baptism', 'Peak', 1000.00),
+    ('Basketball Court', 'Sporting event (4 hr)', 'Regular', 2000.00),
+    ('Basketball Court', 'Sporting event (4 hr)', 'Peak', 2500.00),
+    ('Childrens Playground', '4 hour', 'Regular', 1000.00),
+    ('Childrens Playground', '4 hour', 'Peak', 1500.00),
+    ('Rec Center', '4 hour', 'Regular', 2000.00),
+    ('Rec Center', '4 hour', 'Peak', 2500.00),
+    ('Corkage Fee', 'Per person', 'N/A', 65.00),
+    ('Maid Service', 'Per person', 'N/A', 200.00)
+ON DUPLICATE KEY UPDATE rate = VALUES(rate);
