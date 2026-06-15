@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | AptSpace Admin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="../assets/js/tailwind-config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/responsive.css" />
+</head>
+<body>
+  <div id="page-content">
+    <div class="kpi-grid mb-6">
+      <div class="kpi-card"><div class="kpi-value">142</div><div class="kpi-label">Active Reservations</div></div>
+      <div class="kpi-card"><div class="kpi-value">87%</div><div class="kpi-label">Occupancy Rate</div></div>
+      <div class="kpi-card"><div class="kpi-value">18</div><div class="kpi-label">Pending Requests</div></div>
+      <div class="kpi-card"><div class="kpi-value">₱2.4M</div><div class="kpi-label">Revenue (MTD)</div></div>
+    </div>
+    <div id="timeline-mount" class="w-full flex flex-col"></div>
+  </div>
+  <script type="module">
+    import { initShell } from '../assets/js/shell.js';
+    const [shell, rows] = await Promise.all([
+      fetch('../components/timeline-shell.html').then((r) => r.text()),
+      fetch('../components/timeline-rows-reservations.html').then((r) => r.text()),
+    ]);
+    document.getElementById('timeline-mount').innerHTML = shell
+      .replace('{{TIMELINE_TITLE}}', 'Operations Overview Timeline')
+      .replace('{{TIMELINE_ROWS}}', rows);
+    await initShell({ portal: 'admin', active: 'dashboard', title: 'Admin Dashboard', subtitle: 'Mission Control' });
+  </script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!-- Facility Utilization Master Timeline — static Stitch markup -->
+<section class="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col h-full min-h-[700px]">
+  <div class="p-5 border-b border-outline-variant/50 bg-white flex items-center justify-between shrink-0 flex-wrap gap-4">
+    <div class="flex items-center gap-4">
+      <div class="w-1.5 h-8 bg-primary rounded-full"></div>
+      <div>
+        <h3 class="font-headline-sm text-on-surface">{{TIMELINE_TITLE}}</h3>
+        <div class="flex items-center gap-2 mt-0.5">
+          <span class="text-label-sm text-on-surface-variant font-medium">June 2026</span>
+          <span class="w-1 h-1 bg-outline rounded-full"></span>
+          <span class="text-[10px] text-on-surface-variant/70 uppercase font-bold">UTC+08:00 Philippine Time</span>
+        </div>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="flex bg-surface-container-low p-1 rounded-lg border border-outline-variant/30 mr-4">
+        <button type="button" class="px-4 py-1.5 bg-white shadow-sm rounded-md text-label-sm font-bold text-primary transition-all">Month</button>
+        <button type="button" class="px-4 py-1.5 hover:bg-white/50 rounded-md text-label-sm font-medium text-on-surface-variant transition-all">Week</button>
+        <button type="button" class="px-4 py-1.5 hover:bg-white/50 rounded-md text-label-sm font-medium text-on-surface-variant transition-all">Day</button>
+      </div>
+      <div class="flex items-center gap-1 border-l border-outline-variant/30 pl-4">
+        <button type="button" class="p-2 hover:bg-surface-container rounded-lg"><span class="material-symbols-outlined">chevron_left</span></button>
+        <button type="button" class="px-3 py-1.5 text-label-sm font-bold border border-outline-variant rounded-lg">Today</button>
+        <button type="button" class="p-2 hover:bg-surface-container rounded-lg"><span class="material-symbols-outlined">chevron_right</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="flex-grow flex flex-col overflow-hidden">
+    <div class="gantt-container border-b-2 border-outline-variant/20 bg-surface-container-low/30 sticky top-0 z-20">
+      <div class="p-5 border-r border-outline-variant/30 flex items-center justify-between bg-surface-container-low/50">
+        <span class="text-[11px] font-bold text-outline uppercase tracking-widest">Facility Unit</span>
+        <span class="material-symbols-outlined text-[16px] text-outline">tune</span>
+      </div>
+      <div class="overflow-x-auto no-scrollbar w-full border-t border-outline-variant/10 timeline-scroll">
+        <div class="gantt-grid">
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">01</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">02</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">03</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">04</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">05</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">06</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">07</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">08</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">09</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10 bg-primary/5"><span class="text-[9px] font-bold text-primary">TODAY</span><span class="text-headline-sm leading-none text-primary font-bold scale-110">10</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">11</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">12</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">13</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">14</span></div>
+          <div class="py-4 flex flex-col items-center justify-center border-r border-outline-variant/10"><span class="text-[9px] font-bold text-outline">JUN</span><span class="text-headline-sm leading-none text-on-surface-variant">15</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="flex-grow overflow-y-auto" id="timeline-rows-slot">{{TIMELINE_ROWS}}</div>
+  </div>
+</section>

@@ -1,0 +1,30 @@
+<aside id="app-sidebar" class="w-[260px] bg-white border-r border-outline-variant flex flex-col py-lg px-md z-40 shrink-0 h-full drawer-transition">
+  <div class="mb-xl px-sm flex items-center justify-between">
+    <div>
+      <h1 class="font-headline-md text-headline-md font-bold text-primary">AptSpace</h1>
+      <p class="text-body-sm text-on-surface-variant">{{PORTAL_LABEL}}</p>
+    </div>
+    <button id="menu-toggle" type="button" class="lg:hidden p-1 text-on-surface-variant" aria-label="Menu">
+      <span class="material-symbols-outlined">menu</span>
+    </button>
+  </div>
+  <nav class="flex-1 space-y-1">{{NAV_ITEMS}}</nav>
+  <div class="px-sm mb-lg">
+    <a href="{{QUICK_RESERVE_HREF}}" class="w-full bg-primary hover:bg-primary/90 transition-colors text-on-primary py-3 rounded-lg font-label-md flex items-center justify-center gap-sm shadow-sm">
+      <span class="material-symbols-outlined">add_circle</span>
+      Quick Reserve
+    </a>
+  </div>
+  <div class="px-sm mb-md">
+    <a href="{{SWAP_HREF}}" class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 rounded-lg text-body-sm">
+      <span class="material-symbols-outlined">swap_horiz</span>
+      {{SWAP_LABEL}}
+    </a>
+  </div>
+  <div class="mt-auto border-t border-outline-variant pt-lg">
+    <a href="../login.html" class="flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 rounded-lg">
+      <span class="material-symbols-outlined">logout</span>
+      <span class="font-body-md">Log Out</span>
+    </a>
+  </div>
+</aside>

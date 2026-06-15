@@ -1,20 +1,30 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="h-full" lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login | AptSpace</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="./assets/js/tailwind-config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="./assets/css/main.css" />
 </head>
-<body>
-  <main class="page">
-    <h1>Login</h1>
-    <form id="loginForm">
-      <input type="email" id="email" placeholder="Email" required />
-      <input type="password" id="password" placeholder="Password" required />
-      <button type="submit">Login</button>
+<body class="bg-[#f1f5f9] min-h-screen flex items-center justify-center p-4">
+  <main class="w-full max-w-md bg-white border border-outline-variant rounded-xl shadow-sm p-8">
+    <h1 class="text-headline-md font-bold text-primary mb-1">AptSpace</h1>
+    <p class="text-body-sm text-on-surface-variant mb-6">Seminary Admin — Sign in</p>
+    <form class="space-y-4" action="./admin/dashboard.html" method="get">
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="email">Email</label>
+        <input type="email" id="email" value="admin@aptspace.com" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="password">Password</label>
+        <input type="password" id="password" placeholder="Password" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+      </div>
+      <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-label-md transition-colors">Enter Mission Control</button>
     </form>
+    <p class="text-[11px] text-on-surface-variant mt-4 text-center">UI preview — no authentication wired yet</p>
   </main>
-  <script src="./assests/js/auth.js"></script>
 </body>
 </html>

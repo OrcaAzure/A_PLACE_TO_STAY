@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reservations | AptSpace</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="../assets/js/tailwind-config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/responsive.css" />
+</head>
+<body>
+  <div id="page-content">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <button type="button" class="w-full group bg-white p-5 rounded-xl border border-outline-variant shadow-sm hover:border-primary hover:shadow-md transition-all text-left flex flex-col gap-4 items-stretch">
+        <div class="w-12 h-12 bg-primary-container/10 text-primary rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
+          <span class="material-symbols-outlined text-[28px]">verified</span>
+        </div>
+        <div>
+          <h4 class="font-headline-sm text-on-surface">Manage Requests</h4>
+          <p class="text-body-sm text-on-surface-variant mt-1">Review and action pending facility bookings.</p>
+        </div>
+        <div class="mt-auto pt-4 border-t border-outline-variant/30 flex items-center justify-between">
+          <span class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold">18 ACTION REQUIRED</span>
+          <span class="material-symbols-outlined text-primary">arrow_forward</span>
+        </div>
+      </button>
+      <button type="button" class="w-full group bg-white p-5 rounded-xl border border-outline-variant shadow-sm hover:border-secondary hover:shadow-md transition-all text-left flex flex-col gap-4 items-stretch">
+        <div class="w-12 h-12 bg-surface-container-high text-on-surface-variant rounded-lg flex items-center justify-center group-hover:bg-secondary group-hover:text-white transition-colors">
+          <span class="material-symbols-outlined text-[28px]">grid_view</span>
+        </div>
+        <div>
+          <h4 class="font-headline-sm text-on-surface">Check Availability</h4>
+          <p class="text-body-sm text-on-surface-variant mt-1">Direct access to real-time unit availability maps.</p>
+        </div>
+        <div class="mt-auto pt-4 border-t border-outline-variant/30 flex items-center justify-between">
+          <span class="text-secondary text-[10px] px-2 py-1 rounded-full font-bold">LIVE VIEW</span>
+          <span class="material-symbols-outlined text-secondary">arrow_forward</span>
+        </div>
+      </button>
+    </div>
+    <div id="timeline-mount" class="w-full flex flex-col"></div>
+  </div>
+  <script type="module">
+    import { initShell } from '../assets/js/shell.js';
+
+    const [shell, rows] = await Promise.all([
+      fetch('../components/timeline-shell.html').then((r) => r.text()),
+      fetch('../components/timeline-rows-reservations.html').then((r) => r.text()),
+    ]);
+
+    document.getElementById('timeline-mount').innerHTML = shell
+      .replace('{{TIMELINE_TITLE}}', 'Facility Utilization Master Timeline')
+      .replace('{{TIMELINE_ROWS}}', rows);
+
+    await initShell({
+      portal: 'admin',
+      active: 'reservations',
+      title: 'Reservation Operations Center',
+      subtitle: 'Mission Control',
+    });
+  </script>
+</body>
+</html>

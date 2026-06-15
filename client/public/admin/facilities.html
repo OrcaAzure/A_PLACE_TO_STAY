@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Facilities | AptSpace</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="../assets/js/tailwind-config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/main.css" />
+  <link rel="stylesheet" href="../assets/css/components.css" />
+  <link rel="stylesheet" href="../assets/css/responsive.css" />
+</head>
+<body>
+  <div id="page-content">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <button type="button" class="action-card hover:border-primary">
+        <div class="action-card-icon bg-primary-container/10 text-primary"><span class="material-symbols-outlined text-[28px]">meeting_room</span></div>
+        <div><h4 class="font-headline-sm text-on-surface">Room Inventory</h4><p class="text-body-sm text-on-surface-variant mt-1">View all rooms across buildings.</p></div>
+      </button>
+      <button type="button" class="action-card hover:border-secondary">
+        <div class="action-card-icon bg-surface-container-high text-on-surface-variant"><span class="material-symbols-outlined text-[28px]">monitoring</span></div>
+        <div><h4 class="font-headline-sm text-on-surface">Status Monitor</h4><p class="text-body-sm text-on-surface-variant mt-1">Live room status across campus.</p></div>
+      </button>
+    </div>
+    <div id="timeline-mount"></div>
+  </div>
+  <script type="module">
+    import { initShell } from '../assets/js/shell.js';
+    const [shell, rows] = await Promise.all([
+      fetch('../components/timeline-shell.html').then((r) => r.text()),
+      fetch('../components/timeline-rows-facilities.html').then((r) => r.text()),
+    ]);
+    document.getElementById('timeline-mount').innerHTML = shell
+      .replace('{{TIMELINE_TITLE}}', 'Room Status Timeline')
+      .replace('{{TIMELINE_ROWS}}', rows);
+    await initShell({ portal: 'admin', active: 'facilities', title: 'Facilities Operations Center', subtitle: 'Mission Control' });
+  </script>
+</body>
+</html>
