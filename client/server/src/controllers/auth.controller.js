@@ -1,5 +1,6 @@
 import * as authService from '../services/auth.service.js';
 
+// POST /api/auth/login
 export const login = async (req, res) => {
   try {
     const result = await authService.login(req.body);
@@ -9,6 +10,7 @@ export const login = async (req, res) => {
   }
 };
 
+// POST /api/auth/register
 export const register = async (req, res) => {
   try {
     const result = await authService.register(req.body);
@@ -18,6 +20,8 @@ export const register = async (req, res) => {
   }
 };
 
+// GET /api/auth/me  (protected)
+// Returns the logged-in user's profile from their JWT
 export const getProfile = async (req, res) => {
   try {
     const user = await authService.getMe(req.user.id);
