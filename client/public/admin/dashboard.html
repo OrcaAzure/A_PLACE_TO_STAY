@@ -14,24 +14,28 @@
 </head>
 <body>
   <div id="page-content">
-    <div class="kpi-grid mb-6">
-      <div class="kpi-card"><div class="kpi-value">142</div><div class="kpi-label">Active Reservations</div></div>
-      <div class="kpi-card"><div class="kpi-value">87%</div><div class="kpi-label">Occupancy Rate</div></div>
-      <div class="kpi-card"><div class="kpi-value">18</div><div class="kpi-label">Pending Requests</div></div>
-      <div class="kpi-card"><div class="kpi-value">₱2.4M</div><div class="kpi-label">Revenue (MTD)</div></div>
-    </div>
+    <div id="action-cards-mount"></div>
     <div id="timeline-mount" class="w-full flex flex-col"></div>
   </div>
   <script type="module">
     import { initShell } from '../assets/js/shell.js';
-    const [shell, rows] = await Promise.all([
+
+    const [actionCards, shell, rows] = await Promise.all([
+      fetch('../components/action-cards-reservations.html').then((r) => r.text()),
       fetch('../components/timeline-shell.html').then((r) => r.text()),
       fetch('../components/timeline-rows-reservations.html').then((r) => r.text()),
     ]);
+
+    document.getElementById('action-cards-mount').innerHTML = actionCards;
     document.getElementById('timeline-mount').innerHTML = shell
-      .replace('{{TIMELINE_TITLE}}', 'Operations Overview Timeline')
+      .replace('{{TIMELINE_TITLE}}', 'Facility Utilization Master Timeline')
       .replace('{{TIMELINE_ROWS}}', rows);
-    await initShell({ portal: 'admin', active: 'dashboard', title: 'Admin Dashboard', subtitle: 'Mission Control' });
+
+    await initShell({
+      active: 'dashboard',
+      title: 'Reservation Operations Center',
+      subtitle: 'Mission Control',
+    });
   </script>
 </body>
 </html>

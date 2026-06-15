@@ -12,21 +12,8 @@ const ADMIN_NAV = [
   { id: 'settings', label: 'Settings', icon: 'settings', href: './settings.html' },
 ];
 
-const PROPERTY_NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: './dashboard.html' },
-  { id: 'properties', label: 'Properties', icon: 'apartment', href: './properties.html' },
-  { id: 'units', label: 'Units', icon: 'door_front', href: './units.html' },
-  { id: 'occupancy', label: 'Occupancy', icon: 'hotel', href: './occupancy.html' },
-  { id: 'maintenance', label: 'Maintenance', icon: 'build', href: './maintenance.html' },
-  { id: 'projects', label: 'Projects', icon: 'engineering', href: './projects.html' },
-  { id: 'budgets', label: 'Budgets', icon: 'account_balance', href: './budgets.html' },
-  { id: 'analytics', label: 'Analytics', icon: 'analytics', href: './analytics.html' },
-];
-
 function assetBase() {
-  return window.location.pathname.includes('/admin/') || window.location.pathname.includes('/property/')
-    ? '../'
-    : './';
+  return window.location.pathname.includes('/admin/') ? '../' : './';
 }
 
 async function loadPartial(url) {
@@ -43,14 +30,8 @@ function navHtml(items, active) {
   }).join('');
 }
 
-export async function initShell({ portal = 'admin', active = 'dashboard', title = 'Mission Control', subtitle = 'Operations Center' } = {}) {
+export async function initShell({ active = 'dashboard', title = 'Mission Control', subtitle = 'Operations Center' } = {}) {
   const base = assetBase();
-  const nav = portal === 'property' ? PROPERTY_NAV : ADMIN_NAV;
-  const portalLabel = portal === 'admin' ? 'Seminary Admin' : 'Property Management';
-  const swapHref = portal === 'admin' ? `${base}property/dashboard.html` : `${base}admin/dashboard.html`;
-  const swapLabel = portal === 'admin' ? 'Property Portal' : 'Admin Portal';
-  const quickReserveHref = portal === 'admin' ? './reservations.html' : './dashboard.html';
-
   const saved = document.getElementById('page-content')?.innerHTML || '';
 
   const [sidebar, header, drawer, modal, notifications] = await Promise.all([
@@ -64,12 +45,7 @@ export async function initShell({ portal = 'admin', active = 'dashboard', title 
   document.body.className = 'bg-[#f1f5f9] text-on-surface font-body-md h-screen overflow-hidden flex relative';
 
   document.body.innerHTML = `
-    ${sidebar
-      .replace('{{NAV_ITEMS}}', navHtml(nav, active))
-      .replace('{{PORTAL_LABEL}}', portalLabel)
-      .replace('{{QUICK_RESERVE_HREF}}', quickReserveHref)
-      .replace('{{SWAP_HREF}}', swapHref)
-      .replace('{{SWAP_LABEL}}', swapLabel)}
+    ${sidebar.replace('{{NAV_ITEMS}}', navHtml(ADMIN_NAV, active))}
     <main class="flex-1 flex flex-col overflow-hidden h-full">
       ${header
         .replace('{{TITLE}}', title)
