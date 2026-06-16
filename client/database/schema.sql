@@ -171,12 +171,10 @@ CREATE TABLE IF NOT EXISTS users (
     role       ENUM(
                  'Super Admin',                -- full access
                  'Admin',                      -- manage bookings and users
-                 'GNC View Only',              -- read-only access
                  'Faculty',
                  'Staff',
                  'Missionary',
-                 'Student'
-               ) NOT NULL DEFAULT 'Student',
+               ) NOT NULL DEFAULT 'Faculty',
     status     ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
