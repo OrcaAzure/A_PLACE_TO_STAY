@@ -15,17 +15,32 @@
 <body>
   <div id="page-content">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <button type="button" class="action-card hover:border-primary">
-        <div class="action-card-icon bg-primary-container/10 text-primary"><span class="material-symbols-outlined text-[28px]">payments</span></div>
-        <div><h4 class="font-headline-sm text-on-surface">Collected Revenue</h4><p class="text-body-sm text-on-surface-variant mt-1">Total payments received this month.</p></div>
-        <div class="mt-auto pt-4 border-t border-outline-variant/30"><span class="text-primary text-[10px] font-bold">₱2,415,800.00</span></div>
-      </button>
-      <button type="button" class="action-card hover:border-secondary">
-        <div class="action-card-icon bg-surface-container-high text-on-surface-variant"><span class="material-symbols-outlined text-[28px]">pending_actions</span></div>
-        <div><h4 class="font-headline-sm text-on-surface">Pending Payments</h4><p class="text-body-sm text-on-surface-variant mt-1">Outstanding invoices awaiting payment.</p></div>
-        <div class="mt-auto pt-4 border-t border-outline-variant/30"><span class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold">₱184,250.00 DUE</span></div>
-      </button>
+      <div class="action-card">
+        <div class="action-card-icon bg-primary-container/10 text-primary">
+          <span class="material-symbols-outlined text-[28px]">payments</span>
+        </div>
+        <div>
+          <h4 class="font-headline-sm text-on-surface">Collected Revenue</h4>
+          <p class="text-body-sm text-on-surface-variant mt-1">Total payments received this month.</p>
+        </div>
+        <div class="mt-auto pt-4 border-t border-outline-variant/30">
+          <span id="total-revenue" class="text-primary text-[10px] font-bold">LOADING...</span>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-card-icon bg-surface-container-high text-on-surface-variant">
+          <span class="material-symbols-outlined text-[28px]">pending_actions</span>
+        </div>
+        <div>
+          <h4 class="font-headline-sm text-on-surface">Pending Payments</h4>
+          <p class="text-body-sm text-on-surface-variant mt-1">Outstanding invoices awaiting payment.</p>
+        </div>
+        <div class="mt-auto pt-4 border-t border-outline-variant/30">
+          <span id="pending-amount" class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold">LOADING...</span>
+        </div>
+      </div>
     </div>
+
     <section class="timeline-workspace">
       <div class="timeline-workspace-header">
         <div class="flex items-center gap-4">
@@ -33,45 +48,83 @@
           <h3 class="font-headline-sm text-on-surface">Payment Monitoring Center</h3>
         </div>
         <div class="flex gap-2">
-          <button type="button" data-tab="invoices" class="px-4 py-1.5 border-b-2 border-primary text-primary text-label-sm font-bold">Invoices</button>
-          <button type="button" data-tab="transactions" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">Transactions</button>
-          <button type="button" data-tab="balances" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">Outstanding</button>
+          <button type="button" data-tab="all" class="px-4 py-1.5 border-b-2 border-primary text-primary text-label-sm font-bold">All</button>
+          <button type="button" data-tab="paid" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">Paid</button>
+          <button type="button" data-tab="pending" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">Pending</button>
         </div>
       </div>
-      <div class="p-0 overflow-x-auto">
-        <div data-tab-content="invoices">
-          <table class="data-table">
-            <thead><tr><th>Invoice</th><th>Guest</th><th>Amount</th><th>Due Date</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td>INV-2026-0412</td><td>Maria Santos</td><td>₱12,500.00</td><td>Jun 15, 2026</td><td><span class="status-pill-pending text-[10px] px-2 py-0.5 rounded-full font-bold">Pending</span></td></tr>
-              <tr><td>INV-2026-0408</td><td>John Reyes</td><td>₱45,000.00</td><td>Jun 08, 2026</td><td><span class="status-pill-approved text-[10px] px-2 py-0.5 rounded-full font-bold">Paid</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div data-tab-content="transactions" class="hidden">
-          <table class="data-table">
-            <thead><tr><th>Ref</th><th>Method</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
-            <tbody>
-              <tr><td>TXN-8821</td><td>GCash</td><td>₱22,500.00</td><td>Jun 09, 2026</td><td><span class="status-pill-approved text-[10px] px-2 py-0.5 rounded-full font-bold">Paid</span></td></tr>
-              <tr><td>TXN-8819</td><td>Bank Transfer</td><td>₱67,200.00</td><td>Jun 07, 2026</td><td><span class="status-pill-approved text-[10px] px-2 py-0.5 rounded-full font-bold">Paid</span></td></tr>
-            </tbody>
-          </table>
-        </div>
-        <div data-tab-content="balances" class="hidden">
-          <table class="data-table">
-            <thead><tr><th>Guest</th><th>Booking</th><th>Balance</th><th>Days Overdue</th></tr></thead>
-            <tbody>
-              <tr><td>Anna Cruz</td><td>#APT-2798</td><td>₱8,750.00</td><td>3</td></tr>
-              <tr><td>David Kim</td><td>#APT-2805</td><td>₱15,200.00</td><td>0</td></tr>
-            </tbody>
-          </table>
-        </div>
+      <div class="overflow-x-auto">
+        <table class="data-table">
+          <thead><tr><th>Booking ID</th><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody id="payments-tbody">
+            <tr><td colspan="5" class="text-center text-on-surface-variant py-8">Loading payments...</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
   </div>
+
   <script type="module">
-    import { initShell } from '../assets/js/shell.js';
-    await initShell({ active: 'payments', title: 'Payment Operations Center', subtitle: 'Mission Control' });
+    import { requireAuth }   from '../assets/js/auth.js';
+    import { initAppLayout } from '../assets/js/ui.js';
+    import { getPayments }   from '../assets/js/api.js';
+
+    if (!requireAuth()) throw new Error('Not authenticated');
+
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'payments',
+      title:      'Payment Operations Center',
+      subtitle:   'Mission Control',
+    });
+
+    try {
+      const payments = await getPayments();
+      let allRows = payments;
+
+      const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+
+      const paid    = payments.filter(p => p.status === 'Paid');
+      const pending = payments.filter(p => p.status === 'Pending');
+      const revenue = paid.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+      const due     = pending.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+
+      document.getElementById('total-revenue').textContent  = fmt(revenue);
+      document.getElementById('pending-amount').textContent = `${fmt(due)} DUE`;
+
+      function renderRows(list) {
+        if (list.length === 0) return '<tr><td colspan="5" class="text-center text-on-surface-variant py-8">No payments found.</td></tr>';
+        return list.map(p => {
+          const statusClass = p.status === 'Paid' ? 'status-pill-approved' : 'status-pill-pending';
+          const date = p.paid_at || p.created_at
+            ? new Date(p.paid_at || p.created_at).toLocaleDateString('en-PH', { month:'short', day:'2-digit', year:'numeric' })
+            : '—';
+          return `<tr>
+            <td>#${p.booking_id}</td>
+            <td>${fmt(p.amount)}</td>
+            <td>${p.method}</td>
+            <td>${date}</td>
+            <td><span class="${statusClass} text-[10px] px-2 py-0.5 rounded-full font-bold">${p.status}</span></td>
+          </tr>`;
+        }).join('');
+      }
+
+      const tbody = document.getElementById('payments-tbody');
+      tbody.innerHTML = renderRows(allRows);
+
+      // tab filter — runs after initAppLayout so the tabs are in the DOM
+      document.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const t = btn.getAttribute('data-tab');
+          const filtered = t === 'paid' ? paid : t === 'pending' ? pending : payments;
+          tbody.innerHTML = renderRows(filtered);
+        });
+      });
+
+    } catch (err) {
+      document.getElementById('payments-tbody').innerHTML =
+        `<tr><td colspan="5" class="text-center text-error py-8">${err.message}</td></tr>`;
+    }
   </script>
 </body>
 </html>

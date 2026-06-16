@@ -18,12 +18,16 @@
     <div id="timeline-mount" class="w-full flex flex-col"></div>
   </div>
   <script type="module">
-    import { initShell } from '../assets/js/shell.js';
+    import { requireAuth }   from '../assets/js/auth.js';
+    import { initAppLayout } from '../assets/js/ui.js';
+
+    // redirect to login if not authenticated
+    if (!requireAuth()) throw new Error('Not authenticated');
 
     const [actionCards, shell, rows] = await Promise.all([
-      fetch('../components/action-cards-reservations.html').then((r) => r.text()),
-      fetch('../components/timeline-shell.html').then((r) => r.text()),
-      fetch('../components/timeline-rows-reservations.html').then((r) => r.text()),
+      fetch('../components/action-cards-reservations.html').then(r => r.text()),
+      fetch('../components/timeline-shell.html').then(r => r.text()),
+      fetch('../components/timeline-rows-reservations.html').then(r => r.text()),
     ]);
 
     document.getElementById('action-cards-mount').innerHTML = actionCards;
@@ -31,10 +35,11 @@
       .replace('{{TIMELINE_TITLE}}', 'Facility Utilization Master Timeline')
       .replace('{{TIMELINE_ROWS}}', rows);
 
-    await initShell({
-      active: 'dashboard',
-      title: 'Reservation Operations Center',
-      subtitle: 'Mission Control',
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'dashboard',
+      title:      'Reservation Operations Center',
+      subtitle:   'Mission Control',
     });
   </script>
 </body>

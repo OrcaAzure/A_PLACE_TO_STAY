@@ -1,8 +1,11 @@
 import { login } from './api.js';
 
+// Call this at the top of every admin page to block unauthenticated access
 export function requireAuth() {
   if (!localStorage.getItem('token')) {
-    window.location.href = '../login.html';
+    // admin pages are one level deeper, so go up one folder to login
+    const isAdmin = window.location.pathname.includes('/admin/');
+    window.location.href = isAdmin ? '../login.html' : './login.html';
     return false;
   }
   return true;
@@ -16,16 +19,25 @@ export function getCurrentUser() {
   }
 }
 
+export function doLogout() {
+  localStorage.removeItem('token');
+  localStorage.removeItem('user');
+  window.location.href = '../login.html';
+}
+
+// Login form handler — only runs if loginForm exists on the page
 const form = document.getElementById('loginForm');
 if (form) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = document.getElementById('email').value;
+
+    const email    = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
-    const errorEl = document.getElementById('loginError');
-    const btn = form.querySelector('button[type="submit"]');
+    const errorEl  = document.getElementById('loginError');
+    const btn      = form.querySelector('button[type="submit"]');
 
     btn.disabled = true;
+    btn.textContent = 'Signing in...';
     errorEl?.classList.add('hidden');
 
     try {
@@ -35,13 +47,12 @@ if (form) {
       window.location.href = './admin/dashboard.html';
     } catch (err) {
       if (errorEl) {
-        errorEl.textContent = err.message;
+        errorEl.textContent = err.message || 'Invalid email or password';
         errorEl.classList.remove('hidden');
-      } else {
-        alert(err.message);
       }
     } finally {
       btn.disabled = false;
+      btn.textContent = 'Log in';
     }
   });
 }

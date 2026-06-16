@@ -18,24 +18,37 @@
     <div id="timeline-mount" class="w-full flex flex-col"></div>
   </div>
   <script type="module">
-    import { initShell } from '../assets/js/shell.js';
+    import { requireAuth }   from '../assets/js/auth.js';
+    import { initAppLayout } from '../assets/js/ui.js';
+    import { getBookings, normalizeBooking } from '../assets/js/api.js';
+
+    if (!requireAuth()) throw new Error('Not authenticated');
 
     const [actionCards, shell, rows] = await Promise.all([
-      fetch('../components/action-cards-reservations.html').then((r) => r.text()),
-      fetch('../components/timeline-shell.html').then((r) => r.text()),
-      fetch('../components/timeline-rows-reservations.html').then((r) => r.text()),
+      fetch('../components/action-cards-reservations.html').then(r => r.text()),
+      fetch('../components/timeline-shell.html').then(r => r.text()),
+      fetch('../components/timeline-rows-reservations.html').then(r => r.text()),
     ]);
 
     document.getElementById('action-cards-mount').innerHTML = actionCards;
     document.getElementById('timeline-mount').innerHTML = shell
-      .replace('{{TIMELINE_TITLE}}', 'Facility Utilization Master Timeline')
+      .replace('{{TIMELINE_TITLE}}', 'Reservation Master Timeline')
       .replace('{{TIMELINE_ROWS}}', rows);
 
-    await initShell({
-      active: 'reservations',
-      title: 'Reservation Operations Center',
-      subtitle: 'Mission Control',
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'reservations',
+      title:      'Reservation Operations Center',
+      subtitle:   'Mission Control',
     });
+
+    // load live booking count into the action card
+    try {
+      const bookings = await getBookings();
+      const pending  = bookings.filter(b => b.status === 'Pending').length;
+      const countEl  = document.getElementById('pending-count');
+      if (countEl) countEl.textContent = `${pending} PENDING`;
+    } catch { /* API not running yet — static UI still works */ }
   </script>
 </body>
 </html>

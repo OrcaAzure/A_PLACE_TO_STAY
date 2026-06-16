@@ -14,28 +14,149 @@
 </head>
 <body>
   <div id="page-content">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <button type="button" class="action-card hover:border-primary">
-        <div class="action-card-icon bg-primary-container/10 text-primary"><span class="material-symbols-outlined text-[28px]">meeting_room</span></div>
-        <div><h4 class="font-headline-sm text-on-surface">Room Inventory</h4><p class="text-body-sm text-on-surface-variant mt-1">View all rooms across buildings.</p></div>
-      </button>
-      <button type="button" class="action-card hover:border-secondary">
-        <div class="action-card-icon bg-surface-container-high text-on-surface-variant"><span class="material-symbols-outlined text-[28px]">monitoring</span></div>
-        <div><h4 class="font-headline-sm text-on-surface">Status Monitor</h4><p class="text-body-sm text-on-surface-variant mt-1">Live room status across campus.</p></div>
-      </button>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div class="action-card">
+        <div class="action-card-icon bg-primary-container/10 text-primary">
+          <span class="material-symbols-outlined text-[28px]">meeting_room</span>
+        </div>
+        <div>
+          <h4 class="font-headline-sm text-on-surface">Total Rooms</h4>
+          <p class="text-body-sm text-on-surface-variant mt-1">All rooms across all buildings.</p>
+        </div>
+        <div class="mt-auto pt-4 border-t border-outline-variant/30">
+          <span id="total-rooms" class="text-primary text-[10px] font-bold">LOADING...</span>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-card-icon bg-surface-container-high text-secondary">
+          <span class="material-symbols-outlined text-[28px]">check_circle</span>
+        </div>
+        <div>
+          <h4 class="font-headline-sm text-on-surface">Available</h4>
+          <p class="text-body-sm text-on-surface-variant mt-1">Rooms ready for booking.</p>
+        </div>
+        <div class="mt-auto pt-4 border-t border-outline-variant/30">
+          <span id="available-rooms" class="text-secondary text-[10px] font-bold">LOADING...</span>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-card-icon bg-error/10 text-error">
+          <span class="material-symbols-outlined text-[28px]">hotel</span>
+        </div>
+        <div>
+          <h4 class="font-headline-sm text-on-surface">Occupied</h4>
+          <p class="text-body-sm text-on-surface-variant mt-1">Currently occupied rooms.</p>
+        </div>
+        <div class="mt-auto pt-4 border-t border-outline-variant/30">
+          <span id="occupied-rooms" class="text-error text-[10px] font-bold">LOADING...</span>
+        </div>
+      </div>
     </div>
-    <div id="timeline-mount"></div>
+
+    <section class="timeline-workspace">
+      <div class="timeline-workspace-header">
+        <div class="flex items-center gap-4">
+          <div class="w-1.5 h-8 bg-primary rounded-full"></div>
+          <h3 class="font-headline-sm text-on-surface">Room Inventory</h3>
+        </div>
+        <div class="flex gap-2 items-center">
+          <select id="filter-building" class="border border-outline-variant rounded-lg px-3 py-2 text-body-sm">
+            <option value="">All Buildings</option>
+            <option>PCALM</option>
+            <option>House</option>
+            <option>Thesda</option>
+            <option>Sampaguita</option>
+            <option>Peranza</option>
+          </select>
+          <select id="filter-status" class="border border-outline-variant rounded-lg px-3 py-2 text-body-sm">
+            <option value="">All Statuses</option>
+            <option>Available</option>
+            <option>Occupied</option>
+            <option>Maintenance</option>
+          </select>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="data-table">
+          <thead>
+            <tr><th>Building</th><th>Room</th><th>Type</th><th>Min</th><th>Max</th><th>Occupancy</th><th>Status</th></tr>
+          </thead>
+          <tbody id="rooms-tbody">
+            <tr><td colspan="7" class="text-center text-on-surface-variant py-8">Loading rooms...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
   </div>
+
   <script type="module">
-    import { initShell } from '../assets/js/shell.js';
-    const [shell, rows] = await Promise.all([
-      fetch('../components/timeline-shell.html').then((r) => r.text()),
-      fetch('../components/timeline-rows-facilities.html').then((r) => r.text()),
-    ]);
-    document.getElementById('timeline-mount').innerHTML = shell
-      .replace('{{TIMELINE_TITLE}}', 'Room Status Timeline')
-      .replace('{{TIMELINE_ROWS}}', rows);
-    await initShell({ active: 'facilities', title: 'Facilities Operations Center', subtitle: 'Mission Control' });
+    import { requireAuth }             from '../assets/js/auth.js';
+    import { initAppLayout }           from '../assets/js/ui.js';
+    import { getRooms, normalizeRoom } from '../assets/js/api.js';
+
+    if (!requireAuth()) throw new Error('Not authenticated');
+
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'facilities',
+      title:      'Facilities Operations Center',
+      subtitle:   'Mission Control',
+    });
+
+    let allRooms = [];
+
+    function statusClass(s) {
+      if (s === 'Available')   return 'status-pill-approved';
+      if (s === 'Occupied')    return 'status-pill-pending';
+      if (s === 'Maintenance') return 'status-pill-rejected';
+      return '';
+    }
+
+    function renderRooms(list) {
+      const tbody = document.getElementById('rooms-tbody');
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-on-surface-variant py-8">No rooms found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(r => {
+        const n = normalizeRoom(r);
+        return `<tr>
+          <td>${n.building}</td>
+          <td class="font-medium">${n.roomNumber}</td>
+          <td>${n.roomType}</td>
+          <td>${r.capacity_min}</td>
+          <td>${n.capacityMax}</td>
+          <td>${n.occupancy} / ${n.capacityMax}</td>
+          <td><span class="${statusClass(n.status)} text-[10px] px-2 py-0.5 rounded-full font-bold">${n.status}</span></td>
+        </tr>`;
+      }).join('');
+    }
+
+    try {
+      allRooms = await getRooms();
+
+      document.getElementById('total-rooms').textContent     = `${allRooms.length} TOTAL`;
+      document.getElementById('available-rooms').textContent = `${allRooms.filter(r => r.status === 'Available').length} AVAILABLE`;
+      document.getElementById('occupied-rooms').textContent  = `${allRooms.filter(r => r.status === 'Occupied').length} OCCUPIED`;
+
+      renderRooms(allRooms);
+
+      function applyFilters() {
+        const building = document.getElementById('filter-building').value;
+        const status   = document.getElementById('filter-status').value;
+        renderRooms(allRooms.filter(r =>
+          (!building || r.building_name === building) &&
+          (!status   || r.status === status)
+        ));
+      }
+
+      document.getElementById('filter-building')?.addEventListener('change', applyFilters);
+      document.getElementById('filter-status')?.addEventListener('change', applyFilters);
+
+    } catch (err) {
+      document.getElementById('rooms-tbody').innerHTML =
+        `<tr><td colspan="7" class="text-center text-error py-8">${err.message}</td></tr>`;
+    }
   </script>
 </body>
 </html>

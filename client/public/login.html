@@ -13,18 +13,30 @@
   <main class="w-full max-w-md bg-white border border-outline-variant rounded-xl shadow-sm p-8">
     <h1 class="text-headline-md font-bold text-primary mb-1">AptSpace</h1>
     <p class="text-body-sm text-on-surface-variant mb-6">Seminary Admin — Sign in</p>
-    <form class="space-y-4" action="./admin/dashboard.html" method="get">
+
+    <form id="loginForm" class="space-y-4">
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="email">Email</label>
-        <input type="email" id="email" value="admin@aptspace.com" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        <input type="email" id="email" placeholder="admin@aptspace.com"
+          class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" required />
       </div>
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="password">Password</label>
-        <input type="password" id="password" placeholder="Password" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        <input type="password" id="password" placeholder="Password"
+          class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" required />
       </div>
-      <button type="submit" class="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-label-md transition-colors">Log in</button>
+
+      <!-- error message shown on failed login -->
+      <div id="loginError" class="hidden text-body-sm text-error bg-error/10 rounded-lg px-3 py-2"></div>
+
+      <button type="submit"
+        class="w-full bg-primary hover:bg-primary/90 text-white py-3 rounded-lg font-label-md transition-colors disabled:opacity-50">
+        Log in
+      </button>
     </form>
-    <p class="text-[11px] text-on-surface-variant mt-4 text-center">UI preview — no authentication wired yet</p>
   </main>
+
+  <!-- load as module so it can import from api.js -->
+  <script type="module" src="./assets/js/auth.js"></script>
 </body>
 </html>

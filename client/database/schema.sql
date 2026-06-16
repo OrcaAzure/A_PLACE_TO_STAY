@@ -628,7 +628,7 @@ INSERT INTO users (full_name, email, password, role, status)
 VALUES (
     'System Administrator',
     'admin@aptspace.com',
-    '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
+    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi',
     'Super Admin',
     'Active'
 ) ON DUPLICATE KEY UPDATE email = email;
