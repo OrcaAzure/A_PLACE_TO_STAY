@@ -4,7 +4,6 @@ export const ADMIN_NAV = [
   { id: 'facilities', label: 'Facilities', icon: 'domain', href: './facilities.html' },
   { id: 'residents', label: 'Residents', icon: 'groups', href: './residents.html' },
   { id: 'payments', label: 'Payments', icon: 'payments', href: './payments.html' },
-  { id: 'reports', label: 'Reports', icon: 'assessment', href: './reports.html' },
   { id: 'settings', label: 'Settings', icon: 'settings', href: './settings.html' },
 ];
 

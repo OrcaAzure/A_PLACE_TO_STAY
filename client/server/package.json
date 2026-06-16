@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "serve:ui": "npx serve ../public -p 5500"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
