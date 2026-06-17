@@ -30,9 +30,13 @@ app.use('/api/rooms',    roomRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/users',    userRoutes);
 
-app.use(express.static(publicDir));
+app.use(express.static(publicDir, { extensions: ['html'] }));
 
 app.get('/', (req, res) => {
+  res.redirect('/login.html');
+});
+
+app.get('/login', (req, res) => {
   res.redirect('/login.html');
 });
 

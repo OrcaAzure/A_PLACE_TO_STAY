@@ -1,7 +1,7 @@
 /**
  * AptSpace API client
  */
-export const API_URL = 'http://localhost:3000/api';
+export const API_URL = `${window.location.origin}/api`;
 
 function getToken() {
   return localStorage.getItem('token');
