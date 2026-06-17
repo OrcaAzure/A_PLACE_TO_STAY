@@ -15,7 +15,7 @@
 <body class="h-full">
 
   <div id="page-content" class="w-full flex flex-col space-y-6">
-    
+
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
       <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm group hover:border-blue-500/30 transition-colors">
         <div class="flex justify-between items-start mb-4">
@@ -75,7 +75,7 @@
     </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-      
+
       <section class="lg:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex items-center justify-between">
           <div>
@@ -88,7 +88,7 @@
             <option>Last Year</option>
           </select>
         </div>
-        
+
         <div class="p-6 h-[340px] relative flex items-end justify-between gap-6">
           <div class="absolute inset-x-6 inset-y-6 flex flex-col justify-between pointer-events-none">
             <div class="border-b border-slate-100 w-full h-0"></div>
@@ -97,7 +97,7 @@
             <div class="border-b border-slate-100 w-full h-0"></div>
             <div class="border-b border-slate-200 w-full h-0"></div>
           </div>
-          
+
           <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
             <div class="w-full bg-blue-50 rounded-t-lg relative overflow-hidden h-[180px]">
               <div class="chart-bar absolute bottom-0 w-full bg-blue-600 rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="140px"></div>
@@ -142,7 +142,7 @@
           <h2 class="text-md font-bold text-slate-800">Recent Activity</h2>
           <a href="reservations.html" class="text-blue-600 font-semibold text-xs hover:underline">View All</a>
         </div>
-        
+
         <div class="p-6 space-y-6">
           <div class="flex gap-4">
             <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
@@ -153,7 +153,7 @@
               <p class="text-[10px] text-slate-400 mt-0.5">2 minutes ago • Theology Dept</p>
             </div>
           </div>
-          
+
           <div class="flex gap-4">
             <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined">admin_panel_settings</span>
@@ -163,7 +163,7 @@
               <p class="text-[10px] text-slate-400 mt-0.5">15 minutes ago • Graduate Office</p>
             </div>
           </div>
-          
+
           <div class="flex gap-4">
             <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined">edit_calendar</span>
@@ -212,16 +212,14 @@
   </div>
 
   <script type="module">
-<<<<<<< HEAD
     import { requireAuth }   from '../assets/js/auth.js';
     import { initAppLayout } from '../assets/js/ui.js';
-    import { getBookings }    from '../assets/js/api.js';
+    import { getBookings }   from '../assets/js/api.js';
 
     async function startDashboard() {
       try {
         if (!requireAuth()) return;
 
-        // Initialize layout wrapper natively—this will automatically render the header safely
         await initAppLayout({
           portal:     'admin',
           activePage: 'dashboard',
@@ -229,59 +227,29 @@
           subtitle:   'Real-time operations & snapshot telemetry insights',
         });
 
-        // Fire chart bar growth animations
         setTimeout(() => {
-          const bars = document.querySelectorAll('.chart-bar');
-          bars.forEach(bar => {
+          document.querySelectorAll('.chart-bar').forEach(bar => {
             const h = bar.getAttribute('data-height');
             if (h) bar.style.height = h;
           });
         }, 150);
 
-        // Fetch live database booking telemetry summaries
         try {
           const bookings = await getBookings();
           if (bookings && Array.isArray(bookings)) {
             document.getElementById('kpi-total-bookings').innerText = bookings.length;
             document.getElementById('kpi-pending-count').innerText = bookings.filter(b => b.status === 'Pending').length;
           }
-        } catch(apiErr) {
-          console.warn("Backend metrics endpoint not responding, showing default mock states.", apiErr);
+        } catch (apiErr) {
+          console.warn('Backend metrics not responding, showing defaults.', apiErr);
         }
 
       } catch (err) {
-        console.error("Dashboard layout engine failed:", err);
+        console.error('Dashboard failed:', err);
       }
     }
 
     startDashboard();
-=======
-    import { requireAuth }          from '../assets/js/auth.js';
-    import { initAppLayout }        from '../assets/js/ui.js';
-    import { mountBookingTimeline } from '../assets/js/timeline.js';
-
-    if (!requireAuth()) throw new Error('Not authenticated');
-
-    const actionCards = await fetch('../components/action-cards-reservations.html').then(r => r.text());
-    document.getElementById('action-cards-mount').innerHTML = actionCards;
-
-    await initAppLayout({
-      portal:     'admin',
-      activePage: 'dashboard',
-      title:      'Reservation Operations Center',
-      subtitle:   'Mission Control',
-    });
-
-    await mountBookingTimeline({
-      mountEl: document.getElementById('timeline-mount'),
-      title:   'Facility Utilization Master Timeline',
-      onData:  ({ bookings }) => {
-        const pending = bookings.filter((b) => b.status === 'pending').length;
-        const countEl = document.getElementById('pending-count');
-        if (countEl) countEl.textContent = `${pending} PENDING`;
-      },
-    });
->>>>>>> b41acea826d24d3722b529b21505953889db0cb1
   </script>
 </body>
 </html>
