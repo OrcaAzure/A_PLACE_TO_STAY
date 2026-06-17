@@ -212,6 +212,7 @@
   </div>
 
   <script type="module">
+<<<<<<< HEAD
     import { requireAuth }   from '../assets/js/auth.js';
     import { initAppLayout } from '../assets/js/ui.js';
     import { getBookings }    from '../assets/js/api.js';
@@ -254,6 +255,33 @@
     }
 
     startDashboard();
+=======
+    import { requireAuth }          from '../assets/js/auth.js';
+    import { initAppLayout }        from '../assets/js/ui.js';
+    import { mountBookingTimeline } from '../assets/js/timeline.js';
+
+    if (!requireAuth()) throw new Error('Not authenticated');
+
+    const actionCards = await fetch('../components/action-cards-reservations.html').then(r => r.text());
+    document.getElementById('action-cards-mount').innerHTML = actionCards;
+
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'dashboard',
+      title:      'Reservation Operations Center',
+      subtitle:   'Mission Control',
+    });
+
+    await mountBookingTimeline({
+      mountEl: document.getElementById('timeline-mount'),
+      title:   'Facility Utilization Master Timeline',
+      onData:  ({ bookings }) => {
+        const pending = bookings.filter((b) => b.status === 'pending').length;
+        const countEl = document.getElementById('pending-count');
+        if (countEl) countEl.textContent = `${pending} PENDING`;
+      },
+    });
+>>>>>>> b41acea826d24d3722b529b21505953889db0cb1
   </script>
 </body>
 </html>
