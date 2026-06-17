@@ -1,0 +1,87 @@
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start mb-6">
+  <section class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+      <div>
+        <h2 class="text-lg font-bold text-slate-800">Facility Utilization</h2>
+        <p class="text-xs text-slate-400">Real-time usage trends across seminary buildings</p>
+      </div>
+      <select class="bg-slate-50 border-none rounded-lg text-xs py-2 px-3 focus:ring-2 focus:ring-blue-500/20 text-slate-600">
+        <option>Last 30 Days</option>
+        <option>Last Quarter</option>
+        <option>Last Year</option>
+      </select>
+    </div>
+    <div class="p-6 h-[340px] relative flex items-end justify-between gap-6">
+      <div class="absolute inset-x-6 inset-y-6 flex flex-col justify-between pointer-events-none">
+        <div class="border-b border-slate-100 w-full h-0"></div>
+        <div class="border-b border-slate-100 w-full h-0"></div>
+        <div class="border-b border-slate-100 w-full h-0"></div>
+        <div class="border-b border-slate-100 w-full h-0"></div>
+        <div class="border-b border-slate-100 w-full h-0"></div>
+      </div>
+      <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
+        <div class="w-full bg-blue-50 rounded-t-lg relative overflow-hidden group-hover:bg-blue-100 transition-all duration-500" style="height: 180px;">
+          <div class="chart-bar absolute bottom-0 w-full bg-blue-600 rounded-t-lg transition-all duration-700 ease-out" style="height: 0px;" data-height="140px"></div>
+        </div>
+        <span class="text-xs font-medium text-slate-600">Main Bldg</span>
+      </div>
+      <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
+        <div class="w-full bg-emerald-50 rounded-t-lg relative overflow-hidden group-hover:bg-emerald-100 transition-all duration-500" style="height: 180px;">
+          <div class="chart-bar absolute bottom-0 w-full bg-emerald-600 rounded-t-lg transition-all duration-700 ease-out" style="height: 0px;" data-height="110px"></div>
+        </div>
+        <span class="text-xs font-medium text-slate-600">Student Ctr</span>
+      </div>
+      <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
+        <div class="w-full bg-amber-50 rounded-t-lg relative overflow-hidden group-hover:bg-amber-100 transition-all duration-500" style="height: 180px;">
+          <div class="chart-bar absolute bottom-0 w-full bg-amber-600 rounded-t-lg transition-all duration-700 ease-out" style="height: 0px;" data-height="165px"></div>
+        </div>
+        <span class="text-xs font-medium text-slate-600">Dorm A</span>
+      </div>
+      <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
+        <div class="w-full bg-blue-50 rounded-t-lg relative overflow-hidden group-hover:bg-blue-100 transition-all duration-500" style="height: 180px;">
+          <div class="chart-bar absolute bottom-0 w-full bg-blue-400 rounded-t-lg transition-all duration-700 ease-out" style="height: 0px;" data-height="90px"></div>
+        </div>
+        <span class="text-xs font-medium text-slate-600">Dorm B</span>
+      </div>
+      <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
+        <div class="w-full bg-emerald-50 rounded-t-lg relative overflow-hidden group-hover:bg-emerald-100 transition-all duration-500" style="height: 180px;">
+          <div class="chart-bar absolute bottom-0 w-full bg-emerald-400 rounded-t-lg transition-all duration-700 ease-out" style="height: 0px;" data-height="130px"></div>
+        </div>
+        <span class="text-xs font-medium text-slate-600">Library</span>
+      </div>
+      <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
+        <div class="w-full bg-slate-50 rounded-t-lg relative overflow-hidden group-hover:bg-slate-100 transition-all duration-500" style="height: 180px;">
+          <div class="chart-bar absolute bottom-0 w-full bg-slate-400 rounded-t-lg transition-all duration-700 ease-out" style="height: 0px;" data-height="40px"></div>
+        </div>
+        <span class="text-xs font-medium text-slate-600">Chapel</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-white rounded-xl shadow-sm border border-slate-100 flex flex-col h-full overflow-hidden">
+    <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+      <h2 class="text-md font-bold text-slate-800">Recent Activity</h2>
+      <a href="reservations.html" class="text-blue-600 font-semibold text-xs hover:underline">View All</a>
+    </div>
+    <div class="flex-1 p-6 space-y-6 overflow-y-auto max-h-[315px]" id="recent-activity-container">
+      <div class="flex gap-4">
+        <div class="relative">
+          <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600"><span class="material-symbols-outlined">person</span></div>
+        </div>
+        <div>
+          <p class="text-xs text-slate-700"><span class="font-bold">John Doe</span> reserved <span class="font-semibold text-blue-600">CALM 201</span></p>
+          <p class="text-[10px] text-slate-400 mt-0.5">2 minutes ago • Theology Dept</p>
+        </div>
+      </div>
+      <div class="flex gap-4">
+        <div class="relative">
+          <div class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-700"><span class="material-symbols-outlined">admin_panel_settings</span></div>
+        </div>
+        <div>
+          <p class="text-xs text-slate-700"><span class="font-bold">Admin</span> approved <span class="font-semibold text-blue-600">Seminar Hall B</span></p>
+          <p class="text-[10px] text-slate-400 mt-0.5">15 minutes ago • Graduate Office</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
