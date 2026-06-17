@@ -18,28 +18,30 @@
     <div id="timeline-mount" class="w-full flex flex-col"></div>
   </div>
   <script type="module">
-    import { requireAuth }   from '../assets/js/auth.js';
-    import { initAppLayout } from '../assets/js/ui.js';
+    import { requireAuth }          from '../assets/js/auth.js';
+    import { initAppLayout }        from '../assets/js/ui.js';
+    import { mountBookingTimeline } from '../assets/js/timeline.js';
 
-    // redirect to login if not authenticated
     if (!requireAuth()) throw new Error('Not authenticated');
 
-    const [actionCards, shell, rows] = await Promise.all([
-      fetch('../components/action-cards-reservations.html').then(r => r.text()),
-      fetch('../components/timeline-shell.html').then(r => r.text()),
-      fetch('../components/timeline-rows-reservations.html').then(r => r.text()),
-    ]);
-
+    const actionCards = await fetch('../components/action-cards-reservations.html').then(r => r.text());
     document.getElementById('action-cards-mount').innerHTML = actionCards;
-    document.getElementById('timeline-mount').innerHTML = shell
-      .replace('{{TIMELINE_TITLE}}', 'Facility Utilization Master Timeline')
-      .replace('{{TIMELINE_ROWS}}', rows);
 
     await initAppLayout({
       portal:     'admin',
       activePage: 'dashboard',
       title:      'Reservation Operations Center',
       subtitle:   'Mission Control',
+    });
+
+    await mountBookingTimeline({
+      mountEl: document.getElementById('timeline-mount'),
+      title:   'Facility Utilization Master Timeline',
+      onData:  ({ bookings }) => {
+        const pending = bookings.filter((b) => b.status === 'pending').length;
+        const countEl = document.getElementById('pending-count');
+        if (countEl) countEl.textContent = `${pending} PENDING`;
+      },
     });
   </script>
 </body>
