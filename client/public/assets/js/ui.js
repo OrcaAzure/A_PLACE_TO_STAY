@@ -1,3 +1,5 @@
+import { updateBooking } from './api.js';
+
 export const ADMIN_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: './dashboard.html' },
   { id: 'reservations', label: 'Reservations', icon: 'calendar_month', href: './reservations.html' },
@@ -133,6 +135,8 @@ function bindLayoutEvents(base) {
 
   document.getElementById('drawer-close')?.addEventListener('click', closeDrawer);
   document.getElementById('drawer-overlay')?.addEventListener('click', closeDrawer);
+  document.getElementById('drawer-approve-btn')?.addEventListener('click', () => handleBookingAction('Approved'));
+  document.getElementById('drawer-reject-btn')?.addEventListener('click', () => handleBookingAction('Rejected'));
   document.getElementById('modal-close')?.addEventListener('click', closeModal);
   document.getElementById('modal-overlay')?.addEventListener('click', closeModal);
 
@@ -153,6 +157,44 @@ function closeSidebar() {
   document.getElementById('app-sidebar')?.classList.remove('sidebar-open');
   document.getElementById('sidebar-overlay')?.classList.add('hidden');
   document.getElementById('sidebar-overlay')?.classList.remove('visible');
+}
+
+async function handleBookingAction(newStatus) {
+  const drawer = document.getElementById('managementDrawer');
+  const bookingId = drawer?.dataset.bookingId;
+  if (!bookingId) return;
+
+  const approveBtn = document.getElementById('drawer-approve-btn');
+  const rejectBtn  = document.getElementById('drawer-reject-btn');
+  const feedback   = document.getElementById('drawer-action-feedback');
+  const statusEl   = document.getElementById('drawer-status-value');
+
+  approveBtn?.setAttribute('disabled', 'true');
+  rejectBtn?.setAttribute('disabled', 'true');
+  if (feedback) {
+    feedback.textContent = newStatus === 'Approved' ? 'Approving booking…' : 'Rejecting booking…';
+    feedback.className = 'text-body-sm mt-2 text-on-surface-variant';
+    feedback.classList.remove('hidden');
+  }
+
+  try {
+    await updateBooking(bookingId, { status: newStatus });
+    if (statusEl) statusEl.textContent = newStatus;
+    if (feedback) {
+      feedback.textContent = `Booking ${newStatus.toLowerCase()}.`;
+      feedback.className = 'text-body-sm mt-2 text-secondary font-bold';
+    }
+    window.dispatchEvent(new CustomEvent('booking:updated', { detail: { id: bookingId, status: newStatus } }));
+    setTimeout(closeDrawer, 900);
+  } catch (err) {
+    if (feedback) {
+      feedback.textContent = err.message || 'Could not update booking. Please try again.';
+      feedback.className = 'text-body-sm mt-2 text-error font-bold';
+    }
+  } finally {
+    approveBtn?.removeAttribute('disabled');
+    rejectBtn?.removeAttribute('disabled');
+  }
 }
 
 export function openDrawer(id, title, bodyHtml = '') {
