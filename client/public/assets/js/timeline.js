@@ -91,23 +91,6 @@ export function renderBookingBar(booking, rangeStart, totalDays) {
     </div>`;
 }
 
-export function renderStatusBar(item, rangeStart, totalDays) {
-  const colStart = item.colStart || 1;
-  const colEnd = item.colEnd || totalDays + 1;
-  const pill = statusPillClass(item.status);
-  const accent = borderAccent(item.status);
-
-  return `
-    <div class="gantt-booking-bar h-[64px]" style="grid-column: ${colStart} / ${colEnd}">
-      <div class="h-full ${pill} rounded-lg p-4 flex flex-col justify-center shadow-sm border-l-4 ${accent} cursor-pointer hover:scale-[1.01] transition-transform">
-        <span class="text-[12px] font-bold truncate">${item.title}</span>
-        <div class="flex items-center gap-1.5 mt-1">
-          <span class="text-[10px] opacity-70">${item.status}</span>
-        </div>
-      </div>
-    </div>`;
-}
-
 export function renderTimelineRow(room, barsHtml, todayCol, totalDays) {
   const todayLine = todayCol
     ? `<div class="absolute left-[calc((${todayCol}/${totalDays})*100%)] top-0 bottom-0 w-[2px] bg-primary/20 z-0 pointer-events-none"></div>`
@@ -128,18 +111,25 @@ export function renderTimelineRow(room, barsHtml, todayCol, totalDays) {
     </div>`;
 }
 
-export function renderTimelineShell({ title, periodLabel, timezoneLabel = 'UTC+08:00 Philippine Time' }) {
+export function renderTimelineShell({ title, periodLabel }) {
+  // FIX: Created an explicit stacked structure inside the header view for the current date and dynamic ticking clock elements
   return `
     <section class="bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col h-full min-h-[700px] relative" id="timeline-section">
       <div class="p-5 border-b border-outline-variant/50 bg-white flex items-center justify-between shrink-0 flex-wrap gap-4">
         <div class="flex items-center gap-4">
           <div class="w-1.5 h-8 bg-primary rounded-full"></div>
           <div>
-            <h3 class="font-headline-sm text-on-surface">${title}</h3>
-            <div class="flex items-center gap-2 mt-0.5">
-              <span class="text-label-sm text-on-surface-variant font-medium" id="timeline-period">${periodLabel}</span>
-              <span class="w-1 h-1 bg-outline rounded-full"></span>
-              <span class="text-[10px] text-on-surface-variant/70 uppercase font-bold">${timezoneLabel}</span>
+            <h3 class="font-headline-sm text-on-surface font-bold text-lg">${title}</h3>
+            <div class="flex flex-col text-xs text-slate-500 mt-1 space-y-0.5 font-medium">
+              <div class="flex items-center gap-2">
+                <span class="text-label-sm text-on-surface-variant font-semibold" id="timeline-period">${periodLabel}</span>
+                <span class="w-1 h-1 bg-outline rounded-full"></span>
+                <span class="live-date-display font-semibold text-slate-600">Loading Date...</span>
+              </div>
+              <div class="text-blue-600 font-mono font-bold text-sm tracking-wide flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                <span class="live-time-display">00:00:00</span>
+              </div>
             </div>
           </div>
         </div>
@@ -192,7 +182,17 @@ export function renderTimeline({ rooms, items, rangeStart, dates, barRenderer, o
     itemsByRoom[key].push(item);
   });
 
-  rowsEl.innerHTML = rooms.map((room) => {
+  // FIX: Filter out rooms completely that do not have an active booking array assigned to them
+  const activeRooms = rooms.filter(room => {
+    return (itemsByRoom[room.id] || []).length > 0;
+  });
+
+  if (activeRooms.length === 0) {
+    rowsEl.innerHTML = `<div class="p-12 text-center text-slate-400 text-sm font-medium">No active room reservations currently logged.</div>`;
+    return;
+  }
+
+  rowsEl.innerHTML = activeRooms.map((room) => {
     const roomItems = itemsByRoom[room.id] || [];
     const bars = roomItems.map((item) => barRenderer(item, rangeStart, totalDays)).join('');
     return renderTimelineRow(room, bars, todayCol, totalDays);
@@ -201,15 +201,13 @@ export function renderTimeline({ rooms, items, rangeStart, dates, barRenderer, o
   syncTimelineScroll();
   if (todayCol > 0) scrollTimelineToToday(todayCol);
 
-  if (onBarClick) {
-    rowsEl.querySelectorAll('[data-booking-id]').forEach((el) => {
-      el.addEventListener('click', () => {
-        const id = el.getAttribute('data-booking-id');
-        const item = items.find((b) => String(b.id) === String(id));
-        if (item) onBarClick(item);
-      });
+  rowsEl.querySelectorAll('[data-booking-id]').forEach((el) => {
+    el.addEventListener('click', () => {
+      const id = el.getAttribute('data-booking-id');
+      const item = items.find((b) => String(b.id) === String(id));
+      if (item) onBarClick(item);
     });
-  }
+  });
 }
 
 export function openBookingDrawer(booking) {
@@ -258,7 +256,7 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
         items: bookings,
         rangeStart,
         dates,
-        barRenderer: renderBookingBar,
+        barRenderer: booking => renderBookingBar(booking, rangeStart, dates.length),
         onBarClick: (booking) => openBookingDrawer(booking),
       });
 

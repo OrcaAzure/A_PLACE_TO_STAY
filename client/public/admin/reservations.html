@@ -12,11 +12,12 @@
   <link rel="stylesheet" href="../assets/css/components.css" />
   <link rel="stylesheet" href="../assets/css/responsive.css" />
 </head>
-<body>
-  <div id="page-content">
+<body class="h-full bg-slate-50/50">
+  <div id="page-content" class="p-6 space-y-6 max-w-[1600px] mx-auto w-full">
     <div id="action-cards-mount"></div>
     <div id="timeline-mount" class="w-full flex flex-col"></div>
   </div>
+
   <script type="module">
     import { requireAuth }          from '../assets/js/auth.js';
     import { initAppLayout }        from '../assets/js/ui.js';
@@ -24,9 +25,37 @@
 
     if (!requireAuth()) throw new Error('Not authenticated');
 
+    // Utility function that extracts today's clean verbal date string
+    function getTodayDateString() {
+      const now = new Date();
+      const options = { month: 'long', day: 'numeric', year: 'numeric' };
+      return now.toLocaleDateString('en-US', options);
+    }
+
+    // Ticking digital clock configuration that targets the header indicators directly
+    function runLiveClockSync() {
+      const clockLoop = () => {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+        
+        const timeStr = `${hrs}:${mins}:${secs}`;
+        const dateStr = getTodayDateString();
+
+        document.querySelectorAll('.live-date-display').forEach(el => el.innerText = dateStr);
+        document.querySelectorAll('.live-time-display').forEach(el => el.innerText = timeStr);
+      };
+
+      clockLoop();
+      setInterval(clockLoop, 1000);
+    }
+
+    // 1. Fetch action metrics row container panels elements
     const actionCards = await fetch('../components/action-cards-reservations.html').then(r => r.text());
     document.getElementById('action-cards-mount').innerHTML = actionCards;
 
+    // 2. Initialize framework application sidebar and templates
     await initAppLayout({
       portal:     'admin',
       activePage: 'reservations',
@@ -34,15 +63,19 @@
       subtitle:   'Mission Control',
     });
 
+    // 3. Render scheduling table entries natively from backend arrays
     await mountBookingTimeline({
       mountEl: document.getElementById('timeline-mount'),
       title:   'Reservation Master Timeline',
       onData:  ({ bookings }) => {
-        const pending = bookings.filter((b) => b.status === 'pending').length;
+        const pending = bookings.filter((b) => b.status === 'pending' || b.status === 'Pending').length;
         const countEl = document.getElementById('pending-count');
         if (countEl) countEl.textContent = `${pending} PENDING`;
       },
     });
+
+    // 4. Fire continuous live synchronization updates loops
+    runLiveClockSync();
   </script>
 </body>
 </html>
