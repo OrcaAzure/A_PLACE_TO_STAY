@@ -23,8 +23,9 @@
     </div>
     <div data-tab-content="actions" class="hidden">
       <div class="space-y-3">
-        <button type="button" class="w-full py-2.5 bg-primary text-on-primary rounded-lg font-label-md">Approve</button>
-        <button type="button" class="w-full py-2.5 border border-outline-variant rounded-lg font-label-md text-on-surface-variant">Reject</button>
+        <button id="drawer-approve-btn" type="button" class="w-full py-2.5 bg-primary text-on-primary rounded-lg font-label-md disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
+        <button id="drawer-reject-btn" type="button" class="w-full py-2.5 border border-outline-variant rounded-lg font-label-md text-on-surface-variant disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
+        <p id="drawer-action-feedback" class="hidden text-body-sm mt-2"></p>
       </div>
     </div>
   </div>
