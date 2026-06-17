@@ -13,5 +13,7 @@ export default class Booking {
     this.notes          = data.notes;
     this.created_at     = data.created_at;
     this.updated_at     = data.updated_at;
+    this.guest_name    = data.guest_name;     // ← add this
+    this.building_name = data.building_name;  // ← and this
   }
 }

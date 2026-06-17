@@ -2,6 +2,7 @@
  * Shared timeline renderer — matches Google Stitch gantt layout
  */
 import { openDrawer, syncTimelineScroll, scrollTimelineToToday } from './ui.js';
+import { getRooms, getBookings, normalizeRoom, normalizeBooking } from './api.js';
 
 export const DAY_WIDTH = 80;
 
@@ -16,9 +17,14 @@ export function getMonthRange(year, month) {
   return dates;
 }
 
-export function dateToCol(dateStr, rangeStart) {
-  const d = new Date(dateStr + 'T00:00:00');
-  const start = new Date(rangeStart + 'T00:00:00');
+function dateOnly(value) {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+}
+
+export function dateToCol(dateValue, rangeStart) {
+  const d = new Date(`${dateOnly(dateValue)}T00:00:00`);
+  const start = new Date(`${dateOnly(rangeStart)}T00:00:00`);
   const diff = Math.round((d - start) / 86400000);
   return diff + 1;
 }
@@ -45,6 +51,7 @@ function statusPillClass(status) {
   const s = (status || '').toLowerCase();
   if (s === 'approved' || s === 'confirmed') return 'status-pill-approved';
   if (s === 'pending') return 'status-pill-pending';
+  if (s === 'rejected' || s === 'cancelled') return 'status-pill-occupied';
   if (s === 'maintenance') return 'status-pill-maintenance';
   if (s === 'reserved') return 'status-pill-reserved';
   if (s === 'occupied') return 'status-pill-occupied';
@@ -56,6 +63,7 @@ function borderAccent(status) {
   const s = (status || '').toLowerCase();
   if (s === 'maintenance') return 'border-l-purple-500';
   if (s === 'pending') return 'border-l-amber-500';
+  if (s === 'rejected' || s === 'cancelled') return 'border-l-error';
   return 'border-l-secondary';
 }
 
@@ -64,12 +72,14 @@ export function renderBookingBar(booking, rangeStart, totalDays) {
   const colEnd = dateToCol(booking.endDate, rangeStart) + 1;
   if (colEnd <= 1 || colStart > totalDays) return '';
 
+  const clampedStart = Math.max(1, colStart);
+
   const pill = statusPillClass(booking.status);
   const accent = borderAccent(booking.status);
   const label = booking.status === 'approved' ? 'Confirmed' : booking.status;
 
   return `
-    <div class="gantt-booking-bar h-[64px]" style="grid-column: ${colStart} / ${Math.min(colEnd, totalDays + 1)}">
+    <div class="gantt-booking-bar h-[64px]" style="grid-column: ${clampedStart} / ${Math.min(colEnd, totalDays + 1)}">
       <div class="h-full ${pill} rounded-lg p-4 flex flex-col justify-center shadow-sm border-l-4 ${accent} cursor-pointer hover:scale-[1.01] transition-transform"
            data-booking-id="${booking.id}" role="button" tabindex="0">
         <span class="text-[12px] font-bold truncate">#APT-${booking.id}: ${booking.title.toUpperCase()}</span>
@@ -203,16 +213,64 @@ export function renderTimeline({ rooms, items, rangeStart, dates, barRenderer, o
 }
 
 export function openBookingDrawer(booking) {
+  const drawer = document.getElementById('managementDrawer');
+  if (drawer) drawer.dataset.bookingId = booking.id;
+
   openDrawer(
     `#APT-${booking.id}`,
     booking.title,
     `
     <div class="space-y-4 p-1">
-      <p class="text-body-sm text-on-surface-variant"><strong>Status:</strong> ${booking.status}</p>
+      <p class="text-body-sm text-on-surface-variant"><strong>Status:</strong> <span id="drawer-status-value">${booking.status}</span></p>
       <p class="text-body-sm text-on-surface-variant"><strong>Check-in:</strong> ${booking.startDate}</p>
       <p class="text-body-sm text-on-surface-variant"><strong>Check-out:</strong> ${booking.endDate}</p>
       ${booking.guestCount ? `<p class="text-body-sm text-on-surface-variant"><strong>Guests:</strong> ${booking.guestCount}</p>` : ''}
       ${booking.notes ? `<p class="text-body-sm text-on-surface-variant"><strong>Notes:</strong> ${booking.notes}</p>` : ''}
     </div>`
   );
+
+  const feedback = document.getElementById('drawer-action-feedback');
+  if (feedback) {
+    feedback.textContent = '';
+    feedback.classList.add('hidden');
+  }
+}
+
+export async function mountBookingTimeline({ mountEl, title, onData }) {
+  if (!mountEl) return;
+
+  const today = new Date();
+  const monthLabel = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+  mountEl.innerHTML = renderTimelineShell({ title, periodLabel: monthLabel });
+
+  async function refresh() {
+    try {
+      const [rawRooms, rawBookings] = await Promise.all([getRooms(), getBookings()]);
+      const rooms = rawRooms.map(normalizeRoom);
+      const bookings = rawBookings.map(normalizeBooking);
+
+      const dates = getMonthRange(today.getFullYear(), today.getMonth());
+      const rangeStart = dates[0].toISOString().slice(0, 10);
+
+      renderTimeline({
+        rooms,
+        items: bookings,
+        rangeStart,
+        dates,
+        barRenderer: renderBookingBar,
+        onBarClick: (booking) => openBookingDrawer(booking),
+      });
+
+      onData?.({ rooms, bookings });
+    } catch (err) {
+      const rowsEl = document.getElementById('timeline-rows');
+      if (rowsEl) {
+        rowsEl.innerHTML = `<div class="p-8 text-center text-error text-body-sm">${err.message}</div>`;
+      }
+    }
+  }
+
+  await refresh();
+  window.addEventListener('booking:updated', refresh);
 }
