@@ -1,11 +1,13 @@
-<!DOCTYPE html><html class="light" lang="en"><head>
-<meta charset="utf-8">
-<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>My Reservations | AptSpace</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <style>
         body { font-family: 'Inter', sans-serif; }
         .material-symbols-outlined {
@@ -121,9 +123,8 @@
 <aside class="w-sidebar-width h-full fixed left-0 top-0 bg-surface-container-lowest border-r border-outline-variant flex flex-col h-full py-6 z-50">
 <div class="px-6 mb-8">
 <h1 class="font-headline-md text-headline-md font-bold text-primary">AptSpace</h1>
-<p class="text-[12px] text-on-surface-variant font-medium">Asia Pacific Seminary</p>
 </div>
-<nav class="flex-1 px-3 space-y-1">
+<nav class="flex-1 px-3 space-y-1"><!-- Dashboard -->
 <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
 <span class="material-symbols-outlined mr-3 text-[22px]">dashboard</span>
 <span class="font-label-md text-label-md">Dashboard</span>
@@ -133,30 +134,25 @@
 <span class="material-symbols-outlined mr-3 text-[22px]" style="font-variation-settings: 'FILL' 1;">event_available</span>
 <span class="font-label-md text-label-md">Reservations</span>
 </a>
+<!-- Facilities -->
 <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
 <span class="material-symbols-outlined mr-3 text-[22px]">domain</span>
 <span class="font-label-md text-label-md">Facilities</span>
 </a>
+<!-- Settings -->
 <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
-<span class="material-symbols-outlined mr-3 text-[22px]">assessment</span>
-<span class="font-label-md text-label-md">Reports</span>
-</a>
-</nav>
+<span class="material-symbols-outlined mr-3 text-[22px]">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a></nav>
 <div class="px-3 py-4 mt-auto">
 <button class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:opacity-90 transition-opacity mb-6">
 <span class="material-symbols-outlined text-[20px]">add_circle</span>
                 New Reservation
             </button>
-<div class="space-y-1 border-t border-outline-variant pt-4">
-<a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
-<span class="material-symbols-outlined mr-3 text-[22px]">settings</span>
-<span class="font-label-md text-label-md">Settings</span>
-</a>
-<a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+<div class="space-y-1 border-t border-outline-variant pt-4"><a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
 <span class="material-symbols-outlined mr-3 text-[22px]">help</span>
 <span class="font-label-md text-label-md">Support</span>
-</a>
-</div>
+</a></div>
 </div>
 </aside>
 <!-- TopNavBar (Predicted JSON Component) -->
@@ -164,22 +160,20 @@
 <div class="flex items-center flex-1 max-w-xl">
 <div class="relative w-full">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-primary/20 text-body-sm font-body-sm outline-none transition-all" placeholder="Search reservations..." type="text">
+<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-primary/20 text-body-sm font-body-sm outline-none transition-all" placeholder="Search reservations..." type="text"/>
 </div>
 </div>
-<div class="flex items-center gap-4">
-<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
+<div class="flex items-center gap-4"><button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
 <span class="material-symbols-outlined">notifications</span>
 </button>
 <button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
-<span class="material-symbols-outlined">help_outline</span>
+<span class="material-symbols-outlined">help</span>
 </button>
 <div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
 <button class="bg-primary-fixed-dim text-on-primary-fixed-variant px-4 py-1.5 rounded-full font-label-md text-label-md font-bold hover:opacity-80 transition-opacity">
                 Check In
             </button>
-<img alt="User profile" class="h-8 w-8 rounded-full border border-outline-variant cursor-pointer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiYMwPPorgbBlJMHMNZNmKKOSQEv1GF-zbt53XRcrDsBZmmtTmZWDbp0MfGch84_LXAXTSkqyMh7UGOEhvcFb3QM_5N2gv-QLwC4sO7MKZ_V0cLAM3mZYRylWgqSHO7tKPdpAl9HsCNyFZHhueAi1l0Lo6o2Zh4IDQBqeip_MBV99wlkTRXz-81faAE-ExcIHLy_WaRbmbytA0F_FE3S-g5w3Br6SRXeqi3O6iHH93pzpNZmJo1N2zzkInuw7LVolXOa7PWexCdJRM">
-</div>
+<img alt="User profile" class="h-8 w-8 rounded-full border border-outline-variant cursor-pointer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiYMwPPorgbBlJMHMNZNmKKOSQEv1GF-zbt53XRcrDsBZmmtTmZWDbp0MfGch84_LXAXTSkqyMh7UGOEhvcFb3QM_5N2gv-QLwC4sO7MKZ_V0cLAM3mZYRylWgqSHO7tKPdpAl9HsCNyFZHhueAi1l0Lo6o2Zh4IDQBqeip_MBV99wlkTRXz-81faAE-ExcIHLy_WaRbmbytA0F_FE3S-g5w3Br6SRXeqi3O6iHH93pzpNZmJo1N2zzkInuw7LVolXOa7PWexCdJRM"/></div>
 </header>
 <!-- Main Content Area -->
 <main class="ml-sidebar-width pt-16 min-h-screen">
@@ -250,7 +244,7 @@
 <!-- Featured Highlight Card -->
 <div class="relative overflow-hidden bg-white border border-outline-variant rounded-2xl shadow-sm flex flex-col md:flex-row">
 <div class="md:w-2/5 h-48 md:h-auto overflow-hidden">
-<img class="w-full h-full object-cover" data-alt="A brightly lit, contemporary conference room with floor-to-ceiling windows showing a lush campus garden. The space features minimalist white furniture, a large wooden table, and sophisticated architectural lighting. The mood is serene and professional, aligning with the AptSpace brand identity of clean modern utility and academic rigor." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8RQ2_EjaFfsV3sE70ogMvwHX4Llwn_v8NT_ELUaLLtwpUyO5dJRPY8pqfih4PL00fl86Gy5LjYJzDriRkmbUVOmPT7MDNkyJCHvUcL1mRQcCcVWhOvYhc8fH1iZ01u2QjODJbJ0HqVxrR6vP8lF_hm3zm-J61BMLIDhND7vYDdL7xRYUczuoBHrXG9DdpoYnGTgRZqFUpdMT7URAMvP7-kJDnoYCCodr3E-KeMvtNaHH5vM2vlin0WqtIvmNDsr4LTvGQPmTsdVMF">
+<img class="w-full h-full object-cover" data-alt="A brightly lit, contemporary conference room with floor-to-ceiling windows showing a lush campus garden. The space features minimalist white furniture, a large wooden table, and sophisticated architectural lighting. The mood is serene and professional, aligning with the AptSpace brand identity of clean modern utility and academic rigor." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8RQ2_EjaFfsV3sE70ogMvwHX4Llwn_v8NT_ELUaLLtwpUyO5dJRPY8pqfih4PL00fl86Gy5LjYJzDriRkmbUVOmPT7MDNkyJCHvUcL1mRQcCcVWhOvYhc8fH1iZ01u2QjODJbJ0HqVxrR6vP8lF_hm3zm-J61BMLIDhND7vYDdL7xRYUczuoBHrXG9DdpoYnGTgRZqFUpdMT7URAMvP7-kJDnoYCCodr3E-KeMvtNaHH5vM2vlin0WqtIvmNDsr4LTvGQPmTsdVMF"/>
 </div>
 <div class="flex-1 p-6 flex flex-col">
 <div class="flex justify-between items-start mb-4">
@@ -267,8 +261,8 @@
                             </p>
 <div class="mt-auto flex items-center justify-between pt-4 border-t border-outline-variant">
 <div class="flex -space-x-2">
-<img alt="Guest 1" class="w-8 h-8 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFKV47QGfMhdwS0XzSwzFZhmp7pWSNEoCOojv9k7ps_yDtNXD2JA2NVQeYNF4o8B7FA5thRZPJvx9zahRQg8nAsN3USWqB6uotpys6qQ6sDuEheL4aMQVCMtwOgsUhpqMoNbChV8NOtjreJcCqmtCeRk0nlIQRyIBBo-4czyNqaeCAZRy4EKirh8H8u2CRVd_fkUosUe7Wu24oypnLJT2w8ZY46vrddOALBHrSCLdZRRgTp_MLtT28K5CihOopBzgO81phecjAmmnx">
-<img alt="Guest 2" class="w-8 h-8 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhezGv3UvtosRk8O5OiWXMNvXYaR8TYwoTMDWq7CM0OtGQCoiU8eEwAxj1tpHRzRlOTwYitUWSwiWlEj4uGxeVCl_rgByH8obayi7ZduxvQsYUUAngCLZWw_FQKTQOIwNDxcTaFaZijJWJoRnAYuy3krwAEdql6eGIaGgocQIDOlNSlw_KlGeG1U-ALJeat_o06evQ9JhjZRf2Eqrjy8GyLLPTxL2LOTkS9iwoeJDW5mOsU9ll9DdGEF07RVC7-yJd3-fKGScVfuUN">
+<img alt="Guest 1" class="w-8 h-8 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFKV47QGfMhdwS0XzSwzFZhmp7pWSNEoCOojv9k7ps_yDtNXD2JA2NVQeYNF4o8B7FA5thRZPJvx9zahRQg8nAsN3USWqB6uotpys6qQ6sDuEheL4aMQVCMtwOgsUhpqMoNbChV8NOtjreJcCqmtCeRk0nlIQRyIBBo-4czyNqaeCAZRy4EKirh8H8u2CRVd_fkUosUe7Wu24oypnLJT2w8ZY46vrddOALBHrSCLdZRRgTp_MLtT28K5CihOopBzgO81phecjAmmnx"/>
+<img alt="Guest 2" class="w-8 h-8 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhezGv3UvtosRk8O5OiWXMNvXYaR8TYwoTMDWq7CM0OtGQCoiU8eEwAxj1tpHRzRlOTwYitUWSwiWlEj4uGxeVCl_rgByH8obayi7ZduxvQsYUUAngCLZWw_FQKTQOIwNDxcTaFaZijJWJoRnAYuy3krwAEdql6eGIaGgocQIDOlNSlw_KlGeG1U-ALJeat_o06evQ9JhjZRf2Eqrjy8GyLLPTxL2LOTkS9iwoeJDW5mOsU9ll9DdGEF07RVC7-yJd3-fKGScVfuUN"/>
 <div class="w-8 h-8 rounded-full bg-surface-container border-2 border-white flex items-center justify-center text-[10px] font-bold text-on-surface-variant">+8</div>
 </div>
 <button class="bg-surface-container hover:bg-surface-container-high px-4 py-2 rounded-lg font-label-md text-label-md transition-colors">
@@ -300,7 +294,7 @@
 <div class="group bg-white p-4 rounded-[16px] border border-outline-variant hover:border-primary/40 hover:shadow-lg transition-all duration-300">
 <div class="flex flex-col sm:flex-row gap-6">
 <div class="w-full sm:w-32 h-24 rounded-xl overflow-hidden shrink-0">
-<img class="w-full h-full object-cover" data-alt="A modern university library reading area with warm lighting, minimalist oak desks, and ergonomic charcoal chairs. The environment is scholarly and peaceful, emphasizing a quiet focus area for students and faculty. Soft sunlight filters through high clerestory windows, casting gentle shadows across the minimalist architectural lines." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhWBhsAL3P0X7f0PUWvdN1ZxxDVaFB-VXHSM0Jat74WfriyekNVxG-m3yDQjUrpg1Fag3gomDsGB3-kgE2xIEs8CiR0nSUSPrIWUCXKj2suJMNSIvBWOdcXKg-5XHMhLUFpK2WYurW8_Uk3lX_hIe1GhuzO8aRTNUb5P2bed44mp3WrrGiKYwYiJN7Jp9G-Zj9WO-_Nv3Py6FG3rxEIAbeEcL8ClXQV6dZ_qiuPyVrcH9-44a4zDqpi5svjTtoek7sFaAB-VOq9mqM">
+<img class="w-full h-full object-cover" data-alt="A modern university library reading area with warm lighting, minimalist oak desks, and ergonomic charcoal chairs. The environment is scholarly and peaceful, emphasizing a quiet focus area for students and faculty. Soft sunlight filters through high clerestory windows, casting gentle shadows across the minimalist architectural lines." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhWBhsAL3P0X7f0PUWvdN1ZxxDVaFB-VXHSM0Jat74WfriyekNVxG-m3yDQjUrpg1Fag3gomDsGB3-kgE2xIEs8CiR0nSUSPrIWUCXKj2suJMNSIvBWOdcXKg-5XHMhLUFpK2WYurW8_Uk3lX_hIe1GhuzO8aRTNUb5P2bed44mp3WrrGiKYwYiJN7Jp9G-Zj9WO-_Nv3Py6FG3rxEIAbeEcL8ClXQV6dZ_qiuPyVrcH9-44a4zDqpi5svjTtoek7sFaAB-VOq9mqM"/>
 </div>
 <div class="flex-1">
 <div class="flex justify-between items-start mb-2">
@@ -342,7 +336,7 @@
 <div class="group bg-white p-4 rounded-[16px] border border-outline-variant hover:border-primary/40 hover:shadow-lg transition-all duration-300">
 <div class="flex flex-col sm:flex-row gap-6">
 <div class="w-full sm:w-32 h-24 rounded-xl overflow-hidden shrink-0">
-<img class="w-full h-full object-cover" data-alt="A spacious multi-purpose academic auditorium with rows of sleek navy seats and a professional stage area. The lighting is focused and warm, suitable for theological lectures and large gatherings. The architecture is clean and utilitarian, reflecting the serene efficiency of the seminary campus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqQs6GQ_RXgBh26qtoSHb5yq1VoXat0mPGmAjBeoQpT9x7P_XwFEafE2S1b4AT8VdsGYyQJ0t7oYGq4bg1XbuyZSE2yKTSjVH_ZKRlOlavr0GT7zJswa8h7DEzaxMPHnPKhfupAwS7BdFNyGlb1nIpvoNVbjqciqNQnMmSLrw8Btwdky-ZuZ91LKHWkA8U83QBz5JSquoiJzPPN1DZiv74juI8mBTrRQzdK02zod4kiiPpEP8ZrbUZccjFvrTGC9DxPktT7ZPWW1FT">
+<img class="w-full h-full object-cover" data-alt="A spacious multi-purpose academic auditorium with rows of sleek navy seats and a professional stage area. The lighting is focused and warm, suitable for theological lectures and large gatherings. The architecture is clean and utilitarian, reflecting the serene efficiency of the seminary campus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqQs6GQ_RXgBh26qtoSHb5yq1VoXat0mPGmAjBeoQpT9x7P_XwFEafE2S1b4AT8VdsGYyQJ0t7oYGq4bg1XbuyZSE2yKTSjVH_ZKRlOlavr0GT7zJswa8h7DEzaxMPHnPKhfupAwS7BdFNyGlb1nIpvoNVbjqciqNQnMmSLrw8Btwdky-ZuZ91LKHWkA8U83QBz5JSquoiJzPPN1DZiv74juI8mBTrRQzdK02zod4kiiPpEP8ZrbUZccjFvrTGC9DxPktT7ZPWW1FT"/>
 </div>
 <div class="flex-1">
 <div class="flex justify-between items-start mb-2">
@@ -383,7 +377,7 @@
 <div class="group bg-white p-4 rounded-[16px] border border-outline-variant opacity-80 hover:opacity-100 transition-all duration-300">
 <div class="flex flex-col sm:flex-row gap-6">
 <div class="w-full sm:w-32 h-24 rounded-xl overflow-hidden shrink-0 filter grayscale">
-<img class="w-full h-full object-cover" data-alt="A small, quiet prayer chapel with a simple stone altar and wooden pews. The lighting is very soft and directional, creating a deeply spiritual and meditative atmosphere. The aesthetic is extremely minimalist and respectful, utilizing natural textures and muted earthy tones for a serene effect." src="https://lh3.googleusercontent.com/aida-public/AB6AXuClzQaY_qJgblX4_DD58hXw6q54D9KpkC2Lzj2eST2HbZG5ossDeQv5oCQzH9Xrfv3QQmyxPefksXpbmuF2lM2SChWA-LC0AbraGCYZFNatq8oqCY5EV8hfMq03bSKWCnzdlKfmmWqjc828AZCBDpQKxJJk_CL_zKqxYhF1nLQJV5W_TNW59sNJRc6iAV-tUXIutTlgaanOWFo26fL4chgRlrxzKrCFivA7qEtTswCeii5vVoWRFiMaJhpHBaJ1CYEosbIWRi3gIsUN">
+<img class="w-full h-full object-cover" data-alt="A small, quiet prayer chapel with a simple stone altar and wooden pews. The lighting is very soft and directional, creating a deeply spiritual and meditative atmosphere. The aesthetic is extremely minimalist and respectful, utilizing natural textures and muted earthy tones for a serene effect." src="https://lh3.googleusercontent.com/aida-public/AB6AXuClzQaY_qJgblX4_DD58hXw6q54D9KpkC2Lzj2eST2HbZG5ossDeQv5oCQzH9Xrfv3QQmyxPefksXpbmuF2lM2SChWA-LC0AbraGCYZFNatq8oqCY5EV8hfMq03bSKWCnzdlKfmmWqjc828AZCBDpQKxJJk_CL_zKqxYhF1nLQJV5W_TNW59sNJRc6iAV-tUXIutTlgaanOWFo26fL4chgRlrxzKrCFivA7qEtTswCeii5vVoWRFiMaJhpHBaJ1CYEosbIWRi3gIsUN"/>
 </div>
 <div class="flex-1">
 <div class="flex justify-between items-start mb-2">

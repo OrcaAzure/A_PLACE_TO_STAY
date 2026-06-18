@@ -1,939 +1,479 @@
 <!DOCTYPE html>
 
-
-<html class="light" lang="en"><head>
-
+<html class="light" lang="en" style=""><head>
 <meta charset="utf-8"/>
-
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-
 <title>AptSpace Guest Dashboard</title>
-
 <!-- Tailwind CSS -->
-
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-
 <!-- Material Symbols -->
-
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-
 <!-- Google Fonts: Inter -->
-
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
-
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-
 <script id="tailwind-config">
-
         tailwind.config = {
-
             darkMode: "class",
-
             theme: {
-
                 extend: {
-
                     "colors": {
-
                         "surface-bright": "#faf8ff",
-
                         "surface-container-highest": "#e1e2ed",
-
                         "primary-fixed-dim": "#b4c5ff",
-
                         "outline-variant": "#c3c6d7",
-
                         "on-tertiary": "#ffffff",
-
                         "inverse-surface": "#2e3039",
-
                         "primary-container": "#2563eb",
-
                         "on-secondary-fixed-variant": "#005236",
-
                         "on-surface": "#191b23",
-
                         "on-secondary-fixed": "#002113",
-
                         "outline": "#737686",
-
                         "on-primary-container": "#eeefff",
-
                         "error-container": "#ffdad6",
-
                         "surface-container-low": "#f3f3fe",
-
                         "surface-dim": "#d9d9e5",
-
                         "error": "#ba1a1a",
-
                         "secondary": "#006c49",
-
                         "tertiary-fixed-dim": "#ffb596",
-
                         "surface-tint": "#0053db",
-
                         "on-surface-variant": "#434655",
-
                         "on-secondary-container": "#00714d",
-
                         "on-tertiary-fixed": "#360f00",
-
                         "inverse-primary": "#b4c5ff",
-
                         "surface-container-lowest": "#ffffff",
-
                         "on-error-container": "#93000a",
-
                         "secondary-fixed-dim": "#4edea3",
-
                         "secondary-container": "#6cf8bb",
-
                         "on-primary": "#ffffff",
-
                         "tertiary": "#943700",
-
                         "inverse-on-surface": "#f0f0fb",
-
                         "secondary-fixed": "#6ffbbe",
-
                         "primary": "#004ac6",
-
                         "on-secondary": "#ffffff",
-
                         "on-tertiary-container": "#ffede6",
-
                         "on-error": "#ffffff",
-
                         "primary-fixed": "#dbe1ff",
-
                         "tertiary-fixed": "#ffdbcd",
-
                         "surface-variant": "#e1e2ed",
-
                         "on-tertiary-fixed-variant": "#7d2d00",
-
                         "on-primary-fixed": "#00174b",
-
                         "on-background": "#191b23",
-
                         "background": "#faf8ff",
-
                         "tertiary-container": "#bc4800",
-
                         "surface-container": "#ededf9",
-
                         "surface": "#faf8ff",
-
                         "surface-container-high": "#e7e7f3",
-
                         "on-primary-fixed-variant": "#003ea8"
-
                     },
-
                     "borderRadius": {
-
                         "DEFAULT": "0.25rem",
-
                         "lg": "0.5rem",
-
                         "xl": "0.75rem",
-
                         "full": "9999px"
-
                     },
-
                     "spacing": {
-
                         "sidebar-width": "260px",
-
                         "xs": "0.25rem",
-
                         "lg": "1.5rem",
-
                         "sm": "0.5rem",
-
                         "xl": "2.5rem",
-
                         "margin-mobile": "16px",
-
                         "md": "1rem",
-
                         "container-max": "1280px",
-
                         "base": "4px",
-
                         "gutter": "24px"
-
                     },
-
                     "fontFamily": {
-
                         "headline-xl": ["Inter"],
-
                         "headline-lg": ["Inter"],
-
                         "headline-md": ["Inter"],
-
                         "headline-lg-mobile": ["Inter"],
-
                         "body-sm": ["Inter"],
-
                         "body-md": ["Inter"],
-
                         "label-sm": ["Inter"],
-
                         "label-md": ["Inter"],
-
                         "body-lg": ["Inter"],
-
                         "headline-sm": ["Inter"],
-
                         "headline-xl-mobile": ["Inter"]
-
                     },
-
                     "fontSize": {
-
                         "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-
                         "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
-
                         "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
-
                         "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
-
                         "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
-
                         "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
-
                         "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
-
                         "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
-
                         "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
-
                         "headline-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
-
                         "headline-xl-mobile": ["30px", {"lineHeight": "38px", "fontWeight": "700"}]
-
                     }
-
                 }
-
             }
-
         }
-
     </script>
-
 <style>
-
         body {
-
             font-family: 'Inter', sans-serif;
-
             background-color: #faf8ff;
-
         }
-
         .material-symbols-outlined {
-
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-
         }
-
         .custom-scrollbar::-webkit-scrollbar {
-
             width: 4px;
-
         }
-
         .custom-scrollbar::-webkit-scrollbar-track {
-
             background: transparent;
-
         }
-
         .custom-scrollbar::-webkit-scrollbar-thumb {
-
             background: #cbd5e1;
-
             border-radius: 10px;
-
         }
-
     </style>
-
 </head>
-
 <body class="text-on-surface">
-
 <!-- SideNavBar (Desktop) -->
-
 <aside class="hidden md:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
-
 <div class="px-6 mb-8">
-
 <h1 class="font-headline-sm text-headline-sm font-black text-primary">AptSpace</h1>
-
-<p class="font-label-md text-label-md text-on-surface-variant opacity-70">Guest Portal</p>
-
 </div>
-
-<nav class="flex-1 px-3 space-y-1">
-
-<!-- Active State Logic: Dashboard is current -->
-
-<a class="flex items-center gap-3 px-4 py-3 text-primary border-l-4 border-primary font-bold bg-surface-container-low transition-all active:scale-95 duration-150" href="#">
-
+<nav class="flex-1 px-3 space-y-1"><!-- Dashboard (Active) -->
+<a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 rounded-lg font-bold transition-all active:scale-95 duration-150" href="#">
 <span class="material-symbols-outlined">dashboard</span>
-
 <span class="font-label-md text-label-md">Dashboard</span>
-
 </a>
-
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-all active:scale-95 duration-150" href="#">
-
+<!-- Reservations -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="#">
 <span class="material-symbols-outlined">event_available</span>
-
 <span class="font-label-md text-label-md">Reservations</span>
-
 </a>
-
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-all active:scale-95 duration-150" href="#">
-
+<!-- Facilities -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="#">
 <span class="material-symbols-outlined">domain</span>
-
-<span class="font-label-md text-label-md">Catalog</span>
-
+<span class="font-label-md text-label-md">Facilities</span>
 </a>
-
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container transition-all active:scale-95 duration-150" href="#">
-
+<!-- Settings -->
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="#">
 <span class="material-symbols-outlined">settings</span>
-
 <span class="font-label-md text-label-md">Settings</span>
-
-</a>
-
-</nav>
-
+</a></nav>
 <div class="px-6 mt-auto">
-
 <button class="w-full py-3 bg-primary text-on-primary rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm">
-
 <span class="material-symbols-outlined text-[18px]">add</span>
-
                 New Reservation
-
             </button>
-
 </div>
-
 </aside>
-
 <!-- TopNavBar -->
-
 <header class="fixed top-0 right-0 left-0 md:left-[260px] h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant z-30 shadow-sm transition-all">
-
 <div class="flex justify-between items-center px-margin-mobile md:px-gutter h-full max-w-container-max mx-auto">
-
 <div class="flex items-center gap-4">
-
 <span class="md:hidden font-headline-md text-headline-md font-bold text-primary">AptSpace</span>
-
 <!-- Search Bar Placeholder -->
-
 <div class="hidden lg:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-80">
-
 <span class="material-symbols-outlined text-outline text-[20px]">search</span>
-
 <input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full" placeholder="Search facilities..." type="text"/>
-
 </div>
-
 </div>
-
-<div class="flex items-center gap-4">
-
-<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
-
+<div class="flex items-center gap-4"><button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
 <span class="material-symbols-outlined">notifications</span>
-
 </button>
-
 <button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
-
-<span class="material-symbols-outlined">help_outline</span>
-
+<span class="material-symbols-outlined">help</span>
 </button>
-
 <div class="h-8 w-px bg-outline-variant mx-2"></div>
-
 <div class="flex items-center gap-3 cursor-pointer active:opacity-70">
-
 <div class="text-right hidden sm:block">
-
 <p class="font-label-md text-label-md font-bold leading-none">Samuel Chen</p>
-
 <p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider">Guest</p>
-
 </div>
-
-<img alt="Guest profile picture" class="w-9 h-9 rounded-full object-cover border border-outline-variant shadow-sm" data-alt="A professional headshot of a person with a kind expression, set against a blurred, bright campus office background. The lighting is natural and soft, emphasizing a trustworthy and serene theological academic professional. The style is modern and high-key, using soft blues and crisp whites to match a clean enterprise UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKnFuWYyCqVB1D8KonxmpTgy_LRZ8-57PS_1f-j4Q95Lxp6lw-UBQ8ZXQifoiWdtDaqijPT5m7lJLT9E0Bgw_fOfP2A0vd6O4_BVTnSd7-0Or0aselLhqO5ltYPCUnQNqWT4qpXRQpp66GWAwZZlOIdt7XkOymbWIBI4aIERQSl6lKYVeIJLyiMwC_lkkLMwS9-0aTn3yoWj6Ko6HZ2Ty13L7dilTbsavJb-tObKuf3DYZ5URDTExKio33brRmbWNNJ_mljzyl2_vm"/>
-
+<img alt="Guest profile picture" class="w-9 h-9 rounded-full object-cover border border-outline-variant shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKnFuWYyCqVB1D8KonxmpTgy_LRZ8-57PS_1f-j4Q95Lxp6lw-UBQ8ZXQifoiWdtDaqijPT5m7lJLT9E0Bgw_fOfP2A0vd6O4_BVTnSd7-0Or0aselLhqO5ltYPCUnQNqWT4qpXRQpp66GWAwZZlOIdt7XkOymbWIBI4aIERQSl6lKYVeIJLyiMwC_lkkLMwS9-0aTn3yoWj6Ko6HZ2Ty13L7dilTbsavJb-tObKuf3DYZ5URDTExKio33brRmbWNNJ_mljzyl2_vm"/>
+</div></div>
 </div>
-
-</div>
-
-</div>
-
 </header>
-
 <!-- BottomNavBar (Mobile Only) -->
-
 <nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 pb-safe bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
-
 <a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 touch-manipulation duration-200" href="#">
-
 <span class="material-symbols-outlined">home</span>
-
 <span class="font-label-sm text-[10px]">Home</span>
-
 </a>
-
 <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="#">
-
 <span class="material-symbols-outlined">add_circle</span>
-
 <span class="font-label-sm text-[10px]">Reserve</span>
-
 </a>
-
 <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="#">
-
 <span class="material-symbols-outlined">search</span>
-
 <span class="font-label-sm text-[10px]">Catalog</span>
-
 </a>
-
 <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="#">
-
 <span class="material-symbols-outlined">person</span>
-
 <span class="font-label-sm text-[10px]">Profile</span>
-
 </a>
-
 </nav>
-
 <!-- Main Content Canvas -->
-
 <main class="pt-24 pb-24 md:pb-12 px-margin-mobile md:px-gutter md:ml-[260px] max-w-container-max mx-auto min-h-screen">
-
 <!-- Welcome Section -->
-
 <section class="mb-10">
-
 <div class="relative overflow-hidden rounded-xl bg-primary-container p-8 md:p-10 shadow-lg text-on-primary-container">
-
 <div class="relative z-10 max-w-2xl">
-
 <h2 class="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl mb-4">
-
                         Welcome back, Samuel!
-
                     </h2>
-
 <p class="font-body-lg text-body-lg opacity-90 leading-relaxed">
-
                         Your spiritual journey and comfortable stay are our priority. We've prepared everything for your current visit.
-
                     </p>
-
 </div>
-
 <!-- Abstract Atmospheric Shape -->
-
 <div class="absolute -top-24 -right-24 w-96 h-96 bg-primary-fixed-dim/20 rounded-full blur-3xl"></div>
-
 <div class="absolute -bottom-12 right-12 w-64 h-64 bg-secondary-fixed-dim/10 rounded-full blur-2xl"></div>
-
 </div>
-
 </section>
-
 <!-- Bento Grid Layout -->
-
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-
 <!-- Active Reservation Card (Prominent) -->
-
 <div class="lg:col-span-8 space-y-gutter">
-
 <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6 overflow-hidden relative">
-
 <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-
 <div>
-
 <span class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-700 text-label-sm font-label-sm rounded-full mb-2">
-
 <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-
                                 Active Stay
-
                             </span>
-
 <h3 class="font-headline-lg text-headline-lg">CALM 201 - Deluxe Twin</h3>
-
 <p class="font-body-md text-on-surface-variant">Asia Pacific Theological Seminary Campus</p>
-
 </div>
-
 <div class="flex flex-col md:items-end">
-
 <span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">Status</span>
-
 <span class="font-headline-sm text-headline-sm text-secondary">Checked In</span>
-
 </div>
-
 </div>
-
 <div class="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-y border-outline-variant mb-6">
-
 <div>
-
 <p class="text-label-sm font-label-sm text-outline">Check-in</p>
-
 <p class="font-body-md font-semibold">Oct 12, 2023</p>
-
 <p class="text-[12px] text-on-surface-variant">02:00 PM</p>
-
 </div>
-
 <div>
-
 <p class="text-label-sm font-label-sm text-outline">Check-out</p>
-
 <p class="font-body-md font-semibold">Oct 18, 2023</p>
-
 <p class="text-[12px] text-on-surface-variant">11:00 AM</p>
-
 </div>
-
 <div>
-
 <p class="text-label-sm font-label-sm text-outline">Room Code</p>
-
 <p class="font-body-md font-mono font-bold tracking-widest text-primary">8842</p>
-
 </div>
-
 <div>
-
 <p class="text-label-sm font-label-sm text-outline">Service</p>
-
 <p class="font-body-md font-semibold">Self-Catering</p>
-
 </div>
-
 </div>
-
 <div class="flex flex-wrap gap-3">
-
 <button class="px-5 py-2.5 bg-surface-container-low hover:bg-surface-container text-primary rounded-lg font-label-md text-label-md flex items-center gap-2 transition-all">
-
 <span class="material-symbols-outlined text-[18px]">wifi</span>
-
                             View Wifi Details
-
                         </button>
-
 <button class="px-5 py-2.5 bg-surface-container-low hover:bg-surface-container text-primary rounded-lg font-label-md text-label-md flex items-center gap-2 transition-all">
-
 <span class="material-symbols-outlined text-[18px]">room_service</span>
-
                             Request Service
-
                         </button>
-
 <button class="px-5 py-2.5 border border-outline-variant hover:bg-surface-container-low rounded-lg font-label-md text-label-md flex items-center gap-2 transition-all ml-auto">
-
                             Details
-
                             <span class="material-symbols-outlined text-[18px]">chevron_right</span>
-
 </button>
-
 </div>
-
 </div>
-
 <!-- Upcoming Bookings Grid -->
-
 <section>
-
 <div class="flex items-center justify-between mb-4">
-
 <h4 class="font-headline-sm text-headline-sm">Upcoming Bookings</h4>
-
 <a class="text-primary font-label-md text-label-md hover:underline" href="#">View All</a>
-
 </div>
-
 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
 <!-- Upcoming Item 1 -->
-
 <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
-
 <div class="flex items-start justify-between mb-4">
-
 <div class="w-12 h-12 bg-surface-container-low rounded-lg flex items-center justify-center text-primary">
-
 <span class="material-symbols-outlined">meeting_room</span>
-
 </div>
-
 <span class="px-2 py-0.5 bg-amber-50 text-amber-700 text-label-sm font-label-sm rounded uppercase tracking-wider">Confirmed</span>
-
 </div>
-
 <h5 class="font-headline-sm text-headline-sm mb-1 group-hover:text-primary transition-colors">Study Suite 04</h5>
-
 <p class="text-label-md font-label-md text-on-surface-variant mb-4">Oct 25 - Oct 27, 2023</p>
-
 <button class="w-full py-2 border border-outline-variant hover:border-primary hover:text-primary rounded-lg font-label-md text-label-md transition-all">
-
                                 Modify
-
                             </button>
-
 </div>
-
 <!-- Upcoming Item 2 -->
-
 <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
-
 <div class="flex items-start justify-between mb-4">
-
 <div class="w-12 h-12 bg-surface-container-low rounded-lg flex items-center justify-center text-primary">
-
 <span class="material-symbols-outlined">apartment</span>
-
 </div>
-
 <span class="px-2 py-0.5 bg-amber-50 text-amber-700 text-label-sm font-label-sm rounded uppercase tracking-wider">Confirmed</span>
-
 </div>
-
 <h5 class="font-headline-sm text-headline-sm mb-1 group-hover:text-primary transition-colors">Grace Hall B-12</h5>
-
 <p class="text-label-md font-label-md text-on-surface-variant mb-4">Nov 02 - Nov 05, 2023</p>
-
 <button class="w-full py-2 border border-outline-variant hover:border-primary hover:text-primary rounded-lg font-label-md text-label-md transition-all">
-
                                 Modify
-
                             </button>
-
 </div>
-
 </div>
-
 </section>
-
 </div>
-
 <!-- Side Cards -->
-
 <div class="lg:col-span-4 space-y-gutter">
-
 <!-- Quick Actions -->
-
 <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6">
-
 <h4 class="font-headline-sm text-headline-sm mb-6">Quick Actions</h4>
-
 <div class="space-y-3">
-
 <button class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
-
 <div class="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
-
 <span class="material-symbols-outlined">add_task</span>
-
 </div>
-
 <div>
-
 <p class="font-label-md text-label-md font-bold">New Reservation</p>
-
 <p class="text-[12px] text-on-surface-variant">Book rooms or facilities</p>
-
 </div>
-
 </button>
-
 <button class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
-
 <div class="w-10 h-10 bg-secondary/10 text-secondary rounded-full flex items-center justify-center">
-
 <span class="material-symbols-outlined">explore</span>
-
 </div>
-
 <div>
-
 <p class="font-label-md text-label-md font-bold">Explore Facilities</p>
-
 <p class="text-[12px] text-on-surface-variant">View amenities &amp; pricing</p>
-
 </div>
-
 </button>
-
 <button class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
-
 <div class="w-10 h-10 bg-tertiary-container/10 text-tertiary rounded-full flex items-center justify-center">
-
 <span class="material-symbols-outlined">map</span>
-
 </div>
-
 <div>
-
 <p class="font-label-md text-label-md font-bold">View Campus Map</p>
-
 <p class="text-[12px] text-on-surface-variant">Navigate the seminary grounds</p>
-
 </div>
-
 </button>
-
 </div>
-
 </div>
-
 <!-- Recent Activity -->
-
 <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6">
-
 <div class="flex items-center justify-between mb-6">
-
 <h4 class="font-headline-sm text-headline-sm">Recent Activity</h4>
-
 <button class="text-primary">
-
 <span class="material-symbols-outlined">filter_list</span>
-
 </button>
-
 </div>
-
 <div class="space-y-6">
-
 <div class="flex gap-4">
-
 <div class="mt-1 relative">
-
 <div class="w-2 h-2 bg-primary rounded-full"></div>
-
 <div class="absolute top-2 left-1 w-[1px] h-10 bg-outline-variant opacity-30"></div>
-
 </div>
-
 <div>
-
 <p class="font-label-md text-label-md leading-tight">Booking Confirmed</p>
-
 <p class="text-[12px] text-on-surface-variant mb-1">Your reservation for Study Suite 04 is confirmed.</p>
-
 <p class="text-[10px] text-outline">2 hours ago</p>
-
 </div>
-
 </div>
-
 <div class="flex gap-4">
-
 <div class="mt-1 relative">
-
 <div class="w-2 h-2 bg-emerald-500 rounded-full"></div>
-
 <div class="absolute top-2 left-1 w-[1px] h-10 bg-outline-variant opacity-30"></div>
-
 </div>
-
 <div>
-
 <p class="font-label-md text-label-md leading-tight">Successful Check-in</p>
-
 <p class="text-[12px] text-on-surface-variant mb-1">You have successfully checked into CALM 201.</p>
-
 <p class="text-[10px] text-outline">Today, 02:15 PM</p>
-
 </div>
-
 </div>
-
 <div class="flex gap-4">
-
 <div class="mt-1">
-
 <div class="w-2 h-2 bg-outline-variant rounded-full"></div>
-
 </div>
-
 <div>
-
 <p class="font-label-md text-label-md leading-tight">Payment Received</p>
-
 <p class="text-[12px] text-on-surface-variant mb-1">Invoice #AP-9928 has been paid in full.</p>
-
 <p class="text-[10px] text-outline">Yesterday</p>
-
 </div>
-
 </div>
-
 </div>
-
 <button class="w-full mt-6 py-2 text-on-surface-variant hover:text-primary font-label-md text-label-md transition-colors border-t border-outline-variant pt-4">
-
                         View All Activity
-
                     </button>
-
 </div>
-
 <!-- Weather/Info Small Card -->
-
 <div class="bg-surface-container-high rounded-xl p-6 relative overflow-hidden group">
-
 <div class="flex items-center gap-4 mb-2">
-
 <span class="material-symbols-outlined text-[32px] text-amber-500">wb_sunny</span>
-
 <div>
-
 <p class="font-headline-md text-headline-md">28°C</p>
-
 <p class="text-label-sm font-label-sm text-on-surface-variant">Baguio City, PH</p>
-
 </div>
-
 </div>
-
 <p class="text-label-sm font-label-sm text-on-surface-variant">Perfect weather for a prayer walk in the garden today.</p>
-
 <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
-
 <span class="material-symbols-outlined text-[100px]">nature_people</span>
-
 </div>
-
 </div>
-
 </div>
-
 </div>
-
 <!-- Campus Map Preview Footer Section -->
-
 <section class="mt-gutter">
-
 <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden h-48 relative cursor-pointer group">
-
 <img class="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-500" data-alt="A stylized, architectural map rendering of a lush, hillside seminary campus in a misty mountain region. The style is minimalist and clean, utilizing the AptSpace color palette of primary blues and soft grays. The scene depicts organized buildings, green spaces, and winding walking paths under a soft, diffused morning light." data-location="Baguio City" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFO2CsE09QDtakfgBhKj8l2kPYgsygRL2rMxMilDsMzSyW0cECrsB_1eUd13Ew2Vljslvyaj8jqH-U5q30JRlTDRALdHpVaCCxRLB_fXewnvZLftTE9kzaeVKiHPXZMkwLu928IPNbGKv0aYQKyblPeEf3HFP4FhQfu69bk1O-nrVOa9KPelNrjE8furhxvPOh5Mg4oByHTQdaewjE6zFWMHtDJeNnNXs-JvjwO7p48b60aHUB1p-WSKgFQMyZW_iGb82Zk9QgWCJl"/>
-
 <div class="absolute inset-0 bg-gradient-to-r from-white via-white/40 to-transparent flex items-center px-8">
-
 <div>
-
 <h4 class="font-headline-sm text-headline-sm mb-2">Navigate Campus</h4>
-
 <p class="font-body-md text-on-surface-variant mb-4">Find chapel times, dining halls, and administration offices.</p>
-
 <button class="px-6 py-2 bg-primary text-on-primary rounded-lg font-label-md text-label-md shadow-sm">
-
                             Open Interactive Map
-
                         </button>
-
 </div>
-
 </div>
-
 </div>
-
 </section>
-
-</main>
-
+</main><footer class="md:ml-[260px] border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
+<div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-primary">AptSpace</span>
+<span class="text-on-surface-variant text-body-sm">© 2023 Asia Pacific Theological Seminary</span>
+</div>
+<div class="flex gap-6">
+<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact Support</a>
+</div>
+</div>
+</footer>
 <!-- Micro-interaction Scripts -->
-
 <script>
-
         // Simple hover effect or data binding simulation
-
         document.addEventListener('DOMContentLoaded', () => {
-
             const buttons = document.querySelectorAll('button');
-
             buttons.forEach(btn => {
-
                 btn.addEventListener('mousedown', () => {
-
                     btn.classList.add('scale-95');
-
                 });
-
                 btn.addEventListener('mouseup', () => {
-
                     btn.classList.remove('scale-95');
-
                 });
-
             });
-
         });
 
-
-
         // Search Bar Focus Effect
-
         const searchInput = document.querySelector('input[type="text"]');
-
         const searchContainer = searchInput?.parentElement;
-
         if(searchInput && searchContainer) {
-
             searchInput.addEventListener('focus', () => {
-
                 searchContainer.classList.add('border-primary', 'shadow-md');
-
                 searchContainer.classList.remove('border-outline-variant');
-
             });
-
             searchInput.addEventListener('blur', () => {
-
                 searchContainer.classList.remove('border-primary', 'shadow-md');
-
                 searchContainer.classList.add('border-outline-variant');
-
             });
-
         }
-
     </script>
-
 </body></html>
-
-
-
