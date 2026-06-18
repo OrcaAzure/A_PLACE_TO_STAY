@@ -11,82 +11,98 @@
   <link rel="stylesheet" href="../assets/css/main.css" />
   <link rel="stylesheet" href="../assets/css/components.css" />
   <link rel="stylesheet" href="../assets/css/responsive.css" />
+  <style>
+    /* Google Stitch Custom Scroll Masking styling overrides */
+    #page-content .scrollbar-none::-webkit-scrollbar {
+      display: none;
+    }
+    #page-content .scrollbar-none {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
 </head>
-<body>
-  <div id="page-content">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-      <div class="action-card">
-        <div class="action-card-icon bg-primary-container/10 text-primary">
-          <span class="material-symbols-outlined text-[28px]">meeting_room</span>
-        </div>
+<body class="h-full bg-slate-50/50">
+
+  <div id="page-content" class="w-full flex flex-col space-y-6 antialiased text-slate-700">
+    
+    <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 xl:pb-0 scrollbar-none">
+        <button type="button" data-status-filter="" class="status-pill-btn bg-blue-600 text-white px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 shrink-0 shadow-sm shadow-blue-500/10">
+          <span class="material-symbols-outlined text-[18px]">apps</span>
+          <span>All Rooms</span>
+        </button>
+        <button type="button" data-status-filter="Available" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0">
+          <span class="material-symbols-outlined text-[18px] text-emerald-600">check_circle</span>
+          <span>Available</span>
+        </button>
+        <button type="button" data-status-filter="Occupied" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0">
+          <span class="material-symbols-outlined text-[18px] text-amber-500">hotel</span>
+          <span>Occupied</span>
+        </button>
+        <button type="button" data-status-filter="Maintenance" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0">
+          <span class="material-symbols-outlined text-[18px] text-rose-500">build</span>
+          <span>Maintenance</span>
+        </button>
+      </div>
+      
+      <div class="flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider self-start xl:self-auto bg-slate-50/60 p-2 rounded-lg border border-slate-100">
+        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span><span>Vacant</span></div>
+        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span><span>Occupied</span></div>
+        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span><span>Maint.</span></div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-blue-500/30 transition-colors">
         <div>
-          <h4 class="font-headline-sm text-on-surface">Total Rooms</h4>
-          <p class="text-body-sm text-on-surface-variant mt-1">All rooms across all buildings.</p>
+          <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Total Capacity</p>
+          <h3 class="text-3xl font-bold mt-1 text-slate-800" id="total-rooms">LOADING...</h3>
         </div>
-        <div class="mt-auto pt-4 border-t border-outline-variant/30">
-          <span id="total-rooms" class="text-primary text-[10px] font-bold">LOADING...</span>
+        <div class="p-3.5 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors flex items-center justify-center">
+          <span class="material-symbols-outlined text-[26px]">meeting_room</span>
         </div>
       </div>
-      <div class="action-card">
-        <div class="action-card-icon bg-surface-container-high text-secondary">
-          <span class="material-symbols-outlined text-[28px]">check_circle</span>
-        </div>
+      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-emerald-500/30 transition-colors">
         <div>
-          <h4 class="font-headline-sm text-on-surface">Available</h4>
-          <p class="text-body-sm text-on-surface-variant mt-1">Rooms ready for booking.</p>
+          <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Available Units</p>
+          <h3 class="text-3xl font-bold mt-1 text-slate-800" id="available-rooms">LOADING...</h3>
         </div>
-        <div class="mt-auto pt-4 border-t border-outline-variant/30">
-          <span id="available-rooms" class="text-secondary text-[10px] font-bold">LOADING...</span>
+        <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors flex items-center justify-center">
+          <span class="material-symbols-outlined text-[26px]">check_circle</span>
         </div>
       </div>
-      <div class="action-card">
-        <div class="action-card-icon bg-error/10 text-error">
-          <span class="material-symbols-outlined text-[28px]">hotel</span>
-        </div>
+      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-amber-500/30 transition-colors">
         <div>
-          <h4 class="font-headline-sm text-on-surface">Occupied</h4>
-          <p class="text-body-sm text-on-surface-variant mt-1">Currently occupied rooms.</p>
+          <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Occupied Units</p>
+          <h3 class="text-3xl font-bold mt-1 text-slate-800" id="occupied-rooms">LOADING...</h3>
         </div>
-        <div class="mt-auto pt-4 border-t border-outline-variant/30">
-          <span id="occupied-rooms" class="text-error text-[10px] font-bold">LOADING...</span>
+        <div class="p-3.5 bg-amber-50 text-amber-600 rounded-xl group-hover:bg-amber-600 group-hover:text-white transition-colors flex items-center justify-center">
+          <span class="material-symbols-outlined text-[26px]">hotel</span>
         </div>
       </div>
     </div>
 
-    <section class="timeline-workspace">
-      <div class="timeline-workspace-header">
+    <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+      <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div class="flex items-center gap-4">
-          <div class="w-1.5 h-8 bg-primary rounded-full"></div>
-          <h3 class="font-headline-sm text-on-surface">Room Inventory</h3>
+          <div class="w-1.5 h-8 bg-blue-600 rounded-full"></div>
+          <div>
+            <h3 class="text-lg font-bold text-slate-800">Key Status Matrix Board</h3>
+            <p class="text-xs text-slate-400">Interactive workspace grid showing room statuses by structural department buildings</p>
+          </div>
         </div>
-        <div class="flex gap-2 items-center">
-          <select id="filter-building" class="border border-outline-variant rounded-lg px-3 py-2 text-body-sm">
-            <option value="">All Buildings</option>
-            <option>PCALM</option>
-            <option>House</option>
-            <option>Thesda</option>
-            <option>Sampaguita</option>
-            <option>Peranza</option>
-          </select>
-          <select id="filter-status" class="border border-outline-variant rounded-lg px-3 py-2 text-body-sm">
-            <option value="">All Statuses</option>
-            <option>Available</option>
-            <option>Occupied</option>
-            <option>Maintenance</option>
-          </select>
-        </div>
+        
+        <div class="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100 overflow-x-auto scrollbar-none" id="building-tab-triggers">
+          </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="data-table">
-          <thead>
-            <tr><th>Building</th><th>Room</th><th>Type</th><th>Min</th><th>Max</th><th>Occupancy</th><th>Status</th></tr>
-          </thead>
-          <tbody id="rooms-tbody">
-            <tr><td colspan="7" class="text-center text-on-surface-variant py-8">Loading rooms...</td></tr>
-          </tbody>
-        </table>
+
+      <div class="p-6">
+        <div id="key-tags-grid-mount" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 min-h-[200px]">
+          </div>
       </div>
     </section>
+
   </div>
 
   <script type="module">
@@ -104,58 +120,109 @@
     });
 
     let allRooms = [];
+    let currentBuildingFilter = "";
+    let currentStatusFilter = "";
 
-    function statusClass(s) {
-      if (s === 'Available')   return 'status-pill-approved';
-      if (s === 'Occupied')    return 'status-pill-pending';
-      if (s === 'Maintenance') return 'status-pill-rejected';
-      return '';
+    function getColorTokens(status) {
+      if (status === 'Available') return { border: 'border-emerald-200 hover:border-emerald-500', bg: 'bg-emerald-50/50', dot: 'bg-emerald-500', txt: 'text-emerald-800' };
+      if (status === 'Occupied') return { border: 'border-amber-200 hover:border-amber-500', bg: 'bg-amber-50/50', dot: 'bg-amber-500', txt: 'text-amber-800' };
+      return { border: 'border-rose-200 hover:border-rose-500', bg: 'bg-rose-50/50', dot: 'bg-rose-500', txt: 'text-rose-800' };
     }
 
-    function renderRooms(list) {
-      const tbody = document.getElementById('rooms-tbody');
-      if (list.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-on-surface-variant py-8">No rooms found.</td></tr>';
+    // Direct interface generation framework modeling the physical tracking hook system
+    function generateInteractiveGrid(list) {
+      const gridMount = document.getElementById('key-tags-grid-mount');
+      
+      const filtered = list.filter(r => {
+        const n = normalizeRoom(r);
+        return (!currentBuildingFilter || n.building === currentBuildingFilter) &&
+               (!currentStatusFilter   || n.status === currentStatusFilter);
+      });
+
+      if (filtered.length === 0) {
+        gridMount.className = "flex items-center justify-center py-12 w-full col-span-full";
+        gridMount.innerHTML = `
+          <div class="text-center">
+            <span class="material-symbols-outlined text-slate-300 text-4xl mb-2">sensor_door</span>
+            <p class="text-xs font-medium text-slate-400">No rooms match the active filter criteria.</p>
+          </div>`;
         return;
       }
-      tbody.innerHTML = list.map(r => {
+
+      gridMount.className = "grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 w-full";
+      gridMount.innerHTML = filtered.map(r => {
         const n = normalizeRoom(r);
-        return `<tr>
-          <td>${n.building}</td>
-          <td class="font-medium">${n.roomNumber}</td>
-          <td>${n.roomType}</td>
-          <td>${r.capacity_min}</td>
-          <td>${n.capacityMax}</td>
-          <td>${n.occupancy} / ${n.capacityMax}</td>
-          <td><span class="${statusClass(n.status)} text-[10px] px-2 py-0.5 rounded-full font-bold">${n.status}</span></td>
-        </tr>`;
+        const tokens = getColorTokens(n.status);
+        
+        return `
+          <div class="group cursor-pointer p-3 bg-white rounded-xl border ${tokens.border} shadow-sm transition-all duration-200 flex flex-col justify-between items-center text-center relative overflow-hidden h-32 hover:-translate-y-0.5">
+            <div class="absolute inset-x-0 top-0 h-1 ${tokens.dot}"></div>
+            <div class="w-6 h-6 rounded-full ${tokens.bg} flex items-center justify-center ${tokens.txt} mb-1.5 font-bold text-[10px]">
+              ${n.building.substring(0, 2).toUpperCase()}
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-slate-800 tracking-tight">${n.roomNumber}</h4>
+              <p class="text-[10px] text-slate-400 font-medium truncate max-w-[100px] mt-0.5">${n.roomType}</p>
+            </div>
+            <div class="mt-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full ${tokens.bg} border border-dashed border-slate-200/60">
+              <span class="w-1.5 h-1.5 rounded-full ${tokens.dot}"></span>
+              <span class="text-[9px] font-bold ${tokens.txt} tracking-wide uppercase">${n.status}</span>
+            </div>
+          </div>`;
       }).join('');
+    }
+
+    // Dynamic generation structure setup for building tracking anchors
+    function buildTabTriggers(list) {
+      const triggerMount = document.getElementById('building-tab-triggers');
+      const uniqueBuildings = [...new Set(list.map(r => normalizeRoom(r).building))].filter(Boolean);
+
+      let HTML = `<button type="button" data-bldg="" class="bldg-tab-btn px-3 py-1.5 text-xs font-bold bg-white text-slate-800 shadow-sm rounded-md transition-all">All Buildings</button>`;
+      
+      HTML += uniqueBuildings.map(bldg => {
+        return `<button type="button" data-bldg="${bldg}" class="bldg-tab-btn px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-all">${bldg}</button>`;
+      }).join('');
+
+      triggerMount.innerHTML = HTML;
+
+      // Click binding handling for dynamic tab panels selectors
+      document.querySelectorAll('.bldg-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.bldg-tab-btn').forEach(b => {
+            b.className = "bldg-tab-btn px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-all";
+          });
+          btn.className = "bldg-tab-btn px-3 py-1.5 text-xs font-bold bg-white text-slate-800 shadow-sm rounded-md transition-all";
+          currentBuildingFilter = btn.getAttribute('data-bldg');
+          generateInteractiveGrid(allRooms);
+        });
+      });
     }
 
     try {
       allRooms = await getRooms();
 
-      document.getElementById('total-rooms').textContent     = `${allRooms.length} TOTAL`;
-      document.getElementById('available-rooms').textContent = `${allRooms.filter(r => r.status === 'Available').length} AVAILABLE`;
-      document.getElementById('occupied-rooms').textContent  = `${allRooms.filter(r => r.status === 'Occupied').length} OCCUPIED`;
+      document.getElementById('total-rooms').textContent     = `${allRooms.length} Total`;
+      document.getElementById('available-rooms').textContent = allRooms.filter(r => normalizeRoom(r).status === 'Available').length;
+      document.getElementById('occupied-rooms').textContent  = allRooms.filter(r => normalizeRoom(r).status === 'Occupied').length;
 
-      renderRooms(allRooms);
+      buildTabTriggers(allRooms);
+      generateInteractiveGrid(allRooms);
 
-      function applyFilters() {
-        const building = document.getElementById('filter-building').value;
-        const status   = document.getElementById('filter-status').value;
-        renderRooms(allRooms.filter(r =>
-          (!building || r.building_name === building) &&
-          (!status   || r.status === status)
-        ));
-      }
-
-      document.getElementById('filter-building')?.addEventListener('change', applyFilters);
-      document.getElementById('filter-status')?.addEventListener('change', applyFilters);
+      // Event listener registration structure setup for status triggers
+      document.querySelectorAll('.status-pill-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.status-pill-btn').forEach(b => {
+            b.className = "status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0";
+          });
+          btn.className = "status-pill-btn bg-blue-600 text-white px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 shrink-0 shadow-sm shadow-blue-500/10";
+          currentStatusFilter = btn.getAttribute('data-status-filter');
+          generateInteractiveGrid(allRooms);
+        });
+      });
 
     } catch (err) {
-      document.getElementById('rooms-tbody').innerHTML =
-        `<tr><td colspan="7" class="text-center text-error py-8">${err.message}</td></tr>`;
+      document.getElementById('key-tags-grid-mount').innerHTML = `
+        <div class="col-span-full text-center text-rose-600 font-medium py-8">${err.message}</div>`;
     }
   </script>
 </body>
