@@ -38,5 +38,9 @@
 
   <!-- load as module so it can import from api.js -->
   <script type="module" src="./assets/js/auth.js"></script>
+  <script type="module">
+    import { redirectIfLoggedIn } from './assets/js/auth.js';
+    redirectIfLoggedIn();
+  </script>
 </body>
 </html>
