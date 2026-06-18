@@ -13,83 +13,104 @@
   <link rel="stylesheet" href="../assets/css/responsive.css" />
   <link rel="stylesheet" href="../assets/css/manage-requests-modal.css" />
 </head>
-<body class="h-full">
+<body class="h-full bg-slate-50/50">
 
-  <div id="page-content" class="w-full flex flex-col space-y-6">
-
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm group hover:border-blue-500/30 transition-colors">
-        <div class="flex justify-between items-start mb-4">
-          <div class="p-3 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors flex items-center justify-center">
-            <span class="material-symbols-outlined">book_online</span>
+  <div id="page-content" class="w-full flex flex-col space-y-6 antialiased text-slate-700">
+    
+    <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-blue-500/30 transition-colors">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[18px]">calendar_today</span>
           </div>
-          <div class="flex items-center text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full text-xs font-bold">
-            <span class="material-symbols-outlined text-[16px] mr-1">trending_up</span>
-            <span>+12%</span>
-          </div>
+          <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">+12%</span>
         </div>
-        <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Total Bookings</p>
-        <h3 class="text-3xl font-bold mt-1 text-slate-800" id="kpi-total-bookings">842</h3>
+        <div>
+          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Upcoming</p>
+          <h3 class="text-xl font-bold text-slate-800 mt-0.5">142</h3>
+        </div>
       </div>
 
-      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm group hover:border-emerald-500/30 transition-colors">
-        <div class="flex justify-between items-start mb-4">
-          <div class="p-3 bg-emerald-50 text-emerald-600 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-colors flex items-center justify-center">
-            <span class="material-symbols-outlined">pie_chart</span>
+      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-rose-500/30 transition-colors">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[18px]">assignment_late</span>
           </div>
-          <div class="flex items-center text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full text-xs font-bold">
-            <span class="material-symbols-outlined text-[16px] mr-1">trending_up</span>
-            <span>+5%</span>
-          </div>
+          <span class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full uppercase tracking-tight">Action Req</span>
         </div>
-        <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Occupancy Rate</p>
-        <h3 class="text-3xl font-bold mt-1 text-slate-800">78%</h3>
+        <div>
+          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Pending</p>
+          <h3 class="text-xl font-bold text-slate-800 mt-0.5" id="kpi-pending-count">28</h3>
+        </div>
       </div>
 
-      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm group hover:border-amber-500/30 transition-colors">
-        <div class="flex justify-between items-start mb-4">
-          <div class="p-3 bg-amber-50 text-amber-600 rounded-lg group-hover:bg-amber-600 group-hover:text-white transition-colors flex items-center justify-center">
-            <span class="material-symbols-outlined">payments</span>
+      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-emerald-500/30 transition-colors">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[18px]">verified</span>
           </div>
-          <div class="flex items-center text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full text-xs font-bold">
-            <span class="material-symbols-outlined text-[16px] mr-1">trending_up</span>
-            <span>+2.4k</span>
-          </div>
+          <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">94% Rate</span>
         </div>
-        <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Revenue This Month</p>
-        <h3 class="text-3xl font-bold mt-1 text-slate-800">$12,450</h3>
+        <div>
+          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Approved</p>
+          <h3 class="text-xl font-bold text-slate-800 mt-0.5">894</h3>
+        </div>
       </div>
 
-      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm group hover:border-rose-500/30 transition-colors">
-        <div class="flex justify-between items-start mb-4">
-          <div class="p-3 bg-rose-50 text-rose-600 rounded-lg group-hover:bg-rose-600 group-hover:text-white transition-colors flex items-center justify-center">
-            <span class="material-symbols-outlined">pending_actions</span>
+      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-blue-500/30 transition-colors">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2 bg-slate-50 text-slate-600 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[18px]">meeting_room</span>
           </div>
-          <div class="flex items-center text-rose-600 bg-rose-50 px-2 py-1 rounded-full text-xs font-bold">
-            <span class="material-symbols-outlined text-[16px] mr-1">warning</span>
-            <span>Alert</span>
-          </div>
+          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">High Demand</span>
         </div>
-        <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Pending Requests</p>
-        <h3 class="text-3xl font-bold mt-1 text-slate-800" id="kpi-pending-count">18</h3>
+        <div>
+          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Usage</p>
+          <h3 class="text-xl font-bold text-slate-800 mt-0.5">76%</h3>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-emerald-500/30 transition-colors">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[18px]">bed</span>
+          </div>
+          <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Optimal</span>
+        </div>
+        <div>
+          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Occupancy</p>
+          <h3 class="text-xl font-bold text-slate-800 mt-0.5">92%</h3>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-amber-500/30 transition-colors">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[18px]">restaurant</span>
+          </div>
+          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Active</span>
+        </div>
+        <div>
+          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Catering</p>
+          <h3 class="text-xl font-bold text-slate-800 mt-0.5">15</h3>
+        </div>
       </div>
     </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
+      
       <section class="lg:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex items-center justify-between">
           <div>
-            <h2 class="text-lg font-bold text-slate-800">Facility Utilization</h2>
+            <h2 class="text-base font-bold text-slate-800">Facility Utilization</h2>
             <p class="text-xs text-slate-400">Real-time usage trends across seminary buildings</p>
           </div>
-          <select class="bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-3 text-slate-600">
-            <option>Last 30 Days</option>
-            <option>Last Quarter</option>
-            <option>Last Year</option>
-          </select>
+          <button class="bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-3 text-slate-600 flex items-center gap-1.5 font-medium">
+            <span>Last 30 Days</span>
+            <span class="material-symbols-outlined text-sm">expand_more</span>
+          </button>
         </div>
-
+        
         <div class="p-6 h-[340px] relative flex items-end justify-between gap-6">
           <div class="absolute inset-x-6 inset-y-6 flex flex-col justify-between pointer-events-none">
             <div class="border-b border-slate-100 w-full h-0"></div>
@@ -98,159 +119,199 @@
             <div class="border-b border-slate-100 w-full h-0"></div>
             <div class="border-b border-slate-200 w-full h-0"></div>
           </div>
-
+          
           <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
-            <div class="w-full bg-blue-50 rounded-t-lg relative overflow-hidden h-[180px]">
+            <div class="w-full bg-slate-100/70 rounded-t-lg relative overflow-hidden h-[180px]">
               <div class="chart-bar absolute bottom-0 w-full bg-blue-600 rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="140px"></div>
             </div>
-            <span class="text-xs font-semibold text-slate-600">Main Bldg</span>
+            <span class="text-xs font-semibold text-slate-500">Main Bldg</span>
           </div>
           <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
-            <div class="w-full bg-emerald-50 rounded-t-lg relative overflow-hidden h-[180px]">
-              <div class="chart-bar absolute bottom-0 w-full bg-emerald-600 rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="110px"></div>
+            <div class="w-full bg-slate-100/70 rounded-t-lg relative overflow-hidden h-[180px]">
+              <div class="chart-bar absolute bottom-0 w-full bg-teal-700 rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="110px"></div>
             </div>
-            <span class="text-xs font-semibold text-slate-600">Student Ctr</span>
+            <span class="text-xs font-semibold text-slate-500">Student Ctr</span>
           </div>
           <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
-            <div class="w-full bg-amber-50 rounded-t-lg relative overflow-hidden h-[180px]">
-              <div class="chart-bar absolute bottom-0 w-full bg-amber-600 rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="165px"></div>
+            <div class="w-full bg-slate-100/70 rounded-t-lg relative overflow-hidden h-[180px]">
+              <div class="chart-bar absolute bottom-0 w-full bg-amber-700 rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="165px"></div>
             </div>
-            <span class="text-xs font-semibold text-slate-600">Dorm A</span>
+            <span class="text-xs font-semibold text-slate-500">Dorm A</span>
           </div>
           <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
-            <div class="w-full bg-blue-50 rounded-t-lg relative overflow-hidden h-[180px]">
+            <div class="w-full bg-slate-100/70 rounded-t-lg relative overflow-hidden h-[180px]">
               <div class="chart-bar absolute bottom-0 w-full bg-blue-400 rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="90px"></div>
             </div>
-            <span class="text-xs font-semibold text-slate-600">Dorm B</span>
+            <span class="text-xs font-semibold text-slate-500">Dorm B</span>
           </div>
           <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
-            <div class="w-full bg-emerald-50 rounded-t-lg relative overflow-hidden h-[180px]">
-              <div class="chart-bar absolute bottom-0 w-full bg-emerald-400 rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="130px"></div>
+            <div class="w-full bg-slate-100/70 rounded-t-lg relative overflow-hidden h-[180px]">
+              <div class="chart-bar absolute bottom-0 w-full bg-emerald-500 rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="130px"></div>
             </div>
-            <span class="text-xs font-semibold text-slate-600">Library</span>
+            <span class="text-xs font-semibold text-slate-500">Library</span>
           </div>
           <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
-            <div class="w-full bg-slate-100 rounded-t-lg relative overflow-hidden h-[180px]">
+            <div class="w-full bg-slate-100/70 rounded-t-lg relative overflow-hidden h-[180px]">
               <div class="chart-bar absolute bottom-0 w-full bg-slate-400 rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="40px"></div>
             </div>
-            <span class="text-xs font-semibold text-slate-600">Chapel</span>
+            <span class="text-xs font-semibold text-slate-500">Chapel</span>
           </div>
         </div>
       </section>
 
       <section class="bg-white rounded-xl border border-slate-100 shadow-sm flex flex-col h-full overflow-hidden">
         <div class="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h2 class="text-md font-bold text-slate-800">Recent Activity</h2>
-          <a href="reservations.html" class="text-blue-600 font-semibold text-xs hover:underline">View All</a>
+          <h2 class="text-base font-bold text-slate-800">Recent Activity</h2>
+          <a href="reservations.html" class="text-blue-600 font-bold text-xs hover:underline">View All</a>
         </div>
-
+        
         <div class="p-6 space-y-6">
           <div class="flex gap-4">
-            <div class="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined">person</span>
+            <div class="w-9 h-9 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[18px]">person</span>
             </div>
             <div>
-              <p class="text-xs text-slate-700"><span class="font-bold">John Doe</span> reserved <span class="font-semibold text-blue-600">CALM 201</span></p>
+              <p class="text-xs text-slate-700 leading-normal"><span class="font-bold text-slate-800">John Doe</span> reserved <span class="font-semibold text-blue-600">CALM 201</span></p>
               <p class="text-[10px] text-slate-400 mt-0.5">2 minutes ago • Theology Dept</p>
             </div>
           </div>
-
           <div class="flex gap-4">
-            <div class="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined">admin_panel_settings</span>
+            <div class="w-9 h-9 rounded-full bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[18px]">admin_panel_settings</span>
             </div>
             <div>
-              <p class="text-xs text-slate-700"><span class="font-bold">Admin</span> approved <span class="font-semibold text-blue-600">Seminar Hall B</span></p>
+              <p class="text-xs text-slate-700 leading-normal"><span class="font-bold text-slate-800">Admin</span> approved <span class="font-semibold text-blue-600">Seminar Hall B</span></p>
               <p class="text-[10px] text-slate-400 mt-0.5">15 minutes ago • Graduate Office</p>
             </div>
           </div>
-
           <div class="flex gap-4">
-            <div class="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined">edit_calendar</span>
+            <div class="w-9 h-9 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[18px]">edit_calendar</span>
             </div>
             <div>
-              <p class="text-xs text-slate-700"><span class="font-bold">Sarah Smith</span> modified booking for <span class="font-semibold text-blue-600">Main Chapel</span></p>
+              <p class="text-xs text-slate-700 leading-normal"><span class="font-bold text-slate-800">Sarah Smith</span> modified booking for <span class="font-semibold text-blue-600">Main Chapel</span></p>
               <p class="text-[10px] text-slate-400 mt-0.5">42 minutes ago</p>
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-9 h-9 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[18px]">cancel</span>
+            </div>
+            <div>
+              <p class="text-xs text-slate-700 leading-normal"><span class="font-bold text-slate-800">Request Denied:</span> <span class="text-slate-400">Dorm Lounge by Alex Wong</span></p>
+              <p class="text-[10px] text-slate-400 mt-0.5">1 hour ago • Capacity conflict</p>
+            </div>
+          </div>
+          <div class="flex gap-4">
+            <div class="w-9 h-9 rounded-full bg-slate-50 text-slate-500 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[18px]">person_add</span>
+            </div>
+            <div>
+              <p class="text-xs text-slate-700 leading-normal"><span class="font-bold text-slate-800">New User</span> registered: <span class="font-semibold text-slate-800">Prof. David Miller</span></p>
+              <p class="text-[10px] text-slate-400 mt-0.5">3 hours ago • Faculty</p>
             </div>
           </div>
         </div>
       </section>
     </div>
 
-    <section class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-      <div data-open-manage-requests class="group cursor-pointer bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-6 overflow-hidden relative" role="button" tabindex="0">
-        <div class="absolute right-0 top-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-blue-500/10 transition-all duration-500"></div>
-        <div class="w-16 h-16 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-600 shrink-0 group-hover:scale-110 transition-transform">
-          <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">manage_accounts</span>
-        </div>
-        <div class="flex-1">
-          <h4 class="text-lg font-bold group-hover:text-blue-600 transition-colors">Manage Requests</h4>
-          <p class="text-xs text-slate-400">You have 18 pending approvals requiring attention.</p>
-          <div class="mt-3 flex items-center text-blue-600 font-bold text-sm">
-            <span>Process Now</span>
-            <span class="material-symbols-outlined ml-1.5 text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-          </div>
+    <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+      <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+        <h2 class="text-base font-bold text-slate-800">Reservation Queue</h2>
+        <div class="flex items-center gap-4">
+          <button class="text-xs font-bold text-blue-600 hover:underline">Export CSV</button>
+          <button class="px-4 py-2 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-500/10">View All</button>
         </div>
       </div>
-
-      <div class="group cursor-pointer bg-white p-6 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-6 overflow-hidden relative">
-        <div class="absolute right-0 top-0 w-32 h-32 bg-emerald-500/5 rounded-full -mr-16 -mt-16 group-hover:bg-emerald-500/10 transition-all duration-500"></div>
-        <div class="w-16 h-16 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-600 shrink-0 group-hover:scale-110 transition-transform">
-          <span class="material-symbols-outlined text-4xl" style="font-variation-settings: 'FILL' 1;">calendar_month</span>
-        </div>
-        <div class="flex-1">
-          <h4 class="text-lg font-bold group-hover:text-emerald-600 transition-colors">Check Availability</h4>
-          <p class="text-xs text-slate-400">View real-time schedule for all seminary buildings.</p>
-          <div class="mt-3 flex items-center text-emerald-600 font-bold text-sm">
-            <span>Open Scheduler</span>
-            <span class="material-symbols-outlined ml-1.5 text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
-          </div>
-        </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-slate-50/70 border-b border-slate-100">
+              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider py-4">Requester</th>
+              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider py-4">Facility/Room</th>
+              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider py-4">Dates</th>
+              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider py-4">Guests</th>
+              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider py-4">Status</th>
+              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider text-right py-4">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-50">
+            <tr class="hover:bg-slate-50/40 transition-colors">
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-bold">JD</div>
+                  <span class="text-xs font-semibold text-slate-800">John Doe</span>
+                </div>
+              </td>
+              <td class="px-6 text-xs text-slate-600 py-4">CALM 201</td>
+              <td class="px-6 text-xs text-slate-600 py-4">Oct 24 - 26, 2024</td>
+              <td class="px-6 text-xs text-slate-600 py-4">12</td>
+              <td class="px-6 py-4">
+                <span class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 text-[10px] font-bold uppercase tracking-wider">Pending</span>
+              </td>
+              <td class="px-6 text-right py-4">
+                <div class="flex justify-end gap-1.5">
+                  <button class="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Approve">
+                    <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                  </button>
+                  <button class="p-1 text-rose-600 hover:bg-rose-50 rounded-md transition-colors" title="Reject">
+                    <span class="material-symbols-outlined text-[20px]">cancel</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr class="hover:bg-slate-50/40 transition-colors">
+              <td class="px-6 py-4">
+                <div class="flex items-center gap-3">
+                  <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs font-bold">SS</div>
+                  <span class="text-xs font-semibold text-slate-800">Sarah Smith</span>
+                </div>
+              </td>
+              <td class="px-6 text-xs text-slate-600 py-4">Main Chapel</td>
+              <td class="px-6 text-xs text-slate-600 py-4">Oct 28, 2024</td>
+              <td class="px-6 text-xs text-slate-600 py-4">150</td>
+              <td class="px-6 py-4">
+                <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider">Approved</span>
+              </td>
+              <td class="px-6 text-right py-4">
+                <div class="flex justify-end gap-2">
+                  <button class="p-1 text-slate-400 hover:bg-slate-50 rounded-md transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">more_vert</span>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
+    <div id="action-cards-mount" class="hidden"></div>
+    <div id="timeline-mount" class="hidden"></div>
   </div>
 
   <script type="module">
     import { requireAuth }   from '../assets/js/auth.js';
     import { initAppLayout } from '../assets/js/ui.js';
-    import { getBookings }   from '../assets/js/api.js';
 
-    async function startDashboard() {
-      try {
-        if (!requireAuth()) return;
+    if (!requireAuth()) throw new Error('Not authenticated');
 
-        await initAppLayout({
-          portal:     'admin',
-          activePage: 'dashboard',
-          title:      'Administrator Overview',
-          subtitle:   'Real-time operations & snapshot telemetry insights',
-        });
+    // Dynamically injects layout wrappers into global navigation shell matrix
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'dashboard',
+      title:      'Reservation Operations Center',
+      subtitle:   'Mission Control',
+    });
 
-        setTimeout(() => {
-          document.querySelectorAll('.chart-bar').forEach(bar => {
-            const h = bar.getAttribute('data-height');
-            if (h) bar.style.height = h;
-          });
-        }, 150);
-
-        try {
-          const bookings = await getBookings();
-          if (bookings && Array.isArray(bookings)) {
-            document.getElementById('kpi-total-bookings').innerText = bookings.length;
-            document.getElementById('kpi-pending-count').innerText = bookings.filter(b => b.status === 'Pending').length;
-          }
-        } catch (apiErr) {
-          console.warn('Backend metrics not responding, showing defaults.', apiErr);
-        }
-
-      } catch (err) {
-        console.error('Dashboard failed:', err);
-      }
-    }
-
-    startDashboard();
+    // Chart Animation Execution - Fired explicitly within the module runtime sequence
+    const bars = document.querySelectorAll('.chart-bar');
+    bars.forEach((bar) => {
+      const targetHeight = bar.getAttribute('data-height') || '100%';
+      setTimeout(() => {
+        bar.style.height = targetHeight;
+      }, 100);
+    });
   </script>
 </body>
 </html>
