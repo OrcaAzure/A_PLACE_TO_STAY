@@ -1,386 +1,399 @@
-<!DOCTYPE html><html class="light" lang="en" style=""><head>
-<meta charset="utf-8">
-<meta content="width=device-width, initial-scale=1.0" name="viewport">
-<title>Reserve Accommodation | AptSpace</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    "colors": {
-                        "error": "#ba1a1a",
-                        "on-primary-container": "#eeefff",
-                        "secondary-fixed": "#6ffbbe",
-                        "on-primary-fixed": "#00174b",
-                        "tertiary": "#943700",
-                        "primary-fixed": "#dbe1ff",
-                        "surface-container-lowest": "#ffffff",
-                        "on-primary": "#ffffff",
-                        "on-error-container": "#93000a",
-                        "tertiary-fixed-dim": "#ffb596",
-                        "on-tertiary-fixed-variant": "#7d2d00",
-                        "inverse-surface": "#2e3039",
-                        "outline": "#737686",
-                        "on-surface": "#191b23",
-                        "on-secondary-fixed": "#002113",
-                        "outline-variant": "#c3c6d7",
-                        "secondary-fixed-dim": "#4edea3",
-                        "on-background": "#191b23",
-                        "on-tertiary": "#ffffff",
-                        "surface-container-high": "#e7e7f3",
-                        "inverse-on-surface": "#f0f0fb",
-                        "background": "#faf8ff",
-                        "on-secondary": "#ffffff",
-                        "on-secondary-container": "#00714d",
-                        "surface-dim": "#d9d9e5",
-                        "primary-fixed-dim": "#b4c5ff",
-                        "on-surface-variant": "#434655",
-                        "on-error": "#ffffff",
-                        "tertiary-fixed": "#ffdbcd",
-                        "surface-container": "#ededf9",
-                        "secondary-container": "#6cf8bb",
-                        "primary": "#004ac6",
-                        "surface-variant": "#e1e2ed",
-                        "surface-tint": "#0053db",
-                        "secondary": "#006c49",
-                        "surface": "#faf8ff",
-                        "on-tertiary-container": "#ffede6",
-                        "on-secondary-fixed-variant": "#005236",
-                        "tertiary-container": "#bc4800",
-                        "surface-container-highest": "#e1e2ed",
-                        "inverse-primary": "#b4c5ff",
-                        "surface-bright": "#faf8ff",
-                        "on-primary-fixed-variant": "#003ea8",
-                        "surface-container-low": "#f3f3fe",
-                        "on-tertiary-fixed": "#360f00",
-                        "error-container": "#ffdad6",
-                        "primary-container": "#2563eb"
-                    },
-                    "borderRadius": {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "2xl": "1rem",
-                        "full": "9999px"
-                    },
-                    "spacing": {
-                        "sidebar-width": "260px",
-                        "xs": "0.25rem",
-                        "gutter": "24px",
-                        "margin-mobile": "16px",
-                        "base": "4px",
-                        "md": "1rem",
-                        "sm": "0.5rem",
-                        "xl": "2.5rem",
-                        "lg": "1.5rem",
-                        "container-max": "1280px"
-                    },
-                    "fontFamily": {
-                        "body-md": ["Inter"],
-                        "headline-sm": ["Inter"],
-                        "body-lg": ["Inter"],
-                        "headline-md": ["Inter"],
-                        "headline-lg": ["Inter"],
-                        "label-sm": ["Inter"],
-                        "label-md": ["Inter"],
-                        "body-sm": ["Inter"],
-                        "headline-xl": ["Inter"]
-                    }
+<!DOCTYPE html>
+<html class="h-full light" lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Reserve Accommodation | AptSpace</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  
+  <script id="tailwind-config">
+    tailwind.config = {
+        darkMode: "class",
+        theme: {
+            extend: {
+                "colors": {
+                    "error": "#ba1a1a",
+                    "on-primary-container": "#eeefff",
+                    "secondary-fixed": "#6ffbbe",
+                    "on-primary-fixed": "#00174b",
+                    "tertiary": "#943700",
+                    "primary-fixed": "#dbe1ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed-dim": "#ffb596",
+                    "on-tertiary-fixed-variant": "#7d2d00",
+                    "inverse-surface": "#2e3039",
+                    "outline": "#737686",
+                    "on-surface": "#191b23",
+                    "on-secondary-fixed": "#002113",
+                    "outline-variant": "#c3c6d7",
+                    "secondary-fixed-dim": "#4edea3",
+                    "on-background": "#191b23",
+                    "on-tertiary": "#ffffff",
+                    "surface-container-high": "#e7e7f3",
+                    "inverse-on-surface": "#f0f0fb",
+                    "background": "#faf8ff",
+                    "on-secondary": "#ffffff",
+                    "on-secondary-container": "#00714d",
+                    "surface-dim": "#d9d9e5",
+                    "primary-fixed-dim": "#b4c5ff",
+                    "on-surface-variant": "#434655",
+                    "on-error": "#ffffff",
+                    "tertiary-fixed": "#ffdbcd",
+                    "surface-container": "#ededf9",
+                    "secondary-container": "#6cf8bb",
+                    "primary": "#004ac6",
+                    "surface-variant": "#e1e2ed",
+                    "surface-tint": "#0053db",
+                    "secondary": "#006c49",
+                    "surface": "#faf8ff",
+                    "on-tertiary-container": "#ffede6",
+                    "on-secondary-fixed-variant": "#005236",
+                    "tertiary-container": "#bc4800",
+                    "surface-container-highest": "#e1e2ed",
+                    "inverse-primary": "#b4c5ff",
+                    "surface-bright": "#faf8ff",
+                    "on-primary-fixed-variant": "#003ea8",
+                    "surface-container-low": "#f3f3fe",
+                    "on-tertiary-fixed": "#360f00",
+                    "error-container": "#ffdad6",
+                    "primary-container": "#2563eb"
+                },
+                "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "2xl": "1rem",
+                    "full": "9999px"
+                },
+                "spacing": {
+                    "sidebar-width": "260px",
+                    "xs": "0.25rem",
+                    "gutter": "24px",
+                    "margin-mobile": "16px",
+                    "base": "4px",
+                    "md": "1rem",
+                    "sm": "0.5rem",
+                    "xl": "2.5rem",
+                    "lg": "1.5rem",
+                    "container-max": "1280px"
+                },
+                "fontFamily": {
+                    "body-md": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "headline-lg": ["Inter"],
+                    "label-sm": ["Inter"],
+                    "label-md": ["Inter"],
+                    "body-sm": ["Inter"],
+                    "headline-xl": ["Inter"]
                 }
             }
         }
-    </script>
-<style>
-        body {
-            background-color: #F8FAFC;
-            font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #E2E8F0;
-            border-radius: 10px;
-        }
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        .elevation-1 { box-shadow: 0px 1px 3px rgba(0,0,0,0.1); }
-        .glass-header { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.8); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-    </style>
-</head>
-<body class="text-on-surface">
-<!-- SideNavBar -->
-<aside class="fixed left-0 top-0 h-full w-sidebar-width z-40 bg-surface-container-lowest border-r border-outline-variant flex flex-col pt-20 pb-4">
-<div class="px-6 mb-8 flex items-center gap-3">
-<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white">
-<span class="material-symbols-outlined">apartment</span>
-</div>
-<div>
-<h2 class="font-headline-sm text-headline-sm font-bold text-primary">AptSpace</h2>
-<p class="text-[10px] text-outline uppercase tracking-widest font-bold">Seminary Management</p>
-</div>
-</div>
-<nav class="flex-1 flex flex-col">
-<a class="flex items-center gap-3 px-6 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-95 duration-200" href="#">
-<span class="material-symbols-outlined">dashboard</span>
-<span class="font-label-md text-label-md">Dashboard</span>
-</a>
-<a class="flex items-center gap-3 px-6 py-3 border-l-2 border-primary text-primary font-bold bg-surface-container transition-all active:scale-95 duration-200" href="#">
-<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">event_available</span>
-<span class="font-label-md text-label-md">Reservations</span>
-</a>
-<a class="flex items-center gap-3 px-6 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-95 duration-200" href="#">
-<span class="material-symbols-outlined">bed</span>
-<span class="font-label-md text-label-md">Rooms</span>
-</a>
-<a class="flex items-center gap-3 px-6 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-95 duration-200" href="#">
-<span class="material-symbols-outlined">cleaning_services</span>
-<span class="font-label-md text-label-md">Housekeeping</span>
-</a>
-<a class="flex items-center gap-3 px-6 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all active:scale-95 duration-200" href="#">
-<span class="material-symbols-outlined">settings</span>
-<span class="font-label-md text-label-md">Settings</span>
-</a>
-</nav>
-<div class="px-4 mt-auto">
-<button class="w-full py-3 bg-primary text-white rounded-xl font-label-md flex items-center justify-center gap-2 elevation-1 hover:brightness-110 active:scale-95 transition-all">
-<span class="material-symbols-outlined">add</span>
-                New Booking
-            </button>
-<div class="mt-4 pt-4 border-t border-outline-variant">
-<a class="flex items-center gap-3 px-2 py-2 text-on-surface-variant hover:text-error transition-colors" href="#">
-<span class="material-symbols-outlined">logout</span>
-<span class="font-label-md text-label-md">Logout</span>
-</a>
-</div>
-</div>
-</aside>
-<!-- TopNavBar -->
-<header class="fixed top-0 w-full z-50 glass-header border-b border-outline-variant h-16 flex justify-between items-center px-gutter">
-<div class="ml-sidebar-width flex items-center gap-4">
-<h1 class="font-headline-md text-headline-md font-bold text-primary">AptSpace</h1>
-</div>
-<div class="flex items-center gap-6">
-<div class="relative hidden md:block">
-<input class="bg-surface-container-low border-none rounded-full px-10 py-2 w-64 text-body-sm focus:ring-2 focus:ring-primary/20" placeholder="Search facilities..." type="text">
-<span class="material-symbols-outlined absolute left-3 top-2 text-outline text-lg">search</span>
-</div>
-<div class="flex items-center gap-4">
-<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors relative">
-<span class="material-symbols-outlined">notifications</span>
-<span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
-</button>
-<button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors">
-<span class="material-symbols-outlined">help_outline</span>
-</button>
-<div class="flex items-center gap-3 ml-2 border-l border-outline-variant pl-4">
-<div class="text-right hidden sm:block">
-<p class="font-label-md text-on-surface">John Doe</p>
-<p class="text-[10px] text-outline">Administrator</p>
-</div>
-<img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCVXvClOm8Daitz4Frzp1Lh-B_pRFmpE8v8B7wXq1y1TtRX6fTD7LyF_V0EmFnl6ercc4Uab6-wdBsGWNK4QfdD6ePJ2N-_zFp3IgtvgwKYjghpRDVLEUMoMTbdnygK10Fbz50H52YjAfcEhMSwKoF1Ahm-sqIAyyjcMGsreRdMvfr5_cgmNfU_PJMEW26qpN_SBFLxl6Nw3hOJRiYx8gRscZGdRlwTalNHPON1IO64d7_bQLfbyCuxn2DocS5cZoX2ELAhgotySEK">
-</div>
-</div>
-</div>
-</header>
-<!-- Main Content -->
-<main class="pl-sidebar-width pt-16 min-h-screen pb-32">
-<div class="max-w-container-max mx-auto p-gutter flex flex-col gap-gutter">
-<!-- Steps Indicator -->
-<div class="flex items-center gap-8 border-b border-outline-variant/30 pb-4">
-<div class="flex items-center gap-3 border-b-2 border-primary pb-4 -mb-[18px]">
-<span class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">1</span>
-<span class="font-bold text-primary">Select Room</span>
-</div>
-<div class="flex items-center gap-3 pb-4 -mb-[18px] opacity-40">
-<span class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-bold text-sm">2</span>
-<span class="font-medium text-on-surface-variant">Review &amp; Confirm</span>
-</div>
-</div>
-<!-- Page Title -->
-<header>
-<h2 class="font-headline-xl text-headline-xl text-on-background">Accommodation Inventory</h2>
-<p class="font-body-md text-body-md text-on-surface-variant">Browse and manage room availability across all seminary buildings.</p>
-</header>
-<!-- Section 1: Search & Filters -->
-<section class="bg-surface-container-lowest rounded-2xl p-8 elevation-1 border border-outline-variant/30">
-<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-<div>
-<label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Check-in</label>
-<input class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm" type="date">
-</div>
-<div>
-<label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Check-out</label>
-<input class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm" type="date">
-</div>
-<div>
-<label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Guests</label>
-<select class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm appearance-none">
-<option>1 Guest</option>
-<option>2 Guests</option>
-<option>3 Guests</option>
-<option>4+ Guests</option>
-</select>
-</div>
-<div>
-<label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Room Status</label>
-<select class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm appearance-none">
-<option>All Status</option>
-<option>Vacant/Clean</option>
-<option>Occupied</option>
-<option>Dirty</option>
-<option>Out-of-Order</option>
-</select>
-</div>
-</div>
-<div class="mt-6 flex justify-end">
-<button class="bg-primary text-white px-10 py-3 rounded-xl font-label-md flex items-center gap-2 hover:brightness-110 transition-all shadow-md">
-<span class="material-symbols-outlined text-xl">search</span>
-                        Find Available Rooms
-                    </button>
-</div>
-</section>
-<!-- Building Category Filters -->
-<div class="flex flex-wrap gap-3">
-<button class="px-6 py-2.5 rounded-full font-bold text-label-md bg-primary text-white shadow-md transition-all active:scale-95">All Buildings</button>
-<button class="px-6 py-2.5 rounded-full font-bold text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">CALM Building</button>
-<button class="px-6 py-2.5 rounded-full font-bold text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">HOUSE Units</button>
-<button class="px-6 py-2.5 rounded-full font-bold text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">THESDA Building</button>
-</div><div class="flex flex-wrap items-center gap-3 mt-4">
-    <span class="text-label-sm text-outline uppercase tracking-wider mr-2">Room Type:</span>
-    <button class="px-4 py-1.5 rounded-full font-medium text-label-md bg-surface-container text-primary border border-primary/20 transition-all active:scale-95">All Types</button>
-    <button class="px-4 py-1.5 rounded-full font-medium text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">Deluxe 2</button>
-    <button class="px-4 py-1.5 rounded-full font-medium text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">Deluxe 3</button>
-    <button class="px-4 py-1.5 rounded-full font-medium text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">Standard Room</button>
-    <button class="px-4 py-1.5 rounded-full font-medium text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">Superior Guest Room</button>
-    <button class="px-4 py-1.5 rounded-full font-medium text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">Dorm</button>
-</div>
-<!-- Inventory Content -->
-<div class="space-y-12">
-<!-- Floor 1 Section -->
-<div class="space-y-6">
-<div class="flex items-center gap-4">
-<h4 class="font-headline-sm text-on-surface-variant whitespace-nowrap">Floor 1 • CALM</h4>
-<div class="h-[1px] w-full bg-outline-variant/30"></div>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-<!-- Room 104 -->
-<div class="group flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 hover:border-primary/40 transition-all duration-300 hover:shadow-xl">
-<div class="relative h-56 overflow-hidden">
-<img alt="Room 104" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADL1JNmlBDdOziSY2FyTrMTZUKPY2WSxw_IiBfwctVa0CHwhpSws1mpsK1cIU1jt7hS_VPk2nEey-x2OceTSces8wgInKHoYpMU1ENyIGOmgEai8IyNVewlEvkmLLgMERQ7hi8k6GABwInmNr_jgkHmcYgpceuxiSmuDFzBX56TezmdY2f9lighO9M9Fiv9ooDMQW4B1LybmvyiqLUyK9TGlrOtcoJny-Y-AGNveTdjMXRTBk0GdAHtg9Nmc0lCLAHmgFGrkyn2rAU">
-<div class="absolute top-4 left-4">
-<span class="bg-emerald-500 text-white px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-lg">Vacant/Clean</span>
-</div>
-</div>
-<div class="p-6 flex flex-col flex-1">
-<div class="flex justify-between items-start mb-4">
-<h3 class="text-3xl font-bold text-on-surface">104</h3>
-<div class="flex items-center gap-1.5 text-on-surface-variant bg-surface-container px-3 py-1.5 rounded-lg">
-<span class="material-symbols-outlined text-lg">group</span>
-<span class="font-label-md font-semibold">Min 1 - Max 2</span>
-</div>
-</div>
-<button class="w-full py-3 mb-2 border border-outline-variant text-on-surface-variant rounded-xl font-bold text-label-md hover:bg-surface-container transition-all active:scale-95">View Details</button><button class="mt-auto w-full py-4 bg-primary text-white rounded-xl font-bold text-label-md hover:brightness-110 transition-all shadow-md active:scale-95">Reserve Room</button>
-</div>
-</div>
-</div>
-</div>
-<!-- Floor 2 Section -->
-<div class="space-y-6">
-<div class="flex items-center gap-4">
-<h4 class="font-headline-sm text-on-surface-variant whitespace-nowrap">Floor 2 • CALM</h4>
-<div class="h-[1px] w-full bg-outline-variant/30"></div>
-</div>
-<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-<!-- Room 201 -->
-<div class="group flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 opacity-75 grayscale-[0.2]">
-<div class="relative h-56 overflow-hidden">
-<img alt="Room 201" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfBnGIh5bZevDzeXHA4FtFOD4Y5DQ_l2afIPqDNvky-XYMcGELXObJB6t-21EfqEf2JVbgKhphZgRP6FuRnazU7G9HJ3i1NEj1hXdvViK21DynEbU3tKuOHyPuHooTKPRS44AC0xpdiaG8gVKQgQ3fTsmBxlcL_WHomtwaiAJ_vLYWl1EiD3iJew0Mez6VFmoLhq3RfNcVYRUWh721fm5uZMNe5HpF6uW82CxnWjandi0_jE2PhnsgPbuWYMoib5q4ePu7Ipb8eFM3">
-<div class="absolute top-4 left-4">
-<span class="bg-slate-600 text-white px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest">Occupied</span>
-</div>
-</div>
-<div class="p-6 flex flex-col flex-1">
-<div class="flex justify-between items-start mb-4">
-<h3 class="text-3xl font-bold text-on-surface">201</h3>
-<div class="flex items-center gap-1.5 text-on-surface-variant bg-surface-container px-3 py-1.5 rounded-lg">
-<span class="material-symbols-outlined text-lg">group</span>
-<span class="font-label-md font-semibold">Min 1 - Max 1</span>
-</div>
-</div>
-<button class="w-full py-3 mb-2 border border-outline-variant text-on-surface-variant rounded-xl font-bold text-label-md hover:bg-surface-container transition-all active:scale-95">View Details</button><button class="mt-auto w-full py-4 bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md cursor-not-allowed" disabled="">Unavailable</button>
-</div>
-</div>
-<!-- Room 202 -->
-<div class="group flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 hover:border-amber-400/40 transition-all">
-<div class="relative h-56 overflow-hidden">
-<img alt="Room 202" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBV470QAADpv-GNzLhAHQ4tJPGAaAZm89EbT0UEdo4aejewdtHSANm7KRCuxwjqWrQYusGvEcKzYcrBvyKmcWNElpL33oRNYZSZPW6Eubqw-HMrS8HCaXUE9NhYgnVmf5nObO6HJ8JcPHC1HGOBHWLBJPeksjJKuyH6oUzfM1DhpkMo-0BgE20EWXantQ510E6RCV1nVSM6coaRFoAfCvhNAc8SpRUAXPHTTXhDBuDtm3Ax2dg0Sc7uVWn4-OsD_IXhSCsgWaPckiR6">
-<div class="absolute top-4 left-4">
-<span class="bg-amber-500 text-white px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest shadow-lg">Dirty</span>
-</div>
-</div>
-<div class="p-6 flex flex-col flex-1">
-<div class="flex justify-between items-start mb-4">
-<h3 class="text-3xl font-bold text-on-surface">202</h3>
-<div class="flex items-center gap-1.5 text-on-surface-variant bg-surface-container px-3 py-1.5 rounded-lg">
-<span class="material-symbols-outlined text-lg">group</span>
-<span class="font-label-md font-semibold">Min 1 - Max 2</span>
-</div>
-</div>
-<button class="w-full py-3 mb-2 border border-outline-variant text-on-surface-variant rounded-xl font-bold text-label-md hover:bg-surface-container transition-all active:scale-95">View Details</button><button class="mt-auto w-full py-4 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl font-bold text-label-md hover:bg-amber-100 transition-all">Requires Cleaning</button>
-</div>
-</div>
-<!-- Room 203 -->
-<div class="group flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 opacity-60">
-<div class="relative h-56 overflow-hidden grayscale">
-<img alt="Room 203" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8fguAczaiFMzMovnmGAHG_BkLMrI4uEq98LVRrVTK77-lu0AcCiSetEq3Tm1oZXBtrq3wWzFm0qaKLvy_Y9h4KH0AYHyxy2lFxOzbKnXUMukUwlIJkwuel8CHDqxXVNPXzzxqN-LJ0gVSB7g04sx9TAe88fPRvsMcQ54bZ4MIFkmhB2dwuuMLaFQyz4ZrysbTV1Vw2e3AKdwVukoTASRCagkgUq8v4jVF41qv8JkNACzhGIU_NfIp3yQNCrDF1rFE4_iaPZtZ4X5i">
-<div class="absolute top-4 left-4">
-<span class="bg-red-500 text-white px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-widest">Out-of-Order</span>
-</div>
-</div>
-<div class="p-6 flex flex-col flex-1">
-<div class="flex justify-between items-start mb-4">
-<h3 class="text-3xl font-bold text-on-surface">203</h3>
-<div class="flex items-center gap-1.5 text-on-surface-variant bg-surface-container px-3 py-1.5 rounded-lg">
-<span class="material-symbols-outlined text-lg">group</span>
-<span class="font-label-md font-semibold">Min 1 - Max 2</span>
-</div>
-</div>
-<button class="w-full py-3 mb-2 border border-outline-variant text-on-surface-variant rounded-xl font-bold text-label-md hover:bg-surface-container transition-all active:scale-95">View Details</button><button class="mt-auto w-full py-4 bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md cursor-not-allowed" disabled="">Maintenance</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Sticky Reservation Summary -->
-<div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant p-6 flex justify-between items-center z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] ml-sidebar-width pr-[calc(gutter+sidebar-width)]" style="width: calc(100% - var(--tw-sidebar-width, 260px))">
-<div class="flex flex-col">
-<span class="text-label-sm text-outline uppercase tracking-wider">Selected Room</span>
-<span class="font-bold text-on-surface">Room 104 • $180.00 Total</span>
-</div>
-<button class="bg-primary text-white px-8 py-4 rounded-xl font-bold text-lg hover:brightness-110 transition-all shadow-lg flex items-center gap-2">
-                Review Reservation
-                <span class="material-symbols-outlined">arrow_forward</span>
-</button>
-</div>
-</main>
-<script>
-        // Simple hover state enhancements
-        document.querySelectorAll('.group').forEach(card => {
-            card.addEventListener('mouseenter', () => card.classList.add('elevation-2'));
-            card.addEventListener('mouseleave', () => card.classList.remove('elevation-2'));
-        });
-    </script>
+    }
+  </script>
 
-</body></html>
+  <style>
+    body {
+        background-color: #F8FAFC;
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #E2E8F0;
+        border-radius: 10px;
+    }
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+    .elevation-1 { box-shadow: 0px 1px 3px rgba(0,0,0,0.1); }
+    .glass-header { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.8); }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body class="text-on-surface h-full">
+
+  <aside class="fixed left-0 top-0 h-full w-sidebar-width z-40 bg-surface-container-lowest border-r border-outline-variant flex flex-col pt-20 pb-4 hidden md:flex">
+    <div class="px-6 mb-8 flex items-center gap-3">
+      <div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shrink-0">
+        <span class="material-symbols-outlined">apartment</span>
+      </div>
+      <div>
+        <h2 class="text-sm font-bold text-primary leading-tight">AptSpace</h2>
+        <p class="text-[10px] text-outline uppercase tracking-widest font-bold">Seminary Management</p>
+      </div>
+    </div>
+    
+    <nav class="flex-1 flex flex-col space-y-0.5">
+      <a class="flex items-center gap-3 px-6 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all text-xs font-semibold" href="#">
+        <span class="material-symbols-outlined text-[20px]">dashboard</span>
+        <span>Dashboard</span>
+      </a>
+      <a class="flex items-center gap-3 px-6 py-3 border-l-2 border-primary text-primary font-bold bg-surface-container transition-all text-xs" href="#">
+        <span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">event_available</span>
+        <span>Reservations</span>
+      </a>
+      <a class="flex items-center gap-3 px-6 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all text-xs font-semibold" href="#">
+        <span class="material-symbols-outlined text-[20px]">bed</span>
+        <span>Rooms</span>
+      </a>
+      <a class="flex items-center gap-3 px-6 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all text-xs font-semibold" href="#">
+        <span class="material-symbols-outlined text-[20px]">cleaning_services</span>
+        <span>Housekeeping</span>
+      </a>
+      <a class="flex items-center gap-3 px-6 py-3 text-on-surface-variant hover:bg-surface-container-low transition-all text-xs font-semibold" href="#">
+        <span class="material-symbols-outlined text-[20px]">settings</span>
+        <span>Settings</span>
+      </a>
+    </nav>
+    
+    <div class="px-4 mt-auto">
+      <button class="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 elevation-1 hover:brightness-110 active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-sm">add</span>
+        <span>New Booking</span>
+      </button>
+      <div class="mt-4 pt-4 border-t border-outline-variant">
+        <a class="flex items-center gap-3 px-2 py-2 text-on-surface-variant hover:text-error transition-colors text-xs font-semibold" href="#">
+          <span class="material-symbols-outlined text-[20px]">logout</span>
+          <span>Logout</span>
+        </a>
+      </div>
+    </div>
+  </aside>
+
+  <header class="fixed top-0 w-full z-50 glass-header border-b border-outline-variant h-16 flex justify-between items-center px-6">
+    <div class="md:ml-sidebar-width flex items-center gap-4">
+      <h1 class="text-base font-bold text-primary">AptSpace</h1>
+    </div>
+    <div class="flex items-center gap-6">
+      <div class="relative hidden md:block">
+        <input class="bg-surface-container-low border-none rounded-full px-10 py-2 w-64 text-xs text-slate-700 focus:ring-2 focus:ring-primary/20 placeholder-slate-400" placeholder="Search facilities..." type="text">
+        <span class="material-symbols-outlined absolute left-3 top-2.5 text-outline text-base">search</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors relative flex items-center justify-center">
+          <span class="material-symbols-outlined text-[22px]">notifications</span>
+          <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full"></span>
+        </button>
+        <button class="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-full transition-colors flex items-center justify-center">
+          <span class="material-symbols-outlined text-[22px]">help_outline</span>
+        </button>
+        <div class="flex items-center gap-3 ml-2 border-l border-outline-variant pl-4">
+          <div class="text-right hidden sm:block">
+            <p class="text-xs font-bold text-on-surface">John Doe</p>
+            <p class="text-[10px] text-outline font-medium">Administrator</p>
+          </div>
+          <img alt="User profile" class="w-8 h-8 rounded-full border border-outline-variant object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDCVXvClOm8Daitz4Frzp1Lh-B_pRFmpE8v8B7wXq1y1TtRX6fTD7LyF_V0EmFnl6ercc4Uab6-wdBsGWNK4QfdD6ePJ2N-_zFp3IgtvgwKYjghpRDVLEUMoMTbdnygK10Fbz50H52YjAfcEhMSwKoF1Ahm-sqIAyyjcMGsreRdMvfr5_cgmNfU_PJMEW26qpN_SBFLxl6Nw3hOJRiYx8gRscZGdRlwTalNHPON1IO64d7_bQLfbyCuxn2DocS5cZoX2ELAhgotySEK">
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="md:pl-sidebar-width pt-16 min-h-screen pb-32">
+    <div class="max-w-container-max mx-auto p-6 flex flex-col gap-6">
+      
+      <div class="flex items-center gap-8 border-b border-outline-variant/30 pb-4">
+        <div class="flex items-center gap-3 border-b-2 border-primary pb-4 -mb-[18px]">
+          <span class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">1</span>
+          <span class="text-xs font-bold text-primary">Select Room</span>
+        </div>
+        <div class="flex items-center gap-3 pb-4 -mb-[18px] opacity-40">
+          <span class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-bold text-xs">2</span>
+          <span class="text-xs font-semibold text-on-surface-variant">Review & Confirm</span>
+        </div>
+      </div>
+
+      <header class="pt-2">
+        <h2 class="text-xl font-bold text-slate-800 tracking-tight">Accommodation Inventory</h2>
+        <p class="text-xs text-slate-400 mt-0.5">Browse and manage room availability across all seminary buildings.</p>
+      </header>
+
+      <section class="bg-white rounded-2xl p-6 elevation-1 border border-slate-100">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Check-in</label>
+            <input class="w-full border-slate-200 rounded-xl focus:ring-primary focus:border-primary px-4 py-2.5 bg-slate-50 text-xs text-slate-700" type="date">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Check-out</label>
+            <input class="w-full border-slate-200 rounded-xl focus:ring-primary focus:border-primary px-4 py-2.5 bg-slate-50 text-xs text-slate-700" type="date">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Guests</label>
+            <select class="w-full border-slate-200 rounded-xl focus:ring-primary focus:border-primary px-4 py-2.5 bg-slate-50 text-xs text-slate-700 appearance-none">
+              <option>1 Guest</option>
+              <option>2 Guests</option>
+              <option>3 Guests</option>
+              <option>4+ Guests</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold text-slate-400 mb-2 uppercase tracking-wider">Room Status</label>
+            <select class="w-full border-slate-200 rounded-xl focus:ring-primary focus:border-primary px-4 py-2.5 bg-slate-50 text-xs text-slate-700 appearance-none">
+              <option>All Status</option>
+              <option>Vacant/Clean</option>
+              <option>Occupied</option>
+              <option>Dirty</option>
+              <option>Out-of-Order</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button class="bg-primary text-white px-6 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 hover:brightness-110 transition-all shadow-md shadow-blue-500/10">
+            <span class="material-symbols-outlined text-base">search</span>
+            <span>Find Available Rooms</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="flex flex-wrap gap-2.5">
+        <button class="px-5 py-2 rounded-full font-bold text-xs bg-primary text-white shadow-sm transition-all active:scale-95">All Buildings</button>
+        <button class="px-5 py-2 rounded-full font-semibold text-xs border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all active:scale-95">CALM Building</button>
+        <button class="px-5 py-2 rounded-full font-semibold text-xs border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all active:scale-95">HOUSE Units</button>
+        <button class="px-5 py-2 rounded-full font-semibold text-xs border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 transition-all active:scale-95">THESDA Building</button>
+      </div>
+      
+      <div class="flex flex-wrap items-center gap-2 mt-1">
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-2">Room Type:</span>
+        <button class="px-4 py-1.5 rounded-full font-bold text-xs bg-slate-100 text-primary transition-all active:scale-95">All Types</button>
+        <button class="px-4 py-1.5 rounded-full font-semibold text-xs border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-all active:scale-95">Deluxe 2</button>
+        <button class="px-4 py-1.5 rounded-full font-semibold text-xs border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-all active:scale-95">Deluxe 3</button>
+        <button class="px-4 py-1.5 rounded-full font-semibold text-xs border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-all active:scale-95">Standard Room</button>
+        <button class="px-4 py-1.5 rounded-full font-semibold text-xs border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-all active:scale-95">Superior Guest Room</button>
+        <button class="px-4 py-1.5 rounded-full font-semibold text-xs border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-all active:scale-95">Dorm</button>
+      </div>
+
+      <div class="space-y-8 pt-2">
+        
+        <div class="space-y-4">
+          <div class="flex items-center gap-4">
+            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Floor 1 • CALM</h4>
+            <div class="h-[1px] w-full bg-slate-100"></div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div class="group flex flex-col bg-white rounded-2xl overflow-hidden border border-slate-100 hover:border-blue-500/20 transition-all duration-300 hover:shadow-md">
+              <div class="relative h-48 overflow-hidden bg-slate-100">
+                <img alt="Room 104" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADL1JNmlBDdOziSY2FyTrMTZUKPY2WSxw_IiBfwctVa0CHwhpSws1mpsK1cIU1jt7hS_VPk2nEey-x2OceTSces8wgInKHoYpMU1ENyIGOmgEai8IyNVewlEvkmLLgMERQ7hi8k6GABwInmNr_jgkHmcYgpceuxiSmuDFzBX56TezmdY2f9lighO9M9Fiv9ooDMQW4B1LybmvyiqLUyK9TGlrOtcoJny-Y-AGNveTdjMXRTBk0GdAHtg9Nmc0lCLAHmgFGrkyn2rAU">
+                <div class="absolute top-4 left-4">
+                  <span class="bg-emerald-500 text-white px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider shadow-sm">Vacant/Clean</span>
+                </div>
+              </div>
+              <div class="p-5 flex flex-col flex-1 justify-between min-h-[160px]">
+                <div class="flex justify-between items-start mb-4">
+                  <h3 class="text-2xl font-bold text-slate-800 tracking-tight">104</h3>
+                  <div class="flex items-center gap-1.5 text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg">
+                    <span class="material-symbols-outlined text-base">group</span>
+                    <span class="text-[11px] font-bold tracking-tight">Min 1 - Max 2</span>
+                  </div>
+                </div>
+                <div class="flex flex-col gap-2 w-full mt-auto">
+                  <button class="w-full py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all">View Details</button>
+                  <button class="w-full py-2.5 bg-primary text-white rounded-xl text-xs font-bold hover:brightness-110 shadow-sm shadow-blue-500/10 transition-all">Reserve Room</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="flex items-center gap-4">
+            <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider whitespace-nowrap">Floor 2 • CALM</h4>
+            <div class="h-[1px] w-full bg-slate-100"></div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div class="group flex flex-col bg-white rounded-2xl overflow-hidden border border-slate-100 opacity-80 transition-all">
+              <div class="relative h-48 overflow-hidden bg-slate-100">
+                <img alt="Room 201" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfBnGIh5bZevDzeXHA4FtFOD4Y5DQ_l2afIPqDNvky-XYMcGELXObJB6t-21EfqEf2JVbgKhphZgRP6FuRnazU7G9HJ3i1NEj1hXdvViK21DynEbU3tKuOHyPuHooTKPRS44AC0xpdiaG8gVKQgQ3fTsmBxlcL_WHomtwaiAJ_vLYWl1EiD3iJew0Mez6VFmoLhq3RfNcVYRUWh721fm5uZMNe5HpF6uW82CxnWjandi0_jE2PhnsgPbuWYMoib5q4ePu7Ipb8eFM3">
+                <div class="absolute top-4 left-4">
+                  <span class="bg-slate-600 text-white px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider shadow-sm">Occupied</span>
+                </div>
+              </div>
+              <div class="p-5 flex flex-col flex-1 justify-between min-h-[160px]">
+                <div class="flex justify-between items-start mb-4">
+                  <h3 class="text-2xl font-bold text-slate-800 tracking-tight">201</h3>
+                  <div class="flex items-center gap-1.5 text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg">
+                    <span class="material-symbols-outlined text-base">group</span>
+                    <span class="text-[11px] font-bold tracking-tight">Min 1 - Max 1</span>
+                  </div>
+                </div>
+                <div class="flex flex-col gap-2 w-full mt-auto">
+                  <button class="w-full py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all">View Details</button>
+                  <button class="w-full py-2.5 bg-slate-100 text-slate-400 border border-slate-200/60 rounded-xl text-xs font-bold cursor-not-allowed" disabled>Unavailable</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="group flex flex-col bg-white rounded-2xl overflow-hidden border border-slate-100 hover:border-amber-500/20 transition-all duration-300">
+              <div class="relative h-48 overflow-hidden bg-slate-100">
+                <img alt="Room 202" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBV470QAADpv-GNzLhAHQ4tJPGAaAZm89EbT0UEdo4aejewdtHSANm7KRCuxwjqWrQYusGvEcKzYcrBvyKmcWNElpL33oRNYZSZPW6Eubqw-HMrS8HCaXUE9NhYgnVmf5nObO6HJ8JcPHC1HGOBHWLBJPeksjJKuyH6oUzfM1DhpkMo-0BgE20EWXantQ510E6RCV1nVSM6coaRFoAfCvhNAc8SpRUAXPHTTXhDBuDtm3Ax2dg0Sc7uVWn4-OsD_IXhSCsgWaPckiR6">
+                <div class="absolute top-4 left-4">
+                  <span class="bg-amber-500 text-white px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider shadow-sm">Dirty</span>
+                </div>
+              </div>
+              <div class="p-5 flex flex-col flex-1 justify-between min-h-[160px]">
+                <div class="flex justify-between items-start mb-4">
+                  <h3 class="text-2xl font-bold text-slate-800 tracking-tight">202</h3>
+                  <div class="flex items-center gap-1.5 text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg">
+                    <span class="material-symbols-outlined text-base">group</span>
+                    <span class="text-[11px] font-bold tracking-tight">Min 1 - Max 2</span>
+                  </div>
+                </div>
+                <div class="flex flex-col gap-2 w-full mt-auto">
+                  <button class="w-full py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all">View Details</button>
+                  <button class="w-full py-2.5 bg-amber-50 text-amber-700 border border-amber-100 rounded-xl text-xs font-bold hover:bg-amber-100/80 transition-all">Requires Cleaning</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="group flex flex-col bg-white rounded-2xl overflow-hidden border border-slate-100 opacity-60 transition-all">
+              <div class="relative h-48 overflow-hidden bg-slate-100">
+                <img alt="Room 203" class="w-full h-full object-cover grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8fguAczaiFMzMovnmGAHG_BkLMrI4uEq98LVRrVTK77-lu0AcCiSetEq3Tm1oZXBtrq3wWzFm0qaKLvy_Y9h4KH0AYHyxy2lFxOzbKnXUMukUwlIJkwuel8CHDqxXVNPXzzxqN-LJ0gVSB7g04sx9TAe88fPRvsMcQ54bZ4MIFkmhB2dwuuMLaFQyz4ZrysbTV1Vw2e3AKdwVukoTASRCagkgUq8v4jVF41qv8JkNACzhGIU_NfIp3yQNCrDF1rFE4_iaPZtZ4X5i">
+                <div class="absolute top-4 left-4">
+                  <span class="bg-rose-500 text-white px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider shadow-sm">Out-of-Order</span>
+                </div>
+              </div>
+              <div class="p-5 flex flex-col flex-1 justify-between min-h-[160px]">
+                <div class="flex justify-between items-start mb-4">
+                  <h3 class="text-2xl font-bold text-slate-800 tracking-tight">203</h3>
+                  <div class="flex items-center gap-1.5 text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg">
+                    <span class="material-symbols-outlined text-base">group</span>
+                    <span class="text-[11px] font-bold tracking-tight">Min 1 - Max 2</span>
+                  </div>
+                </div>
+                <div class="flex flex-col gap-2 w-full mt-auto">
+                  <button class="w-full py-2 border border-slate-200 text-slate-600 rounded-xl text-xs font-bold hover:bg-slate-50 transition-all">View Details</button>
+                  <button class="w-full py-2.5 bg-slate-100 text-slate-400 border border-slate-200/60 rounded-xl text-xs font-bold cursor-not-allowed" disabled>Maintenance</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="fixed bottom-0 left-0 w-full bg-white border-t border-slate-150 p-5 flex justify-between items-center z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.03)] md:ml-sidebar-width" style="width: calc(100% - var(--tw-sidebar-width, 260px))">
+      <div class="flex flex-col">
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Selected Room</span>
+        <span class="font-bold text-slate-800 text-sm">Room 104 • $180.00 Total</span>
+      </div>
+      <button class="bg-primary text-white px-6 py-3 rounded-xl text-xs font-bold hover:brightness-110 transition-all shadow-md shadow-blue-500/10 flex items-center gap-2 active:scale-95">
+        <span>Review Reservation</span>
+        <span class="material-symbols-outlined text-sm">arrow_forward</span>
+      </button>
+    </div>
+  </main>
+\
+</body>
+</html>
