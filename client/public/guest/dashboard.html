@@ -132,6 +132,10 @@
             border-radius: 10px;
         }
     </style>
+<script type="module">
+  import { requireAuth } from '../assets/js/auth.js';
+  requireAuth();
+</script>
 </head>
 <body class="text-on-surface">
 <!-- SideNavBar (Desktop) -->
@@ -140,22 +144,21 @@
 <h1 class="font-headline-sm text-headline-sm font-black text-primary">AptSpace</h1>
 </div>
 <nav class="flex-1 px-3 space-y-1"><!-- Dashboard (Active) -->
-<a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 rounded-lg font-bold transition-all active:scale-95 duration-150" href="#">
-<span class="material-symbols-outlined">dashboard</span>
+<a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 rounded-lg font-bold transition-all active:scale-95 duration-150" href="./dashboard.html"><span class="material-symbols-outlined">dashboard</span>
 <span class="font-label-md text-label-md">Dashboard</span>
 </a>
 <!-- Reservations -->
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./reservations.html">
 <span class="material-symbols-outlined">event_available</span>
 <span class="font-label-md text-label-md">Reservations</span>
 </a>
 <!-- Facilities -->
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./facilitities.html">
 <span class="material-symbols-outlined">domain</span>
 <span class="font-label-md text-label-md">Facilities</span>
 </a>
 <!-- Settings -->
-<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="#">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./settings.html">
 <span class="material-symbols-outlined">settings</span>
 <span class="font-label-md text-label-md">Settings</span>
 </a></nav>
@@ -195,22 +198,22 @@
 </header>
 <!-- BottomNavBar (Mobile Only) -->
 <nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 pb-safe bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
-<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 touch-manipulation duration-200" href="#">
-<span class="material-symbols-outlined">home</span>
-<span class="font-label-sm text-[10px]">Home</span>
-</a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="#">
-<span class="material-symbols-outlined">add_circle</span>
-<span class="font-label-sm text-[10px]">Reserve</span>
-</a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="#">
-<span class="material-symbols-outlined">search</span>
-<span class="font-label-sm text-[10px]">Catalog</span>
-</a>
-<a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="#">
-<span class="material-symbols-outlined">person</span>
-<span class="font-label-sm text-[10px]">Profile</span>
-</a>
+  <a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 touch-manipulation duration-200" href="./dashboard.html">
+    <span class="material-symbols-outlined">home</span>
+    <span class="font-label-sm text-[10px]">Home</span>
+  </a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./reservations.html">
+    <span class="material-symbols-outlined">add_circle</span>
+    <span class="font-label-sm text-[10px]">Reserve</span>
+  </a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./facilitities.html">
+    <span class="material-symbols-outlined">search</span>
+    <span class="font-label-sm text-[10px]">Catalog</span>
+  </a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./settings.html">
+    <span class="material-symbols-outlined">person</span>
+    <span class="font-label-sm text-[10px]">Profile</span>
+  </a>
 </nav>
 <!-- Main Content Canvas -->
 <main class="pt-24 pb-24 md:pb-12 px-margin-mobile md:px-gutter md:ml-[260px] max-w-container-max mx-auto min-h-screen">

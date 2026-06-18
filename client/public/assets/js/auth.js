@@ -1,6 +1,5 @@
 import { login } from './api.js';
 
-// Call this at the top of every admin page to block unauthenticated access
 export function requireAuth() {
   if (!localStorage.getItem('token')) {
     const isAdmin = window.location.pathname.includes('/admin/');
@@ -13,10 +12,15 @@ export function requireAuth() {
   return true;
 }
 
-// Call this on the landing page and login page to skip them if already logged in
 export function redirectIfLoggedIn() {
   if (localStorage.getItem('token')) {
-    window.location.href = '/admin/dashboard.html';
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const role = user.role || '';
+    if (role === 'Super Admin' || role === 'Admin') {
+      window.location.href = '/admin/dashboard.html';
+    } else {
+      window.location.href = '/guest/dashboard.html';
+    }
   }
 }
 
@@ -34,7 +38,6 @@ export function doLogout() {
   window.location.href = '/login.html';
 }
 
-// Login form handler — only runs if loginForm exists on the page
 const form = document.getElementById('loginForm');
 if (form) {
   form.addEventListener('submit', async (e) => {
@@ -53,8 +56,13 @@ if (form) {
       const data = await login(email, password);
       localStorage.setItem('token', data.token);
       localStorage.setItem('user', JSON.stringify(data.user));
-      // absolute path so it works no matter what page we're on
-      window.location.href = '/admin/dashboard.html';
+
+      const role = data.user.role || '';
+      if (role === 'Super Admin' || role === 'Admin') {
+        window.location.href = '/admin/dashboard.html';
+      } else {
+        window.location.href = '/guest/dashboard.html';
+      }
     } catch (err) {
       if (errorEl) {
         errorEl.textContent = err.message || 'Invalid email or password';
