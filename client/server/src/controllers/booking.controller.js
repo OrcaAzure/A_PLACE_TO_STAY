@@ -3,7 +3,13 @@ import Booking from '../models/Booking.js';
 import { isEmpty } from '../utils/helpers.js';
 
 const bookingSelect = `
-  SELECT bk.*, u.full_name AS guest_name, r.room_number, b.name AS building_name
+  SELECT bk.*,
+         u.full_name AS guest_name,
+         u.email AS guest_email,
+         u.role AS guest_role,
+         r.room_number,
+         r.room_type,
+         b.name AS building_name
   FROM bookings bk
   JOIN users u ON bk.user_id = u.id
   JOIN rooms r ON bk.room_id = r.id

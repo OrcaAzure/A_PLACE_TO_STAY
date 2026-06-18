@@ -132,6 +132,42 @@ export function normalizeBooking(booking) {
   };
 }
 
+export function normalizeManageRequest(booking) {
+  const checkIn = booking.check_in || booking.checkIn;
+  const checkOut = booking.check_out || booking.checkOut;
+  const toDate = (value) => (value ? String(value).slice(0, 10) : null);
+
+  return {
+    id: booking.id,
+    displayId: `#APT-${booking.id}`,
+    title: booking.guest_name || `Booking #${booking.id}`,
+    status: (booking.status || 'Pending').toLowerCase(),
+    facility: {
+      building: booking.building_name || 'Unknown',
+      roomNumber: booking.room_number || '',
+      roomType: booking.room_type || 'Room',
+    },
+    schedule: {
+      checkIn: toDate(checkIn),
+      checkOut: toDate(checkOut),
+    },
+    guestCount: booking.guest_count,
+    notes: booking.notes,
+    season: booking.season,
+    occupancyItem: booking.occupancy_item,
+    requester: {
+      name: booking.guest_name || 'Unknown',
+      email: booking.guest_email || '',
+      role: booking.guest_role || 'Guest',
+    },
+    submittedAt: booking.created_at,
+    updatedAt: booking.updated_at,
+    totalAmount: booking.total_amount != null ? Number(booking.total_amount) : null,
+    roomId: booking.room_id,
+    userId: booking.user_id,
+  };
+}
+
 export function normalizeUser(user) {
   return {
     id: user.id,

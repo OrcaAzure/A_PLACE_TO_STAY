@@ -3,7 +3,7 @@
  * Follows the same feature-module pattern as timeline.js and reservations.js.
  */
 
-const LOADING_DELAY_MS = 400;
+import { getBookings, updateBooking, normalizeManageRequest } from './api.js';
 
 
 function debounce(fn, delayMs = 300) {
@@ -25,6 +25,16 @@ function formatDateRange(checkIn, checkOut) {
   const inStr = inDate.toLocaleDateString('en-US', opts);
   const outStr = outDate.toLocaleDateString('en-US', { ...opts, year: 'numeric' });
   return `${inStr} – ${outStr}`;
+}
+
+function formatDateOnly(dateStr) {
+  if (!dateStr) return '—';
+  const raw = String(dateStr).slice(0, 10);
+  return new Date(`${raw}T00:00:00`).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 }
 
 function formatDateTime(isoString) {
@@ -140,255 +150,12 @@ function createDefaultFilterState() {
   };
 }
 
-const now = Date.now();
-const hoursAgo = (h) => new Date(now - h * 60 * 60 * 1000).toISOString();
-const daysAgo = (d) => new Date(now - d * 24 * 60 * 60 * 1000).toISOString();
-
-const MOCK_MANAGE_REQUESTS = [
-  {
-    id: 2801,
-    title: 'THEOLOGY DEPT',
-    status: 'pending',
-    facility: { building: 'PCALM', roomNumber: '201', roomType: 'Superior Guest Room' },
-    schedule: { checkIn: '2026-06-02', checkOut: '2026-06-06', checkInTime: '09:00', checkOutTime: '17:00' },
-    guestCount: 12,
-    notes: 'Annual theology department retreat. Requires AV setup and breakout room access.',
-    requester: { name: 'Dr. James Whitfield', email: 'j.whitfield@seminary.edu', role: 'Faculty' },
-    submittedAt: hoursAgo(2),
-    updatedAt: hoursAgo(2),
-    totalAmount: 480,
-  },
-  {
-    id: 2802,
-    title: 'Graduate Research Symposium',
-    status: 'pending',
-    facility: { building: 'Main Chapel', roomNumber: 'Hall A', roomType: 'Assembly Hall' },
-    schedule: { checkIn: '2026-06-10', checkOut: '2026-06-11', checkInTime: '08:00', checkOutTime: '18:00' },
-    guestCount: 85,
-    notes: 'Multi-day symposium with keynote speakers. Catering will be arranged separately.',
-    requester: { name: 'Sarah Mitchell', email: 's.mitchell@seminary.edu', role: 'Graduate Office' },
-    submittedAt: hoursAgo(4),
-    updatedAt: hoursAgo(3),
-    totalAmount: 1200,
-  },
-  {
-    id: 2803,
-    title: 'WEEKLY FELLOWSHIP',
-    status: 'approved',
-    facility: { building: 'House', roomNumber: 'Lounge', roomType: 'Standard Apartment' },
-    schedule: { checkIn: '2026-06-04', checkOut: '2026-06-12', checkInTime: '19:00', checkOutTime: '21:00' },
-    guestCount: 25,
-    notes: null,
-    requester: { name: 'Mark Chen', email: 'm.chen@seminary.edu', role: 'Resident' },
-    submittedAt: daysAgo(3),
-    updatedAt: daysAgo(2),
-    totalAmount: 0,
-  },
-  {
-    id: 2804,
-    title: 'Youth Ministry Workshop',
-    status: 'pending',
-    facility: { building: 'Student Ctr', roomNumber: '302', roomType: 'Conference Room' },
-    schedule: { checkIn: '2026-06-15', checkOut: '2026-06-15', checkInTime: '10:00', checkOutTime: '16:00' },
-    guestCount: 30,
-    notes: 'Interactive workshop for youth pastors. Whiteboard and projector needed.',
-    requester: { name: 'Emily Rodriguez', email: 'e.rodriguez@seminary.edu', role: 'Faculty' },
-    submittedAt: hoursAgo(6),
-    updatedAt: hoursAgo(6),
-    totalAmount: 150,
-  },
-  {
-    id: 2805,
-    title: 'Choir Rehearsal Block',
-    status: 'pending',
-    facility: { building: 'Main Chapel', roomNumber: 'Sanctuary', roomType: 'Worship Space' },
-    schedule: { checkIn: '2026-06-08', checkOut: '2026-06-08', checkInTime: '14:00', checkOutTime: '17:00' },
-    guestCount: 40,
-    notes: 'Weekly choir rehearsal. Piano is already in the room.',
-    requester: { name: 'David Park', email: 'd.park@seminary.edu', role: 'Staff' },
-    submittedAt: hoursAgo(8),
-    updatedAt: hoursAgo(8),
-    totalAmount: 75,
-  },
-  {
-    id: 2806,
-    title: 'HVAC SYSTEM UPGRADE',
-    status: 'pending',
-    facility: { building: 'PCALM', roomNumber: '204', roomType: 'Superior Guest Room' },
-    schedule: { checkIn: '2026-06-09', checkOut: '2026-06-14', checkInTime: '07:00', checkOutTime: '17:00' },
-    guestCount: 4,
-    notes: 'Scheduled maintenance window. Room will be unavailable during this period.',
-    requester: { name: 'Facilities Team', email: 'facilities@seminary.edu', role: 'Staff' },
-    submittedAt: hoursAgo(12),
-    updatedAt: hoursAgo(12),
-    totalAmount: 0,
-  },
-  {
-    id: 2807,
-    title: 'Library Study Group',
-    status: 'pending',
-    facility: { building: 'Library', roomNumber: 'Study B', roomType: 'Study Room' },
-    schedule: { checkIn: '2026-06-05', checkOut: '2026-06-05', checkInTime: '13:00', checkOutTime: '15:00' },
-    guestCount: 8,
-    notes: null,
-    requester: { name: 'Anna Kowalski', email: 'a.kowalski@seminary.edu', role: 'Resident' },
-    submittedAt: hoursAgo(1),
-    updatedAt: hoursAgo(1),
-    totalAmount: 0,
-  },
-  {
-    id: 2808,
-    title: 'Board of Trustees Meeting',
-    status: 'pending',
-    facility: { building: 'Main Bldg', roomNumber: 'Boardroom', roomType: 'Executive Suite' },
-    schedule: { checkIn: '2026-06-20', checkOut: '2026-06-20', checkInTime: '09:00', checkOutTime: '14:00' },
-    guestCount: 15,
-    notes: 'Quarterly board meeting. Lunch service at 12:00. Confidential materials — restricted access.',
-    requester: { name: 'President Office', email: 'president@seminary.edu', role: 'Administration' },
-    submittedAt: hoursAgo(18),
-    updatedAt: hoursAgo(18),
-    totalAmount: 500,
-  },
-  {
-    id: 2809,
-    title: 'Dorm A Game Night',
-    status: 'pending',
-    facility: { building: 'Dorm A', roomNumber: 'Common', roomType: 'Common Area' },
-    schedule: { checkIn: '2026-06-07', checkOut: '2026-06-07', checkInTime: '20:00', checkOutTime: '23:00' },
-    guestCount: 50,
-    notes: 'Resident-organized social event.',
-    requester: { name: 'Tom Bradley', email: 't.bradley@seminary.edu', role: 'Resident' },
-    submittedAt: hoursAgo(5),
-    updatedAt: hoursAgo(5),
-    totalAmount: 0,
-  },
-  {
-    id: 2810,
-    title: 'Mission Trip Orientation',
-    status: 'pending',
-    facility: { building: 'Student Ctr', roomNumber: 'Auditorium', roomType: 'Lecture Hall' },
-    schedule: { checkIn: '2026-06-12', checkOut: '2026-06-12', checkInTime: '10:00', checkOutTime: '12:00' },
-    guestCount: 120,
-    notes: 'Pre-departure briefing for summer mission teams.',
-    requester: { name: 'Rev. Linda Hayes', email: 'l.hayes@seminary.edu', role: 'Faculty' },
-    submittedAt: hoursAgo(24),
-    updatedAt: hoursAgo(20),
-    totalAmount: 0,
-  },
-  {
-    id: 2811,
-    title: 'Counseling Practicum Session',
-    status: 'pending',
-    facility: { building: 'PCALM', roomNumber: '105', roomType: 'Counseling Suite' },
-    schedule: { checkIn: '2026-06-03', checkOut: '2026-06-03', checkInTime: '09:00', checkOutTime: '12:00' },
-    guestCount: 6,
-    notes: 'Supervised practicum. Privacy required.',
-    requester: { name: 'Dr. Patricia Moore', email: 'p.moore@seminary.edu', role: 'Faculty' },
-    submittedAt: hoursAgo(3),
-    updatedAt: hoursAgo(3),
-    totalAmount: 90,
-  },
-  {
-    id: 2812,
-    title: 'Seminar Hall B — Guest Lecture',
-    status: 'rejected',
-    facility: { building: 'Main Bldg', roomNumber: 'Seminar B', roomType: 'Lecture Hall' },
-    schedule: { checkIn: '2026-06-18', checkOut: '2026-06-18', checkInTime: '14:00', checkOutTime: '16:00' },
-    guestCount: 60,
-    notes: 'External speaker event. Rejected due to scheduling conflict.',
-    requester: { name: 'Academic Affairs', email: 'academic@seminary.edu', role: 'Administration' },
-    submittedAt: daysAgo(5),
-    updatedAt: daysAgo(4),
-    totalAmount: 200,
-  },
-  {
-    id: 2813,
-    title: 'Faculty Prayer Breakfast',
-    status: 'pending',
-    facility: { building: 'House', roomNumber: 'Dining', roomType: 'Dining Hall' },
-    schedule: { checkIn: '2026-06-06', checkOut: '2026-06-06', checkInTime: '07:30', checkOutTime: '09:00' },
-    guestCount: 35,
-    notes: 'Monthly faculty gathering. Kitchen access required.',
-    requester: { name: 'Dean of Faculty', email: 'dean@seminary.edu', role: 'Administration' },
-    submittedAt: hoursAgo(10),
-    updatedAt: hoursAgo(10),
-    totalAmount: 175,
-  },
-  {
-    id: 2814,
-    title: 'Archives Research Access',
-    status: 'pending',
-    facility: { building: 'Library', roomNumber: 'Archives', roomType: 'Special Collections' },
-    schedule: { checkIn: '2026-06-11', checkOut: '2026-06-13', checkInTime: '09:00', checkOutTime: '17:00' },
-    guestCount: 2,
-    notes: 'Visiting scholar requires supervised access to special collections.',
-    requester: { name: 'Library Services', email: 'library@seminary.edu', role: 'Staff' },
-    submittedAt: hoursAgo(15),
-    updatedAt: hoursAgo(15),
-    totalAmount: 0,
-  },
-  {
-    id: 2815,
-    title: 'Summer Intensive — Hermeneutics',
-    status: 'pending',
-    facility: { building: 'PCALM', roomNumber: '301', roomType: 'Classroom' },
-    schedule: { checkIn: '2026-06-16', checkOut: '2026-06-20', checkInTime: '08:30', checkOutTime: '16:30' },
-    guestCount: 28,
-    notes: 'Week-long intensive course. Daily setup needed.',
-    requester: { name: 'Dr. Robert Ellis', email: 'r.ellis@seminary.edu', role: 'Faculty' },
-    submittedAt: hoursAgo(7),
-    updatedAt: hoursAgo(7),
-    totalAmount: 840,
-  },
-  {
-    id: 2816,
-    title: 'Worship Team Practice',
-    status: 'pending',
-    facility: { building: 'Main Chapel', roomNumber: 'Choir Room', roomType: 'Rehearsal Space' },
-    schedule: { checkIn: '2026-06-04', checkOut: '2026-06-04', checkInTime: '18:00', checkOutTime: '20:00' },
-    guestCount: 12,
-    notes: null,
-    requester: { name: 'Worship Ministry', email: 'worship@seminary.edu', role: 'Staff' },
-    submittedAt: hoursAgo(9),
-    updatedAt: hoursAgo(9),
-    totalAmount: 0,
-  },
-  {
-    id: 2817,
-    title: 'Alumni Weekend Reception',
-    status: 'pending',
-    facility: { building: 'Student Ctr', roomNumber: 'Atrium', roomType: 'Event Space' },
-    schedule: { checkIn: '2026-06-22', checkOut: '2026-06-22', checkInTime: '17:00', checkOutTime: '21:00' },
-    guestCount: 200,
-    notes: 'Annual alumni reception. Full AV and catering coordination required.',
-    requester: { name: 'Alumni Relations', email: 'alumni@seminary.edu', role: 'Staff' },
-    submittedAt: hoursAgo(36),
-    updatedAt: hoursAgo(36),
-    totalAmount: 2500,
-  },
-  {
-    id: 2818,
-    title: 'Cancelled Retreat Planning',
-    status: 'cancelled',
-    facility: { building: 'Dorm B', roomNumber: 'Lounge', roomType: 'Common Area' },
-    schedule: { checkIn: '2026-06-14', checkOut: '2026-06-14', checkInTime: '15:00', checkOutTime: '17:00' },
-    guestCount: 10,
-    notes: 'Requester cancelled before review.',
-    requester: { name: 'Student Council', email: 'council@seminary.edu', role: 'Resident' },
-    submittedAt: daysAgo(2),
-    updatedAt: daysAgo(1),
-    totalAmount: 0,
-  },
-];
-
-function getMockRequests() {
-  return MOCK_MANAGE_REQUESTS.map((r) => ({
-    ...r,
-    displayId: `#APT-${r.id}`,
-    facility: { ...r.facility },
-    schedule: { ...r.schedule },
-    requester: { ...r.requester },
-  }));
+function syncPagePendingBadges(requests) {
+  const pending = countPending(requests);
+  const actionCard = document.getElementById('pending-count');
+  if (actionCard) actionCard.textContent = `${pending} ACTION REQUIRED`;
+  const kpi = document.getElementById('kpi-pending-count');
+  if (kpi) kpi.textContent = String(pending);
 }
 
 function renderStatusBadge(status) {
@@ -449,8 +216,18 @@ function renderListEmptyState() {
   return `
     <div class="py-16 px-4 text-center">
       <span class="material-symbols-outlined text-[48px] text-on-surface-variant/40">inbox</span>
-      <p class="text-body-sm font-bold text-on-surface mt-4">No pending requests</p>
-      <p class="text-body-sm text-on-surface-variant mt-1">All facility booking requests have been reviewed.</p>
+      <p class="text-body-sm font-bold text-on-surface mt-4">No reservation requests</p>
+      <p class="text-body-sm text-on-surface-variant mt-1">There are no bookings in the system yet.</p>
+    </div>
+  `;
+}
+
+function renderListErrorState(message) {
+  return `
+    <div class="py-16 px-4 text-center">
+      <span class="material-symbols-outlined text-[48px] text-error/60">error</span>
+      <p class="text-body-sm font-bold text-error mt-4">Could not load requests</p>
+      <p class="text-body-sm text-on-surface-variant mt-1">${escapeHtml(message)}</p>
     </div>
   `;
 }
@@ -476,9 +253,6 @@ function renderRequestDetail(request) {
   }
 
   const facilityLabel = `${request.facility.building} — ${request.facility.roomNumber}`;
-  const timeRange = request.schedule.checkInTime && request.schedule.checkOutTime
-    ? `${request.schedule.checkInTime} – ${request.schedule.checkOutTime}`
-    : null;
 
   return `
     <div class="manage-requests-detail-content">
@@ -500,16 +274,21 @@ function renderRequestDetail(request) {
         <dl class="space-y-2.5">
           <div class="flex gap-2">
             <dt class="text-body-sm text-on-surface-variant w-28 shrink-0">Check-in</dt>
-            <dd class="text-body-sm text-on-surface">${escapeHtml(formatDateTime(request.schedule.checkIn + 'T' + (request.schedule.checkInTime || '00:00') + ':00'))}</dd>
+            <dd class="text-body-sm text-on-surface">${escapeHtml(formatDateOnly(request.schedule.checkIn))}</dd>
           </div>
           <div class="flex gap-2">
             <dt class="text-body-sm text-on-surface-variant w-28 shrink-0">Check-out</dt>
-            <dd class="text-body-sm text-on-surface">${escapeHtml(formatDateTime(request.schedule.checkOut + 'T' + (request.schedule.checkOutTime || '00:00') + ':00'))}</dd>
+            <dd class="text-body-sm text-on-surface">${escapeHtml(formatDateOnly(request.schedule.checkOut))}</dd>
           </div>
-          ${timeRange ? `
+          ${request.season ? `
           <div class="flex gap-2">
-            <dt class="text-body-sm text-on-surface-variant w-28 shrink-0">Daily hours</dt>
-            <dd class="text-body-sm text-on-surface">${escapeHtml(timeRange)}</dd>
+            <dt class="text-body-sm text-on-surface-variant w-28 shrink-0">Season</dt>
+            <dd class="text-body-sm text-on-surface">${escapeHtml(request.season)}</dd>
+          </div>` : ''}
+          ${request.occupancyItem ? `
+          <div class="flex gap-2">
+            <dt class="text-body-sm text-on-surface-variant w-28 shrink-0">Occupancy</dt>
+            <dd class="text-body-sm text-on-surface">${escapeHtml(request.occupancyItem)}</dd>
           </div>` : ''}
           <div class="flex gap-2">
             <dt class="text-body-sm text-on-surface-variant w-28 shrink-0">Facility</dt>
@@ -628,11 +407,27 @@ function syncFilterControls(filter) {
   if (facility && facility.value !== filter.facilityFilter) facility.value = filter.facilityFilter;
 }
 
-function updateActionButtons(hasSelection) {
+function updateActionButtons(hasSelection, isPending, isActionLoading) {
   const approve = document.getElementById('manage-requests-approve');
   const reject = document.getElementById('manage-requests-reject');
-  if (approve) approve.disabled = !hasSelection;
-  if (reject) reject.disabled = !hasSelection;
+  const disabled = !hasSelection || !isPending || isActionLoading;
+  if (approve) approve.disabled = disabled;
+  if (reject) reject.disabled = disabled;
+}
+
+function updateActionFeedback(message, type = 'info') {
+  const el = document.getElementById('manage-requests-action-feedback');
+  if (!el) return;
+  if (!message) {
+    el.classList.add('hidden');
+    el.textContent = '';
+    return;
+  }
+  el.textContent = message;
+  el.classList.remove('hidden', 'text-error', 'text-secondary', 'text-on-surface-variant');
+  if (type === 'error') el.classList.add('text-error', 'font-bold');
+  else if (type === 'success') el.classList.add('text-secondary', 'font-bold');
+  else el.classList.add('text-on-surface-variant');
 }
 
 function setLoadingVisible(isLoading) {
@@ -670,19 +465,32 @@ function renderModal(state) {
   syncFilterControls(state.filter);
 
   if (!requests.length) {
-    listEl.innerHTML = renderListEmptyState();
+    listEl.innerHTML = state.error
+      ? renderListErrorState(state.error)
+      : renderListEmptyState();
   } else {
     listEl.innerHTML = renderRequestList(filteredRequests, selectedRequestId);
   }
 
   const selected = filteredRequests.find((r) => String(r.id) === String(selectedRequestId));
+  const isPending = selected?.status === 'pending';
 
   if (!selectedRequestId || !selected) {
     detailEl.innerHTML = renderDetailEmptyState();
-    updateActionButtons(false);
+    updateActionButtons(false, false, state.actionLoading);
   } else {
     detailEl.innerHTML = renderRequestDetail(selected);
-    updateActionButtons(true);
+    updateActionButtons(true, isPending, state.actionLoading);
+  }
+
+  if (state.actionLoading) {
+    updateActionFeedback('Updating booking…', 'info');
+  } else if (state.actionMessage) {
+    updateActionFeedback(state.actionMessage.text, state.actionMessage.type);
+  } else if (state.error && requests.length) {
+    updateActionFeedback(state.error, 'error');
+  } else {
+    updateActionFeedback('', 'info');
   }
 
   if (bodyEl) {
@@ -699,6 +507,8 @@ let state = {
   filter: createDefaultFilterState(),
   error: null,
   mobileDetailView: false,
+  actionLoading: false,
+  actionMessage: null,
 };
 
 let initialized = false;
@@ -742,24 +552,36 @@ function resetState() {
   state.selectedRequestId = null;
   state.mobileDetailView = false;
   state.error = null;
+  state.actionLoading = false;
+  state.actionMessage = null;
   recomputeFiltered();
   reconcileSelection();
 }
 
 async function refreshRequests() {
   state.isLoading = true;
+  state.error = null;
+  state.actionMessage = null;
   render();
 
-  await new Promise((resolve) => setTimeout(resolve, LOADING_DELAY_MS));
-
-  state.requests = getMockRequests().map(enrichRequest);
-  recomputeFiltered();
-  reconcileSelection();
-  if (!state.selectedRequestId && state.filteredRequests.length) {
-    state.selectedRequestId = state.filteredRequests[0].id;
+  try {
+    const bookings = await getBookings();
+    state.requests = bookings.map((booking) => enrichRequest(normalizeManageRequest(booking)));
+    recomputeFiltered();
+    reconcileSelection();
+    if (!state.selectedRequestId && state.filteredRequests.length) {
+      state.selectedRequestId = state.filteredRequests[0].id;
+    }
+    syncPagePendingBadges(state.requests);
+  } catch (err) {
+    state.error = err.message || 'Failed to load requests.';
+    state.requests = [];
+    state.filteredRequests = [];
+    state.selectedRequestId = null;
+  } finally {
+    state.isLoading = false;
+    render();
   }
-  state.isLoading = false;
-  render();
 }
 
 function getFocusableElements() {
@@ -869,12 +691,39 @@ export function closeManageRequestsModal() {
   window.dispatchEvent(new CustomEvent('manage-requests:closed'));
 }
 
-function handleApproveStub() {
-  if (!state.selectedRequestId) return;
+async function handleBookingAction(newStatus) {
+  if (!state.selectedRequestId || state.actionLoading) return;
+
+  const selected = getRequestById(state.filteredRequests, state.selectedRequestId);
+  if (!selected || selected.status !== 'pending') return;
+
+  state.actionLoading = true;
+  state.error = null;
+  render();
+
+  try {
+    await updateBooking(state.selectedRequestId, { status: newStatus });
+    window.dispatchEvent(new CustomEvent('booking:updated', {
+      detail: { id: state.selectedRequestId, status: newStatus },
+    }));
+    await refreshRequests();
+    state.actionMessage = { text: `Booking ${newStatus.toLowerCase()}.`, type: 'success' };
+    render();
+  } catch (err) {
+    state.error = err.message || 'Could not update booking. Please try again.';
+    render();
+  } finally {
+    state.actionLoading = false;
+    render();
+  }
 }
 
-function handleRejectStub() {
-  if (!state.selectedRequestId) return;
+function handleApprove() {
+  handleBookingAction('Approved');
+}
+
+function handleReject() {
+  handleBookingAction('Rejected');
 }
 
 function clearFilters() {
@@ -965,8 +814,8 @@ export function initManageRequestsModal() {
     refreshRequests();
   });
 
-  document.getElementById('manage-requests-approve')?.addEventListener('click', handleApproveStub);
-  document.getElementById('manage-requests-reject')?.addEventListener('click', handleRejectStub);
+  document.getElementById('manage-requests-approve')?.addEventListener('click', handleApprove);
+  document.getElementById('manage-requests-reject')?.addEventListener('click', handleReject);
   document.getElementById('manage-requests-filters-toggle')?.addEventListener('click', toggleMobileFilters);
 
   document.getElementById('manage-requests-modal')?.addEventListener('click', (e) => {
@@ -994,9 +843,5 @@ export function initManageRequestsModal() {
   });
 
   document.addEventListener('keydown', handleKeydown);
-
-  state.requests = getMockRequests().map(enrichRequest);
-  recomputeFiltered();
-  render();
 }
 
