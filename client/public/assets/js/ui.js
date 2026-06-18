@@ -1,4 +1,5 @@
 import { updateBooking } from './api.js';
+import { initManageRequestsModal, isManageRequestsModalOpen, closeManageRequestsModal } from './manage-requests.js';
 
 export const ADMIN_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: './dashboard.html' },
@@ -69,11 +70,12 @@ export async function initAppLayout(config = {}) {
     : `${base}admin/dashboard.html`;
   const propertyLabel = portal === 'admin' ? 'Property Portal' : 'Admin Portal';
 
-  const [sidebarTpl, headerTpl, drawerTpl, modalTpl, notifTpl] = await Promise.all([
+  const [sidebarTpl, headerTpl, drawerTpl, modalTpl, manageRequestsTpl, notifTpl] = await Promise.all([
     loadComponent(`${base}components/sidebar.html`),
     loadComponent(`${base}components/header.html`),
     loadComponent(`${base}components/drawer.html`),
     loadComponent(`${base}components/modal.html`),
+    loadComponent(`${base}components/manage-requests-modal.html`),
     loadComponent(`${base}components/notifications.html`),
   ]);
 
@@ -102,11 +104,13 @@ export async function initAppLayout(config = {}) {
     </main>
     ${drawerTpl}
     ${modalTpl}
+    ${manageRequestsTpl}
     ${notifTpl}
     <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[45]"></div>
   `;
 
   bindLayoutEvents(base);
+  initManageRequestsModal();
 }
 
 function bindLayoutEvents(base) {
@@ -134,7 +138,7 @@ function bindLayoutEvents(base) {
   });
 
   document.getElementById('drawer-close')?.addEventListener('click', closeDrawer);
-  document.getElementById('drawer-overlay')?.addEventListener('click', closeDrawer);
+  document.getElementById('drawerOverlay')?.addEventListener('click', closeDrawer);
   document.getElementById('drawer-approve-btn')?.addEventListener('click', () => handleBookingAction('Approved'));
   document.getElementById('drawer-reject-btn')?.addEventListener('click', () => handleBookingAction('Rejected'));
   document.getElementById('modal-close')?.addEventListener('click', closeModal);
@@ -146,6 +150,10 @@ function bindLayoutEvents(base) {
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
+      if (isManageRequestsModalOpen()) {
+        closeManageRequestsModal();
+        return;
+      }
       closeDrawer();
       closeModal();
       closeSidebar();

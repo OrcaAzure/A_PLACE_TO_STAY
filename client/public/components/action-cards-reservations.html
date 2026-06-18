@@ -1,5 +1,5 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-  <button type="button" class="w-full group bg-white p-5 rounded-xl border border-outline-variant shadow-sm hover:border-primary hover:shadow-md transition-all text-left flex flex-col gap-4 items-stretch">
+  <button type="button" data-open-manage-requests class="w-full group bg-white p-5 rounded-xl border border-outline-variant shadow-sm hover:border-primary hover:shadow-md transition-all text-left flex flex-col gap-4 items-stretch">
     <div class="w-12 h-12 bg-primary-container/10 text-primary rounded-lg flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-colors">
       <span class="material-symbols-outlined text-[28px]">verified</span>
     </div>
@@ -8,7 +8,7 @@
       <p class="text-body-sm text-on-surface-variant mt-1">Review and action pending facility bookings.</p>
     </div>
     <div class="mt-auto pt-4 border-t border-outline-variant/30 flex items-center justify-between">
-      <span class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold">18 ACTION REQUIRED</span>
+      <span id="pending-count" class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold">18 ACTION REQUIRED</span>
       <span class="material-symbols-outlined text-primary">arrow_forward</span>
     </div>
   </button>
