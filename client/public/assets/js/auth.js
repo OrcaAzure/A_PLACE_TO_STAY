@@ -1,14 +1,32 @@
 import { login } from './api.js';
 
 export function requireAuth() {
-  if (!localStorage.getItem('token')) {
-    const isAdmin = window.location.pathname.includes('/admin/');
-    const isGuest = window.location.pathname.includes('/guest/');
+  const token = localStorage.getItem('token');
+  const isAdmin = window.location.pathname.includes('/admin/');
+  const isGuest = window.location.pathname.includes('/guest/');
+
+  if (!token) {
     if (isAdmin || isGuest) {
       window.location.href = '/login.html';
     }
     return false;
   }
+
+  // Also enforce role-based access
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const role = user.role || '';
+  const isAdminRole = role === 'Super Admin' || role === 'Admin';
+
+  if (isAdmin && !isAdminRole) {
+    window.location.href = '/guest/dashboard.html';
+    return false;
+  }
+
+  if (isGuest && isAdminRole) {
+    window.location.href = '/admin/dashboard.html';
+    return false;
+  }
+
   return true;
 }
 
