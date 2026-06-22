@@ -152,8 +152,7 @@
     </style>
 </head>
 <body class="bg-background text-on-surface font-body-md overflow-x-hidden">
-
-<!-- TopNavBar — CHANGED: removed fake profile photo, search bar, notifications/settings; added Log In button -->
+<!-- TopNavBar -->
 <header class="bg-white/80 dark:bg-surface/80 backdrop-blur-md docked full-width top-0 sticky z-50 border-b border-outline-variant/30 dark:border-outline/20">
 <div class="flex justify-between items-center w-full px-gutter max-w-container-max mx-auto h-16">
 <div class="flex items-center gap-8">
@@ -164,12 +163,19 @@
 <a class="text-on-surface-variant hover:text-primary transition-colors text-label-md font-label-md" href="#contact">Contact</a>
 </nav>
 </div>
+<div class="flex items-center gap-4">
+<div class="hidden sm:flex items-center bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant/50">
+<span class="material-symbols-outlined text-on-surface-variant text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm w-32 lg:w-48" placeholder="Search facilities..." type="text"/>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all">settings</button>
 <a href="/login.html" class="px-5 py-2 bg-primary text-white rounded-lg text-label-md font-medium hover:bg-primary/90 transition-colors">
   Log In
 </a>
 </div>
+</div>
 </header>
-
 <main>
 <!-- Hero Section -->
 <section class="relative min-h-[85vh] flex items-center overflow-hidden">
