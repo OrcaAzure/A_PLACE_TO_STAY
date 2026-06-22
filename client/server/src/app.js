@@ -25,7 +25,8 @@ app.get('/api', (req, res) => {
   res.json({ message: 'AptSpace API is running' });
 });
 
-app.use('/api/auth',     authRoutes);
+app.use('/api/users',    userRoutes);
+app.use('/api/payments', (req, res) => res.json({ payments: [] }));
 app.use('/api/rooms',    roomRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/users',    userRoutes);

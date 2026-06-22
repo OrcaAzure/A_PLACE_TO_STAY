@@ -1,13 +1,11 @@
 <!DOCTYPE html>
-
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Settings | AptSpace</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script id="tailwind-config">
       tailwind.config = {
         darkMode: "class",
@@ -142,19 +140,19 @@
 <h1 class="font-headline-md text-headline-md font-black text-primary">AptSpace</h1>
 </div>
 <nav class="flex-1 px-sm space-y-1">
-<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="#">
+<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="./dashboard.html">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
 <span class="font-label-md text-label-md">Dashboard</span>
 </a>
-<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="#">
+<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="./reservations.html">
 <span class="material-symbols-outlined" data-icon="event_available">event_available</span>
 <span class="font-label-md text-label-md">Reservations</span>
 </a>
-<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="#">
+<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="./facilities.html">
 <span class="material-symbols-outlined" data-icon="apartment">domain</span>
 <span class="font-label-md text-label-md">Facilities</span>
 </a>
-<a class="sidebar-active flex items-center gap-md py-3 px-md rounded-lg transition-all" href="#">
+<a class="sidebar-active flex items-center gap-md py-3 px-md rounded-lg transition-all" href="./settings.html">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
 <span class="font-label-md text-label-md">Settings</span>
 </a>
@@ -165,8 +163,8 @@
 <span class="material-symbols-outlined text-primary" data-icon="account_circle">account_circle</span>
 </div>
 <div class="overflow-hidden">
-<p class="font-label-md text-label-md truncate">Guest User</p>
-<p class="font-label-sm text-label-sm text-on-surface-variant truncate">Logout</p>
+<p class="font-label-md text-label-md truncate" id="sidebar-user-name">Guest User</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer" id="logout-btn">Logout</p>
 </div>
 </div>
 </div>
@@ -184,8 +182,8 @@
 <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-sm" data-icon="search">search</span>
 <input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-label-md focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search settings..." type="text"/>
 </div>
-<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span><span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="help">help</span>
-<img class="w-8 h-8 rounded-full object-cover" data-alt="A clean, professional headshot of a student in academic business casual attire, soft natural lighting from a window, high-key minimalist background, representative of the theological seminary's professional standards, modern digital portrait style." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBaGK6uUnPZt0m6e84faHctFIQn-aWDYfUs3wQgHq1vm-ubbB8iqPyMeuuE2MkfotTsv6vHwvMcCCzo7ssaUPEtr0Aln0vceeEzpxhROcwVkFqz6eNA1uik-Hx4ZxIebh0uA13hQp68SZnFgIu4Kg9JY778_8ukWGBDEUUVbH7RmtvTylllBz6ly7D4Zqa4S5mItN7sMhifn86I0m_evMS-Lqh8DvfTl_2owh60B_xyTC0QGW62TE6wB-5ddDrd44irljN5PtPOIUKX"/>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="help">help</span>
 </div>
 </header>
 <main class="flex-1 p-lg max-w-[1000px] mx-auto w-full">
@@ -202,7 +200,7 @@
 <!-- Profile Picture Section -->
 <div class="flex flex-col md:flex-row items-center gap-xl mb-xl">
 <div class="relative">
-<img class="w-32 h-32 rounded-lg object-cover bg-surface-container border border-outline-variant" data-alt="A sophisticated placeholder avatar with a clean white and soft blue gradient background, featuring a subtle geometric pattern reminiscent of modern enterprise software, high resolution, minimalist aesthetic, professional lighting." id="avatar-preview" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5rLHL9vvMhQE1nQQlK8H1Z3O_8DbQXbMrdDZFAjXQCvjXHo6yPhpESrynM3HWgVjOczmK5ar2PyR2_SHINP8xzmGuQGk5NLDjBYe-0d3hRB06MMB0VRswUb5tXR2Idvi591ghJiCeG7tBZLcqnbFUoGpPXlEDFI_NY0lPi5VmXJKEO6uqjgsdI8YTLuXTbqJWEsVDWrhTZXWmNzvUZrSMxRplBpMtDo7hQ3I4Hz1O9MgVc2J2KO5NsQbluGfPsDiHh7JfEj77TLM4"/>
+<img class="w-32 h-32 rounded-lg object-cover bg-surface-container border border-outline-variant" id="avatar-preview" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5rLHL9vvMhQE1nQQlK8H1Z3O_8DbQXbMrdDZFAjXQCvjXHo6yPhpESrynM3HWgVjOczmK5ar2PyR2_SHINP8xzmGuQGk5NLDjBYe-0d3hRB06MMB0VRswUb5tXR2Idvi591ghJiCeG7tBZLcqnbFUoGpPXlEDFI_NY0lPi5VmXJKEO6uqjgsdI8YTLuXTbqJWEsVDWrhTZXWmNzvUZrSMxRplBpMtDo7hQ3I4Hz1O9MgVc2J2KO5NsQbluGfPsDiHh7JfEj77TLM4"/>
 <div class="absolute -bottom-2 -right-2 bg-primary text-on-primary p-2 rounded-lg shadow-lg">
 <span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
 </div>
@@ -219,11 +217,11 @@
 <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
 <div class="space-y-xs">
 <label class="font-label-md text-label-md text-on-surface-variant">Full Name</label>
-<input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="text" value="Samuel Thompson"/>
+<input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="text" id="settings-name" value="Guest User"/>
 </div>
 <div class="space-y-xs">
 <label class="font-label-md text-label-md text-on-surface-variant">Email Address</label>
-<input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="email" value="samuel.thompson@apts.edu"/>
+<input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="email" id="settings-email" value=""/>
 </div>
 <div class="space-y-xs">
 <label class="font-label-md text-label-md text-on-surface-variant">Contact Number</label>
@@ -250,7 +248,6 @@
 <div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg">
 <h3 class="font-headline-sm text-headline-sm mb-lg">Notification Preferences</h3>
 <div class="space-y-md">
-<!-- Email Toggle -->
 <div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
 <div>
 <p class="font-label-md text-label-md">Email Notifications</p>
@@ -261,7 +258,6 @@
 <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
 </label>
 </div>
-<!-- SMS Toggle -->
 <div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
 <div>
 <p class="font-label-md text-label-md">SMS Notifications</p>
@@ -272,7 +268,6 @@
 <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
 </label>
 </div>
-<!-- Reminders Toggle -->
 <div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
 <div>
 <p class="font-label-md text-label-md">Reservation Reminders</p>
@@ -328,22 +323,24 @@
 </section>
 </main>
 <!-- Footer -->
-<footer class="mt-auto p-lg text-center text-on-surface-variant font-label-sm text-label-sm border-t border-outline-variant opacity-60"><div class="flex flex-col md:flex-row justify-between items-center gap-md">
-<p class="">© 2024 Asia Pacific Theological Seminary - AptSpace. All rights reserved.</p>
+<footer class="mt-auto p-lg text-center text-on-surface-variant font-label-sm text-label-sm border-t border-outline-variant opacity-60">
+<div class="flex flex-col md:flex-row justify-between items-center gap-md">
+<p>© 2024 Asia Pacific Theological Seminary - AptSpace. All rights reserved.</p>
 <div class="flex gap-lg">
 <a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
 <a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
 <a class="hover:text-primary transition-colors" href="#">Contact Support</a>
 </div>
-</div></footer>
 </div>
-<!-- Mobile Bottom NavBar (Hidden on Desktop) -->
+</footer>
+</div>
+<!-- Mobile Bottom NavBar -->
 <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant flex justify-around items-center h-16 px-md z-50">
-<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<button class="flex flex-col items-center gap-1 text-on-surface-variant" onclick="window.location.href='./dashboard.html'">
 <span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
 <span class="text-[10px] font-label-sm">Dashboard</span>
 </button>
-<button class="flex flex-col items-center gap-1 text-on-surface-variant">
+<button class="flex flex-col items-center gap-1 text-on-surface-variant" onclick="window.location.href='./reservations.html'">
 <span class="material-symbols-outlined" data-icon="event_available">event_available</span>
 <span class="text-[10px] font-label-sm">Bookings</span>
 </button>
@@ -352,32 +349,49 @@
 <span class="text-[10px] font-label-sm">Settings</span>
 </button>
 </nav>
-<script>
-        function switchTab(tabName) {
-            const tabs = ['profile', 'notifications', 'security'];
-            
-            tabs.forEach(t => {
-                const content = document.getElementById(`tab-${t}`);
-                const btn = document.getElementById(`btn-${t}`);
-                
-                if(t === tabName) {
-                    content.classList.remove('hidden');
-                    btn.classList.add('tab-active');
-                    btn.classList.remove('text-on-surface-variant');
-                } else {
-                    content.classList.add('hidden');
-                    btn.classList.remove('tab-active');
-                    btn.classList.add('text-on-surface-variant');
-                }
-            });
-        }
+<script type="module">
+  import { requireAuth, doLogout, getCurrentUser } from '../assets/js/auth.js';
 
-        // Add micro-interaction for primary button
-        document.querySelector('button.bg-primary').addEventListener('mousedown', function() {
-            this.style.transform = 'scale(0.96)';
-        });
-        document.querySelector('button.bg-primary').addEventListener('mouseup', function() {
-            this.style.transform = 'scale(1)';
-        });
-    </script>
+  requireAuth();
+
+  // Populate user info from localStorage
+  const user = getCurrentUser();
+  if (user) {
+    const nameEl = document.getElementById('settings-name');
+    const emailEl = document.getElementById('settings-email');
+    const sidebarName = document.getElementById('sidebar-user-name');
+    if (nameEl) nameEl.value = user.full_name || user.name || '';
+    if (emailEl) emailEl.value = user.email || '';
+    if (sidebarName) sidebarName.textContent = user.full_name || user.name || 'Guest User';
+  }
+
+  document.getElementById('logout-btn')?.addEventListener('click', () => doLogout());
+
+  // Original tab switching
+  function switchTab(tabName) {
+    const tabs = ['profile', 'notifications', 'security'];
+    tabs.forEach(t => {
+      const content = document.getElementById(`tab-${t}`);
+      const btn = document.getElementById(`btn-${t}`);
+      if (t === tabName) {
+        content.classList.remove('hidden');
+        btn.classList.add('tab-active');
+        btn.classList.remove('text-on-surface-variant');
+      } else {
+        content.classList.add('hidden');
+        btn.classList.remove('tab-active');
+        btn.classList.add('text-on-surface-variant');
+      }
+    });
+  }
+  window.switchTab = switchTab;
+
+  // Original micro-interaction
+  document.querySelector('button.bg-primary')?.addEventListener('mousedown', function() {
+    this.style.transform = 'scale(0.96)';
+  });
+  document.querySelector('button.bg-primary')?.addEventListener('mouseup', function() {
+    this.style.transform = 'scale(1)';
+  });
+</script>
 </body></html>

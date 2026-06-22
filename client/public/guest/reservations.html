@@ -1,473 +1,506 @@
 <!DOCTYPE html>
-
-<html class="light" lang="en"><head>
+<html class="light" lang="en">
+<head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>My Reservations | AptSpace</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <style>
-        body { font-family: 'Inter', sans-serif; }
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
-        .glass-header {
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-    </style>
+  body { font-family: 'Inter', sans-serif; }
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .glass-header {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+</style>
 <script id="tailwind-config">
-        tailwind.config = {
-          darkMode: "class",
-          theme: {
-            extend: {
-              "colors": {
-                      "primary": "#004ac6",
-                      "surface": "#faf8ff",
-                      "on-error-container": "#93000a",
-                      "background": "#faf8ff",
-                      "surface-container": "#ededf9",
-                      "primary-fixed-dim": "#b4c5ff",
-                      "on-secondary-fixed": "#002113",
-                      "error-container": "#ffdad6",
-                      "outline-variant": "#c3c6d7",
-                      "surface-dim": "#d9d9e5",
-                      "surface-tint": "#0053db",
-                      "inverse-surface": "#2e3039",
-                      "tertiary": "#943700",
-                      "secondary-container": "#6cf8bb",
-                      "outline": "#737686",
-                      "on-primary-container": "#eeefff",
-                      "surface-container-lowest": "#ffffff",
-                      "secondary-fixed-dim": "#4edea3",
-                      "on-tertiary-container": "#ffede6",
-                      "surface-variant": "#e1e2ed",
-                      "surface-container-low": "#f3f3fe",
-                      "tertiary-container": "#bc4800",
-                      "on-primary-fixed-variant": "#003ea8",
-                      "on-surface-variant": "#434655",
-                      "on-primary-fixed": "#00174b",
-                      "on-error": "#ffffff",
-                      "surface-container-highest": "#e1e2ed",
-                      "on-tertiary-fixed-variant": "#7d2d00",
-                      "on-surface": "#191b23",
-                      "on-secondary-fixed-variant": "#005236",
-                      "tertiary-fixed": "#ffdbcd",
-                      "error": "#ba1a1a",
-                      "primary-fixed": "#dbe1ff",
-                      "surface-container-high": "#e7e7f3",
-                      "on-tertiary-fixed": "#360f00",
-                      "surface-bright": "#faf8ff",
-                      "on-secondary-container": "#00714d",
-                      "on-background": "#191b23",
-                      "inverse-primary": "#b4c5ff",
-                      "secondary": "#006c49",
-                      "inverse-on-surface": "#f0f0fb",
-                      "on-secondary": "#ffffff",
-                      "on-primary": "#ffffff",
-                      "tertiary-fixed-dim": "#ffb596",
-                      "on-tertiary": "#ffffff",
-                      "secondary-fixed": "#6ffbbe",
-                      "primary-container": "#2563eb"
-              },
-              "borderRadius": {
-                      "DEFAULT": "0.25rem",
-                      "lg": "0.5rem",
-                      "xl": "0.75rem",
-                      "full": "9999px"
-              },
-              "spacing": {
-                      "sm": "0.5rem",
-                      "margin-mobile": "16px",
-                      "lg": "1.5rem",
-                      "sidebar-width": "260px",
-                      "md": "1rem",
-                      "xs": "0.25rem",
-                      "xl": "2.5rem",
-                      "container-max": "1280px",
-                      "gutter": "24px",
-                      "base": "4px"
-              },
-              "fontFamily": {
-                      "headline-lg-desktop": ["Inter"],
-                      "headline-xl": ["Inter"],
-                      "label-sm": ["Inter"],
-                      "label-md": ["Inter"],
-                      "body-md": ["Inter"],
-                      "body-lg": ["Inter"],
-                      "headline-lg": ["Inter"],
-                      "headline-sm": ["Inter"],
-                      "headline-md": ["Inter"],
-                      "body-sm": ["Inter"]
-              },
-              "fontSize": {
-                      "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-                      "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
-                      "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
-                      "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
-                      "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
-                      "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
-                      "headline-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
-                      "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
-                      "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
-              }
-            },
-          },
+  tailwind.config = {
+    darkMode: "class",
+    theme: {
+      extend: {
+        "colors": {
+          "primary": "#004ac6",
+          "surface": "#faf8ff",
+          "on-error-container": "#93000a",
+          "background": "#faf8ff",
+          "surface-container": "#ededf9",
+          "primary-fixed-dim": "#b4c5ff",
+          "on-secondary-fixed": "#002113",
+          "error-container": "#ffdad6",
+          "outline-variant": "#c3c6d7",
+          "surface-dim": "#d9d9e5",
+          "surface-tint": "#0053db",
+          "inverse-surface": "#2e3039",
+          "tertiary": "#943700",
+          "secondary-container": "#6cf8bb",
+          "outline": "#737686",
+          "on-primary-container": "#eeefff",
+          "surface-container-lowest": "#ffffff",
+          "secondary-fixed-dim": "#4edea3",
+          "on-tertiary-container": "#ffde6",
+          "surface-variant": "#e1e2ed",
+          "surface-container-low": "#f3f3fe",
+          "tertiary-container": "#bc4800",
+          "on-primary-fixed-variant": "#003ea8",
+          "on-surface-variant": "#434655",
+          "on-primary-fixed": "#00174b",
+          "on-error": "#ffffff",
+          "surface-container-highest": "#e1e2ed",
+          "on-tertiary-fixed-variant": "#7d2d00",
+          "on-surface": "#191b23",
+          "on-secondary-fixed-variant": "#005236",
+          "tertiary-fixed": "#ffdbcd",
+          "error": "#ba1a1a",
+          "primary-fixed": "#dbe1ff",
+          "surface-container-high": "#e7e7f3",
+          "on-tertiary-fixed": "#360f00",
+          "surface-bright": "#faf8ff",
+          "on-secondary-container": "#00714d",
+          "on-background": "#191b23",
+          "inverse-primary": "#b4c5ff",
+          "secondary": "#006c49",
+          "inverse-on-surface": "#f0f0fb",
+          "on-secondary": "#ffffff",
+          "on-primary": "#ffffff",
+          "tertiary-fixed-dim": "#ffb596",
+          "on-tertiary": "#ffffff",
+          "secondary-fixed": "#6ffbbe",
+          "primary-container": "#2563eb"
+        },
+        "borderRadius": {
+          "DEFAULT": "0.25rem",
+          "lg": "0.5rem",
+          "xl": "0.75rem",
+          "full": "9999px"
+        },
+        "spacing": {
+          "sm": "0.5rem",
+          "margin-mobile": "16px",
+          "lg": "1.5rem",
+          "sidebar-width": "260px",
+          "md": "1rem",
+          "xs": "0.25rem",
+          "xl": "2.5rem",
+          "container-max": "1280px",
+          "gutter": "24px",
+          "base": "4px"
+        },
+        "fontFamily": {
+          "headline-lg-desktop": ["Inter"],
+          "headline-xl": ["Inter"],
+          "label-sm": ["Inter"],
+          "label-md": ["Inter"],
+          "body-md": ["Inter"],
+          "body-lg": ["Inter"],
+          "headline-lg": ["Inter"],
+          "headline-sm": ["Inter"],
+          "headline-md": ["Inter"],
+          "body-sm": ["Inter"]
+        },
+        "fontSize": {
+          "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+          "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
+          "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+          "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+          "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+          "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+          "headline-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
+          "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+          "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
         }
-    </script>
+      },
+    },
+  }
+</script>
 </head>
 <body class="bg-[#F8FAFC] text-[#0F172A] selection:bg-primary-fixed">
-<!-- SideNavBar (Predicted JSON Component) -->
-<aside class="w-sidebar-width h-full fixed left-0 top-0 bg-surface-container-lowest border-r border-outline-variant flex flex-col h-full py-6 z-50">
-<div class="px-6 mb-8">
-<h1 class="font-headline-md text-headline-md font-bold text-primary">AptSpace</h1>
-</div>
-<nav class="flex-1 px-3 space-y-1"><!-- Dashboard -->
-<a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
-<span class="material-symbols-outlined mr-3 text-[22px]">dashboard</span>
-<span class="font-label-md text-label-md">Dashboard</span>
-</a>
-<!-- Active State: Reservations -->
-<a class="flex items-center px-3 py-2.5 rounded-lg text-primary font-bold border-l-4 border-primary bg-primary-container/10 transition-all scale-[0.98]" href="#">
-<span class="material-symbols-outlined mr-3 text-[22px]" style="font-variation-settings: 'FILL' 1;">event_available</span>
-<span class="font-label-md text-label-md">Reservations</span>
-</a>
-<!-- Facilities -->
-<a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
-<span class="material-symbols-outlined mr-3 text-[22px]">domain</span>
-<span class="font-label-md text-label-md">Facilities</span>
-</a>
-<!-- Settings -->
-<a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="#">
-<span class="material-symbols-outlined mr-3 text-[22px]">settings</span>
-<span class="font-label-md text-label-md">Settings</span>
-</a></nav>
-<div class="px-3 py-4 mt-auto">
-<button class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:opacity-90 transition-opacity mb-6">
-<span class="material-symbols-outlined text-[20px]">add_circle</span>
-                New Reservation
-            </button>
-<div class="space-y-1 border-t border-outline-variant pt-4"><a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
-<span class="material-symbols-outlined mr-3 text-[22px]">help</span>
-<span class="font-label-md text-label-md">Support</span>
-</a></div>
-</div>
+
+<!-- SideNavBar -->
+<aside class="w-sidebar-width h-full fixed left-0 top-0 bg-surface-container-lowest border-r border-outline-variant flex flex-col py-6 z-50">
+  <div class="px-6 mb-8">
+    <h1 class="font-headline-md text-headline-md font-bold text-primary">AptSpace</h1>
+  </div>
+  <nav class="flex-1 px-3 space-y-1">
+    <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="./dashboard.html">
+      <span class="material-symbols-outlined mr-3 text-[22px]">dashboard</span>
+      <span class="font-label-md text-label-md">Dashboard</span>
+    </a>
+    <a class="flex items-center px-3 py-2.5 rounded-lg text-primary font-bold border-l-4 border-primary bg-primary-container/10 transition-all scale-[0.98]" href="./reservations.html">
+      <span class="material-symbols-outlined mr-3 text-[22px]" style="font-variation-settings: 'FILL' 1;">event_available</span>
+      <span class="font-label-md text-label-md">Reservations</span>
+    </a>
+    <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="./facilities.html">
+      <span class="material-symbols-outlined mr-3 text-[22px]">domain</span>
+      <span class="font-label-md text-label-md">Facilities</span>
+    </a>
+    <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="./settings.html">
+      <span class="material-symbols-outlined mr-3 text-[22px]">settings</span>
+      <span class="font-label-md text-label-md">Settings</span>
+    </a>
+  </nav>
+  <div class="px-3 py-4 mt-auto">
+    <button class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:opacity-90 transition-opacity mb-6">
+      <span class="material-symbols-outlined text-[20px]">add_circle</span>
+      New Reservation
+    </button>
+    <div class="space-y-1 border-t border-outline-variant pt-4">
+      <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
+        <span class="material-symbols-outlined mr-3 text-[22px]">help</span>
+        <span class="font-label-md text-label-md">Support</span>
+      </a>
+      <a id="logout-btn" class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer" href="#">
+        <span class="material-symbols-outlined mr-3 text-[22px]">logout</span>
+        <span class="font-label-md text-label-md">Logout</span>
+      </a>
+    </div>
+  </div>
 </aside>
-<!-- TopNavBar (Predicted JSON Component) -->
-<header class="fixed top-0 right-0 left-sidebar-width z-40 glass-header bg-surface/80 border-b border-outline-variant shadow-sm h-16 flex justify-between items-center px-lg ml-sidebar-width max-w-[calc(100%-theme(spacing.sidebar-width))]">
-<div class="flex items-center flex-1 max-w-xl">
-<div class="relative w-full">
-<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-<input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-primary/20 text-body-sm font-body-sm outline-none transition-all" placeholder="Search reservations..." type="text"/>
-</div>
-</div>
-<div class="flex items-center gap-4"><button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
-<span class="material-symbols-outlined">notifications</span>
-</button>
-<button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
-<span class="material-symbols-outlined">help</span>
-</button>
-<div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
-<button class="bg-primary-fixed-dim text-on-primary-fixed-variant px-4 py-1.5 rounded-full font-label-md text-label-md font-bold hover:opacity-80 transition-opacity">
-                Check In
-            </button>
-<img alt="User profile" class="h-8 w-8 rounded-full border border-outline-variant cursor-pointer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAiYMwPPorgbBlJMHMNZNmKKOSQEv1GF-zbt53XRcrDsBZmmtTmZWDbp0MfGch84_LXAXTSkqyMh7UGOEhvcFb3QM_5N2gv-QLwC4sO7MKZ_V0cLAM3mZYRylWgqSHO7tKPdpAl9HsCNyFZHhueAi1l0Lo6o2Zh4IDQBqeip_MBV99wlkTRXz-81faAE-ExcIHLy_WaRbmbytA0F_FE3S-g5w3Br6SRXeqi3O6iHH93pzpNZmJo1N2zzkInuw7LVolXOa7PWexCdJRM"/></div>
+
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 z-40 glass-header bg-surface/80 border-b border-outline-variant shadow-sm h-16 flex justify-between items-center px-lg ml-sidebar-width max-w-[calc(100%-theme(spacing.sidebar-width))]" style="left: 260px;">
+  <div class="flex items-center flex-1 max-w-xl">
+    <div class="relative w-full">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+      <input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-primary/20 text-body-sm font-body-sm outline-none transition-all" placeholder="Search reservations..." type="text"/>
+    </div>
+  </div>
+  <div class="flex items-center gap-4">
+    <button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
+      <span class="material-symbols-outlined">notifications</span>
+    </button>
+    <button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
+      <span class="material-symbols-outlined">help</span>
+    </button>
+    <div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
+    <span id="user-name-display" class="font-label-md text-label-md text-on-surface-variant font-bold"></span>
+    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm" id="user-avatar">?</div>
+  </div>
 </header>
+
 <!-- Main Content Area -->
-<main class="ml-sidebar-width pt-16 min-h-screen">
-<div class="max-w-container-max mx-auto p-lg">
-<!-- Header Section -->
-<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-xl">
-<div>
-<h2 class="font-headline-xl text-headline-xl text-on-surface">My Reservations</h2>
-<p class="font-body-md text-body-md text-on-surface-variant">Manage and track your facility reservations with ease.</p>
-</div>
-<div class="flex items-center gap-3">
-<button class="flex items-center gap-2 bg-[#2563EB] text-white px-6 py-3 rounded-xl font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-[0.98]">
-<span class="material-symbols-outlined text-[20px]">add</span>
-                        New Reservation
-                    </button>
-</div>
-</div>
-<!-- Statistics Grid -->
-<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter mb-xl">
-<div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
-<div class="flex items-center gap-4">
-<div class="p-3 bg-primary-container/10 rounded-xl text-primary">
-<span class="material-symbols-outlined">calendar_month</span>
-</div>
-<div>
-<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Total Reservations</p>
-<p class="font-headline-md text-headline-md text-on-surface">24</p>
-</div>
-</div>
-</div>
-<div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
-<div class="flex items-center gap-4">
-<div class="p-3 bg-amber-500/10 rounded-xl text-amber-600">
-<span class="material-symbols-outlined">pending_actions</span>
-</div>
-<div>
-<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Pending Approvals</p>
-<p class="font-headline-md text-headline-md text-on-surface">3</p>
-</div>
-</div>
-</div>
-<div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
-<div class="flex items-center gap-4">
-<div class="p-3 bg-emerald-500/10 rounded-xl text-emerald-600">
-<span class="material-symbols-outlined">check_circle</span>
-</div>
-<div>
-<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Approved</p>
-<p class="font-headline-md text-headline-md text-on-surface">12</p>
-</div>
-</div>
-</div>
-<div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
-<div class="flex items-center gap-4">
-<div class="p-3 bg-tertiary-container/10 rounded-xl text-tertiary">
-<span class="material-symbols-outlined">schedule</span>
-</div>
-<div>
-<p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Upcoming</p>
-<p class="font-headline-md text-headline-md text-on-surface">2</p>
-</div>
-</div>
-</div>
-</div>
-<div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-<!-- Main Reservations Section -->
-<div class="lg:col-span-8 space-y-gutter">
-<!-- Featured Highlight Card -->
-<div class="relative overflow-hidden bg-white border border-outline-variant rounded-2xl shadow-sm flex flex-col md:flex-row">
-<div class="md:w-2/5 h-48 md:h-auto overflow-hidden">
-<img class="w-full h-full object-cover" data-alt="A brightly lit, contemporary conference room with floor-to-ceiling windows showing a lush campus garden. The space features minimalist white furniture, a large wooden table, and sophisticated architectural lighting. The mood is serene and professional, aligning with the AptSpace brand identity of clean modern utility and academic rigor." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8RQ2_EjaFfsV3sE70ogMvwHX4Llwn_v8NT_ELUaLLtwpUyO5dJRPY8pqfih4PL00fl86Gy5LjYJzDriRkmbUVOmPT7MDNkyJCHvUcL1mRQcCcVWhOvYhc8fH1iZ01u2QjODJbJ0HqVxrR6vP8lF_hm3zm-J61BMLIDhND7vYDdL7xRYUczuoBHrXG9DdpoYnGTgRZqFUpdMT7URAMvP7-kJDnoYCCodr3E-KeMvtNaHH5vM2vlin0WqtIvmNDsr4LTvGQPmTsdVMF"/>
-</div>
-<div class="flex-1 p-6 flex flex-col">
-<div class="flex justify-between items-start mb-4">
-<span class="bg-emerald-500/10 text-emerald-700 px-3 py-1 rounded-full text-[12px] font-bold uppercase">Approved &amp; Active</span>
-<div class="text-right">
-<p class="text-label-sm font-label-sm text-on-surface-variant">Starts in</p>
-<p class="text-primary font-bold text-headline-sm">02d : 14h : 45m</p>
-</div>
-</div>
-<h3 class="font-headline-md text-headline-md mb-1">Executive Seminar Hall A</h3>
-<p class="font-body-sm text-body-sm text-on-surface-variant mb-4 flex items-center gap-1">
-<span class="material-symbols-outlined text-[18px]">location_on</span>
-                                Main Academic Wing, 2nd Floor
-                            </p>
-<div class="mt-auto flex items-center justify-between pt-4 border-t border-outline-variant">
-<div class="flex -space-x-2">
-<img alt="Guest 1" class="w-8 h-8 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFKV47QGfMhdwS0XzSwzFZhmp7pWSNEoCOojv9k7ps_yDtNXD2JA2NVQeYNF4o8B7FA5thRZPJvx9zahRQg8nAsN3USWqB6uotpys6qQ6sDuEheL4aMQVCMtwOgsUhpqMoNbChV8NOtjreJcCqmtCeRk0nlIQRyIBBo-4czyNqaeCAZRy4EKirh8H8u2CRVd_fkUosUe7Wu24oypnLJT2w8ZY46vrddOALBHrSCLdZRRgTp_MLtT28K5CihOopBzgO81phecjAmmnx"/>
-<img alt="Guest 2" class="w-8 h-8 rounded-full border-2 border-white" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAhezGv3UvtosRk8O5OiWXMNvXYaR8TYwoTMDWq7CM0OtGQCoiU8eEwAxj1tpHRzRlOTwYitUWSwiWlEj4uGxeVCl_rgByH8obayi7ZduxvQsYUUAngCLZWw_FQKTQOIwNDxcTaFaZijJWJoRnAYuy3krwAEdql6eGIaGgocQIDOlNSlw_KlGeG1U-ALJeat_o06evQ9JhjZRf2Eqrjy8GyLLPTxL2LOTkS9iwoeJDW5mOsU9ll9DdGEF07RVC7-yJd3-fKGScVfuUN"/>
-<div class="w-8 h-8 rounded-full bg-surface-container border-2 border-white flex items-center justify-center text-[10px] font-bold text-on-surface-variant">+8</div>
-</div>
-<button class="bg-surface-container hover:bg-surface-container-high px-4 py-2 rounded-lg font-label-md text-label-md transition-colors">
-                                    Quick View
-                                </button>
-</div>
-</div>
-</div>
-<!-- Filters Header -->
-<div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex flex-wrap items-center gap-4">
-<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant">
-<span class="material-symbols-outlined text-on-surface-variant text-[20px]">filter_list</span>
-<select class="bg-transparent border-none text-body-sm font-medium focus:ring-0 cursor-pointer">
-<option>Status: All</option>
-<option>Approved</option>
-<option>Pending</option>
-<option>Completed</option>
-</select>
-</div>
-<div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant">
-<span class="material-symbols-outlined text-on-surface-variant text-[20px]">calendar_today</span>
-<span class="text-body-sm font-medium">Oct 1 - Oct 31</span>
-</div>
-<button class="text-primary font-label-md text-label-md hover:underline">Clear all</button>
-</div>
-<!-- Reservation Cards List -->
-<div class="space-y-4">
-<!-- Card 1 -->
-<div class="group bg-white p-4 rounded-[16px] border border-outline-variant hover:border-primary/40 hover:shadow-lg transition-all duration-300">
-<div class="flex flex-col sm:flex-row gap-6">
-<div class="w-full sm:w-32 h-24 rounded-xl overflow-hidden shrink-0">
-<img class="w-full h-full object-cover" data-alt="A modern university library reading area with warm lighting, minimalist oak desks, and ergonomic charcoal chairs. The environment is scholarly and peaceful, emphasizing a quiet focus area for students and faculty. Soft sunlight filters through high clerestory windows, casting gentle shadows across the minimalist architectural lines." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDhWBhsAL3P0X7f0PUWvdN1ZxxDVaFB-VXHSM0Jat74WfriyekNVxG-m3yDQjUrpg1Fag3gomDsGB3-kgE2xIEs8CiR0nSUSPrIWUCXKj2suJMNSIvBWOdcXKg-5XHMhLUFpK2WYurW8_Uk3lX_hIe1GhuzO8aRTNUb5P2bed44mp3WrrGiKYwYiJN7Jp9G-Zj9WO-_Nv3Py6FG3rxEIAbeEcL8ClXQV6dZ_qiuPyVrcH9-44a4zDqpi5svjTtoek7sFaAB-VOq9mqM"/>
-</div>
-<div class="flex-1">
-<div class="flex justify-between items-start mb-2">
-<div>
-<h4 class="font-headline-sm text-headline-sm">Research Lab 402</h4>
-<p class="text-body-sm text-on-surface-variant">ID: RES-88421</p>
-</div>
-<span class="bg-amber-500/10 text-amber-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Pending Approval</span>
-</div>
-<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-<div>
-<p class="text-[11px] font-bold text-on-surface-variant uppercase">Date &amp; Time</p>
-<p class="text-body-sm font-medium">Oct 14, 2023 • 09:00 - 11:30</p>
-</div>
-<div>
-<p class="text-[11px] font-bold text-on-surface-variant uppercase">Participants</p>
-<p class="text-body-sm font-medium">4 Guests</p>
-</div>
-<div class="col-span-2 md:col-span-1">
-<!-- Timeline Progress Bar -->
-<p class="text-[11px] font-bold text-on-surface-variant uppercase mb-2">Progress</p>
-<div class="flex items-center gap-1">
-<div class="h-1.5 w-8 rounded-full bg-amber-500"></div>
-<div class="h-1.5 w-8 rounded-full bg-amber-500"></div>
-<div class="h-1.5 w-8 rounded-full bg-surface-container"></div>
-<div class="h-1.5 w-8 rounded-full bg-surface-container"></div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="flex justify-end gap-3 mt-6 pt-4 border-t border-outline-variant/60">
-<button class="px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-on-surface transition-colors">Cancel</button>
-<button class="px-4 py-2 text-label-md font-label-md text-primary border border-primary/20 rounded-lg hover:bg-primary/5 transition-colors">Edit</button>
-<button class="px-4 py-2 text-label-md font-label-md bg-surface-container text-on-surface rounded-lg hover:bg-surface-container-high transition-colors">View Details</button>
-</div>
-</div>
-<!-- Card 2 -->
-<div class="group bg-white p-4 rounded-[16px] border border-outline-variant hover:border-primary/40 hover:shadow-lg transition-all duration-300">
-<div class="flex flex-col sm:flex-row gap-6">
-<div class="w-full sm:w-32 h-24 rounded-xl overflow-hidden shrink-0">
-<img class="w-full h-full object-cover" data-alt="A spacious multi-purpose academic auditorium with rows of sleek navy seats and a professional stage area. The lighting is focused and warm, suitable for theological lectures and large gatherings. The architecture is clean and utilitarian, reflecting the serene efficiency of the seminary campus." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqQs6GQ_RXgBh26qtoSHb5yq1VoXat0mPGmAjBeoQpT9x7P_XwFEafE2S1b4AT8VdsGYyQJ0t7oYGq4bg1XbuyZSE2yKTSjVH_ZKRlOlavr0GT7zJswa8h7DEzaxMPHnPKhfupAwS7BdFNyGlb1nIpvoNVbjqciqNQnMmSLrw8Btwdky-ZuZ91LKHWkA8U83QBz5JSquoiJzPPN1DZiv74juI8mBTrRQzdK02zod4kiiPpEP8ZrbUZccjFvrTGC9DxPktT7ZPWW1FT"/>
-</div>
-<div class="flex-1">
-<div class="flex justify-between items-start mb-2">
-<div>
-<h4 class="font-headline-sm text-headline-sm">St. Paul's Auditorium</h4>
-<p class="text-body-sm text-on-surface-variant">ID: RES-88319</p>
-</div>
-<span class="bg-emerald-500/10 text-emerald-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Approved</span>
-</div>
-<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-<div>
-<p class="text-[11px] font-bold text-on-surface-variant uppercase">Date &amp; Time</p>
-<p class="text-body-sm font-medium">Oct 18, 2023 • 14:00 - 17:00</p>
-</div>
-<div>
-<p class="text-[11px] font-bold text-on-surface-variant uppercase">Participants</p>
-<p class="text-body-sm font-medium">120 Guests</p>
-</div>
-<div class="col-span-2 md:col-span-1">
-<p class="text-[11px] font-bold text-on-surface-variant uppercase mb-2">Progress</p>
-<div class="flex items-center gap-1">
-<div class="h-1.5 w-8 rounded-full bg-emerald-500"></div>
-<div class="h-1.5 w-8 rounded-full bg-emerald-500"></div>
-<div class="h-1.5 w-8 rounded-full bg-emerald-500"></div>
-<div class="h-1.5 w-8 rounded-full bg-surface-container"></div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<div class="flex justify-end gap-3 mt-6 pt-4 border-t border-outline-variant/60">
-<button class="px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-on-surface transition-colors">Cancel</button>
-<button class="px-4 py-2 text-label-md font-label-md text-primary border border-primary/20 rounded-lg hover:bg-primary/5 transition-colors">Edit</button>
-<button class="px-4 py-2 text-label-md font-label-md bg-surface-container text-on-surface rounded-lg hover:bg-surface-container-high transition-colors">View Details</button>
-</div>
-</div>
-<!-- Card 3 (Rejected/Canceled) -->
-<div class="group bg-white p-4 rounded-[16px] border border-outline-variant opacity-80 hover:opacity-100 transition-all duration-300">
-<div class="flex flex-col sm:flex-row gap-6">
-<div class="w-full sm:w-32 h-24 rounded-xl overflow-hidden shrink-0 filter grayscale">
-<img class="w-full h-full object-cover" data-alt="A small, quiet prayer chapel with a simple stone altar and wooden pews. The lighting is very soft and directional, creating a deeply spiritual and meditative atmosphere. The aesthetic is extremely minimalist and respectful, utilizing natural textures and muted earthy tones for a serene effect." src="https://lh3.googleusercontent.com/aida-public/AB6AXuClzQaY_qJgblX4_DD58hXw6q54D9KpkC2Lzj2eST2HbZG5ossDeQv5oCQzH9Xrfv3QQmyxPefksXpbmuF2lM2SChWA-LC0AbraGCYZFNatq8oqCY5EV8hfMq03bSKWCnzdlKfmmWqjc828AZCBDpQKxJJk_CL_zKqxYhF1nLQJV5W_TNW59sNJRc6iAV-tUXIutTlgaanOWFo26fL4chgRlrxzKrCFivA7qEtTswCeii5vVoWRFiMaJhpHBaJ1CYEosbIWRi3gIsUN"/>
-</div>
-<div class="flex-1">
-<div class="flex justify-between items-start mb-2">
-<div>
-<h4 class="font-headline-sm text-headline-sm">Prayer Room B</h4>
-<p class="text-body-sm text-on-surface-variant">ID: RES-88102</p>
-</div>
-<span class="bg-red-500/10 text-red-700 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">Rejected</span>
-</div>
-<div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-<div>
-<p class="text-[11px] font-bold text-on-surface-variant uppercase">Date &amp; Time</p>
-<p class="text-body-sm font-medium">Oct 05, 2023 • 18:00 - 19:00</p>
-</div>
-<div>
-<p class="text-[11px] font-bold text-on-surface-variant uppercase">Reason</p>
-<p class="text-body-sm font-medium text-red-600">Maintenance clash</p>
-</div>
-<div class="col-span-2 md:col-span-1 flex items-end">
-<button class="text-primary text-body-sm font-bold hover:underline">Reschedule</button>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Right Sidebar Widgets -->
-<div class="lg:col-span-4 space-y-gutter">
-<!-- Quick Actions Card -->
-<div class="bg-primary text-white p-6 rounded-2xl shadow-lg relative overflow-hidden group">
-<div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
-<h4 class="font-headline-sm text-headline-sm mb-4 relative z-10">Need Assistance?</h4>
-<p class="font-body-sm text-body-sm text-white/80 mb-6 relative z-10">Our facility managers are available to help you with special equipment requests or catering.</p>
-<button class="w-full bg-white text-primary py-3 rounded-xl font-bold font-label-md text-label-md hover:bg-primary-fixed transition-colors relative z-10">
-                            Contact Support
-                        </button>
-</div>
-<!-- Upcoming Timeline Widget -->
-<div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm">
-<h4 class="font-headline-sm text-headline-sm mb-6 flex items-center justify-between">
-                            Reservation Timeline
-                            <span class="text-[12px] font-bold text-on-surface-variant">October</span>
-</h4>
-<div class="relative pl-6 border-l-2 border-surface-container">
-<div class="mb-8 relative">
-<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-primary border-4 border-white shadow-sm"></div>
-<p class="text-[11px] font-bold text-primary uppercase">Tomorrow, 09:00</p>
-<h5 class="text-body-md font-bold">Research Group Meeting</h5>
-<p class="text-body-sm text-on-surface-variant">Lab 402 • 4 Participants</p>
-</div>
-<div class="mb-8 relative opacity-60">
-<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-container border-4 border-white"></div>
-<p class="text-[11px] font-bold text-on-surface-variant uppercase">Oct 18, 14:00</p>
-<h5 class="text-body-md font-bold">Theological Symposium</h5>
-<p class="text-body-sm text-on-surface-variant">Main Auditorium • 120 Participants</p>
-</div>
-<div class="relative opacity-60">
-<div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full bg-surface-container border-4 border-white"></div>
-<p class="text-[11px] font-bold text-on-surface-variant uppercase">Oct 24, 10:00</p>
-<h5 class="text-body-md font-bold">Faculty Briefing</h5>
-<p class="text-body-sm text-on-surface-variant">Boardroom B • 12 Participants</p>
-</div>
-</div>
-</div>
-<!-- Policy Info -->
-<div class="bg-surface-container-low p-6 rounded-2xl border border-outline-variant">
-<div class="flex items-start gap-3">
-<span class="material-symbols-outlined text-amber-600 mt-1">info</span>
-<div>
-<h5 class="font-label-md text-label-md font-bold text-on-surface mb-2">Reservation Policy</h5>
-<p class="text-body-sm text-on-surface-variant leading-relaxed">
-                                    Cancellations must be made at least 24 hours prior to the event. Approved reservations that are no-shows for more than 30 minutes may be automatically released.
-                                </p>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
+<main class="ml-sidebar-width pt-16 min-h-screen" style="margin-left: 260px;">
+  <div class="max-w-container-max mx-auto p-lg">
+
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-xl">
+      <div>
+        <h2 class="font-headline-xl text-headline-xl text-on-surface">My Reservations</h2>
+        <p class="font-body-md text-body-md text-on-surface-variant">Manage and track your facility reservations with ease.</p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button class="flex items-center gap-2 bg-[#2563EB] text-white px-6 py-3 rounded-xl font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-[0.98]">
+          <span class="material-symbols-outlined text-[20px]">add</span>
+          New Reservation
+        </button>
+      </div>
+    </div>
+
+    <!-- Statistics Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter mb-xl">
+      <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-4">
+          <div class="p-3 bg-primary-container/10 rounded-xl text-primary">
+            <span class="material-symbols-outlined">calendar_month</span>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Total Reservations</p>
+            <p class="font-headline-md text-headline-md text-on-surface" id="stat-total">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-4">
+          <div class="p-3 bg-amber-500/10 rounded-xl text-amber-600">
+            <span class="material-symbols-outlined">pending_actions</span>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Pending Approvals</p>
+            <p class="font-headline-md text-headline-md text-on-surface" id="stat-pending">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-4">
+          <div class="p-3 bg-emerald-500/10 rounded-xl text-emerald-600">
+            <span class="material-symbols-outlined">check_circle</span>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Approved</p>
+            <p class="font-headline-md text-headline-md text-on-surface" id="stat-approved">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-4">
+          <div class="p-3 bg-tertiary-container/10 rounded-xl text-tertiary">
+            <span class="material-symbols-outlined">schedule</span>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Upcoming</p>
+            <p class="font-headline-md text-headline-md text-on-surface" id="stat-upcoming">—</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+      <!-- Main Reservations Section -->
+      <div class="lg:col-span-8 space-y-gutter">
+
+        <!-- Featured Highlight Card -->
+        <div class="relative overflow-hidden bg-white border border-outline-variant rounded-2xl shadow-sm flex flex-col md:flex-row">
+          <div class="md:w-2/5 h-48 md:h-auto overflow-hidden">
+            <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8RQ2_EjaFfsV3sE70ogMvwHX4Llwn_v8NT_ELUaLLtwpUyO5dJRPY8pqfih4PL00fl86Gy5LjYJzDriRkmbUVOmPT7MDNkyJCHvUcL1mRQcCcVWhOvYhc8fH1iZ01u2QjODJbJ0HqVxrR6vP8lF_hm3zm-J61BMLIDhND7vYDdL7xRYUczuoBHrXG9DdpoYnGTgRZqFUpdMT7URAMvP7-kJDnoYCCodr3E-KeMvtNaHH5vM2vlin0WqtIvmNDsr4LTvGQPmTsdVMF" alt="Conference room"/>
+          </div>
+          <div class="flex-1 p-6 flex flex-col">
+            <div class="flex justify-between items-start mb-4">
+              <span class="bg-emerald-500/10 text-emerald-700 px-3 py-1 rounded-full text-[12px] font-bold uppercase">Approved &amp; Active</span>
+              <div class="text-right">
+                <p class="text-label-sm font-label-sm text-on-surface-variant">Starts in</p>
+                <p class="text-primary font-bold text-headline-sm" id="countdown">—</p>
+              </div>
+            </div>
+            <h3 class="font-headline-md text-headline-md mb-1">Executive Seminar Hall A</h3>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-4 flex items-center gap-1">
+              <span class="material-symbols-outlined text-[18px]">location_on</span>
+              Main Academic Wing, 2nd Floor
+            </p>
+            <div class="mt-auto flex items-center justify-between pt-4 border-t border-outline-variant">
+              <div class="flex -space-x-2">
+                <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-[10px] font-bold border-2 border-white">+8</div>
+              </div>
+              <button class="bg-surface-container hover:bg-surface-container-high px-4 py-2 rounded-lg font-label-md text-label-md transition-colors">
+                Quick View
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filters Header -->
+        <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex flex-wrap items-center gap-4">
+          <div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant">
+            <span class="material-symbols-outlined text-on-surface-variant text-[20px]">filter_list</span>
+            <select id="status-filter" class="bg-transparent border-none text-body-sm font-medium focus:ring-0 cursor-pointer">
+              <option value="">Status: All</option>
+              <option value="approved">Approved</option>
+              <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant">
+            <span class="material-symbols-outlined text-on-surface-variant text-[20px]">calendar_today</span>
+            <span class="text-body-sm font-medium" id="current-month-label">This Month</span>
+          </div>
+          <button id="clear-filter" class="text-primary font-label-md text-label-md hover:underline">Clear all</button>
+        </div>
+
+        <!-- Reservation Cards List -->
+        <div class="space-y-4" id="reservations-list">
+          <div class="text-center py-12 text-on-surface-variant">
+            <span class="material-symbols-outlined text-[48px] mb-2 block">hourglass_empty</span>
+            <p class="font-body-md text-body-md">Loading your reservations...</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar Widgets -->
+      <div class="lg:col-span-4 space-y-gutter">
+        <!-- Quick Actions Card -->
+        <div class="bg-primary text-white p-6 rounded-2xl shadow-lg relative overflow-hidden group">
+          <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+          <h4 class="font-headline-sm text-headline-sm mb-4 relative z-10">Need Assistance?</h4>
+          <p class="font-body-sm text-body-sm text-white/80 mb-6 relative z-10">Our facility managers are available to help you with special equipment requests or catering.</p>
+          <button class="w-full bg-white text-primary py-3 rounded-xl font-bold font-label-md text-label-md hover:bg-primary-fixed transition-colors relative z-10">
+            Contact Support
+          </button>
+        </div>
+
+        <!-- Upcoming Timeline Widget -->
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm">
+          <h4 class="font-headline-sm text-headline-sm mb-6 flex items-center justify-between">
+            Reservation Timeline
+            <span class="text-[12px] font-bold text-on-surface-variant" id="timeline-month"></span>
+          </h4>
+          <div class="relative pl-6 border-l-2 border-surface-container" id="timeline-list">
+            <p class="text-body-sm text-on-surface-variant">Loading...</p>
+          </div>
+        </div>
+
+        <!-- Policy Info -->
+        <div class="bg-surface-container-low p-6 rounded-2xl border border-outline-variant">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-amber-600 mt-1">info</span>
+            <div>
+              <h5 class="font-label-md text-label-md font-bold text-on-surface mb-2">Reservation Policy</h5>
+              <p class="text-body-sm text-on-surface-variant leading-relaxed">
+                Cancellations must be made at least 24 hours prior to the event. Approved reservations that are no-shows for more than 30 minutes may be automatically released.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </main>
-<script>
-        // Simple interactivity for demonstration
-        document.querySelectorAll('.group').forEach(card => {
-            card.addEventListener('mouseenter', () => {
-                card.style.transform = 'translateY(-2px)';
-            });
-            card.addEventListener('mouseleave', () => {
-                card.style.transform = 'translateY(0)';
-            });
-        });
-    </script>
-</body></html>
+
+<script type="module">
+  import { requireAuth, doLogout, getCurrentUser } from '../assets/js/auth.js';
+  import { getBookings, normalizeBooking } from '../assets/js/api.js';
+
+  requireAuth();
+
+  // Show user info
+  const user = getCurrentUser();
+  if (user) {
+    const nameEl = document.getElementById('user-name-display');
+    const avatarEl = document.getElementById('user-avatar');
+    if (nameEl) nameEl.textContent = user.full_name || user.name || 'Guest';
+    if (avatarEl) avatarEl.textContent = (user.full_name || user.name || 'G')[0].toUpperCase();
+  }
+
+  // Logout
+  document.getElementById('logout-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    doLogout();
+  });
+
+  // Month label
+  const now = new Date();
+  document.getElementById('current-month-label').textContent =
+    now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  document.getElementById('timeline-month').textContent =
+    now.toLocaleString('default', { month: 'long' });
+
+  // Status badge helper
+  function statusBadge(status) {
+    const map = {
+      approved:  'bg-emerald-500/10 text-emerald-700',
+      pending:   'bg-amber-500/10 text-amber-700',
+      rejected:  'bg-red-500/10 text-red-700',
+      cancelled: 'bg-red-500/10 text-red-700',
+    };
+    return map[status] || 'bg-surface-container text-on-surface-variant';
+  }
+
+  // Render a reservation card
+  function renderCard(b) {
+    return `
+      <div class="group bg-white p-4 rounded-[16px] border border-outline-variant hover:border-primary/40 hover:shadow-lg transition-all duration-300">
+        <div class="flex flex-col sm:flex-row gap-6">
+          <div class="flex-1">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <h4 class="font-headline-sm text-headline-sm">#APT-${b.id}</h4>
+                <p class="text-body-sm text-on-surface-variant">${b.title}</p>
+              </div>
+              <span class="${statusBadge(b.status)} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${b.status}</span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+              <div>
+                <p class="text-[11px] font-bold text-on-surface-variant uppercase">Check-in</p>
+                <p class="text-body-sm font-medium">${b.startDate || '—'}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-bold text-on-surface-variant uppercase">Check-out</p>
+                <p class="text-body-sm font-medium">${b.endDate || '—'}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-bold text-on-surface-variant uppercase">Guests</p>
+                <p class="text-body-sm font-medium">${b.guestCount || 1}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
+          ${b.status === 'pending' ? `<button class="px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-on-surface transition-colors">Cancel</button>` : ''}
+          <button class="px-4 py-2 text-label-md font-label-md bg-surface-container text-on-surface rounded-lg hover:bg-surface-container-high transition-colors">View Details</button>
+        </div>
+      </div>`;
+  }
+
+  // Render timeline items
+  function renderTimeline(bookings) {
+    const upcoming = bookings
+      .filter(b => b.status === 'approved' && b.startDate >= now.toISOString().slice(0, 10))
+      .slice(0, 3);
+
+    if (!upcoming.length) {
+      document.getElementById('timeline-list').innerHTML =
+        '<p class="text-body-sm text-on-surface-variant">No upcoming reservations.</p>';
+      return;
+    }
+
+    document.getElementById('timeline-list').innerHTML = upcoming.map((b, i) => `
+      <div class="mb-8 relative ${i > 0 ? 'opacity-60' : ''}">
+        <div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full ${i === 0 ? 'bg-primary' : 'bg-surface-container'} border-4 border-white shadow-sm"></div>
+        <p class="text-[11px] font-bold ${i === 0 ? 'text-primary' : 'text-on-surface-variant'} uppercase">${b.startDate}</p>
+        <h5 class="text-body-md font-bold">${b.title}</h5>
+        <p class="text-body-sm text-on-surface-variant">${b.guestCount || 1} Guest(s)</p>
+      </div>`).join('');
+  }
+
+  // Load and render bookings
+  let allBookings = [];
+
+  async function loadBookings() {
+    try {
+      const raw = await getBookings();
+      allBookings = raw.map(normalizeBooking);
+
+      // Filter to current user's bookings
+      const userId = user?.id;
+      const myBookings = userId
+        ? allBookings.filter(b => b.userId === userId)
+        : allBookings;
+
+      // Stats
+      const today = now.toISOString().slice(0, 10);
+      document.getElementById('stat-total').textContent    = myBookings.length;
+      document.getElementById('stat-pending').textContent  = myBookings.filter(b => b.status === 'pending').length;
+      document.getElementById('stat-approved').textContent = myBookings.filter(b => b.status === 'approved').length;
+      document.getElementById('stat-upcoming').textContent = myBookings.filter(b => b.status === 'approved' && b.startDate >= today).length;
+
+      renderTimeline(myBookings);
+      renderList(myBookings);
+    } catch (err) {
+      document.getElementById('reservations-list').innerHTML =
+        `<div class="text-center py-12 text-error"><p>${err.message}</p></div>`;
+    }
+  }
+
+  function renderList(bookings) {
+    const list = document.getElementById('reservations-list');
+    if (!bookings.length) {
+      list.innerHTML = `
+        <div class="text-center py-12 text-on-surface-variant">
+          <span class="material-symbols-outlined text-[48px] mb-2 block">event_busy</span>
+          <p class="font-body-md text-body-md">No reservations found.</p>
+        </div>`;
+      return;
+    }
+    list.innerHTML = bookings.map(renderCard).join('');
+  }
+
+  // Filter
+  document.getElementById('status-filter').addEventListener('change', (e) => {
+    const val = e.target.value;
+    const userId = user?.id;
+    const myBookings = userId ? allBookings.filter(b => b.userId === userId) : allBookings;
+    renderList(val ? myBookings.filter(b => b.status === val) : myBookings);
+  });
+
+  document.getElementById('clear-filter').addEventListener('click', () => {
+    document.getElementById('status-filter').value = '';
+    const userId = user?.id;
+    renderList(userId ? allBookings.filter(b => b.userId === userId) : allBookings);
+  });
+
+  loadBookings();
+</script>
+</body>
+</html>

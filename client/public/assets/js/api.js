@@ -86,7 +86,7 @@ export async function createBooking(payload) {
 }
 
 export async function updateBooking(id, payload) {
-  return apiRequest(`/bookings/${id}/status`, {
+return apiRequest(`/bookings/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
