@@ -1,12 +1,13 @@
 <!DOCTYPE html>
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Settings | AptSpace</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Settings | AptSpace</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <script id="tailwind-config">
       tailwind.config = {
         darkMode: "class",
         theme: {
@@ -108,253 +109,191 @@
         },
       }
     </script>
-<style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-            display: inline-block;
-            line-height: 1;
-            text-transform: none;
-            letter-spacing: normal;
-            word-wrap: normal;
-            white-space: nowrap;
-            direction: ltr;
-        }
-        body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
-        .sidebar-active {
-            border-left: 2px solid #004ac6;
-            background-color: rgba(0, 74, 198, 0.05);
-            font-weight: 700;
-            color: #004ac6;
-        }
-        .tab-active {
-            color: #2563eb;
-            border-bottom: 2px solid #2563eb;
-        }
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #faf8ff; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .tab-active { color: #2563eb; border-bottom: 2px solid #2563eb; }
         .soft-shadow { box-shadow: 0px 1px 3px rgba(0,0,0,0.1); }
     </style>
 </head>
-<body class="bg-background text-on-surface">
-<!-- SideNavBar -->
-<aside class="hidden lg:flex fixed left-0 top-0 h-screen w-[260px] flex-col border-r border-outline-variant bg-surface-container-lowest pt-lg z-50">
-<div class="px-lg mb-xl">
-<h1 class="font-headline-md text-headline-md font-black text-primary">AptSpace</h1>
-</div>
-<nav class="flex-1 px-sm space-y-1">
-<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="./dashboard.html">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-<span class="font-label-md text-label-md">Dashboard</span>
-</a>
-<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="./reservations.html">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
-<span class="font-label-md text-label-md">Reservations</span>
-</a>
-<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="./facilities.html">
-<span class="material-symbols-outlined" data-icon="apartment">domain</span>
-<span class="font-label-md text-label-md">Facilities</span>
-</a>
-<a class="sidebar-active flex items-center gap-md py-3 px-md rounded-lg transition-all" href="./settings.html">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
-<span class="font-label-md text-label-md">Settings</span>
-</a>
-</nav>
-<div class="p-lg mt-auto border-t border-outline-variant">
-<div class="flex items-center gap-md">
-<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center">
-<span class="material-symbols-outlined text-primary" data-icon="account_circle">account_circle</span>
-</div>
-<div class="overflow-hidden">
-<p class="font-label-md text-label-md truncate" id="sidebar-user-name">Guest User</p>
-<p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer" id="logout-btn">Logout</p>
-</div>
-</div>
-</div>
+<body class="text-on-surface">
+
+<aside class="hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
+    <div class="px-6 mb-8">
+        <h1 class="font-headline-md text-headline-md font-black text-primary">AptSpace</h1>
+    </div>
+    <nav class="flex-1 px-3 space-y-1">
+        <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./dashboard.html">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span class="font-label-md text-label-md">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./reservations.html">
+            <span class="material-symbols-outlined">event_available</span>
+            <span class="font-label-md text-label-md">Reservations</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./facilities.html">
+            <span class="material-symbols-outlined">domain</span>
+            <span class="font-label-md text-label-md">Facilities</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 border-l-4 border-primary font-bold transition-all active:scale-95 duration-150" href="./settings.html">
+            <span class="material-symbols-outlined">settings</span>
+            <span class="font-label-md text-label-md">Settings</span>
+        </a>
+    </nav>
+    <div class="p-lg mt-auto border-t border-outline-variant">
+        <div class="flex items-center gap-md">
+            <div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-primary">account_circle</span>
+            </div>
+            <div class="overflow-hidden">
+                <p class="font-label-md text-label-md truncate" id="sidebar-user-name">Guest User</p>
+                <p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer" id="logout-btn">Logout</p>
+            </div>
+        </div>
+    </div>
 </aside>
-<!-- Main Content Area -->
-<div class="lg:pl-[260px] min-h-screen flex flex-col">
-<!-- TopNavBar -->
-<header class="sticky top-0 z-40 bg-surface/80 backdrop-blur-xl border-b border-outline-variant px-lg py-sm h-16 flex justify-between items-center w-full">
-<div class="flex items-center gap-md">
-<span class="lg:hidden material-symbols-outlined" data-icon="menu">menu</span>
-<h2 class="font-headline-md text-headline-md font-bold text-primary">Settings</h2>
-</div>
-<div class="flex items-center gap-lg">
-<div class="relative hidden md:block">
-<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-sm" data-icon="search">search</span>
-<input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-label-md focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search settings..." type="text"/>
-</div>
-<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span>
-<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="help">help</span>
-</div>
+
+<header class="fixed top-0 right-0 left-0 lg:left-[260px] h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant z-30 shadow-sm transition-all">
+    <div class="flex justify-between items-center px-margin-mobile md:px-gutter h-full max-w-container-max mx-auto">
+        <div class="flex items-center gap-md">
+            <span class="lg:hidden material-symbols-outlined cursor-pointer" data-icon="menu">menu</span>
+            <h2 class="font-headline-md text-headline-md font-bold text-primary">Settings</h2>
+        </div>
+        <div class="flex items-center gap-lg">
+            <div class="relative hidden md:block">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-sm">search</span>
+                <input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-label-md focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search settings..." type="text"/>
+            </div>
+            <span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
+            <span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">help</span>
+        </div>
+    </div>
 </header>
-<main class="flex-1 p-lg max-w-[1000px] mx-auto w-full">
-<!-- Tabs -->
-<div class="flex border-b border-outline-variant mb-xl">
-<button class="tab-active px-xl py-md font-label-md text-label-md transition-all hover:bg-primary-container/5" id="btn-profile" onclick="switchTab('profile')">Profile</button>
-<button class="px-xl py-md font-label-md text-label-md text-on-surface-variant transition-all hover:bg-primary-container/5" id="btn-notifications" onclick="switchTab('notifications')">Notifications</button>
-<button class="px-xl py-md font-label-md text-label-md text-on-surface-variant transition-all hover:bg-primary-container/5" id="btn-security" onclick="switchTab('security')">Security</button>
-</div>
-<!-- Tab: Profile -->
-<section class="space-y-lg" id="tab-profile">
-<div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg">
-<h3 class="font-headline-sm text-headline-sm mb-lg">Profile Information</h3>
-<!-- Profile Picture Section -->
-<div class="flex flex-col md:flex-row items-center gap-xl mb-xl">
-<div class="relative">
-<img class="w-32 h-32 rounded-lg object-cover bg-surface-container border border-outline-variant" id="avatar-preview" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5rLHL9vvMhQE1nQQlK8H1Z3O_8DbQXbMrdDZFAjXQCvjXHo6yPhpESrynM3HWgVjOczmK5ar2PyR2_SHINP8xzmGuQGk5NLDjBYe-0d3hRB06MMB0VRswUb5tXR2Idvi591ghJiCeG7tBZLcqnbFUoGpPXlEDFI_NY0lPi5VmXJKEO6uqjgsdI8YTLuXTbqJWEsVDWrhTZXWmNzvUZrSMxRplBpMtDo7hQ3I4Hz1O9MgVc2J2KO5NsQbluGfPsDiHh7JfEj77TLM4"/>
-<div class="absolute -bottom-2 -right-2 bg-primary text-on-primary p-2 rounded-lg shadow-lg">
-<span class="material-symbols-outlined text-sm" data-icon="edit">edit</span>
-</div>
-</div>
-<div class="flex flex-col gap-sm">
-<div class="flex gap-md">
-<button class="bg-primary-container text-on-primary-container px-lg py-sm rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity">Upload</button>
-<button class="bg-surface-container-high text-on-surface-variant px-lg py-sm rounded-lg font-label-md text-label-md hover:bg-surface-container-highest transition-colors">Remove</button>
-</div>
-<p class="font-body-sm text-body-sm text-on-surface-variant mt-2">Recommended: Square JPG or PNG, at least 400x400px.</p>
-</div>
-</div>
-<!-- Form -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
-<div class="space-y-xs">
-<label class="font-label-md text-label-md text-on-surface-variant">Full Name</label>
-<input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="text" id="settings-name" value="Guest User"/>
-</div>
-<div class="space-y-xs">
-<label class="font-label-md text-label-md text-on-surface-variant">Email Address</label>
-<input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="email" id="settings-email" value=""/>
-</div>
-<div class="space-y-xs">
-<label class="font-label-md text-label-md text-on-surface-variant">Contact Number</label>
-<input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="tel" value="+63 912 345 6789"/>
-</div>
-<div class="space-y-xs">
-<label class="font-label-md text-label-md text-on-surface-variant">Preferred Language</label>
-<select class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
-<option>English (US)</option>
-<option>English (UK)</option>
-<option>Filipino</option>
-<option>Korean</option>
-<option>Mandarin</option>
-</select>
-</div>
-</div>
-<div class="mt-xl pt-lg border-t border-outline-variant flex justify-end">
-<button class="bg-primary text-on-primary px-xl py-md rounded-lg font-label-md text-label-md hover:opacity-95 shadow-md active:scale-95 transition-all">Save Changes</button>
-</div>
-</div>
-</section>
-<!-- Tab: Notifications (Hidden) -->
-<section class="hidden space-y-lg" id="tab-notifications">
-<div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg">
-<h3 class="font-headline-sm text-headline-sm mb-lg">Notification Preferences</h3>
-<div class="space-y-md">
-<div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
-<div>
-<p class="font-label-md text-label-md">Email Notifications</p>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Receive reservation confirmations via email.</p>
-</div>
-<label class="relative inline-flex items-center cursor-pointer">
-<input checked="" class="sr-only peer" type="checkbox"/>
-<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-</label>
-</div>
-<div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
-<div>
-<p class="font-label-md text-label-md">SMS Notifications</p>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Receive urgent alerts about your booking status.</p>
-</div>
-<label class="relative inline-flex items-center cursor-pointer">
-<input class="sr-only peer" type="checkbox"/>
-<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-</label>
-</div>
-<div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
-<div>
-<p class="font-label-md text-label-md">Reservation Reminders</p>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Get notified 24 hours before your scheduled facility use.</p>
-</div>
-<label class="relative inline-flex items-center cursor-pointer">
-<input checked="" class="sr-only peer" type="checkbox"/>
-<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-</label>
-</div>
-</div>
-</div>
-</section>
-<!-- Tab: Security (Hidden) -->
-<section class="hidden space-y-lg" id="tab-security">
-<div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg">
-<h3 class="font-headline-sm text-headline-sm mb-lg">Password &amp; Authentication</h3>
-<div class="space-y-lg mb-xl">
-<div class="grid grid-cols-1 gap-lg max-w-md">
-<div class="space-y-xs">
-<label class="font-label-md text-label-md text-on-surface-variant">Current Password</label>
-<input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="••••••••" type="password"/>
-</div>
-<div class="space-y-xs">
-<label class="font-label-md text-label-md text-on-surface-variant">New Password</label>
-<input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="••••••••" type="password"/>
-</div>
-<div class="space-y-xs">
-<label class="font-label-md text-label-md text-on-surface-variant">Confirm New Password</label>
-<input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="••••••••" type="password"/>
-</div>
-</div>
-<button class="bg-primary-container text-on-primary-container px-lg py-md rounded-lg font-label-md text-label-md hover:opacity-90">Update Password</button>
-</div>
-<div class="border-t border-outline-variant pt-lg">
-<div class="flex items-center justify-between p-md bg-surface-container-low rounded-lg">
-<div class="flex gap-md items-center">
-<div class="w-12 h-12 bg-white rounded-lg flex items-center justify-center soft-shadow">
-<span class="material-symbols-outlined text-primary" data-icon="security">security</span>
-</div>
-<div>
-<p class="font-label-md text-label-md">Two-Factor Authentication (2FA)</p>
-<p class="font-body-sm text-body-sm text-on-surface-variant">Add an extra layer of security to your account.</p>
-</div>
-</div>
-<label class="relative inline-flex items-center cursor-pointer">
-<input class="sr-only peer" type="checkbox"/>
-<div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-</label>
-</div>
-</div>
-</div>
-</section>
-</main>
-<!-- Footer -->
-<footer class="mt-auto p-lg text-center text-on-surface-variant font-label-sm text-label-sm border-t border-outline-variant opacity-60">
-<div class="flex flex-col md:flex-row justify-between items-center gap-md">
-<p>© 2024 Asia Pacific Theological Seminary - AptSpace. All rights reserved.</p>
-<div class="flex gap-lg">
-<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
-<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
-<a class="hover:text-primary transition-colors" href="#">Contact Support</a>
-</div>
-</div>
-</footer>
-</div>
-<!-- Mobile Bottom NavBar -->
-<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant flex justify-around items-center h-16 px-md z-50">
-<button class="flex flex-col items-center gap-1 text-on-surface-variant" onclick="window.location.href='./dashboard.html'">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
-<span class="text-[10px] font-label-sm">Dashboard</span>
-</button>
-<button class="flex flex-col items-center gap-1 text-on-surface-variant" onclick="window.location.href='./reservations.html'">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
-<span class="text-[10px] font-label-sm">Bookings</span>
-</button>
-<button class="flex flex-col items-center gap-1 text-primary">
-<span class="material-symbols-outlined" data-icon="settings" style="font-variation-settings: 'FILL' 1;">settings</span>
-<span class="text-[10px] font-label-sm">Settings</span>
-</button>
+
+<nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant flex justify-around items-center h-16 px-md z-50 rounded-t-xl shadow-lg">
+    <button class="flex flex-col items-center gap-1 text-on-surface-variant" onclick="window.location.href='./dashboard.html'">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="text-[10px] font-label-sm">Dashboard</span>
+    </button>
+    <button class="flex flex-col items-center gap-1 text-on-surface-variant" onclick="window.location.href='./reservations.html'">
+        <span class="material-symbols-outlined">event_available</span>
+        <span class="text-[10px] font-label-sm">Bookings</span>
+    </button>
+    <button class="flex flex-col items-center gap-1 text-on-surface-variant" onclick="window.location.href='./facilities.html'">
+        <span class="material-symbols-outlined">domain</span>
+        <span class="text-[10px] font-label-sm">Catalog</span>
+    </button>
+    <button class="flex flex-col items-center gap-1 text-primary">
+        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
+        <span class="text-[10px] font-label-sm">Settings</span>
+    </button>
 </nav>
+
+<main class="pt-24 pb-24 lg:pb-12 px-margin-mobile md:px-gutter lg:ml-[260px] max-w-[1000px] mx-auto min-h-screen">
+    <div class="flex border-b border-outline-variant mb-xl">
+        <button class="tab-active px-xl py-md font-label-md text-label-md transition-all hover:bg-primary-container/5" id="btn-profile" onclick="switchTab('profile')">Profile</button>
+        <button class="px-xl py-md font-label-md text-label-md text-on-surface-variant transition-all hover:bg-primary-container/5" id="btn-notifications" onclick="switchTab('notifications')">Notifications</button>
+        <button class="px-xl py-md font-label-md text-label-md text-on-surface-variant transition-all hover:bg-primary-container/5" id="btn-security" onclick="switchTab('security')">Security</button>
+    </div>
+
+    <section class="space-y-lg" id="tab-profile">
+        <div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg border border-outline-variant/30">
+            <h3 class="font-headline-sm text-headline-sm mb-lg">Profile Information</h3>
+            <div class="flex flex-col md:flex-row items-center gap-xl mb-xl">
+                <div class="relative">
+                    <img class="w-32 h-32 rounded-lg object-cover bg-surface-container border border-outline-variant" id="avatar-preview" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5rLHL9vvMhQE1nQQlK8H1Z3O_8DbQXbMrdDZFAjXQCvjXHo6yPhpESrynM3HWgVjOczmK5ar2PyR2_SHINP8xzmGuQGk5NLDjBYe-0d3hRB06MMB0VRswUb5tXR2Idvi591ghJiCeG7tBZLcqnbFUoGpPXlEDFI_NY0lPi5VmXJKEO6uqjgsdI8YTLuXTbqJWEsVDWrhTZXWmNzvUZrSMxRplBpMtDo7hQ3I4Hz1O9MgVc2J2KO5NsQbluGfPsDiHh7JfEj77TLM4"/>
+                    <div class="absolute -bottom-2 -right-2 bg-primary text-on-primary p-2 rounded-lg shadow-lg">
+                        <span class="material-symbols-outlined text-sm">edit</span>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-sm">
+                    <div class="flex gap-md">
+                        <button class="bg-primary-container text-on-primary-container px-lg py-sm rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity">Upload</button>
+                        <button class="bg-surface-container-high text-on-surface-variant px-lg py-sm rounded-lg font-label-md text-label-md hover:bg-surface-container-highest transition-colors">Remove</button>
+                    </div>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-2">Recommended: Square JPG or PNG, at least 400x400px.</p>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+                <div class="space-y-xs">
+                    <label class="font-label-md text-label-md text-on-surface-variant">Full Name</label>
+                    <input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="text" id="settings-name" value="Guest User"/>
+                </div>
+                <div class="space-y-xs">
+                    <label class="font-label-md text-label-md text-on-surface-variant">Email Address</label>
+                    <input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="email" id="settings-email" value=""/>
+                </div>
+                <div class="space-y-xs">
+                    <label class="font-label-md text-label-md text-on-surface-variant">Contact Number</label>
+                    <input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="tel" value="+63 912 345 6789"/>
+                </div>
+                <div class="space-y-xs">
+                    <label class="font-label-md text-label-md text-on-surface-variant">Preferred Language</label>
+                    <select class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
+                        <option>English (US)</option>
+                        <option>English (UK)</option>
+                        <option>Filipino</option>
+                        <option>Korean</option>
+                        <option>Mandarin</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mt-xl pt-lg border-t border-outline-variant flex justify-end">
+                <button class="bg-primary text-on-primary px-xl py-md rounded-lg font-label-md text-label-md hover:opacity-95 shadow-md active:scale-95 transition-all">Save Changes</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="hidden space-y-lg" id="tab-notifications">
+        <div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg border border-outline-variant/30">
+            <h3 class="font-headline-sm text-headline-sm mb-lg">Notification Preferences</h3>
+            <div class="space-y-md">
+                <div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
+                    <div>
+                        <p class="font-label-md text-label-md">Email Notifications</p>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Receive reservation confirmations via email.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input checked="" class="sr-only peer" type="checkbox"/>
+                        <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="hidden space-y-lg" id="tab-security">
+        <div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg border border-outline-variant/30">
+            <h3 class="font-headline-sm text-headline-sm mb-lg">Password & Authentication</h3>
+            <div class="space-y-lg mb-xl">
+                <div class="grid grid-cols-1 gap-lg max-w-md">
+                    <div class="space-y-xs">
+                        <label class="font-label-md text-label-md text-on-surface-variant">Current Password</label>
+                        <input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="••••••••" type="password"/>
+                    </div>
+                </div>
+                <button class="bg-primary-container text-on-primary-container px-lg py-md rounded-lg font-label-md text-label-md hover:opacity-90">Update Password</button>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="lg:ml-[260px] border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
+    <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-md text-body-sm text-on-surface-variant">
+        <p>© 2024 Asia Pacific Theological Seminary - AptSpace. All rights reserved.</p>
+        <div class="flex gap-lg">
+            <a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+            <a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+            <a class="hover:text-primary transition-colors" href="#">Contact Support</a>
+        </div>
+    </div>
+</footer>
+
 <script type="module">
   import { requireAuth, doLogout, getCurrentUser } from '../assets/js/auth.js';
-
   requireAuth();
 
-  // Populate user info from localStorage
   const user = getCurrentUser();
   if (user) {
     const nameEl = document.getElementById('settings-name');
@@ -367,7 +306,6 @@
 
   document.getElementById('logout-btn')?.addEventListener('click', () => doLogout());
 
-  // Original tab switching
   function switchTab(tabName) {
     const tabs = ['profile', 'notifications', 'security'];
     tabs.forEach(t => {
@@ -385,13 +323,6 @@
     });
   }
   window.switchTab = switchTab;
-
-  // Original micro-interaction
-  document.querySelector('button.bg-primary')?.addEventListener('mousedown', function() {
-    this.style.transform = 'scale(0.96)';
-  });
-  document.querySelector('button.bg-primary')?.addEventListener('mouseup', function() {
-    this.style.transform = 'scale(1)';
-  });
 </script>
-</body></html>
+</body>
+</html>

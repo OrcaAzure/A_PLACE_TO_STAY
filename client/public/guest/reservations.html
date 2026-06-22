@@ -41,7 +41,7 @@
           "on-primary-container": "#eeefff",
           "surface-container-lowest": "#ffffff",
           "secondary-fixed-dim": "#4edea3",
-          "on-tertiary-container": "#ffde6",
+          "on-tertiary-container": "#ffede6",
           "surface-variant": "#e1e2ed",
           "surface-container-low": "#f3f3fe",
           "tertiary-container": "#bc4800",
@@ -117,75 +117,88 @@
   }
 </script>
 </head>
-<body class="bg-[#F8FAFC] text-[#0F172A] selection:bg-primary-fixed">
+<body class="text-on-surface">
 
-<!-- SideNavBar -->
-<aside class="w-sidebar-width h-full fixed left-0 top-0 bg-surface-container-lowest border-r border-outline-variant flex flex-col py-6 z-50">
-  <div class="px-6 mb-8">
-    <h1 class="font-headline-md text-headline-md font-bold text-primary">AptSpace</h1>
-  </div>
-  <nav class="flex-1 px-3 space-y-1">
-    <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="./dashboard.html">
-      <span class="material-symbols-outlined mr-3 text-[22px]">dashboard</span>
-      <span class="font-label-md text-label-md">Dashboard</span>
-    </a>
-    <a class="flex items-center px-3 py-2.5 rounded-lg text-primary font-bold border-l-4 border-primary bg-primary-container/10 transition-all scale-[0.98]" href="./reservations.html">
-      <span class="material-symbols-outlined mr-3 text-[22px]" style="font-variation-settings: 'FILL' 1;">event_available</span>
-      <span class="font-label-md text-label-md">Reservations</span>
-    </a>
-    <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="./facilities.html">
-      <span class="material-symbols-outlined mr-3 text-[22px]">domain</span>
-      <span class="font-label-md text-label-md">Facilities</span>
-    </a>
-    <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors group" href="./settings.html">
-      <span class="material-symbols-outlined mr-3 text-[22px]">settings</span>
-      <span class="font-label-md text-label-md">Settings</span>
-    </a>
-  </nav>
-  <div class="px-3 py-4 mt-auto">
-    <button class="w-full bg-primary text-on-primary py-2.5 rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:opacity-90 transition-opacity mb-6">
-      <span class="material-symbols-outlined text-[20px]">add_circle</span>
-      New Reservation
-    </button>
-    <div class="space-y-1 border-t border-outline-variant pt-4">
-      <a class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors" href="#">
-        <span class="material-symbols-outlined mr-3 text-[22px]">help</span>
-        <span class="font-label-md text-label-md">Support</span>
-      </a>
-      <a id="logout-btn" class="flex items-center px-3 py-2.5 rounded-lg text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer" href="#">
-        <span class="material-symbols-outlined mr-3 text-[22px]">logout</span>
-        <span class="font-label-md text-label-md">Logout</span>
-      </a>
-    </div>
-  </div>
+<aside class="hidden md:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
+<div class="px-6 mb-8">
+<h1 class="font-headline-sm text-headline-sm font-black text-primary">AptSpace</h1>
+</div>
+<nav class="flex-1 px-3 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./dashboard.html">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 rounded-lg font-bold transition-all active:scale-95 duration-150" href="./reservations.html">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">event_available</span>
+<span class="font-label-md text-label-md">Reservations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./facilities.html">
+<span class="material-symbols-outlined">domain</span>
+<span class="font-label-md text-label-md">Facilities</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./settings.html">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</nav>
+<div class="px-6 mt-auto">
+<button class="w-full py-3 bg-primary text-on-primary rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Reservation
+            </button>
+</div>
 </aside>
 
-<!-- TopNavBar -->
-<header class="fixed top-0 right-0 z-40 glass-header bg-surface/80 border-b border-outline-variant shadow-sm h-16 flex justify-between items-center px-lg ml-sidebar-width max-w-[calc(100%-theme(spacing.sidebar-width))]" style="left: 260px;">
-  <div class="flex items-center flex-1 max-w-xl">
-    <div class="relative w-full">
-      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
-      <input class="w-full pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-full focus:ring-2 focus:ring-primary/20 text-body-sm font-body-sm outline-none transition-all" placeholder="Search reservations..." type="text"/>
-    </div>
-  </div>
-  <div class="flex items-center gap-4">
-    <button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
-      <span class="material-symbols-outlined">notifications</span>
-    </button>
-    <button class="text-on-surface-variant hover:text-primary transition-colors p-2 rounded-full hover:bg-surface-container">
-      <span class="material-symbols-outlined">help</span>
-    </button>
-    <div class="h-8 w-[1px] bg-outline-variant mx-2"></div>
-    <span id="user-name-display" class="font-label-md text-label-md text-on-surface-variant font-bold"></span>
-    <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm" id="user-avatar">?</div>
-  </div>
+<header class="fixed top-0 right-0 left-0 md:left-[260px] h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant z-30 shadow-sm transition-all">
+<div class="flex justify-between items-center px-margin-mobile md:px-gutter h-full max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<span class="md:hidden font-headline-md text-headline-md font-bold text-primary">AptSpace</span>
+<div class="hidden lg:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-80">
+<span class="material-symbols-outlined text-outline text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full" placeholder="Search facilities..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer active:opacity-70">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-label-md font-bold leading-none" id="user-name-display">Guest User</p>
+<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider" id="logout-btn">Logout</p>
+</div>
+<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm" id="user-avatar">?</div>
+</div>
+</div>
+</div>
 </header>
 
-<!-- Main Content Area -->
-<main class="ml-sidebar-width pt-16 min-h-screen" style="margin-left: 260px;">
-  <div class="max-w-container-max mx-auto p-lg">
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 pb-safe bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./dashboard.html">
+    <span class="material-symbols-outlined">home</span>
+    <span class="font-label-sm text-[10px]">Home</span>
+  </a>
+  <a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 touch-manipulation duration-200" href="./reservations.html">
+    <span class="material-symbols-outlined">add_circle</span>
+    <span class="font-label-sm text-[10px]">Reserve</span>
+  </a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./facilities.html">
+    <span class="material-symbols-outlined">search</span>
+    <span class="font-label-sm text-[10px]">Catalog</span>
+  </a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./settings.html">
+    <span class="material-symbols-outlined">person</span>
+    <span class="font-label-sm text-[10px]">Profile</span>
+  </a>
+</nav>
 
-    <!-- Header Section -->
+<main class="pt-24 pb-24 md:pb-12 px-margin-mobile md:px-gutter md:ml-[260px] max-w-container-max mx-auto min-h-screen">
+  <div class="p-lg">
+
     <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-xl">
       <div>
         <h2 class="font-headline-xl text-headline-xl text-on-surface">My Reservations</h2>
@@ -199,7 +212,6 @@
       </div>
     </div>
 
-    <!-- Statistics Grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter mb-xl">
       <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow">
         <div class="flex items-center gap-4">
@@ -248,17 +260,15 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-      <!-- Main Reservations Section -->
       <div class="lg:col-span-8 space-y-gutter">
 
-        <!-- Featured Highlight Card -->
         <div class="relative overflow-hidden bg-white border border-outline-variant rounded-2xl shadow-sm flex flex-col md:flex-row">
           <div class="md:w-2/5 h-48 md:h-auto overflow-hidden">
             <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD8RQ2_EjaFfsV3sE70ogMvwHX4Llwn_v8NT_ELUaLLtwpUyO5dJRPY8pqfih4PL00fl86Gy5LjYJzDriRkmbUVOmPT7MDNkyJCHvUcL1mRQcCcVWhOvYhc8fH1iZ01u2QjODJbJ0HqVxrR6vP8lF_hm3zm-J61BMLIDhND7vYDdL7xRYUczuoBHrXG9DdpoYnGTgRZqFUpdMT7URAMvP7-kJDnoYCCodr3E-KeMvtNaHH5vM2vlin0WqtIvmNDsr4LTvGQPmTsdVMF" alt="Conference room"/>
           </div>
           <div class="flex-1 p-6 flex flex-col">
             <div class="flex justify-between items-start mb-4">
-              <span class="bg-emerald-500/10 text-emerald-700 px-3 py-1 rounded-full text-[12px] font-bold uppercase">Approved &amp; Active</span>
+              <span class="bg-emerald-500/10 text-emerald-700 px-3 py-1 rounded-full text-[12px] font-bold uppercase">Approved & Active</span>
               <div class="text-right">
                 <p class="text-label-sm font-label-sm text-on-surface-variant">Starts in</p>
                 <p class="text-primary font-bold text-headline-sm" id="countdown">—</p>
@@ -280,7 +290,6 @@
           </div>
         </div>
 
-        <!-- Filters Header -->
         <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex flex-wrap items-center gap-4">
           <div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg border border-outline-variant">
             <span class="material-symbols-outlined text-on-surface-variant text-[20px]">filter_list</span>
@@ -299,7 +308,6 @@
           <button id="clear-filter" class="text-primary font-label-md text-label-md hover:underline">Clear all</button>
         </div>
 
-        <!-- Reservation Cards List -->
         <div class="space-y-4" id="reservations-list">
           <div class="text-center py-12 text-on-surface-variant">
             <span class="material-symbols-outlined text-[48px] mb-2 block">hourglass_empty</span>
@@ -308,9 +316,7 @@
         </div>
       </div>
 
-      <!-- Right Sidebar Widgets -->
       <div class="lg:col-span-4 space-y-gutter">
-        <!-- Quick Actions Card -->
         <div class="bg-primary text-white p-6 rounded-2xl shadow-lg relative overflow-hidden group">
           <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
           <h4 class="font-headline-sm text-headline-sm mb-4 relative z-10">Need Assistance?</h4>
@@ -320,7 +326,6 @@
           </button>
         </div>
 
-        <!-- Upcoming Timeline Widget -->
         <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm">
           <h4 class="font-headline-sm text-headline-sm mb-6 flex items-center justify-between">
             Reservation Timeline
@@ -331,7 +336,6 @@
           </div>
         </div>
 
-        <!-- Policy Info -->
         <div class="bg-surface-container-low p-6 rounded-2xl border border-outline-variant">
           <div class="flex items-start gap-3">
             <span class="material-symbols-outlined text-amber-600 mt-1">info</span>
@@ -347,6 +351,17 @@
     </div>
   </div>
 </main>
+
+<footer class="md:ml-[260px] border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
+<div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-body-sm text-outline">
+<p>© 2024 AptSpace Seminary Management. All rights reserved.</p>
+<div class="flex gap-6">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Support</a>
+</div>
+</div>
+</footer>
 
 <script type="module">
   import { requireAuth, doLogout, getCurrentUser } from '../assets/js/auth.js';

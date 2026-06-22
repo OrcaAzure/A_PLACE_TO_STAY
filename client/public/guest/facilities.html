@@ -95,75 +95,94 @@
     </script>
 <style>
         body {
-            background-color: #F8FAFC;
+            background-color: #faf8ff;
             font-family: 'Inter', sans-serif;
-            -webkit-font-smoothing: antialiased;
         }
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #E2E8F0; border-radius: 10px; }
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
-        .elevation-1 { box-shadow: 0px 1px 3px rgba(0,0,0,0.1); }
         .glass-header { backdrop-filter: blur(12px); background-color: rgba(255, 255, 255, 0.8); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="text-on-surface">
-<!-- SideNavBar -->
-<aside class="fixed left-0 top-0 h-full w-sidebar-width z-40 bg-surface-container-lowest border-r border-outline-variant flex flex-col pt-20 pb-4">
-<div class="px-6 mb-8 flex items-center gap-3"><div class="px-lg mb-xl">
-<h1 class="font-headline-md text-headline-md font-black text-primary">AptSpace</h1>
-</div></div>
-<nav class="flex-1 flex flex-col">
-<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="./dashboard.html">
-<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+
+<aside class="hidden md:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
+<div class="px-6 mb-8">
+<h1 class="font-headline-sm text-headline-sm font-black text-primary">AptSpace</h1>
+</div>
+<nav class="flex-1 px-3 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./dashboard.html">
+<span class="material-symbols-outlined">dashboard</span>
 <span class="font-label-md text-label-md">Dashboard</span>
 </a>
-<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="./reservations.html">
-<span class="material-symbols-outlined" data-icon="event_available">event_available</span>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./reservations.html">
+<span class="material-symbols-outlined">event_available</span>
 <span class="font-label-md text-label-md">Reservations</span>
 </a>
-<a class="sidebar-active flex items-center gap-md py-3 px-md rounded-lg transition-all bg-primary-container/20 text-primary border-l-4 border-primary" href="./facilities.html">
-<span class="material-symbols-outlined" data-icon="apartment">domain</span>
+<a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 rounded-lg font-bold transition-all active:scale-95 duration-150" href="./facilities.html">
+<span class="material-symbols-outlined">domain</span>
 <span class="font-label-md text-label-md">Facilities</span>
 </a>
-<a class="flex items-center gap-md py-3 px-md rounded-lg text-on-surface-variant hover:bg-surface-container-low transition-all" href="./settings.html">
-<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./settings.html">
+<span class="material-symbols-outlined">settings</span>
 <span class="font-label-md text-label-md">Settings</span>
 </a>
 </nav>
-<div class="p-lg mt-auto border-t border-outline-variant">
-<div class="flex items-center gap-md">
-<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center">
-<span class="material-symbols-outlined text-primary" data-icon="account_circle">account_circle</span>
-</div>
-<div class="overflow-hidden">
-<p class="font-label-md text-label-md truncate" id="sidebar-user-name">Guest User</p>
-<p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer" id="logout-btn">Logout</p>
-</div>
-</div>
+<div class="px-6 mt-auto">
+<button class="w-full py-3 bg-primary text-on-primary rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Reservation
+            </button>
 </div>
 </aside>
-<!-- TopNavBar -->
-<header class="fixed top-0 w-full z-50 glass-header border-b border-outline-variant h-16 flex justify-between items-center px-gutter">
-<div class="ml-sidebar-width flex items-center gap-md">
-<span class="lg:hidden material-symbols-outlined" data-icon="menu">menu</span>
-<h2 class="font-headline-md text-headline-md font-bold text-primary">Facilities</h2>
+
+<header class="fixed top-0 right-0 left-0 md:left-[260px] h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant z-30 shadow-sm transition-all">
+<div class="flex justify-between items-center px-margin-mobile md:px-gutter h-full max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<span class="md:hidden font-headline-md text-headline-md font-bold text-primary">AptSpace</span>
+<div class="hidden lg:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-80">
+<span class="material-symbols-outlined text-outline text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full" placeholder="Search facilities..." type="text"/>
 </div>
-<div class="flex items-center gap-lg">
-<div class="relative hidden md:block">
-<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-sm" data-icon="search">search</span>
-<input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-label-md focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search facilities..." type="text">
 </div>
-<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span>
-<span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors" data-icon="help">help</span>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer active:opacity-70">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-label-md font-bold leading-none" id="sidebar-user-name">Guest User</p>
+<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider" id="logout-btn">Logout</p>
+</div>
+<img alt="Guest profile picture" class="w-9 h-9 rounded-full object-cover border border-outline-variant shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKnFuWYyCqVB1D8KonxmpTgy_LRZ8-57PS_1f-j4Q95Lxp6lw-UBQ8ZXQifoiWdtDaqijPT5m7lJLT9E0Bgw_fOfP2A0vd6O4_BVTnSd7-0Or0aselLhqO5ltYPCUnQNqWT4qpXRQpp66GWAwZZlOIdt7XkOymbWIBI4aIERQSl6lKYVeIJLyiMwC_lkkLMwS9-0aTn3yoWj6Ko6HZ2Ty13L7dilTbsavJb-tObKuf3DYZ5URDTExKio33brRmbWNNJ_mljzyl2_vm"/>
+</div>
+</div>
 </div>
 </header>
-<!-- Main Content -->
-<main class="pl-sidebar-width pt-16 min-h-screen pb-32">
-<div class="max-w-container-max mx-auto p-gutter flex flex-col gap-gutter">
-<!-- Steps Indicator -->
+
+<nav class="md:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 pb-safe bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./dashboard.html">
+    <span class="material-symbols-outlined">home</span>
+    <span class="font-label-sm text-[10px]">Home</span>
+  </a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./reservations.html">
+    <span class="material-symbols-outlined">add_circle</span>
+    <span class="font-label-sm text-[10px]">Reserve</span>
+  </a>
+  <a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 touch-manipulation duration-200" href="./facilities.html">
+    <span class="material-symbols-outlined">search</span>
+    <span class="font-label-sm text-[10px]">Catalog</span>
+  </a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./settings.html">
+    <span class="material-symbols-outlined">person</span>
+    <span class="font-label-sm text-[10px]">Profile</span>
+  </a>
+</nav>
+
+<main class="pt-24 pb-24 md:pb-12 px-margin-mobile md:px-gutter md:ml-[260px] max-w-container-max mx-auto min-h-screen">
+<div class="max-w-container-max mx-auto flex flex-col gap-gutter">
 <div class="flex items-center gap-8 border-b border-outline-variant/30 pb-4">
 <div class="flex items-center gap-3 border-b-2 border-primary pb-4 -mb-[18px]">
 <span class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm">1</span>
@@ -171,11 +190,10 @@
 </div>
 <div class="flex items-center gap-3 pb-4 -mb-[18px] opacity-40">
 <span class="w-8 h-8 rounded-full bg-surface-container-high text-on-surface-variant flex items-center justify-center font-bold text-sm">2</span>
-<span class="font-medium text-on-surface-variant">Review &amp; Confirm</span>
+<span class="font-medium text-on-surface-variant">Review & Confirm</span>
 </div>
 </div>
-<!-- Section 1: Search & Filters -->
-<section class="bg-surface-container-lowest rounded-2xl p-8 elevation-1 border border-outline-variant/30">
+<section class="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/30 shadow-sm">
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 <div>
 <label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Check-in</label>
@@ -212,7 +230,6 @@
                     </button>
 </div>
 </section>
-<!-- Building Category Filters -->
 <div class="flex flex-wrap gap-3">
 <button class="px-6 py-2.5 rounded-full font-bold text-label-md bg-primary text-white shadow-md transition-all active:scale-95">All Buildings</button>
 <button class="px-6 py-2.5 rounded-full font-bold text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">CALM Building</button>
@@ -228,16 +245,13 @@
 <button class="px-4 py-1.5 rounded-full font-medium text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">Superior Guest Room</button>
 <button class="px-4 py-1.5 rounded-full font-medium text-label-md border border-outline-variant text-on-surface-variant hover:bg-surface-container transition-all active:scale-95">Dorm</button>
 </div>
-<!-- Inventory Content -->
 <div class="space-y-12">
-<!-- Floor 1 Section -->
 <div class="space-y-6">
 <div class="flex items-center gap-4">
 <h4 class="font-headline-sm text-on-surface-variant whitespace-nowrap">Floor 1 • CALM</h4>
 <div class="h-[1px] w-full bg-outline-variant/30"></div>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-<!-- Room 104 -->
 <div class="group flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 hover:border-primary/40 transition-all duration-300 hover:shadow-xl">
 <div class="relative h-56 overflow-hidden">
 <img alt="Room 104" class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" src="https://lh3.googleusercontent.com/aida-public/AB6AXuADL1JNmlBDdOziSY2FyTrMTZUKPY2WSxw_IiBfwctVa0CHwhpSws1mpsK1cIU1jt7hS_VPk2nEey-x2OceTSces8wgInKHoYpMU1ENyIGOmgEai8IyNVewlEvkmLLgMERQ7hi8k6GABwInmNr_jgkHmcYgpceuxiSmuDFzBX56TezmdY2f9lighO9M9Fiv9ooDMQW4B1LybmvyiqLUyK9TGlrOtcoJny-Y-AGNveTdjMXRTBk0GdAHtg9Nmc0lCLAHmgFGrkyn2rAU">
@@ -259,14 +273,12 @@
 </div>
 </div>
 </div>
-<!-- Floor 2 Section -->
 <div class="space-y-6">
 <div class="flex items-center gap-4">
 <h4 class="font-headline-sm text-on-surface-variant whitespace-nowrap">Floor 2 • CALM</h4>
 <div class="h-[1px] w-full bg-outline-variant/30"></div>
 </div>
 <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-<!-- Room 201 -->
 <div class="group flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 opacity-75 grayscale-[0.2]">
 <div class="relative h-56 overflow-hidden">
 <img alt="Room 201" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfBnGIh5bZevDzeXHA4FtFOD4Y5DQ_l2afIPqDNvky-XYMcGELXObJB6t-21EfqEf2JVbgKhphZgRP6FuRnazU7G9HJ3i1NEj1hXdvViK21DynEbU3tKuOHyPuHooTKPRS44AC0xpdiaG8gVKQgQ3fTsmBxlcL_WHomtwaiAJ_vLYWl1EiD3iJew0Mez6VFmoLhq3RfNcVYRUWh721fm5uZMNe5HpF6uW82CxnWjandi0_jE2PhnsgPbuWYMoib5q4ePu7Ipb8eFM3">
@@ -286,7 +298,6 @@
 <button class="mt-auto w-full py-4 bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md cursor-not-allowed" disabled="">Unavailable</button>
 </div>
 </div>
-<!-- Room 202 -->
 <div class="group flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 hover:border-amber-400/40 transition-all">
 <div class="relative h-56 overflow-hidden">
 <img alt="Room 202" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBV470QAADpv-GNzLhAHQ4tJPGAaAZm89EbT0UEdo4aejewdtHSANm7KRCuxwjqWrQYusGvEcKzYcrBvyKmcWNElpL33oRNYZSZPW6Eubqw-HMrS8HCaXUE9NhYgnVmf5nObO6HJ8JcPHC1HGOBHWLBJPeksjJKuyH6oUzfM1DhpkMo-0BgE20EWXantQ510E6RCV1nVSM6coaRFoAfCvhNAc8SpRUAXPHTTXhDBuDtm3Ax2dg0Sc7uVWn4-OsD_IXhSCsgWaPckiR6">
@@ -306,7 +317,6 @@
 <button class="mt-auto w-full py-4 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl font-bold text-label-md hover:bg-amber-100 transition-all">Requires Cleaning</button>
 </div>
 </div>
-<!-- Room 203 -->
 <div class="group flex flex-col bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/30 opacity-60">
 <div class="relative h-56 overflow-hidden grayscale">
 <img alt="Room 203" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8fguAczaiFMzMovnmGAHG_BkLMrI4uEq98LVRrVTK77-lu0AcCiSetEq3Tm1oZXBtrq3wWzFm0qaKLvy_Y9h4KH0AYHyxy2lFxOzbKnXUMukUwlIJkwuel8CHDqxXVNPXzzxqN-LJ0gVSB7g04sx9TAe88fPRvsMcQ54bZ4MIFkmhB2dwuuMLaFQyz4ZrysbTV1Vw2e3AKdwVukoTASRCagkgUq8v4jVF41qv8JkNACzhGIU_NfIp3yQNCrDF1rFE4_iaPZtZ4X5i">
@@ -330,7 +340,8 @@
 </div>
 </div>
 </div>
-<!-- Sticky Reservation Summary -->
+</main>
+
 <div class="fixed bottom-0 left-0 w-full bg-surface-container-lowest border-t border-outline-variant p-6 flex justify-between items-center z-40 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]" style="width: calc(100% - 260px); left: 260px;">
 <div class="flex flex-col">
 <span class="text-label-sm text-outline uppercase tracking-wider">Selected Room</span>
@@ -341,15 +352,18 @@ Confirm Reservation
 <span class="material-symbols-outlined">arrow_forward</span>
 </button>
 </div>
-<footer class="mt-12 pt-8 border-t border-outline-variant/30 px-gutter pb-8 flex flex-col md:flex-row justify-between items-center gap-4 text-body-sm text-outline">
+
+<footer class="md:ml-[260px] border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
+<div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-body-sm text-outline">
 <p>© 2024 AptSpace Seminary Management. All rights reserved.</p>
 <div class="flex gap-6">
 <a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
 <a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
 <a class="hover:text-primary transition-colors" href="#">Support</a>
 </div>
+</div>
 </footer>
-</main>
+
 <script type="module">
   import { requireAuth, doLogout, getCurrentUser } from '../assets/js/auth.js';
 
@@ -362,11 +376,5 @@ Confirm Reservation
   }
 
   document.getElementById('logout-btn')?.addEventListener('click', () => doLogout());
-
-  // Original hover state enhancements
-  document.querySelectorAll('.group').forEach(card => {
-    card.addEventListener('mouseenter', () => card.classList.add('elevation-2'));
-    card.addEventListener('mouseleave', () => card.classList.remove('elevation-2'));
-  });
 </script>
 </body></html>
