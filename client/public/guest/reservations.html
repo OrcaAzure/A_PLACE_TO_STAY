@@ -143,7 +143,7 @@
 </a>
 </nav>
 <div class="px-6 mt-auto">
-<button class="w-full py-3 bg-primary text-on-primary rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm">
+<button id="new-reservation-sidebar" class="w-full py-3 bg-primary text-on-primary rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm">
 <span class="material-symbols-outlined text-[18px]">add</span>
                 New Reservation
             </button>
@@ -206,7 +206,7 @@
         <p class="font-body-md text-body-md text-on-surface-variant">Manage and track your facility reservations with ease.</p>
       </div>
       <div class="flex items-center gap-3">
-        <button class="flex items-center gap-2 bg-[#2563EB] text-white px-6 py-3 rounded-xl font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-[0.98]">
+        <button id="new-reservation-btn" class="flex items-center gap-2 bg-[#2563EB] text-white px-6 py-3 rounded-xl font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-[0.98]">
           <span class="material-symbols-outlined text-[20px]">add</span>
           New Reservation
         </button>
@@ -353,6 +353,48 @@
   </div>
 </main>
 
+<div id="booking-modal-overlay" class="hidden fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div class="p-6 border-b border-outline-variant flex items-center justify-between">
+      <h3 class="font-headline-md text-headline-md">New Reservation</h3>
+      <button type="button" id="booking-modal-close" class="text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form id="booking-form" class="p-6 space-y-4">
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-room">Room</label>
+        <select id="booking-room" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm">
+          <option value="">Select a room...</option>
+        </select>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-in">Check-in</label>
+          <input type="date" id="booking-check-in" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-out">Check-out</label>
+          <input type="date" id="booking-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-guests">Guests</label>
+        <input type="number" id="booking-guests" min="1" value="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-notes">Notes (optional)</label>
+        <textarea id="booking-notes" rows="3" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm"></textarea>
+      </div>
+      <div id="booking-form-error" class="hidden text-body-sm text-error bg-error-container rounded-lg px-3 py-2"></div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" id="booking-cancel-btn" class="flex-1 py-3 border border-outline-variant rounded-lg font-label-md">Cancel</button>
+        <button type="submit" id="booking-submit-btn" class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90">Submit Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <footer class="lg:ml-[260px] border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
 <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
 <div class="flex items-center gap-2">
@@ -369,11 +411,10 @@
 
 <script type="module">
   import { requireAuth, doLogout, getCurrentUser } from '../assets/js/auth.js';
-  import { getBookings, normalizeBooking } from '../assets/js/api.js';
+  import { getBookings, getRooms, createBooking, updateBooking, normalizeBooking, normalizeRoom } from '../assets/js/api.js';
 
   requireAuth();
 
-  // Show user info
   const user = getCurrentUser();
   if (user) {
     const nameEl = document.getElementById('user-name-display');
@@ -382,20 +423,17 @@
     if (avatarEl) avatarEl.textContent = (user.full_name || user.name || 'G')[0].toUpperCase();
   }
 
-  // Logout
   document.getElementById('logout-btn')?.addEventListener('click', (e) => {
     e.preventDefault();
     doLogout();
   });
 
-  // Month label
   const now = new Date();
   document.getElementById('current-month-label').textContent =
     now.toLocaleString('default', { month: 'long', year: 'numeric' });
   document.getElementById('timeline-month').textContent =
     now.toLocaleString('default', { month: 'long' });
 
-  // Status badge helper
   function statusBadge(status) {
     const map = {
       approved:  'bg-emerald-500/10 text-emerald-700',
@@ -406,20 +444,22 @@
     return map[status] || 'bg-surface-container text-on-surface-variant';
   }
 
-  // Render a reservation card
   function renderCard(b) {
+    const amount = b.totalAmount != null
+      ? `₱${Number(b.totalAmount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+      : '';
     return `
-      <div class="group bg-white p-4 rounded-[16px] border border-outline-variant hover:border-primary/40 hover:shadow-lg transition-all duration-300">
+      <div class="group bg-white p-4 rounded-[16px] border border-outline-variant hover:border-primary/40 hover:shadow-lg transition-all duration-300" data-booking-id="${b.id}">
         <div class="flex flex-col sm:flex-row gap-6">
           <div class="flex-1">
             <div class="flex justify-between items-start mb-2">
               <div>
                 <h4 class="font-headline-sm text-headline-sm">#APT-${b.id}</h4>
-                <p class="text-body-sm text-on-surface-variant">${b.title}</p>
+                <p class="text-body-sm text-on-surface-variant">${b.facilityLabel || b.title}</p>
               </div>
               <span class="${statusBadge(b.status)} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${b.status}</span>
             </div>
-            <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
               <div>
                 <p class="text-[11px] font-bold text-on-surface-variant uppercase">Check-in</p>
                 <p class="text-body-sm font-medium">${b.startDate || '—'}</p>
@@ -432,20 +472,20 @@
                 <p class="text-[11px] font-bold text-on-surface-variant uppercase">Guests</p>
                 <p class="text-body-sm font-medium">${b.guestCount || 1}</p>
               </div>
+              ${amount ? `<div><p class="text-[11px] font-bold text-on-surface-variant uppercase">Total</p><p class="text-body-sm font-medium">${amount}</p></div>` : ''}
             </div>
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
-          ${b.status === 'pending' ? `<button class="px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-on-surface transition-colors">Cancel</button>` : ''}
-          <button class="px-4 py-2 text-label-md font-label-md bg-surface-container text-on-surface rounded-lg hover:bg-surface-container-high transition-colors">View Details</button>
+          ${b.status === 'pending' ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error transition-colors" data-id="${b.id}">Cancel</button>` : ''}
         </div>
       </div>`;
   }
 
-  // Render timeline items
   function renderTimeline(bookings) {
+    const today = now.toISOString().slice(0, 10);
     const upcoming = bookings
-      .filter(b => b.status === 'approved' && b.startDate >= now.toISOString().slice(0, 10))
+      .filter(b => b.status === 'approved' && b.startDate >= today)
       .slice(0, 3);
 
     if (!upcoming.length) {
@@ -458,12 +498,11 @@
       <div class="mb-8 relative ${i > 0 ? 'opacity-60' : ''}">
         <div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full ${i === 0 ? 'bg-primary' : 'bg-surface-container'} border-4 border-white shadow-sm"></div>
         <p class="text-[11px] font-bold ${i === 0 ? 'text-primary' : 'text-on-surface-variant'} uppercase">${b.startDate}</p>
-        <h5 class="text-body-md font-bold">${b.title}</h5>
+        <h5 class="text-body-md font-bold">${b.facilityLabel || b.title}</h5>
         <p class="text-body-sm text-on-surface-variant">${b.guestCount || 1} Guest(s)</p>
       </div>`).join('');
   }
 
-  // Load and render bookings
   let allBookings = [];
 
   async function loadBookings() {
@@ -471,21 +510,14 @@
       const raw = await getBookings();
       allBookings = raw.map(normalizeBooking);
 
-      // Filter to current user's bookings
-      const userId = user?.id;
-      const myBookings = userId
-        ? allBookings.filter(b => b.userId === userId)
-        : allBookings;
-
-      // Stats
       const today = now.toISOString().slice(0, 10);
-      document.getElementById('stat-total').textContent    = myBookings.length;
-      document.getElementById('stat-pending').textContent  = myBookings.filter(b => b.status === 'pending').length;
-      document.getElementById('stat-approved').textContent = myBookings.filter(b => b.status === 'approved').length;
-      document.getElementById('stat-upcoming').textContent = myBookings.filter(b => b.status === 'approved' && b.startDate >= today).length;
+      document.getElementById('stat-total').textContent    = allBookings.length;
+      document.getElementById('stat-pending').textContent  = allBookings.filter(b => b.status === 'pending').length;
+      document.getElementById('stat-approved').textContent = allBookings.filter(b => b.status === 'approved').length;
+      document.getElementById('stat-upcoming').textContent = allBookings.filter(b => b.status === 'approved' && b.startDate >= today).length;
 
-      renderTimeline(myBookings);
-      renderList(myBookings);
+      renderTimeline(allBookings);
+      renderList(allBookings);
     } catch (err) {
       document.getElementById('reservations-list').innerHTML =
         `<div class="text-center py-12 text-error"><p>${err.message}</p></div>`;
@@ -499,24 +531,96 @@
         <div class="text-center py-12 text-on-surface-variant">
           <span class="material-symbols-outlined text-[48px] mb-2 block">event_busy</span>
           <p class="font-body-md text-body-md">No reservations found.</p>
+          <button type="button" id="empty-new-booking" class="mt-4 text-primary font-label-md hover:underline">Create your first reservation</button>
         </div>`;
+      document.getElementById('empty-new-booking')?.addEventListener('click', openBookingModal);
       return;
     }
     list.innerHTML = bookings.map(renderCard).join('');
+    list.querySelectorAll('.cancel-booking-btn').forEach(btn => {
+      btn.addEventListener('click', () => cancelBooking(btn.dataset.id));
+    });
   }
 
-  // Filter
+  async function cancelBooking(id) {
+    if (!confirm('Cancel this pending reservation?')) return;
+    try {
+      await updateBooking(id, { status: 'Cancelled' });
+      await loadBookings();
+    } catch (err) {
+      alert(err.message || 'Could not cancel booking');
+    }
+  }
+
   document.getElementById('status-filter').addEventListener('change', (e) => {
     const val = e.target.value;
-    const userId = user?.id;
-    const myBookings = userId ? allBookings.filter(b => b.userId === userId) : allBookings;
-    renderList(val ? myBookings.filter(b => b.status === val) : myBookings);
+    renderList(val ? allBookings.filter(b => b.status === val) : allBookings);
   });
 
   document.getElementById('clear-filter').addEventListener('click', () => {
     document.getElementById('status-filter').value = '';
-    const userId = user?.id;
-    renderList(userId ? allBookings.filter(b => b.userId === userId) : allBookings);
+    renderList(allBookings);
+  });
+
+  const modal = document.getElementById('booking-modal-overlay');
+  const form = document.getElementById('booking-form');
+  const roomSelect = document.getElementById('booking-room');
+  let availableRooms = [];
+
+  function closeBookingModal() {
+    modal?.classList.add('hidden');
+    form?.reset();
+    document.getElementById('booking-form-error')?.classList.add('hidden');
+  }
+
+  async function openBookingModal() {
+    try {
+      const rooms = await getRooms();
+      availableRooms = rooms.filter(r => r.status !== 'Maintenance');
+      roomSelect.innerHTML = '<option value="">Select a room...</option>' +
+        availableRooms.map(r => {
+          const n = normalizeRoom(r);
+          return `<option value="${r.id}">${n.building} ${n.roomNumber} — ${n.roomType} (${n.status})</option>`;
+        }).join('');
+      modal?.classList.remove('hidden');
+    } catch (err) {
+      alert(err.message || 'Could not load rooms');
+    }
+  }
+
+  document.getElementById('new-reservation-btn')?.addEventListener('click', openBookingModal);
+  document.getElementById('new-reservation-sidebar')?.addEventListener('click', openBookingModal);
+  document.getElementById('booking-modal-close')?.addEventListener('click', closeBookingModal);
+  document.getElementById('booking-cancel-btn')?.addEventListener('click', closeBookingModal);
+  modal?.addEventListener('click', (e) => { if (e.target === modal) closeBookingModal(); });
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('booking-form-error');
+    const submitBtn = document.getElementById('booking-submit-btn');
+    errorEl?.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+
+    try {
+      await createBooking({
+        room_id: Number(roomSelect.value),
+        check_in: document.getElementById('booking-check-in').value,
+        check_out: document.getElementById('booking-check-out').value,
+        guest_count: Number(document.getElementById('booking-guests').value) || 1,
+        notes: document.getElementById('booking-notes').value.trim() || null,
+      });
+      closeBookingModal();
+      await loadBookings();
+    } catch (err) {
+      if (errorEl) {
+        errorEl.textContent = err.message || 'Booking failed';
+        errorEl.classList.remove('hidden');
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Request';
+    }
   });
 
   loadBookings();

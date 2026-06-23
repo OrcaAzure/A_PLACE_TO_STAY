@@ -14,7 +14,7 @@ const router = Router();
 router.get('/', requireAuth, getAllBookings);
 router.get('/:id', requireAuth, getBookingById);
 router.post('/', requireAuth, createBooking);
-router.patch('/:id', requireAuth, requireRole('Super Admin', 'Admin'), updateBooking);
+router.patch('/:id', requireAuth, updateBooking);
 router.delete('/:id', requireAuth, requireRole('Super Admin', 'Admin'), deleteBooking);
 
 export default router;

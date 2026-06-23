@@ -1,26 +1,42 @@
 # AptSpace
 
-AptSpace is a web-based housing and accommodation management system built with a Node.js + Express backend, MySQL database, and static frontend starter pages.
+AptSpace is a web-based housing and accommodation management system for Asia Pacific Theological Seminary (APTS). It uses a Node.js + Express backend, MySQL database, and a static HTML/Tailwind frontend with separate admin and guest portals.
 
 ## Project Structure
 
 ```txt
-APSTPACE-cleaned/
+APSTPACE/
 ├── .env.example
 ├── README.md
+├── package.json
 └── client/
     ├── database/
     │   └── schema.sql
     ├── public/
     │   ├── index.html
     │   ├── login.html
-    │   ├── dashboard.html
-    │   └── assests/
+    │   ├── admin/
+    │   │   ├── dashboard.html
+    │   │   ├── reservations.html
+    │   │   ├── facilities.html
+    │   │   ├── residents.html
+    │   │   ├── payments.html
+    │   │   └── settings.html
+    │   ├── guest/
+    │   │   ├── dashboard.html
+    │   │   ├── reservations.html
+    │   │   ├── facilities.html
+    │   │   └── settings.html
+    │   ├── components/
+    │   └── assets/
     │       ├── css/
-    │       │   └── main.css
     │       └── js/
     │           ├── api.js
     │           ├── auth.js
+    │           ├── dashboard.js
+    │           ├── manage-requests.js
+    │           ├── reservations.js
+    │           ├── timeline.js
     │           └── ui.js
     └── server/
         ├── package.json
@@ -28,44 +44,25 @@ APSTPACE-cleaned/
             ├── app.js
             ├── server.js
             ├── config/
-            │   ├── db.js
-            │   └── env.js
             ├── controllers/
-            │   ├── auth.controller.js
-            │   ├── booking.controller.js
-            │   ├── room.controller.js
-            │   └── user.controller.js
             ├── middleware/
-            │   ├── auth.middleware.js
-            │   └── role.middleware.js
             ├── models/
-            │   ├── Booking.js
-            │   ├── Payment.js
-            │   ├── Room.js
-            │   └── User.js
             ├── routes/
-            │   ├── auth.routes.js
-            │   ├── booking.routes.js
-            │   ├── room.routes.js
-            │   └── user.routes.js
             ├── services/
             │   ├── auth.service.js
-            │   ├── booking.service.js
-            │   └── email.service.js
+            │   └── booking.service.js
             └── utils/
-                ├── constants.js
-                └── helpers.js
 ```
 
 ## Features
 
-- JWT-based authentication
-- Role-based access control
-- Room management
-- Booking management
-- User management
-- Basic payment model support
-- Starter frontend pages
+- JWT-based authentication with role-based access control
+- Room and booking management with seasonal pricing
+- Overlap detection and capacity validation on new bookings
+- Admin dashboard with live KPIs, activity feed, and approval queue
+- Guest self-service booking and cancellation (pending only)
+- User and payment management
+- Facility catalog in database (API for facility bookings coming next)
 
 ## Prerequisites
 
@@ -79,7 +76,7 @@ APSTPACE-cleaned/
 
 ```bash
 git clone <repository-url>
-cd APSTPACE-cleaned
+cd APSTPACE
 ```
 
 ### 2. Install backend dependencies
@@ -103,30 +100,29 @@ DB_PASSWORD=
 DB_NAME=aptspace
 JWT_SECRET=your_secret_key
 JWT_EXPIRES_IN=7d
+DEFAULT_PASSWORD=password
 ```
 
 ### 4. Set up the database
 
-Import the SQL file:
+Import the SQL schema:
 
-```txt
-client/database/schema.sql
+```bash
+mysql -u root -p < client/database/schema.sql
 ```
 
-This file contains the starter database tables used by the project.
+Seed users are created automatically when the server starts (default password: `password` unless `DEFAULT_PASSWORD` is set).
 
-### 5. Run the backend server
+### 5. Run the server
 
 ```bash
 cd client/server
 npm run dev
 ```
 
-The API should be available at:
+Open the app at [http://localhost:3000](http://localhost:3000).
 
-```txt
-http://localhost:3000
-```
+**Default admin login:** `admin@aptspace.com` / `password`
 
 ## API Endpoints
 
@@ -138,28 +134,31 @@ http://localhost:3000
 ### Rooms
 - `GET /api/rooms`
 - `GET /api/rooms/:id`
-- `POST /api/rooms`
-- `PATCH /api/rooms/:id`
-- `DELETE /api/rooms/:id`
+- `POST /api/rooms` (admin)
+- `PATCH /api/rooms/:id` (admin)
+- `DELETE /api/rooms/:id` (admin)
 
 ### Bookings
 - `GET /api/bookings`
 - `GET /api/bookings/:id`
 - `POST /api/bookings`
-- `PATCH /api/bookings/:id`
-- `DELETE /api/bookings/:id`
+- `PATCH /api/bookings/:id` (admin: full update; guest: cancel own pending booking)
+- `DELETE /api/bookings/:id` (admin)
 
 ### Users
-- `GET /api/users`
+- `GET /api/users` (admin)
 - `GET /api/users/:id`
-- `PATCH /api/users/:id`
-- `DELETE /api/users/:id`
+- `PATCH /api/users/:id` (admin)
+- `DELETE /api/users/:id` (admin)
+
+### Payments
+- `GET /api/payments`
+- `GET /api/payments/:id`
 
 ## Roles
 
 - Super Admin
 - Admin
-- Housing Admin
 - GNC View Only
 - Faculty
 - Staff
@@ -168,14 +167,14 @@ http://localhost:3000
 
 ## Notes
 
-- The folder name `assests` is kept as-is to match the current project structure.
-- The current files are starter code and can be expanded as the project grows.
 - Do not commit your `.env` file.
-- Keep database credentials private.
+- Booking totals are calculated from `room_rates` and `season_definitions` on create.
+- The `facilities` and `facility_bookings` tables are seeded but not yet exposed via API.
 
 ## Common Commands
 
 ```bash
+cd client/server
 npm run dev
 npm start
 ```

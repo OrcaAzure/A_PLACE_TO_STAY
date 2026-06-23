@@ -119,16 +119,27 @@ export function normalizeRoom(room) {
 
 export function normalizeBooking(booking) {
   const status = (booking.status || 'Pending').toLowerCase();
+  const building = booking.building_name || booking.building || '';
+  const roomNumber = booking.room_number || '';
+  const facilityLabel = [building, roomNumber].filter(Boolean).join(' ') || `Booking #${booking.id}`;
+
   return {
     id: booking.id,
+    userId: booking.user_id,
     roomId: booking.room_id,
-    title: booking.guest_name || booking.title || `Booking #${booking.id}`,
+    title: booking.guest_name ? facilityLabel : (booking.title || facilityLabel),
+    facilityLabel,
+    buildingName: building,
+    roomNumber,
+    guestName: booking.guest_name,
     startDate: booking.check_in || booking.startDate,
     endDate: booking.check_out || booking.endDate,
     status,
     guestCount: booking.guest_count,
     totalAmount: booking.total_amount,
     notes: booking.notes,
+    createdAt: booking.created_at,
+    updatedAt: booking.updated_at,
   };
 }
 
