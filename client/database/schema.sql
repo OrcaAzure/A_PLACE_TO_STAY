@@ -540,18 +540,10 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
 -- SEED DATA: USERS
--- Password for ALL users = 'password'
--- Hash: $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2
+-- NOTE: User passwords are NOT seeded here.
+-- Run `node seedUsers.js` after importing this schema
+-- to insert users with properly hashed passwords.
 -- ============================================
-
-INSERT INTO users (full_name, email, password, role, status)
-VALUES (
-    'System Administrator',
-    'admin@aptspace.com',
-    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2',
-    'Super Admin',
-    'Active'
-) ON DUPLICATE KEY UPDATE email = email;
 
 -- ============================================
 -- SEED DATA: SEASON DEFINITIONS (FY26)
@@ -566,18 +558,8 @@ INSERT INTO season_definitions (season, start_date, end_date, label) VALUES
 
 -- ============================================
 -- SEED DATA: GUEST USERS
--- Password for ALL users = 'password'
--- Hash: $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2
+-- NOTE: Inserted via seedUsers.js (run after importing this schema)
 -- ============================================
-
-INSERT INTO users (full_name, email, password, role, status) VALUES
-    ('Maria Santos',    'maria.santos@apts.edu.ph',    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'Faculty',       'Active'),
-    ('James Reyes',     'james.reyes@apts.edu.ph',     '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'Student',       'Active'),
-    ('Ruth Villanueva', 'ruth.villanueva@apts.edu.ph', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'Staff',         'Active'),
-    ('Paul Mendoza',    'paul.mendoza@apts.edu.ph',    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'Missionary',    'Active'),
-    ('Grace Tan',       'grace.tan@apts.edu.ph',       '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'GNC View Only', 'Active'),
-    ('Admin User',      'admin2@aptspace.com',          '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'Admin',         'Active')
-ON DUPLICATE KEY UPDATE email = email;
 
 -- ============================================
 -- SEED DATA: SAMPLE BOOKINGS
