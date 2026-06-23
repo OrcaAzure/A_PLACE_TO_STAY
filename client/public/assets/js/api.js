@@ -48,6 +48,17 @@ export async function getProfile() {
   return apiRequest('/auth/me');
 }
 
+export async function updateProfile(payload) {
+  return apiRequest('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getAdminSummary() {
+  return apiRequest('/stats/summary');
+}
+
 export async function getUsers() {
   const data = await apiRequest('/users');
   return data.users || [];

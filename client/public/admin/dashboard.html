@@ -62,7 +62,7 @@
           <div class="p-2 bg-slate-50 text-slate-600 rounded-lg flex items-center justify-center">
             <span class="material-symbols-outlined text-[18px]">meeting_room</span>
           </div>
-          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">High Demand</span>
+          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight" id="kpi-rooms-available-label">—</span>
         </div>
         <div>
           <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Total Rooms</p>
@@ -75,7 +75,7 @@
           <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center">
             <span class="material-symbols-outlined text-[18px]">bed</span>
           </div>
-          <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">Optimal</span>
+          <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full" id="kpi-maintenance-label">—</span>
         </div>
         <div>
           <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Occupancy</p>
@@ -88,7 +88,7 @@
           <div class="p-2 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
             <span class="material-symbols-outlined text-[18px]">restaurant</span>
           </div>
-          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight">Active</span>
+          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight" id="kpi-revenue-label">Paid</span>
         </div>
         <div>
           <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Revenue</p>
@@ -105,10 +105,7 @@
             <h2 class="text-base font-bold text-slate-800">Facility Utilization</h2>
             <p class="text-xs text-slate-400">Real-time usage trends across seminary buildings</p>
           </div>
-          <button class="bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-3 text-slate-600 flex items-center gap-1.5 font-medium">
-            <span>Last 30 Days</span>
-            <span class="material-symbols-outlined text-sm">expand_more</span>
-          </button>
+          <span class="bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-3 text-slate-600 font-medium" id="chart-period-label">Last 30 days · approved bookings</span>
         </div>
         
         <div class="p-6 h-[340px] relative flex items-end justify-between gap-6" id="building-chart-mount">
@@ -174,7 +171,13 @@
 
     try {
       await loadDashboard();
+      window.addEventListener('booking:updated', loadDashboard);
     } catch (err) {
+      const mount = document.getElementById('page-content');
+      if (mount) {
+        mount.insertAdjacentHTML('afterbegin',
+          `<div class="bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-4 py-3 text-sm mb-4">${err.message || 'Failed to load dashboard data.'}</div>`);
+      }
       console.error('Dashboard load failed:', err);
     }
   </script>

@@ -9,5 +9,11 @@ export const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
-  dateStrings: true
+  dateStrings: true,
 });
+
+export async function testConnection() {
+  const conn = await pool.getConnection();
+  await conn.ping();
+  conn.release();
+}

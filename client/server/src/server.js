@@ -1,18 +1,27 @@
-import dotenv from 'dotenv';
-dotenv.config();
- 
 import app from './app.js';
-import { seedUsers } from './config/seed.js';
- 
-const PORT = process.env.PORT || 3000;
- 
-app.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`);
- 
+import { testConnection } from './config/db.js';
+import { runSeed } from './config/seed.js';
+import { PORT } from './config/env.js';
+
+async function start() {
   try {
-    await seedUsers();
+    await testConnection();
+    console.log(`[db] Connected to MySQL (${process.env.DB_NAME || 'aptspace'})`);
   } catch (err) {
-    console.error('[seed] Failed to seed users:', err.message);
+    console.error('[db] Cannot connect to MySQL. Check client/server/.env and that the schema is imported.');
+    console.error(`[db] ${err.message}`);
+    process.exit(1);
   }
-});
- 
+
+  try {
+    await runSeed();
+  } catch (err) {
+    console.error('[seed] Failed:', err.message);
+  }
+
+  app.listen(PORT || 3000, () => {
+    console.log(`[server] Running at http://localhost:${PORT || 3000}`);
+  });
+}
+
+start();

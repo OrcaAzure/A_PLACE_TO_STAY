@@ -1,8 +1,17 @@
 /**
- * Admin dashboard — loads live KPIs, activity feed, queue, and building chart.
+ * Admin dashboard — loads live KPIs, activity feed, queue, and building chart from /api/stats/summary.
  */
 
-import { getBookings, getRooms, getPayments, updateBooking, normalizeBooking } from './api.js';
+import { getAdminSummary, getBookings, updateBooking, normalizeBooking } from './api.js';
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function formatPHP(amount) {
+  return `₱${Number(amount || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
+}
 
 function initials(name) {
   if (!name) return '?';
@@ -35,8 +44,7 @@ function relativeTime(iso) {
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
 }
 
 function activityIcon(status) {
@@ -50,70 +58,46 @@ function activityIcon(status) {
 }
 
 export async function loadDashboard() {
-  const today = new Date().toISOString().slice(0, 10);
-  const [bookingsRaw, roomsRaw, paymentsRaw] = await Promise.all([
-    getBookings(),
-    getRooms(),
-    getPayments(),
-  ]);
+  const summary = await getAdminSummary();
+  const { kpis, buildingUsage, recentActivity } = summary;
 
-  const bookings = bookingsRaw.map(normalizeBooking);
-  const rooms = roomsRaw;
+  setText('kpi-upcoming', kpis.upcoming);
+  setText('kpi-pending-count', kpis.pending);
+  setText('kpi-approved', kpis.approved);
+  setText('kpi-approval-rate', `${kpis.approvalRate}% Rate`);
+  setText('kpi-total-rooms', kpis.totalRooms);
+  setText('kpi-rooms-available-label', `${kpis.availableRooms} available`);
+  setText('kpi-occupancy', `${kpis.occupancyPct}%`);
+  setText('kpi-maintenance-label', `${kpis.maintenanceRooms} in maint.`);
+  setText('kpi-revenue', formatPHP(kpis.paidRevenue));
 
-  const pending = bookings.filter((b) => b.status === 'pending');
-  const approved = bookings.filter((b) => b.status === 'approved');
-  const upcoming = bookings.filter((b) => b.status === 'approved' && b.startDate >= today);
-  const occupiedRooms = rooms.filter((r) => r.status === 'Occupied').length;
-  const totalRooms = rooms.length;
-  const occupancyPct = totalRooms ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
-  const approvalRate = bookings.length
-    ? Math.round((approved.length / bookings.length) * 100)
-    : 0;
-
-  document.getElementById('kpi-upcoming')?.replaceChildren(document.createTextNode(String(upcoming.length)));
-  document.getElementById('kpi-pending-count')?.replaceChildren(document.createTextNode(String(pending.length)));
-  document.getElementById('kpi-approved')?.replaceChildren(document.createTextNode(String(approved.length)));
-  document.getElementById('kpi-approval-rate')?.replaceChildren(document.createTextNode(`${approvalRate}% Rate`));
-  document.getElementById('kpi-occupancy')?.replaceChildren(document.createTextNode(`${occupancyPct}%`));
-  document.getElementById('kpi-total-rooms')?.replaceChildren(document.createTextNode(String(totalRooms)));
-
-  const revenue = paymentsRaw
-    .filter((p) => p.status === 'Paid')
-    .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-  const revenueLabel = revenue
-    ? `₱${revenue.toLocaleString('en-PH', { maximumFractionDigits: 0 })}`
-    : '₱0';
-  document.getElementById('kpi-revenue')?.replaceChildren(document.createTextNode(revenueLabel));
-
-  renderBuildingChart(bookings, rooms);
-  renderRecentActivity(bookingsRaw);
-  renderQueue(bookingsRaw);
+  renderBuildingChart(buildingUsage);
+  renderRecentActivity(recentActivity);
+  await renderQueue();
 }
 
-function renderBuildingChart(bookings, rooms) {
+function renderBuildingChart(buildingUsage) {
   const mount = document.getElementById('building-chart-mount');
   if (!mount) return;
 
-  const buildingNames = [...new Set(rooms.map((r) => r.building_name).filter(Boolean))];
-  if (!buildingNames.length) {
+  if (!buildingUsage?.length) {
     mount.innerHTML = '<p class="text-xs text-slate-400 absolute inset-0 flex items-center justify-center">No building data available.</p>';
     return;
   }
-  const counts = buildingNames.map((name) =>
-    bookings.filter((b) => b.buildingName === name && b.status === 'approved').length
-  );
-  const max = Math.max(...counts, 1);
 
-  mount.innerHTML = buildingNames.map((name, i) => {
-    const height = Math.round((counts[i] / max) * 140);
-    const colors = ['bg-blue-600', 'bg-teal-700', 'bg-amber-700', 'bg-blue-400', 'bg-emerald-500', 'bg-slate-400'];
+  const max = Math.max(...buildingUsage.map((b) => Number(b.booking_count)), 1);
+  const colors = ['bg-blue-600', 'bg-teal-700', 'bg-amber-700', 'bg-blue-400', 'bg-emerald-500', 'bg-slate-400'];
+
+  mount.innerHTML = buildingUsage.map((row, i) => {
+    const height = Math.round((Number(row.booking_count) / max) * 140);
     const color = colors[i % colors.length];
     return `
-      <div class="flex-1 flex flex-col items-center gap-2 group relative z-10">
+      <div class="flex-1 flex flex-col items-center gap-2 group relative z-10 min-w-0">
         <div class="w-full bg-slate-100/70 rounded-t-lg relative overflow-hidden h-[180px]">
-          <div class="chart-bar absolute bottom-0 w-full ${color} rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="${height}px"></div>
+          <div class="chart-bar absolute bottom-0 w-full ${color} rounded-t-lg transition-all duration-1000 ease-out" style="height: 0px;" data-height="${height}px" title="${row.booking_count} approved (30d)"></div>
         </div>
-        <span class="text-xs font-semibold text-slate-500 truncate max-w-full">${name}</span>
+        <span class="text-xs font-semibold text-slate-500 truncate max-w-full px-1">${row.building_name}</span>
+        <span class="text-[10px] text-slate-400">${row.booking_count}</span>
       </div>`;
   }).join('');
 
@@ -128,16 +112,12 @@ function renderRecentActivity(bookingsRaw) {
   const mount = document.getElementById('recent-activity-mount');
   if (!mount) return;
 
-  const recent = [...bookingsRaw]
-    .sort((a, b) => new Date(b.updated_at || b.created_at) - new Date(a.updated_at || a.created_at))
-    .slice(0, 5);
-
-  if (!recent.length) {
+  if (!bookingsRaw?.length) {
     mount.innerHTML = '<p class="text-xs text-slate-400">No recent activity.</p>';
     return;
   }
 
-  mount.innerHTML = recent.map((b) => {
+  mount.innerHTML = bookingsRaw.slice(0, 5).map((b) => {
     const norm = normalizeBooking(b);
     const status = norm.status;
     const { bg, icon } = activityIcon(status);
@@ -163,10 +143,11 @@ function renderRecentActivity(bookingsRaw) {
   }).join('');
 }
 
-function renderQueue(bookingsRaw) {
+async function renderQueue() {
   const tbody = document.getElementById('queue-tbody');
   if (!tbody) return;
 
+  const bookingsRaw = await getBookings();
   const queue = bookingsRaw
     .filter((b) => ['Pending', 'Approved'].includes(b.status))
     .sort((a, b) => new Date(a.check_in) - new Date(b.check_in))
@@ -180,7 +161,6 @@ function renderQueue(bookingsRaw) {
   tbody.innerHTML = queue.map((b) => {
     const norm = normalizeBooking(b);
     const isPending = norm.status === 'pending';
-    const facility = norm.facilityLabel;
 
     return `
       <tr class="hover:bg-slate-50/40 transition-colors" data-booking-id="${b.id}">
@@ -190,7 +170,7 @@ function renderQueue(bookingsRaw) {
             <span class="text-xs font-semibold text-slate-800">${b.guest_name || 'Unknown'}</span>
           </div>
         </td>
-        <td class="px-6 text-xs text-slate-600 py-4">${facility}</td>
+        <td class="px-6 text-xs text-slate-600 py-4">${norm.facilityLabel}</td>
         <td class="px-6 text-xs text-slate-600 py-4">${formatDateRange(norm.startDate, norm.endDate)}</td>
         <td class="px-6 text-xs text-slate-600 py-4">${norm.guestCount || 1}</td>
         <td class="px-6 py-4">${statusPill(norm.status)}</td>
@@ -203,10 +183,7 @@ function renderQueue(bookingsRaw) {
               <button type="button" class="queue-reject p-1 text-rose-600 hover:bg-rose-50 rounded-md transition-colors" title="Reject" data-id="${b.id}">
                 <span class="material-symbols-outlined text-[20px]">cancel</span>
               </button>
-            </div>` : `
-            <div class="flex justify-end gap-2">
-              <span class="text-[10px] text-slate-400">#APT-${b.id}</span>
-            </div>`}
+            </div>` : `<span class="text-[10px] text-slate-400">#APT-${b.id}</span>`}
         </td>
       </tr>`;
   }).join('');
@@ -223,6 +200,7 @@ async function handleQueueAction(id, status) {
   try {
     await updateBooking(id, { status });
     await loadDashboard();
+    window.dispatchEvent(new CustomEvent('booking:updated'));
   } catch (err) {
     alert(err.message || 'Action failed');
   }

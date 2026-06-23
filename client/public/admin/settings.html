@@ -12,46 +12,95 @@
   <link rel="stylesheet" href="../assets/css/components.css" />
   <link rel="stylesheet" href="../assets/css/responsive.css" />
 </head>
-<body>
+<body class="h-full bg-slate-50/50">
   <div id="page-content">
-    <section class="timeline-workspace min-h-[500px]">
-      <div class="timeline-workspace-header">
-        <div class="flex items-center gap-4">
+    <section class="timeline-workspace min-h-[500px] bg-white rounded-xl border border-slate-100 shadow-sm">
+      <div class="timeline-workspace-header border-b border-slate-100 p-6">
+        <div class="flex items-center gap-4 mb-4">
           <div class="w-1.5 h-8 bg-primary rounded-full"></div>
           <h3 class="font-headline-sm text-on-surface">System Settings</h3>
         </div>
         <div class="flex gap-2">
-          <button type="button" data-tab="account" class="px-4 py-1.5 border-b-2 border-primary text-primary text-label-sm font-bold">Account</button>
-          <button type="button" data-tab="roles" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">User Roles</button>
-          <button type="button" data-tab="system" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">System</button>
+          <button type="button" data-settings-tab="account" class="px-4 py-1.5 border-b-2 border-primary text-primary text-label-sm font-bold">Account</button>
+          <button type="button" data-settings-tab="roles" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">User Roles</button>
+          <button type="button" data-settings-tab="system" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">System</button>
         </div>
       </div>
+
       <div class="p-6 max-w-2xl">
-        <div data-tab-content="account" class="space-y-4">
-          <div><label class="text-label-sm text-on-surface-variant block mb-1">Full Name</label><input type="text" value="Admin User" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" /></div>
-          <div><label class="text-label-sm text-on-surface-variant block mb-1">Email</label><input type="email" value="admin@aptspace.com" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" /></div>
-          <button type="button" class="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-label-md">Save Changes</button>
+        <div data-settings-panel="account" class="space-y-4">
+          <div>
+            <label class="text-label-sm text-on-surface-variant block mb-1" for="settings-name">Full Name</label>
+            <input type="text" id="settings-name" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+          </div>
+          <div>
+            <label class="text-label-sm text-on-surface-variant block mb-1" for="settings-email">Email</label>
+            <input type="email" id="settings-email" readonly class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm bg-slate-50" />
+          </div>
+          <div>
+            <label class="text-label-sm text-on-surface-variant block mb-1" for="settings-role">Role</label>
+            <input type="text" id="settings-role" readonly class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm bg-slate-50" />
+          </div>
+          <div id="settings-feedback" class="hidden"></div>
+          <button type="button" id="settings-save-btn" class="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-label-md">Save Changes</button>
         </div>
-        <div data-tab-content="roles" class="hidden">
-          <table class="data-table">
+
+        <div data-settings-panel="roles" class="hidden">
+          <table class="data-table w-full">
             <thead><tr><th>Role</th><th>Description</th><th>Users</th></tr></thead>
-            <tbody>
-              <tr><td>Super Admin</td><td>Full system access</td><td>2</td></tr>
-              <tr><td>Admin</td><td>Manage bookings and users</td><td>5</td></tr>
-              <tr><td>Student</td><td>Guest booking access</td><td>248</td></tr>
+            <tbody id="settings-roles-tbody">
+              <tr><td colspan="3" class="text-center py-6 text-on-surface-variant">Loading...</td></tr>
             </tbody>
           </table>
         </div>
-        <div data-tab-content="system" class="hidden space-y-4">
-          <div><label class="text-label-sm text-on-surface-variant block mb-1">Fiscal Year</label><select class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm"><option>FY26</option><option>FY25</option></select></div>
-          <div><label class="text-label-sm text-on-surface-variant block mb-1">Timezone</label><select class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm"><option>Asia/Manila (UTC+8)</option></select></div>
+
+        <div data-settings-panel="system" class="hidden space-y-4">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="p-4 rounded-lg border border-outline-variant/50">
+              <p class="text-label-sm text-on-surface-variant">Total Rooms</p>
+              <p class="text-headline-sm font-bold" id="sys-total-rooms">—</p>
+            </div>
+            <div class="p-4 rounded-lg border border-outline-variant/50">
+              <p class="text-label-sm text-on-surface-variant">Total Bookings</p>
+              <p class="text-headline-sm font-bold" id="sys-total-bookings">—</p>
+            </div>
+            <div class="p-4 rounded-lg border border-outline-variant/50">
+              <p class="text-label-sm text-on-surface-variant">Pending Bookings</p>
+              <p class="text-headline-sm font-bold" id="sys-pending-bookings">—</p>
+            </div>
+            <div class="p-4 rounded-lg border border-outline-variant/50">
+              <p class="text-label-sm text-on-surface-variant">Paid Revenue</p>
+              <p class="text-headline-sm font-bold" id="sys-paid-revenue">—</p>
+            </div>
+          </div>
+          <div>
+            <label class="text-label-sm text-on-surface-variant block mb-1">Timezone</label>
+            <input type="text" readonly value="Asia/Manila (UTC+8)" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm bg-slate-50" />
+          </div>
         </div>
       </div>
     </section>
   </div>
+
   <script type="module">
-    import { initShell } from '../assets/js/shell.js';
-    await initShell({ active: 'settings', title: 'Settings', subtitle: 'Mission Control' });
+    import { requireAuth } from '../assets/js/auth.js';
+    import { initAppLayout } from '../assets/js/ui.js';
+    import { loadAdminSettings } from '../assets/js/settings.js';
+
+    if (!requireAuth()) throw new Error('Not authenticated');
+
+    await initAppLayout({
+      portal: 'admin',
+      activePage: 'settings',
+      title: 'Settings',
+      subtitle: 'Mission Control',
+    });
+
+    try {
+      await loadAdminSettings();
+    } catch (err) {
+      console.error(err);
+    }
   </script>
 </body>
 </html>

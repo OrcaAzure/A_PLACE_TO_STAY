@@ -69,7 +69,7 @@
       mountEl: document.getElementById('timeline-mount'),
       title:   'Reservation Master Timeline',
       onData:  ({ bookings }) => {
-        const pending = bookings.filter((b) => b.status === 'pending' || b.status === 'Pending').length;
+        const pending = bookings.filter((b) => b.status === 'pending').length;
         const countEl = document.getElementById('pending-count');
         if (countEl) countEl.textContent = `${pending} PENDING`;
       },
