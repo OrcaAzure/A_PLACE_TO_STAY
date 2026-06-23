@@ -540,7 +540,8 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
 -- SEED DATA: USERS
--- Password = bcrypt hash of 'aptspace'
+-- Password for ALL users = 'password'
+-- Hash: $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2
 -- ============================================
 
 INSERT INTO users (full_name, email, password, role, status)
@@ -565,16 +566,17 @@ INSERT INTO season_definitions (season, start_date, end_date, label) VALUES
 
 -- ============================================
 -- SEED DATA: GUEST USERS
--- Password for all = aptspace123
+-- Password for ALL users = 'password'
+-- Hash: $2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2
 -- ============================================
 
 INSERT INTO users (full_name, email, password, role, status) VALUES
-    ('Maria Santos',    'maria.santos@apts.edu.ph',    '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'Faculty',       'Active'),
-    ('James Reyes',     'james.reyes@apts.edu.ph',     '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'Student',       'Active'),
-    ('Ruth Villanueva', 'ruth.villanueva@apts.edu.ph', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'Staff',         'Active'),
-    ('Paul Mendoza',    'paul.mendoza@apts.edu.ph',    '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'Missionary',    'Active'),
-    ('Grace Tan',       'grace.tan@apts.edu.ph',       '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'GNC View Only', 'Active'),
-    ('Admin User',      'admin2@aptspace.com',          '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'Admin',         'Active')
+    ('Maria Santos',    'maria.santos@apts.edu.ph',    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'Faculty',       'Active'),
+    ('James Reyes',     'james.reyes@apts.edu.ph',     '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'Student',       'Active'),
+    ('Ruth Villanueva', 'ruth.villanueva@apts.edu.ph', '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'Staff',         'Active'),
+    ('Paul Mendoza',    'paul.mendoza@apts.edu.ph',    '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'Missionary',    'Active'),
+    ('Grace Tan',       'grace.tan@apts.edu.ph',       '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'GNC View Only', 'Active'),
+    ('Admin User',      'admin2@aptspace.com',          '$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.ucrm3a.O2', 'Admin',         'Active')
 ON DUPLICATE KEY UPDATE email = email;
 
 -- ============================================
@@ -655,10 +657,8 @@ WHERE u.email = 'paul.mendoza@apts.edu.ph' AND b.check_in = '2026-08-01' LIMIT 1
 
 -- ============================================
 -- SEED DATA: ROOM STATUSES
--- Occupied, Maintenance, and Available samples
 -- ============================================
 
--- Occupied rooms (linked to approved bookings)
 UPDATE rooms SET status = 'Occupied', occupancy = 2
 WHERE room_number = '201' AND building_id = (SELECT id FROM buildings WHERE name='PCALM');
 
@@ -680,7 +680,6 @@ WHERE room_number = '104' AND building_id = (SELECT id FROM buildings WHERE name
 UPDATE rooms SET status = 'Occupied', occupancy = 1
 WHERE room_number = 'B' AND building_id = (SELECT id FROM buildings WHERE name='House');
 
--- Maintenance rooms
 UPDATE rooms SET status = 'Maintenance', occupancy = 0
 WHERE room_number = '303' AND building_id = (SELECT id FROM buildings WHERE name='PCALM');
 
@@ -695,5 +694,3 @@ WHERE room_number = '203' AND building_id = (SELECT id FROM buildings WHERE name
 
 UPDATE rooms SET status = 'Maintenance', occupancy = 0
 WHERE room_number = '410' AND building_id = (SELECT id FROM buildings WHERE name='PCALM');
-
--- Everything else stays Available (the default)

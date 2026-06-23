@@ -36,11 +36,48 @@
     </form>
   </main>
 
-  <!-- load as module so it can import from api.js -->
-  <script type="module" src="./assets/js/auth.js"></script>
   <script type="module">
     import { redirectIfLoggedIn } from './assets/js/auth.js';
+    import { login } from './assets/js/api.js';
+
     redirectIfLoggedIn();
+
+    const form = document.getElementById('loginForm');
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const email    = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const errorEl  = document.getElementById('loginError');
+        const btn      = form.querySelector('button[type="submit"]');
+
+        btn.disabled = true;
+        btn.textContent = 'Signing in...';
+        errorEl?.classList.add('hidden');
+
+        try {
+          const data = await login(email, password);
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('user', JSON.stringify(data.user));
+
+          const role = data.user.role || '';
+          if (role === 'Super Admin' || role === 'Admin') {
+            window.location.href = '/admin/dashboard.html';
+          } else {
+            window.location.href = '/guest/dashboard.html';
+          }
+        } catch (err) {
+          if (errorEl) {
+            errorEl.textContent = err.message || 'Invalid email or password';
+            errorEl.classList.remove('hidden');
+          }
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Log in';
+        }
+      });
+    }
   </script>
 </body>
 </html>
