@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Settings | AptSpace Admin</title>
+  <title>Settings | AptSpace</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="../assets/js/tailwind-config.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -28,7 +28,7 @@
       </div>
       <div class="p-6 max-w-2xl">
         <div data-tab-content="account" class="space-y-4">
-          <div><label class="text-label-sm text-on-surface-variant block mb-1">Full Name</label><input type="text" value="System Administrator" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" /></div>
+          <div><label class="text-label-sm text-on-surface-variant block mb-1">Full Name</label><input type="text" value="Admin User" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" /></div>
           <div><label class="text-label-sm text-on-surface-variant block mb-1">Email</label><input type="email" value="admin@aptspace.com" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" /></div>
           <button type="button" class="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-label-md">Save Changes</button>
         </div>
@@ -50,17 +50,8 @@
     </section>
   </div>
   <script type="module">
-    import { requireAuth } from '../assets/js/auth.js';
-    import { initAppLayout } from '../assets/js/ui.js';
-
-    if (!requireAuth()) throw new Error('Not authenticated');
-
-    await initAppLayout({
-      portal: 'admin',
-      activePage: 'settings',
-      title: 'Settings',
-      subtitle: 'Mission Control',
-    });
+    import { initShell } from '../assets/js/shell.js';
+    await initShell({ active: 'settings', title: 'Settings', subtitle: 'Mission Control' });
   </script>
 </body>
 </html>
