@@ -33,16 +33,17 @@
   background: #f3f3fe;
 }
 
+/* AFTER */
 .request-summary-card:focus-visible {
-  outline: 2px solid #2563eb;
+  outline: 2px solid #6459ff;
   outline-offset: 2px;
 }
 
 .request-summary-card.is-selected {
-  border-color: #2563eb;
-  border-left-color: #2563eb;
-  background: rgba(37, 99, 235, 0.05);
-  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.12);
+  border-color: #6459ff;
+  border-left-color: #6459ff;
+  background: rgba(100, 89, 255, 0.05);
+  box-shadow: 0 1px 3px rgba(100, 89, 255, 0.12);
 }
 
 .request-skeleton {
