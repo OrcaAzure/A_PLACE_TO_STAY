@@ -6,16 +6,19 @@ import {
   renderTimeline,
   renderBookingBar,
   getMonthRange,
-  openBookingDrawer,
+  openBookingModal,
 } from './timeline.js';
 
 let viewYear = new Date().getFullYear();
 let viewMonth = new Date().getMonth();
+let rawBookingsById = {};
 
 async function loadReservations() {
   const [apiRooms, apiBookings] = await Promise.all([getRooms(), getBookings()]);
   const rooms = apiRooms.map(normalizeRoom);
   const bookings = apiBookings.map(normalizeBooking);
+
+  rawBookingsById = Object.fromEntries(apiBookings.map((b) => [String(b.id), b]));
 
   const dates = getMonthRange(viewYear, viewMonth);
   const rangeStart = dates[0].toISOString().slice(0, 10);
@@ -31,7 +34,9 @@ async function loadReservations() {
     rangeStart,
     dates,
     barRenderer: renderBookingBar,
-    onBarClick: openBookingDrawer,
+    onBarClick: (booking) => {
+      openBookingModal(rawBookingsById[String(booking.id)] || booking);
+    },
   });
 }
 

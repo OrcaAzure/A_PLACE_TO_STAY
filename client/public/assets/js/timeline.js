@@ -1,8 +1,8 @@
 /**
  * Shared timeline renderer — matches Google Stitch gantt layout
  */
-import { openDrawer, syncTimelineScroll, scrollTimelineToToday } from './ui.js';
-import { getRooms, getBookings, normalizeRoom, normalizeBooking } from './api.js';
+import { openModal, syncTimelineScroll, scrollTimelineToToday } from './ui.js';
+import { getRooms, getBookings, normalizeRoom, normalizeBooking, normalizeManageRequest } from './api.js';
 
 export const DAY_WIDTH = 80;
 
@@ -210,29 +210,116 @@ export function renderTimeline({ rooms, items, rangeStart, dates, barRenderer, o
   });
 }
 
-export function openBookingDrawer(booking) {
-  const drawer = document.getElementById('managementDrawer');
-  if (drawer) drawer.dataset.bookingId = booking.id;
-
-  openDrawer(
-    `#APT-${booking.id}`,
-    booking.title,
-    `
-    <div class="space-y-4 p-1">
-      <p class="text-body-sm text-on-surface-variant"><strong>Status:</strong> <span id="drawer-status-value">${booking.status}</span></p>
-      <p class="text-body-sm text-on-surface-variant"><strong>Check-in:</strong> ${booking.startDate}</p>
-      <p class="text-body-sm text-on-surface-variant"><strong>Check-out:</strong> ${booking.endDate}</p>
-      ${booking.guestCount ? `<p class="text-body-sm text-on-surface-variant"><strong>Guests:</strong> ${booking.guestCount}</p>` : ''}
-      ${booking.notes ? `<p class="text-body-sm text-on-surface-variant"><strong>Notes:</strong> ${booking.notes}</p>` : ''}
-    </div>`
-  );
-
-  const feedback = document.getElementById('drawer-action-feedback');
-  if (feedback) {
-    feedback.textContent = '';
-    feedback.classList.add('hidden');
-  }
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
+
+function formatDateOnly(dateStr) {
+  if (!dateStr) return '—';
+  const raw = String(dateStr).slice(0, 10);
+  return new Date(`${raw}T00:00:00`).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function formatDateTime(isoString) {
+  if (!isoString) return '—';
+  return new Date(isoString).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function renderDetailRow(label, value) {
+  if (value == null || value === '') return '';
+  return `
+    <div class="flex gap-2">
+      <dt class="text-body-sm text-on-surface-variant w-32 shrink-0">${escapeHtml(label)}</dt>
+      <dd class="text-body-sm text-on-surface">${escapeHtml(value)}</dd>
+    </div>`;
+}
+
+function renderDetailSection(title, rowsHtml) {
+  if (!rowsHtml.trim()) return '';
+  return `
+    <section class="mb-6">
+      <h4 class="text-label-sm font-bold text-on-surface-variant uppercase tracking-wide mb-3">${escapeHtml(title)}</h4>
+      <dl class="space-y-2.5">${rowsHtml}</dl>
+    </section>`;
+}
+
+function renderBookingStatusBadge(status) {
+  const pill = statusPillClass(status);
+  const label = (status || 'pending').charAt(0).toUpperCase() + (status || 'pending').slice(1);
+  return `<span class="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full ${pill}">${escapeHtml(label)}</span>`;
+}
+
+function renderBookingDetailBody(rawBooking) {
+  const booking = normalizeManageRequest(rawBooking);
+  const facilityLabel = `${booking.facility.building} — ${booking.facility.roomNumber}`;
+
+  const reservationRows = [
+    renderDetailRow('Status', booking.status),
+    renderDetailRow('Check-in', formatDateOnly(booking.schedule.checkIn)),
+    renderDetailRow('Check-out', formatDateOnly(booking.schedule.checkOut)),
+    renderDetailRow('Facility', facilityLabel),
+    renderDetailRow('Room type', booking.facility.roomType),
+    renderDetailRow('Guests', booking.guestCount),
+    renderDetailRow('Season', booking.season),
+    renderDetailRow('Occupancy', booking.occupancyItem),
+    booking.totalAmount != null && booking.totalAmount > 0
+      ? renderDetailRow('Amount', `$${Number(booking.totalAmount).toLocaleString()}`)
+      : '',
+  ].join('');
+
+  const requesterRows = [
+    renderDetailRow('Name', booking.requester.name),
+    renderDetailRow('Email', booking.requester.email),
+    renderDetailRow('Role', booking.requester.role),
+  ].join('');
+
+  const metadataRows = [
+    renderDetailRow('Submitted', formatDateTime(booking.submittedAt)),
+    renderDetailRow('Last updated', formatDateTime(booking.updatedAt)),
+  ].join('');
+
+  return `
+    <div class="space-y-1">
+      <div class="flex items-start justify-between gap-4 mb-6">
+        <p class="text-body-sm text-on-surface-variant">Reservation overview</p>
+        ${renderBookingStatusBadge(booking.status)}
+      </div>
+      ${renderDetailSection('Reservation Information', reservationRows)}
+      ${renderDetailSection('Guest / Requester', requesterRows)}
+      ${booking.notes ? `
+      <section class="mb-6">
+        <h4 class="text-label-sm font-bold text-on-surface-variant uppercase tracking-wide mb-3">Notes</h4>
+        <p class="text-body-sm text-on-surface leading-relaxed whitespace-pre-wrap">${escapeHtml(booking.notes)}</p>
+      </section>` : ''}
+      ${renderDetailSection('Metadata', metadataRows)}
+    </div>`;
+}
+
+export function openBookingModal(rawBooking) {
+  if (!rawBooking) return;
+  const booking = normalizeManageRequest(rawBooking);
+  const title = booking.requester.name || booking.title || `Booking #${booking.id}`;
+  openModal(title, renderBookingDetailBody(rawBooking), { subtitle: booking.displayId });
+}
+
+/** @deprecated Use openBookingModal */
+export const openBookingDrawer = openBookingModal;
 
 export async function mountBookingTimeline({ mountEl, title, onData }) {
   if (!mountEl) return;
@@ -242,11 +329,15 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
 
   mountEl.innerHTML = renderTimelineShell({ title, periodLabel: monthLabel });
 
+  let rawBookingsById = {};
+
   async function refresh() {
     try {
       const [rawRooms, rawBookings] = await Promise.all([getRooms(), getBookings()]);
       const rooms = rawRooms.map(normalizeRoom);
       const bookings = rawBookings.map(normalizeBooking);
+
+      rawBookingsById = Object.fromEntries(rawBookings.map((b) => [String(b.id), b]));
 
       const dates = getMonthRange(today.getFullYear(), today.getMonth());
       const rangeStart = dates[0].toISOString().slice(0, 10);
@@ -257,7 +348,9 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
         rangeStart,
         dates,
         barRenderer: booking => renderBookingBar(booking, rangeStart, dates.length),
-        onBarClick: (booking) => openBookingDrawer(booking),
+        onBarClick: (booking) => {
+          openBookingModal(rawBookingsById[String(booking.id)] || booking);
+        },
       });
 
       onData?.({ rooms, bookings });

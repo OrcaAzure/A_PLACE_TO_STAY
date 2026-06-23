@@ -12,7 +12,6 @@
   <div class="border-b border-outline-variant px-5 flex gap-4">
     <button type="button" data-tab="details" class="py-3 border-b-2 border-primary text-primary text-label-sm font-bold">Details</button>
     <button type="button" data-tab="history" class="py-3 border-b-2 border-transparent text-on-surface-variant text-label-sm font-medium">History</button>
-    <button type="button" data-tab="actions" class="py-3 border-b-2 border-transparent text-on-surface-variant text-label-sm font-medium">Actions</button>
   </div>
   <div class="flex-1 overflow-y-auto p-5">
     <div data-tab-content="details" id="drawerBody">
@@ -20,13 +19,6 @@
     </div>
     <div data-tab-content="history" class="hidden">
       <p class="text-body-sm text-on-surface-variant">No history available.</p>
-    </div>
-    <div data-tab-content="actions" class="hidden">
-      <div class="space-y-3">
-        <button id="drawer-approve-btn" type="button" class="w-full py-2.5 bg-primary text-on-primary rounded-lg font-label-md disabled:opacity-50 disabled:cursor-not-allowed">Approve</button>
-        <button id="drawer-reject-btn" type="button" class="w-full py-2.5 border border-outline-variant rounded-lg font-label-md text-on-surface-variant disabled:opacity-50 disabled:cursor-not-allowed">Reject</button>
-        <p id="drawer-action-feedback" class="hidden text-body-sm mt-2"></p>
-      </div>
     </div>
   </div>
 </aside>

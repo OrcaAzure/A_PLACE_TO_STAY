@@ -33,6 +33,25 @@
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.modal-transition {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+#app-modal:not(.hidden) .modal-transition {
+  animation: modal-enter 0.2s ease forwards;
+}
+
+@keyframes modal-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 [data-tab-content].hidden { display: none; }
 
 .loading-overlay {

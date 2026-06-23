@@ -1,4 +1,3 @@
-import { updateBooking } from './api.js';
 import { initManageRequestsModal, isManageRequestsModalOpen, closeManageRequestsModal } from './manage-requests.js';
 
 export const ADMIN_NAV = [
@@ -139,10 +138,11 @@ function bindLayoutEvents(base) {
 
   document.getElementById('drawer-close')?.addEventListener('click', closeDrawer);
   document.getElementById('drawerOverlay')?.addEventListener('click', closeDrawer);
-  document.getElementById('drawer-approve-btn')?.addEventListener('click', () => handleBookingAction('Approved'));
-  document.getElementById('drawer-reject-btn')?.addEventListener('click', () => handleBookingAction('Rejected'));
   document.getElementById('modal-close')?.addEventListener('click', closeModal);
   document.getElementById('modal-overlay')?.addEventListener('click', closeModal);
+  document.getElementById('app-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'app-modal') closeModal();
+  });
 
   document.querySelectorAll('[data-tab]').forEach((btn) => {
     btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
@@ -154,55 +154,25 @@ function bindLayoutEvents(base) {
         closeManageRequestsModal();
         return;
       }
-      closeDrawer();
       closeModal();
+      closeDrawer();
       closeSidebar();
     }
   });
+}
+
+function updateBodyScrollLock() {
+  const modalOpen = !document.getElementById('app-modal')?.classList.contains('hidden');
+  const drawer = document.getElementById('managementDrawer');
+  const drawerOpen = drawer && !drawer.classList.contains('translate-x-full');
+  const manageOpen = isManageRequestsModalOpen();
+  document.body.style.overflow = (modalOpen || drawerOpen || manageOpen) ? 'hidden' : '';
 }
 
 function closeSidebar() {
   document.getElementById('app-sidebar')?.classList.remove('sidebar-open');
   document.getElementById('sidebar-overlay')?.classList.add('hidden');
   document.getElementById('sidebar-overlay')?.classList.remove('visible');
-}
-
-async function handleBookingAction(newStatus) {
-  const drawer = document.getElementById('managementDrawer');
-  const bookingId = drawer?.dataset.bookingId;
-  if (!bookingId) return;
-
-  const approveBtn = document.getElementById('drawer-approve-btn');
-  const rejectBtn  = document.getElementById('drawer-reject-btn');
-  const feedback   = document.getElementById('drawer-action-feedback');
-  const statusEl   = document.getElementById('drawer-status-value');
-
-  approveBtn?.setAttribute('disabled', 'true');
-  rejectBtn?.setAttribute('disabled', 'true');
-  if (feedback) {
-    feedback.textContent = newStatus === 'Approved' ? 'Approving booking…' : 'Rejecting booking…';
-    feedback.className = 'text-body-sm mt-2 text-on-surface-variant';
-    feedback.classList.remove('hidden');
-  }
-
-  try {
-    await updateBooking(bookingId, { status: newStatus });
-    if (statusEl) statusEl.textContent = newStatus;
-    if (feedback) {
-      feedback.textContent = `Booking ${newStatus.toLowerCase()}.`;
-      feedback.className = 'text-body-sm mt-2 text-secondary font-bold';
-    }
-    window.dispatchEvent(new CustomEvent('booking:updated', { detail: { id: bookingId, status: newStatus } }));
-    setTimeout(closeDrawer, 900);
-  } catch (err) {
-    if (feedback) {
-      feedback.textContent = err.message || 'Could not update booking. Please try again.';
-      feedback.className = 'text-body-sm mt-2 text-error font-bold';
-    }
-  } finally {
-    approveBtn?.removeAttribute('disabled');
-    rejectBtn?.removeAttribute('disabled');
-  }
 }
 
 export function openDrawer(id, title, bodyHtml = '') {
@@ -212,27 +182,53 @@ export function openDrawer(id, title, bodyHtml = '') {
   document.getElementById('drawerTitle').textContent = title;
   const body = document.getElementById('drawerBody');
   if (body && bodyHtml) body.innerHTML = bodyHtml;
+  switchTab('details');
   drawer?.classList.remove('translate-x-full');
   overlay?.classList.remove('hidden');
-  document.body.style.overflow = 'hidden';
+  updateBodyScrollLock();
 }
 
 export function closeDrawer() {
   document.getElementById('managementDrawer')?.classList.add('translate-x-full');
   document.getElementById('drawerOverlay')?.classList.add('hidden');
-  document.body.style.overflow = '';
+  updateBodyScrollLock();
 }
 
-export function openModal(title, bodyHtml) {
+export function openModal(title, bodyHtml, options = {}) {
+  const { subtitle = '' } = options;
+  const subtitleEl = document.getElementById('modalSubtitle');
+  const modal = document.getElementById('app-modal');
+  const overlay = document.getElementById('modal-overlay');
+
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalBody').innerHTML = bodyHtml;
-  document.getElementById('app-modal')?.classList.remove('hidden');
-  document.getElementById('modal-overlay')?.classList.remove('hidden');
+
+  if (subtitleEl) {
+    if (subtitle) {
+      subtitleEl.textContent = subtitle;
+      subtitleEl.classList.remove('hidden');
+    } else {
+      subtitleEl.textContent = '';
+      subtitleEl.classList.add('hidden');
+    }
+  }
+
+  modal?.classList.remove('hidden');
+  overlay?.classList.remove('hidden');
+  modal?.setAttribute('aria-hidden', 'false');
+  overlay?.setAttribute('aria-hidden', 'false');
+  updateBodyScrollLock();
+  document.getElementById('modal-close')?.focus();
 }
 
 export function closeModal() {
-  document.getElementById('app-modal')?.classList.add('hidden');
-  document.getElementById('modal-overlay')?.classList.add('hidden');
+  const modal = document.getElementById('app-modal');
+  const overlay = document.getElementById('modal-overlay');
+  modal?.classList.add('hidden');
+  overlay?.classList.add('hidden');
+  modal?.setAttribute('aria-hidden', 'true');
+  overlay?.setAttribute('aria-hidden', 'true');
+  updateBodyScrollLock();
 }
 
 export function switchTab(tabId) {
