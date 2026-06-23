@@ -1,35 +1,18 @@
-import { initManageRequestsModal, isManageRequestsModalOpen, closeManageRequestsModal } from './manage-requests.js';
+import { initManageRequestsModal, isManageRequestsModalOpen, closeManageRequestsModal } from '/assets/js/features/manage-requests.js';
 
 export const ADMIN_NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: './dashboard.html' },
-  { id: 'reservations', label: 'Reservations', icon: 'calendar_month', href: './reservations.html' },
-  { id: 'facilities', label: 'Facilities', icon: 'domain', href: './facilities.html' },
-  { id: 'residents', label: 'Residents', icon: 'groups', href: './residents.html' },
-  { id: 'payments', label: 'Payments', icon: 'payments', href: './payments.html' },
-  { id: 'settings', label: 'Settings', icon: 'settings', href: './settings.html' },
-];
-
-export const PROPERTY_NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: './dashboard.html' },
-  { id: 'properties', label: 'Properties', icon: 'apartment', href: './properties.html' },
-  { id: 'units', label: 'Units', icon: 'door_front', href: './units.html' },
-  { id: 'occupancy', label: 'Occupancy', icon: 'hotel', href: './occupancy.html' },
-  { id: 'maintenance', label: 'Maintenance', icon: 'build', href: './maintenance.html' },
-  { id: 'projects', label: 'Projects', icon: 'engineering', href: './projects.html' },
-  { id: 'budgets', label: 'Budgets', icon: 'account_balance', href: './budgets.html' },
-  { id: 'analytics', label: 'Analytics', icon: 'analytics', href: './analytics.html' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard.html' },
+  { id: 'reservations', label: 'Reservations', icon: 'calendar_month', href: '/admin/reservations.html' },
+  { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/admin/facilities.html' },
+  { id: 'residents', label: 'Residents', icon: 'groups', href: '/admin/residents.html' },
+  { id: 'payments', label: 'Payments', icon: 'payments', href: '/admin/payments.html' },
+  { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings.html' },
 ];
 
 export async function loadComponent(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to load ${url}`);
   return res.text();
-}
-
-function assetBase() {
-  return window.location.pathname.includes('/admin/') || window.location.pathname.includes('/property/')
-    ? '../'
-    : './';
 }
 
 function navLinkClass(active, id) {
@@ -54,37 +37,30 @@ export async function initAppLayout(config = {}) {
     activePage = 'dashboard',
     title = 'Mission Control',
     subtitle = 'Operations Center',
-    portalLabel = portal === 'admin' ? 'Seminary Admin' : 'Property Management',
+    portalLabel = portal === 'admin' ? 'Seminary Admin' : 'Guest Portal',
   } = config;
 
-  const base = assetBase();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userName = user.full_name || user.name || 'Admin User';
   const userRole = user.role || 'Ops Commander';
   const userInitial = userName.charAt(0).toUpperCase();
 
-  const nav = portal === 'property' ? PROPERTY_NAV : ADMIN_NAV;
-  const propertyLink = portal === 'admin'
-    ? `${base}property/dashboard.html`
-    : `${base}admin/dashboard.html`;
-  const propertyLabel = portal === 'admin' ? 'Property Portal' : 'Admin Portal';
-
   const [sidebarTpl, headerTpl, drawerTpl, modalTpl, manageRequestsTpl, notifTpl] = await Promise.all([
-    loadComponent(`${base}components/sidebar.html`),
-    loadComponent(`${base}components/header.html`),
-    loadComponent(`${base}components/drawer.html`),
-    loadComponent(`${base}components/modal.html`),
-    loadComponent(`${base}components/manage-requests-modal.html`),
-    loadComponent(`${base}components/notifications.html`),
+    loadComponent('/components/sidebar.html'),
+    loadComponent('/components/header.html'),
+    loadComponent('/components/drawer.html'),
+    loadComponent('/components/modal.html'),
+    loadComponent('/components/manage-requests-modal.html'),
+    loadComponent('/components/notifications.html'),
   ]);
 
   document.body.className = 'bg-[#f1f5f9] text-on-surface font-body-md h-screen overflow-hidden flex relative';
 
   const sidebar = sidebarTpl
-    .replace('{{NAV_ITEMS}}', renderSidebarNav(nav, activePage))
+    .replace('{{NAV_ITEMS}}', renderSidebarNav(ADMIN_NAV, activePage))
     .replace('{{PORTAL_LABEL}}', portalLabel)
-    .replace('{{PROPERTY_LINK}}', propertyLink)
-    .replace('{{PROPERTY_LABEL}}', propertyLabel);
+    .replace('{{PROPERTY_LINK}}', '/guest/dashboard.html')
+    .replace('{{PROPERTY_LABEL}}', 'Guest Portal');
 
   const header = headerTpl
     .replace('{{TITLE}}', title)
@@ -108,16 +84,16 @@ export async function initAppLayout(config = {}) {
     <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[45]"></div>
   `;
 
-  bindLayoutEvents(base);
+  bindLayoutEvents();
   initManageRequestsModal();
 }
 
-function bindLayoutEvents(base) {
+function bindLayoutEvents() {
   document.getElementById('logout-btn')?.addEventListener('click', (e) => {
     e.preventDefault();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = `${base}login.html`;
+    window.location.href = '/login.html';
   });
 
   document.getElementById('menu-toggle')?.addEventListener('click', () => {
@@ -176,15 +152,13 @@ function closeSidebar() {
 }
 
 export function openDrawer(id, title, bodyHtml = '') {
-  const drawer = document.getElementById('managementDrawer');
-  const overlay = document.getElementById('drawerOverlay');
   document.getElementById('drawerID').textContent = id;
   document.getElementById('drawerTitle').textContent = title;
   const body = document.getElementById('drawerBody');
   if (body && bodyHtml) body.innerHTML = bodyHtml;
   switchTab('details');
-  drawer?.classList.remove('translate-x-full');
-  overlay?.classList.remove('hidden');
+  document.getElementById('managementDrawer')?.classList.remove('translate-x-full');
+  document.getElementById('drawerOverlay')?.classList.remove('hidden');
   updateBodyScrollLock();
 }
 
@@ -197,12 +171,8 @@ export function closeDrawer() {
 export function openModal(title, bodyHtml, options = {}) {
   const { subtitle = '' } = options;
   const subtitleEl = document.getElementById('modalSubtitle');
-  const modal = document.getElementById('app-modal');
-  const overlay = document.getElementById('modal-overlay');
-
   document.getElementById('modalTitle').textContent = title;
   document.getElementById('modalBody').innerHTML = bodyHtml;
-
   if (subtitleEl) {
     if (subtitle) {
       subtitleEl.textContent = subtitle;
@@ -212,22 +182,15 @@ export function openModal(title, bodyHtml, options = {}) {
       subtitleEl.classList.add('hidden');
     }
   }
-
-  modal?.classList.remove('hidden');
-  overlay?.classList.remove('hidden');
-  modal?.setAttribute('aria-hidden', 'false');
-  overlay?.setAttribute('aria-hidden', 'false');
+  document.getElementById('app-modal')?.classList.remove('hidden');
+  document.getElementById('modal-overlay')?.classList.remove('hidden');
   updateBodyScrollLock();
   document.getElementById('modal-close')?.focus();
 }
 
 export function closeModal() {
-  const modal = document.getElementById('app-modal');
-  const overlay = document.getElementById('modal-overlay');
-  modal?.classList.add('hidden');
-  overlay?.classList.add('hidden');
-  modal?.setAttribute('aria-hidden', 'true');
-  overlay?.setAttribute('aria-hidden', 'true');
+  document.getElementById('app-modal')?.classList.add('hidden');
+  document.getElementById('modal-overlay')?.classList.add('hidden');
   updateBodyScrollLock();
 }
 

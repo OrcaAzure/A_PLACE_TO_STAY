@@ -2,7 +2,7 @@
  * Admin dashboard — loads live KPIs, activity feed, queue, and building chart from /api/stats/summary.
  */
 
-import { getAdminSummary, getBookings, updateBooking, normalizeBooking } from './api.js';
+import { getAdminSummary, getBookings, updateBooking, normalizeBooking } from '/assets/js/services/api.js';
 
 function setText(id, value) {
   const el = document.getElementById(id);

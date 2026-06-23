@@ -1,13 +1,13 @@
-import { getRooms, getBookings, normalizeRoom, normalizeBooking } from './api.js';
-import { initAppLayout, showError } from './ui.js';
-import { requireAuth } from './auth.js';
+import { getRooms, getBookings, normalizeRoom, normalizeBooking } from '/assets/js/services/api.js';
+import { initAppLayout, showError } from '/assets/js/layout/ui.js';
+import { requireAuth } from '/assets/js/services/auth.js';
 import {
   renderTimelineShell,
   renderTimeline,
   renderBookingBar,
   getMonthRange,
   openBookingModal,
-} from './timeline.js';
+} from '/assets/js/features/timeline.js';
 
 let viewYear = new Date().getFullYear();
 let viewMonth = new Date().getMonth();

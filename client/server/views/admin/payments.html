@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Payments | AptSpace Admin</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <script src="../assets/js/tailwind-config.js"></script>
+  <script src="/assets/js/config/tailwind-admin.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="../assets/css/main.css" />
-  <link rel="stylesheet" href="../assets/css/components.css" />
-  <link rel="stylesheet" href="../assets/css/responsive.css" />
+  <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <link rel="stylesheet" href="/assets/css/components/components.css" />
+  <link rel="stylesheet" href="/assets/css/global/responsive.css" />
 </head>
 <body>
   <div id="page-content">
@@ -65,9 +65,9 @@
   </div>
 
   <script type="module">
-    import { requireAuth }   from '../assets/js/auth.js';
-    import { initAppLayout } from '../assets/js/ui.js';
-    import { getPayments }   from '../assets/js/api.js';
+    import { requireAuth }   from '/assets/js/services/auth.js';
+    import { initAppLayout } from '/assets/js/layout/ui.js';
+    import { getPayments }   from '/assets/js/services/api.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
 

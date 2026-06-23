@@ -1,8 +1,8 @@
 /**
  * Shared timeline renderer — matches Google Stitch gantt layout
  */
-import { openModal, syncTimelineScroll, scrollTimelineToToday } from './ui.js';
-import { getRooms, getBookings, normalizeRoom, normalizeBooking, normalizeManageRequest } from './api.js';
+import { openModal, syncTimelineScroll, scrollTimelineToToday } from '/assets/js/layout/ui.js';
+import { getRooms, getBookings, normalizeRoom, normalizeBooking, normalizeManageRequest } from '/assets/js/services/api.js';
 
 export const DAY_WIDTH = 80;
 

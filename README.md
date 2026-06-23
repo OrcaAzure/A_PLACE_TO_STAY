@@ -37,13 +37,27 @@ On startup the server will:
 
 ```txt
 APSTPACE/
-├── .env.example          ← team template (copy to client/server/.env)
-├── package.json          ← root scripts (npm run dev)
+├── .env.example              ← team template (copy to client/server/.env)
+├── package.json              ← root scripts (npm run dev)
+├── scripts/restructure.mjs   ← one-time folder move helper (already applied)
 └── client/
     ├── database/schema.sql
-    ├── public/           ← static frontend
-    └── server/           ← Express API
+    ├── public/               ← static assets only (marketing + shared files)
+    │   ├── index.html
+    │   ├── components/       ← sidebar, header, modals (loaded by fetch)
+    │   └── assets/
+    │       ├── css/global|components|features/
+    │       └── js/config|layout|services|features/
+    └── server/
+        ├── views/            ← app pages (served at same URLs as before)
+        │   ├── auth/login.html
+        │   ├── admin/*.html
+        │   └── guest/*.html
+        └── src/              ← Express API + page routes
 ```
+
+**URLs are unchanged:** `/login.html`, `/admin/dashboard.html`, `/guest/reservations.html`, etc.  
+App HTML lives in `client/server/views/`; CSS/JS live under `client/public/assets/`.
 
 ## API highlights
 

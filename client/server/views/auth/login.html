@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login | AptSpace</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="./assets/js/tailwind-config.js"></script>
+  <script src="/assets/js/config/tailwind-admin.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./assets/css/main.css" />
+  <link rel="stylesheet" href="/assets/css/global/main.css" />
 </head>
 <body class="bg-[#f1f5f9] min-h-screen flex items-center justify-center p-4">
   <main class="w-full max-w-md bg-white border border-outline-variant rounded-xl shadow-sm p-8">
@@ -37,8 +37,8 @@
   </main>
 
   <script type="module">
-    import { redirectIfLoggedIn } from './assets/js/auth.js';
-    import { login } from './assets/js/api.js';
+    import { redirectIfLoggedIn } from '/assets/js/services/auth.js';
+    import { login } from '/assets/js/services/api.js';
 
     redirectIfLoggedIn();
 

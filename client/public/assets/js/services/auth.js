@@ -1,4 +1,4 @@
-import { login } from './api.js';
+import { login } from '/assets/js/services/api.js';
 
 export function requireAuth() {
   const token = localStorage.getItem('token');

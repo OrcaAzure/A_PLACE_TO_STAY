@@ -8,6 +8,7 @@ import bookingRoutes from './routes/booking.routes.js';
 import userRoutes    from './routes/user.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import statsRoutes   from './routes/stats.routes.js';
+import pageRoutes    from './routes/pages.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir  = path.join(__dirname, '../../public');
@@ -39,14 +40,12 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/stats',    statsRoutes);
 
+app.use(pageRoutes);
+
 app.use(express.static(publicDir, { extensions: ['html'] }));
 
 app.get('/', (req, res) => {
   res.redirect('/index.html');
-});
-
-app.get('/login', (req, res) => {
-  res.redirect('/login.html');
 });
 
 export default app;

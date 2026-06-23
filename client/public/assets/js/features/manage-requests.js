@@ -3,7 +3,7 @@
  * Follows the same feature-module pattern as timeline.js and reservations.js.
  */
 
-import { getBookings, updateBooking, normalizeManageRequest } from './api.js';
+import { getBookings, updateBooking, normalizeManageRequest } from '/assets/js/services/api.js';
 
 
 function debounce(fn, delayMs = 300) {

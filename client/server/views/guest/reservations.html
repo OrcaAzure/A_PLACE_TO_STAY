@@ -410,8 +410,8 @@
 </footer>
 
 <script type="module">
-  import { requireAuth, doLogout, getCurrentUser } from '../assets/js/auth.js';
-  import { getBookings, getRooms, createBooking, updateBooking, normalizeBooking, normalizeRoom } from '../assets/js/api.js';
+  import { requireAuth, doLogout, getCurrentUser } from '/assets/js/services/auth.js';
+  import { getBookings, getRooms, createBooking, updateBooking, normalizeBooking, normalizeRoom } from '/assets/js/services/api.js';
 
   requireAuth();
 

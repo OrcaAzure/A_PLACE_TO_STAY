@@ -2,7 +2,7 @@
  * Admin settings — profile and role summary from the database.
  */
 
-import { getProfile, updateProfile, getAdminSummary } from './api.js';
+import { getProfile, updateProfile, getAdminSummary } from '/assets/js/services/api.js';
 
 const ROLE_DESCRIPTIONS = {
   'Super Admin': 'Full system access',
