@@ -12,7 +12,6 @@
   <link rel="stylesheet" href="../assets/css/components.css" />
   <link rel="stylesheet" href="../assets/css/responsive.css" />
   <style>
-    /* Google Stitch Custom Scroll Masking styling overrides */
     #page-content .scrollbar-none::-webkit-scrollbar {
       display: none;
     }
@@ -20,6 +19,18 @@
       -ms-overflow-style: none;
       scrollbar-width: none;
     }
+
+    .matrix-room-card {
+      min-height: 0;
+      background: #fff;
+      border-top-width: 3px;
+    }
+
+    .matrix-room-card:focus-visible {
+      outline: 2px solid #2563eb;
+      outline-offset: 2px;
+    }
+
   </style>
 </head>
 <body class="h-full bg-slate-50/50">
@@ -84,21 +95,21 @@
     </div>
 
     <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-      <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div class="flex items-center gap-4">
-          <div class="w-1.5 h-8 bg-blue-600 rounded-full"></div>
-          <div>
-            <h3 class="text-lg font-bold text-slate-800">Key Status Matrix Board</h3>
-            <p class="text-xs text-slate-400">Interactive workspace grid showing room statuses by structural department buildings</p>
+      <div class="px-4 py-3 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-1 h-6 bg-blue-600 rounded-full shrink-0"></div>
+          <div class="min-w-0">
+            <h3 class="text-sm font-semibold text-slate-800">Key Status Matrix Board</h3>
+            <p class="text-[11px] text-slate-400 leading-snug">Room statuses across buildings</p>
           </div>
         </div>
         
-        <div class="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100 overflow-x-auto scrollbar-none" id="building-tab-triggers">
+        <div class="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100 overflow-x-auto scrollbar-none shrink-0" id="building-tab-triggers">
           </div>
       </div>
 
-      <div class="p-6">
-        <div id="key-tags-grid-mount" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 min-h-[200px]">
+      <div class="p-4 sm:p-5 bg-slate-50/40">
+        <div id="key-tags-grid-mount" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-3 min-h-[140px]">
           </div>
       </div>
     </section>
@@ -123,10 +134,56 @@
     let currentBuildingFilter = "";
     let currentStatusFilter = "";
 
-    function getColorTokens(status) {
-      if (status === 'Available') return { border: 'border-emerald-200 hover:border-emerald-500', bg: 'bg-emerald-50/50', dot: 'bg-emerald-500', txt: 'text-emerald-800' };
-      if (status === 'Occupied') return { border: 'border-amber-200 hover:border-amber-500', bg: 'bg-amber-50/50', dot: 'bg-amber-500', txt: 'text-amber-800' };
-      return { border: 'border-rose-200 hover:border-rose-500', bg: 'bg-rose-50/50', dot: 'bg-rose-500', txt: 'text-rose-800' };
+    function getStatusTokens(status) {
+      if (status === 'Available') {
+        return {
+          accent: 'border-t-emerald-500',
+          pill: 'bg-emerald-50 text-emerald-800 border-emerald-200',
+          dot: 'bg-emerald-500',
+          iconColor: 'text-emerald-500',
+          icon: 'check_circle',
+          footer: 'Ready for use',
+        };
+      }
+      if (status === 'Occupied') {
+        return {
+          accent: 'border-t-amber-500',
+          pill: 'bg-amber-50 text-amber-800 border-amber-200',
+          dot: 'bg-amber-500',
+          iconColor: 'text-amber-500',
+          icon: 'hotel',
+          footer: 'Currently in use',
+        };
+      }
+      return {
+        accent: 'border-t-rose-500',
+        pill: 'bg-rose-50 text-rose-800 border-rose-200',
+        dot: 'bg-rose-500',
+        iconColor: 'text-rose-500',
+        icon: 'build',
+        footer: 'Under maintenance',
+      };
+    }
+
+    function formatCapacityMeta(n) {
+      if (n.capacityMax != null && n.capacityMax !== '') {
+        const cap = Number(n.capacityMax);
+        if (!Number.isNaN(cap) && cap > 0) {
+          if (n.occupancy != null && n.occupancy !== '' && Number(n.occupancy) >= 0) {
+            return `${n.occupancy} / ${cap} guests`;
+          }
+          return `Up to ${cap} guests`;
+        }
+      }
+      return '';
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
     }
 
     // Direct interface generation framework modeling the physical tracking hook system
@@ -140,33 +197,56 @@
       });
 
       if (filtered.length === 0) {
-        gridMount.className = "flex items-center justify-center py-12 w-full col-span-full";
+        gridMount.className = "flex items-center justify-center py-10 w-full col-span-full";
         gridMount.innerHTML = `
           <div class="text-center">
-            <span class="material-symbols-outlined text-slate-300 text-4xl mb-2">sensor_door</span>
-            <p class="text-xs font-medium text-slate-400">No rooms match the active filter criteria.</p>
+            <span class="material-symbols-outlined text-slate-300 text-3xl mb-1.5">sensor_door</span>
+            <p class="text-[11px] font-medium text-slate-400">No rooms match the active filter criteria.</p>
           </div>`;
         return;
       }
 
-      gridMount.className = "grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4 w-full";
+      gridMount.className = "grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5 sm:gap-3 w-full";
       gridMount.innerHTML = filtered.map(r => {
         const n = normalizeRoom(r);
-        const tokens = getColorTokens(n.status);
+        const tokens = getStatusTokens(n.status);
+        const capacityMeta = formatCapacityMeta(n);
+        const roomLabel = escapeHtml(n.roomNumber);
+        const roomType = escapeHtml(n.roomType);
+        const building = escapeHtml(n.building);
+        const statusLabel = escapeHtml(n.status);
         
         return `
-          <div class="group cursor-pointer p-3 bg-white rounded-xl border ${tokens.border} shadow-sm transition-all duration-200 flex flex-col justify-between items-center text-center relative overflow-hidden h-32 hover:-translate-y-0.5">
-            <div class="absolute inset-x-0 top-0 h-1 ${tokens.dot}"></div>
-            <div class="w-6 h-6 rounded-full ${tokens.bg} flex items-center justify-center ${tokens.txt} mb-1.5 font-bold text-[10px]">
-              ${n.building.substring(0, 2).toUpperCase()}
+          <div class="matrix-room-card group cursor-pointer rounded-xl border border-slate-200/90 ${tokens.accent} bg-white px-3.5 py-3 shadow-sm shadow-slate-200/60 transition-all duration-200 hover:border-slate-300 hover:shadow-md hover:shadow-slate-300/50 hover:-translate-y-0.5 flex flex-col min-w-0 text-left">
+            <div class="flex items-start justify-between gap-2 min-w-0">
+              <h4 class="text-sm font-bold text-slate-800 leading-snug truncate" title="${roomLabel}">${roomLabel}</h4>
+              <span class="inline-flex items-center gap-1 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-tight ${tokens.pill}">
+                <span class="w-1.5 h-1.5 rounded-full ${tokens.dot}"></span>
+                ${statusLabel}
+              </span>
             </div>
-            <div>
-              <h4 class="text-sm font-bold text-slate-800 tracking-tight">${n.roomNumber}</h4>
-              <p class="text-[10px] text-slate-400 font-medium truncate max-w-[100px] mt-0.5">${n.roomType}</p>
+
+            <div class="mt-2 space-y-1.5 min-w-0">
+              <p class="text-xs text-slate-500 truncate flex items-center gap-1.5 min-w-0" title="${roomType}">
+                <span class="material-symbols-outlined text-[15px] text-slate-400 shrink-0">meeting_room</span>
+                <span class="truncate">${roomType}</span>
+              </p>
+              ${capacityMeta ? `
+              <p class="text-xs text-slate-600 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[15px] text-slate-400 shrink-0">group</span>
+                <span class="font-medium tabular-nums">${escapeHtml(capacityMeta)}</span>
+              </p>` : ''}
             </div>
-            <div class="mt-2 flex items-center gap-1.5 px-2 py-0.5 rounded-full ${tokens.bg} border border-dashed border-slate-200/60">
-              <span class="w-1.5 h-1.5 rounded-full ${tokens.dot}"></span>
-              <span class="text-[9px] font-bold ${tokens.txt} tracking-wide uppercase">${n.status}</span>
+
+            <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2 min-w-0">
+              <span class="text-[11px] text-slate-400 truncate flex items-center gap-1 min-w-0" title="${building}">
+                <span class="material-symbols-outlined text-[14px] shrink-0">location_on</span>
+                <span class="truncate">${building}</span>
+              </span>
+              <span class="text-[11px] text-slate-400 shrink-0 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px] ${tokens.iconColor}">${tokens.icon}</span>
+                <span class="hidden sm:inline">${escapeHtml(tokens.footer)}</span>
+              </span>
             </div>
           </div>`;
       }).join('');
