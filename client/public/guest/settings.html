@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Settings | AptSpace</title>
+    <title>Settings | AptSpace Guest</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -121,6 +121,7 @@
 <aside class="hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
     <div class="px-6 mb-8">
         <h1 class="font-headline-md text-headline-md font-black text-primary">AptSpace</h1>
+        <p class="text-body-sm text-on-surface-variant mt-1">Guest Portal</p>
     </div>
     <nav class="flex-1 px-3 space-y-1">
         <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./dashboard.html">
@@ -147,7 +148,7 @@
             </div>
             <div class="overflow-hidden">
                 <p class="font-label-md text-label-md truncate" id="sidebar-user-name">Guest User</p>
-                <p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer" id="logout-btn">Logout</p>
+                <p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer" id="logout-btn">Log Out</p>
             </div>
         </div>
     </div>
@@ -170,23 +171,23 @@
     </div>
 </header>
 
-<nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-surface border-t border-outline-variant flex justify-around items-center h-16 px-md z-50 rounded-t-xl shadow-lg">
-    <button class="flex flex-col items-center gap-1 text-on-surface-variant" onclick="window.location.href='./dashboard.html'">
+<nav class="lg:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 pb-safe bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
+    <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./dashboard.html">
         <span class="material-symbols-outlined">dashboard</span>
-        <span class="text-[10px] font-label-sm">Dashboard</span>
-    </button>
-    <button class="flex flex-col items-center gap-1 text-on-surface-variant" onclick="window.location.href='./reservations.html'">
+        <span class="font-label-sm text-[10px]">Dashboard</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./reservations.html">
         <span class="material-symbols-outlined">event_available</span>
-        <span class="text-[10px] font-label-sm">Bookings</span>
-    </button>
-    <button class="flex flex-col items-center gap-1 text-on-surface-variant" onclick="window.location.href='./facilities.html'">
+        <span class="font-label-sm text-[10px]">Reservations</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./facilities.html">
         <span class="material-symbols-outlined">domain</span>
-        <span class="text-[10px] font-label-sm">Catalog</span>
-    </button>
-    <button class="flex flex-col items-center gap-1 text-primary">
-        <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">settings</span>
-        <span class="text-[10px] font-label-sm">Settings</span>
-    </button>
+        <span class="font-label-sm text-[10px]">Facilities</span>
+    </a>
+    <a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 touch-manipulation duration-200" href="./settings.html">
+        <span class="material-symbols-outlined">settings</span>
+        <span class="font-label-sm text-[10px]">Settings</span>
+    </a>
 </nav>
 
 <main class="pt-24 pb-24 lg:pb-12 px-margin-mobile md:px-gutter lg:ml-[260px] max-w-[1000px] mx-auto min-h-screen">
@@ -280,12 +281,15 @@
 </main>
 
 <footer class="lg:ml-[260px] border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
-    <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-md text-body-sm text-on-surface-variant">
-        <p>© 2024 Asia Pacific Theological Seminary - AptSpace. All rights reserved.</p>
-        <div class="flex gap-lg">
-            <a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
-            <a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
-            <a class="hover:text-primary transition-colors" href="#">Contact Support</a>
+    <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-2">
+            <span class="font-headline-sm text-primary">AptSpace</span>
+            <span class="text-on-surface-variant text-body-sm">© 2026 Asia Pacific Theological Seminary</span>
+        </div>
+        <div class="flex gap-6">
+            <a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+            <a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+            <a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact Support</a>
         </div>
     </div>
 </footer>

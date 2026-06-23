@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>AptSpace Guest Dashboard</title>
+    <title>Dashboard | AptSpace Guest</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
@@ -138,6 +138,7 @@
 <aside class="hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
     <div class="px-6 mb-8">
         <h1 class="font-headline-md text-headline-md font-black text-primary">AptSpace</h1>
+        <p class="text-body-sm text-on-surface-variant mt-1">Guest Portal</p>
     </div>
     <nav class="flex-1 px-3 space-y-1">
         <a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 border-l-4 border-primary font-bold transition-all active:scale-95 duration-150" href="./dashboard.html">
@@ -163,8 +164,8 @@
                 <span class="material-symbols-outlined text-primary">account_circle</span>
             </div>
             <div class="overflow-hidden">
-                <p class="font-label-md text-label-md truncate" id="sidebar-user-name">Samuel Chen</p>
-                <p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer" id="logout-btn">Logout</p>
+                <p class="font-label-md text-label-md truncate" id="sidebar-user-name">Guest User</p>
+                <p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer" id="logout-btn">Log Out</p>
             </div>
         </div>
     </div>
@@ -189,20 +190,20 @@
 
 <nav class="lg:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 pb-safe bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
     <a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 touch-manipulation duration-200" href="./dashboard.html">
-        <span class="material-symbols-outlined">home</span>
-        <span class="font-label-sm text-[10px]">Home</span>
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="font-label-sm text-[10px]">Dashboard</span>
     </a>
     <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./reservations.html">
-        <span class="material-symbols-outlined">add_circle</span>
-        <span class="font-label-sm text-[10px]">Reserve</span>
+        <span class="material-symbols-outlined">event_available</span>
+        <span class="font-label-sm text-[10px]">Reservations</span>
     </a>
     <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./facilities.html">
-        <span class="material-symbols-outlined">search</span>
-        <span class="font-label-sm text-[10px]">Catalog</span>
+        <span class="material-symbols-outlined">domain</span>
+        <span class="font-label-sm text-[10px]">Facilities</span>
     </a>
     <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./settings.html">
-        <span class="material-symbols-outlined">person</span>
-        <span class="font-label-sm text-[10px]">Profile</span>
+        <span class="material-symbols-outlined">settings</span>
+        <span class="font-label-sm text-[10px]">Settings</span>
     </a>
 </nav>
 
@@ -210,8 +211,8 @@
     <section class="mb-10">
         <div class="relative overflow-hidden rounded-xl bg-primary-container p-8 md:p-10 shadow-lg text-on-primary-container">
             <div class="relative z-10 max-w-2xl">
-                <h2 class="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl mb-4">
-                    Welcome back, Samuel!
+                <h2 class="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl mb-4" id="welcome-message">
+                    Welcome back!
                 </h2>
                 <p class="font-body-lg text-body-lg opacity-90 leading-relaxed">
                     Your spiritual journey and comfortable stay are our priority. We've prepared everything for your current visit.
@@ -277,7 +278,7 @@
 
             <section>
                 <div class="flex items-center justify-between mb-4">
-                    <h4 class="font-headline-sm text-headline-sm">Upcoming Bookings</h4>
+                    <h4 class="font-headline-sm text-headline-sm">Upcoming Reservations</h4>
                     <a class="text-primary font-label-md text-label-md hover:underline" href="#">View All</a>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -427,7 +428,7 @@
     <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
         <div class="flex items-center gap-2">
             <span class="font-headline-sm text-primary">AptSpace</span>
-            <span class="text-on-surface-variant text-body-sm">© 2023 Asia Pacific Theological Seminary</span>
+            <span class="text-on-surface-variant text-body-sm">© 2026 Asia Pacific Theological Seminary</span>
         </div>
         <div class="flex gap-6">
             <a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
@@ -437,6 +438,23 @@
     </div>
 </footer>
 
+<script type="module">
+    import { requireAuth, doLogout, getCurrentUser } from '../assets/js/auth.js';
+
+    requireAuth();
+
+    const user = getCurrentUser();
+    if (user) {
+        const name = user.full_name || user.name || 'Guest User';
+        const firstName = name.split(' ')[0];
+        const sidebarName = document.getElementById('sidebar-user-name');
+        const welcomeEl = document.getElementById('welcome-message');
+        if (sidebarName) sidebarName.textContent = name;
+        if (welcomeEl) welcomeEl.textContent = `Welcome back, ${firstName}!`;
+    }
+
+    document.getElementById('logout-btn')?.addEventListener('click', () => doLogout());
+</script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
         const buttons = document.querySelectorAll('button');

@@ -44,7 +44,7 @@ export async function initShell({ active = 'dashboard', title = 'Mission Control
   document.body.className = 'bg-[#f1f5f9] text-on-surface font-body-md h-screen overflow-hidden flex relative';
 
   document.body.innerHTML = `
-    ${sidebar.replace('{{NAV_ITEMS}}', navHtml(ADMIN_NAV, active))}
+    ${sidebar.replace('{{NAV_ITEMS}}', navHtml(ADMIN_NAV, active)).replace('{{PORTAL_LABEL}}', 'Seminary Admin')}
     <main class="flex-1 flex flex-col overflow-hidden h-full">
       ${header
         .replace('{{TITLE}}', title)
