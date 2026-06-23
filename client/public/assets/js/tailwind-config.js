@@ -3,8 +3,21 @@ tailwind.config = {
   theme: {
     extend: {
       colors: {
+        // ── Custom blue palette (maps all blue-* classes to new primary scale) ──
+        blue: {
+          50:  '#f0efff',
+          100: '#e2e0ff',
+          200: '#c4c0ff',
+          300: '#a6a1ff',
+          400: '#8d87ff',
+          500: '#6d64e5',
+          600: '#6459ff',
+          700: '#5249cc',
+          800: '#3d37aa',
+          900: '#123f6f',
+        },
         'secondary-container': '#6cf8bb',
-        'on-primary-fixed-variant': '#003ea8',
+        'on-primary-fixed-variant': '#123f6f',   // was #003ea8
         'surface-container': '#ededf9',
         'tertiary-container': '#bc4800',
         'on-primary': '#ffffff',
@@ -19,7 +32,7 @@ tailwind.config = {
         'secondary-fixed': '#6ffbbe',
         'on-primary-container': '#eeefff',
         surface: '#faf8ff',
-        'surface-tint': '#0053db',
+        'surface-tint': '#6459ff',               // was #0053db
         'surface-container-lowest': '#ffffff',
         'surface-dim': '#d9d9e5',
         'on-tertiary-container': '#ffede6',
@@ -27,18 +40,18 @@ tailwind.config = {
         'error-container': '#ffdad6',
         'surface-container-high': '#e7e7f3',
         'on-tertiary-fixed': '#360f00',
-        'primary-fixed': '#dbe1ff',
-        primary: '#2563eb',
-        'primary-fixed-dim': '#b4c5ff',
+        'primary-fixed': '#eeedff',              // was #dbe1ff
+        primary: '#6459ff',                      // was #2563eb
+        'primary-fixed-dim': '#c4c0ff',          // was #b4c5ff
         'on-surface': '#191b23',
-        'inverse-primary': '#b4c5ff',
+        'inverse-primary': '#c4c0ff',            // was #b4c5ff
         background: '#faf8ff',
         error: '#ba1a1a',
         tertiary: '#943700',
         'on-secondary': '#ffffff',
         'surface-variant': '#e1e2ed',
         secondary: '#006c49',
-        'primary-container': '#2563eb',
+        'primary-container': '#6459ff',          // was #2563eb
         'on-secondary-fixed': '#002113',
         'on-background': '#191b23',
         'on-tertiary': '#ffffff',
