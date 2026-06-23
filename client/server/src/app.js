@@ -2,18 +2,24 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import authRoutes from './routes/auth.routes.js';
-import roomRoutes from './routes/room.routes.js';
+import authRoutes    from './routes/auth.routes.js';
+import roomRoutes    from './routes/room.routes.js';
 import bookingRoutes from './routes/booking.routes.js';
-import userRoutes from './routes/user.routes.js';
+import userRoutes    from './routes/user.routes.js';
+import paymentRoutes from './routes/payment.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const publicDir = path.join(__dirname, '../../public');
+const publicDir  = path.join(__dirname, '../../public');
 
 const app = express();
 
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGIN || ['http://localhost:3000', 'http://localhost:5500', 'http://127.0.0.1:3000'],
+  origin: process.env.ALLOWED_ORIGIN || [
+    'http://localhost:3000',
+    'http://localhost:5500',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:5500'
+  ],
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
@@ -25,16 +31,16 @@ app.get('/api', (req, res) => {
   res.json({ message: 'AptSpace API is running' });
 });
 
-app.use('/api/auth',     authRoutes);   // ← THIS LINE WAS MISSING
+app.use('/api/auth',     authRoutes);
 app.use('/api/users',    userRoutes);
-app.use('/api/payments', (req, res) => res.json({ payments: [] }));
 app.use('/api/rooms',    roomRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/payments', paymentRoutes);
 
 app.use(express.static(publicDir, { extensions: ['html'] }));
 
 app.get('/', (req, res) => {
-  res.redirect('/login.html');
+  res.redirect('/index.html');
 });
 
 app.get('/login', (req, res) => {

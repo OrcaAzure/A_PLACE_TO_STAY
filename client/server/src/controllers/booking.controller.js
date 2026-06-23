@@ -2,6 +2,8 @@ import { pool } from '../config/db.js';
 import Booking from '../models/Booking.js';
 import { isEmpty } from '../utils/helpers.js';
 
+const ADMIN_ROLES = ['Super Admin', 'Admin'];
+
 const bookingSelect = `
   SELECT bk.*,
          u.full_name AS guest_name,
@@ -18,7 +20,16 @@ const bookingSelect = `
 
 export const getAllBookings = async (req, res) => {
   try {
-    const [rows] = await pool.query(`${bookingSelect} ORDER BY bk.check_in ASC`);
+    const { role, id: userId } = req.user;
+    let rows;
+    if (ADMIN_ROLES.includes(role)) {
+      [rows] = await pool.query(`${bookingSelect} ORDER BY bk.check_in ASC`);
+    } else {
+      [rows] = await pool.query(
+        `${bookingSelect} WHERE bk.user_id = ? ORDER BY bk.check_in ASC`,
+        [userId]
+      );
+    }
     res.status(200).json({ bookings: rows.map((r) => new Booking(r)) });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -27,8 +38,14 @@ export const getAllBookings = async (req, res) => {
 
 export const getBookingById = async (req, res) => {
   try {
+    const { role, id: userId } = req.user;
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ? LIMIT 1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Booking not found' });
+
+    if (!ADMIN_ROLES.includes(role) && rows[0].user_id !== userId) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
     res.status(200).json({ booking: new Booking(rows[0]) });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -37,15 +54,22 @@ export const getBookingById = async (req, res) => {
 
 export const createBooking = async (req, res) => {
   try {
+    const { role, id: requesterId } = req.user;
     const { user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, notes } = req.body;
-    if (isEmpty(user_id) || isEmpty(room_id) || isEmpty(check_in) || isEmpty(check_out)) {
-      return res.status(400).json({ message: 'user_id, room_id, check_in, and check_out are required' });
+
+    // Guests always book for themselves; admins can specify a user_id
+    const effectiveUserId = ADMIN_ROLES.includes(role) ? (user_id || requesterId) : requesterId;
+
+    if (isEmpty(room_id) || isEmpty(check_in) || isEmpty(check_out)) {
+      return res.status(400).json({ message: 'room_id, check_in, and check_out are required' });
     }
+
     const [result] = await pool.query(
       `INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [user_id, room_id, check_in, check_out, guest_count || 1, season || 'Regular', occupancy_item || 'Single/Double Occupancy', notes || null]
+      [effectiveUserId, room_id, check_in, check_out, guest_count || 1, season || 'Regular', occupancy_item || 'Single/Double Occupancy', notes || null]
     );
+
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [result.insertId]);
     res.status(201).json({ message: 'Booking created', booking: new Booking(rows[0]) });
   } catch (error) {

@@ -12,7 +12,6 @@ export function requireAuth() {
     return false;
   }
 
-  // Enforce role-based access
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const role = user.role || '';
   const isAdminRole = role === 'Super Admin' || role === 'Admin';

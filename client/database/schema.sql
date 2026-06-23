@@ -646,3 +646,93 @@ INSERT INTO season_definitions (season, start_date, end_date, label) VALUES
     ('Regular',    '2026-06-01', '2026-10-31', 'Regular Jun-Oct 2026'),
     ('Peak',       '2026-11-01', '2026-11-30', 'Peak Nov 2026'),
     ('Super Peak', '2026-12-01', '2026-12-31', 'Super Peak Christmas 2026');
+
+    -- ============================================
+-- SEED DATA: GUEST USERS
+-- Password for all = aptspace123
+-- ============================================
+
+INSERT INTO users (full_name, email, password, role, status) VALUES
+  ('Maria Santos',    'maria.santos@apts.edu.ph',    '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'Faculty',       'Active'),
+  ('James Reyes',     'james.reyes@apts.edu.ph',     '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'Student',       'Active'),
+  ('Ruth Villanueva', 'ruth.villanueva@apts.edu.ph', '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'Staff',         'Active'),
+  ('Paul Mendoza',    'paul.mendoza@apts.edu.ph',    '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'Missionary',    'Active'),
+  ('Grace Tan',       'grace.tan@apts.edu.ph',       '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'GNC View Only', 'Active'),
+  ('Admin User',      'admin2@aptspace.com',          '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p398ItxvFO9TNFBXMMEZ.a', 'Admin',         'Active')
+ON DUPLICATE KEY UPDATE email = email;
+
+-- ============================================
+-- SEED DATA: SAMPLE BOOKINGS
+-- ============================================
+
+INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+SELECT u.id, r.id, '2026-07-01', '2026-07-05', 2, 'Regular', 'Single/Double Occupancy', 10000.00, 'Approved', 'Conference attendance'
+FROM users u, rooms r
+WHERE u.email = 'maria.santos@apts.edu.ph'
+  AND r.room_number = '201' AND r.building_id = (SELECT id FROM buildings WHERE name='PCALM') LIMIT 1;
+
+INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+SELECT u.id, r.id, '2026-07-10', '2026-07-12', 1, 'Regular', 'Single/Double Occupancy', 4500.00, 'Pending', 'Short study visit'
+FROM users u, rooms r
+WHERE u.email = 'james.reyes@apts.edu.ph'
+  AND r.room_number = 'BG1' AND r.building_id = (SELECT id FROM buildings WHERE name='Thesda') LIMIT 1;
+
+INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+SELECT u.id, r.id, '2026-06-20', '2026-06-25', 3, 'Regular', 'Daily Maximum', 15250.00, 'Approved', 'Staff retreat'
+FROM users u, rooms r
+WHERE u.email = 'ruth.villanueva@apts.edu.ph'
+  AND r.room_number = 'A' AND r.building_id = (SELECT id FROM buildings WHERE name='House') LIMIT 1;
+
+INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+SELECT u.id, r.id, '2026-08-01', '2026-08-07', 2, 'Regular', 'Single/Double Occupancy', 15000.00, 'Pending', 'Mission partner visit'
+FROM users u, rooms r
+WHERE u.email = 'paul.mendoza@apts.edu.ph'
+  AND r.room_number = '101' AND r.building_id = (SELECT id FROM buildings WHERE name='Sampaguita') LIMIT 1;
+
+INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+SELECT u.id, r.id, '2026-07-15', '2026-07-20', 4, 'Regular', 'Daily Maximum', 22750.00, 'Rejected', 'Family retreat — rejected due to room conflict'
+FROM users u, rooms r
+WHERE u.email = 'maria.santos@apts.edu.ph'
+  AND r.room_number = '401' AND r.building_id = (SELECT id FROM buildings WHERE name='PCALM') LIMIT 1;
+
+INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+SELECT u.id, r.id, '2026-09-05', '2026-09-10', 1, 'Regular', 'Single/Double Occupancy', 11250.00, 'Approved', 'Academic conference'
+FROM users u, rooms r
+WHERE u.email = 'james.reyes@apts.edu.ph'
+  AND r.room_number = '101' AND r.building_id = (SELECT id FROM buildings WHERE name='Thesda') LIMIT 1;
+
+INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+SELECT u.id, r.id, '2026-10-01', '2026-10-03', 6, 'Regular', 'Daily Maximum', 8700.00, 'Pending', 'Mission team accommodation'
+FROM users u, rooms r
+WHERE u.email = 'paul.mendoza@apts.edu.ph'
+  AND r.room_number = '501' AND r.building_id = (SELECT id FROM buildings WHERE name='PCALM') LIMIT 1;
+
+INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+SELECT u.id, r.id, '2026-07-22', '2026-07-24', 2, 'Regular', 'Single/Double Occupancy', 5000.00, 'Cancelled', 'Cancelled — travel plans changed'
+FROM users u, rooms r
+WHERE u.email = 'ruth.villanueva@apts.edu.ph'
+  AND r.room_number = '202' AND r.building_id = (SELECT id FROM buildings WHERE name='Sampaguita') LIMIT 1;
+
+-- ============================================
+-- SEED DATA: PAYMENTS
+-- ============================================
+
+INSERT INTO payments (booking_id, amount, method, status, paid_at)
+SELECT b.id, 10000.00, 'GCash', 'Paid', '2026-07-01 10:00:00'
+FROM bookings b JOIN users u ON b.user_id = u.id
+WHERE u.email = 'maria.santos@apts.edu.ph' AND b.check_in = '2026-07-01' LIMIT 1;
+
+INSERT INTO payments (booking_id, amount, method, status, paid_at)
+SELECT b.id, 15250.00, 'Bank Transfer', 'Paid', '2026-06-20 09:00:00'
+FROM bookings b JOIN users u ON b.user_id = u.id
+WHERE u.email = 'ruth.villanueva@apts.edu.ph' AND b.status = 'Approved' LIMIT 1;
+
+INSERT INTO payments (booking_id, amount, method, status, paid_at)
+SELECT b.id, 11250.00, 'Cash', 'Paid', '2026-09-05 08:30:00'
+FROM bookings b JOIN users u ON b.user_id = u.id
+WHERE u.email = 'james.reyes@apts.edu.ph' AND b.status = 'Approved' LIMIT 1;
+
+INSERT INTO payments (booking_id, amount, method, status)
+SELECT b.id, 15000.00, 'GCash', 'Pending'
+FROM bookings b JOIN users u ON b.user_id = u.id
+WHERE u.email = 'paul.mendoza@apts.edu.ph' AND b.check_in = '2026-08-01' LIMIT 1;
