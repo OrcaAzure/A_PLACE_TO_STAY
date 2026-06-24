@@ -53,7 +53,7 @@
 <div class="flex justify-between items-center px-margin-mobile md:px-gutter h-full max-w-container-max mx-auto">
 <div class="flex items-center gap-4">
 <h2 class="font-headline-md text-headline-md font-bold text-primary">Facilities</h2>
-<div class="hidden lg:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-80">
+<div class="hidden lg:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-80 transition-all focus-within:border-primary focus-within:shadow-sm">
 <span class="material-symbols-outlined text-outline text-[20px]">search</span>
 <input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full" placeholder="Search facilities..." type="text"/>
 </div>
@@ -68,10 +68,10 @@
 <div class="h-8 w-px bg-outline-variant mx-2"></div>
 <div class="flex items-center gap-3 cursor-pointer active:opacity-70">
 <div class="text-right hidden sm:block">
-<p class="font-label-md text-label-md font-bold leading-none" id="sidebar-user-name">Guest User</p>
-<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider" id="logout-btn">Log Out</p>
+<p class="font-label-md text-label-md font-bold leading-none js-user-name">Guest User</p>
+<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider hover:text-error transition-colors js-logout">Log Out</p>
 </div>
-<img alt="Guest profile picture" class="w-9 h-9 rounded-full object-cover border border-outline-variant shadow-sm" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDKnFuWYyCqVB1D8KonxmpTgy_LRZ8-57PS_1f-j4Q95Lxp6lw-UBQ8ZXQifoiWdtDaqijPT5m7lJLT9E0Bgw_fOfP2A0vd6O4_BVTnSd7-0Or0aselLhqO5ltYPCUnQNqWT4qpXRQpp66GWAwZZlOIdt7XkOymbWIBI4aIERQSl6lKYVeIJLyiMwC_lkkLMwS9-0aTn3yoWj6Ko6HZ2Ty13L7dilTbsavJb-tObKuf3DYZ5URDTExKio33brRmbWNNJ_mljzyl2_vm"/>
+<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm js-user-avatar">?</div>
 </div>
 </div>
 </div>
@@ -288,11 +288,9 @@ Confirm Reservation
   requireAuth();
 
   const user = getCurrentUser();
-  if (user) {
-    const nameEl = document.getElementById('sidebar-user-name');
-    if (nameEl) nameEl.textContent = user.full_name || user.name || 'Guest User';
-  }
-
-  document.getElementById('logout-btn')?.addEventListener('click', () => doLogout());
+  const displayName = user ? (user.full_name || user.name || 'Guest User') : 'Guest User';
+  document.querySelectorAll('.js-user-name').forEach((el) => { el.textContent = displayName; });
+  document.querySelectorAll('.js-user-avatar').forEach((el) => { el.textContent = (displayName[0] || 'G').toUpperCase(); });
+  document.querySelectorAll('.js-logout').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); doLogout(); }));
 </script>
 </body></html>

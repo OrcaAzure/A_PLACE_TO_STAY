@@ -126,7 +126,7 @@
 </div>
 </aside>
 
-<header class="fixed top-0 right-0 left-0 lg:left-[260px] h-16 bg-surface/80 glass-header border-b border-outline-variant z-30 shadow-sm transition-all">
+<header class="fixed top-0 right-0 left-0 lg:left-[260px] h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant z-30 shadow-sm transition-all">
 <div class="flex justify-between items-center px-margin-mobile md:px-gutter h-full max-w-container-max mx-auto">
 <div class="flex items-center gap-4">
 <h2 class="font-headline-md text-headline-md font-bold text-primary">Reservations</h2>
@@ -145,10 +145,10 @@
 <div class="h-8 w-px bg-outline-variant mx-2"></div>
 <div class="flex items-center gap-3 cursor-pointer active:opacity-70">
 <div class="text-right hidden sm:block">
-<p class="font-label-md text-label-md font-bold leading-none" id="user-name-display">Guest User</p>
-<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider hover:text-error transition-colors" id="logout-btn">Log Out</p>
+<p class="font-label-md text-label-md font-bold leading-none js-user-name">Guest User</p>
+<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider hover:text-error transition-colors js-logout">Log Out</p>
 </div>
-<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm" id="user-avatar">?</div>
+<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm js-user-avatar">?</div>
 </div>
 </div>
 </div>
@@ -460,17 +460,10 @@
   const isBlockedBuilding = (name) => BLOCKED_BUILDINGS.includes(String(name || '').trim());
 
   const user = getCurrentUser();
-  if (user) {
-    const nameEl = document.getElementById('user-name-display');
-    const avatarEl = document.getElementById('user-avatar');
-    if (nameEl) nameEl.textContent = user.full_name || user.name || 'Guest User';
-    if (avatarEl) avatarEl.textContent = (user.full_name || user.name || 'G')[0].toUpperCase();
-  }
-
-  document.getElementById('logout-btn')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    doLogout();
-  });
+  const displayName = user ? (user.full_name || user.name || 'Guest User') : 'Guest User';
+  document.querySelectorAll('.js-user-name').forEach((el) => { el.textContent = displayName; });
+  document.querySelectorAll('.js-user-avatar').forEach((el) => { el.textContent = (displayName[0] || 'G').toUpperCase(); });
+  document.querySelectorAll('.js-logout').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); doLogout(); }));
 
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);

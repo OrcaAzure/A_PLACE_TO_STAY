@@ -37,7 +37,7 @@
 
 <aside class="hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
     <div class="px-6 mb-8">
-        <h1 class="font-headline-md text-headline-md font-black text-primary">AptSpace</h1>
+        <h1 class="font-headline-sm text-headline-sm font-black text-primary">AptSpace</h1>
         <p class="text-body-sm text-on-surface-variant mt-1">Guest Portal</p>
     </div>
     <nav class="flex-1 px-3 space-y-1">
@@ -64,28 +64,39 @@
                 <span class="material-symbols-outlined text-primary">account_circle</span>
             </div>
             <div class="overflow-hidden">
-                <p class="font-label-md text-label-md truncate" id="sidebar-user-name">Guest User</p>
-                <p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer" id="logout-btn">Log Out</p>
+                <p class="font-label-md text-label-md truncate js-user-name" id="sidebar-user-name">Guest User</p>
+                <p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer js-logout">Log Out</p>
             </div>
         </div>
     </div>
 </aside>
 
 <header class="fixed top-0 right-0 left-0 lg:left-[260px] h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant z-30 shadow-sm transition-all">
-    <div class="flex justify-between items-center px-margin-mobile md:px-gutter h-full max-w-container-max mx-auto">
-        <div class="flex items-center gap-md">
-            <span class="lg:hidden material-symbols-outlined cursor-pointer" data-icon="menu">menu</span>
-            <h2 class="font-headline-md text-headline-md font-bold text-primary">Dashboard</h2>
-        </div>
-        <div class="flex items-center gap-lg">
-            <div class="relative hidden md:block">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-on-surface-variant text-sm">search</span>
-                <input class="pl-10 pr-4 py-2 bg-surface-container-low border-none rounded-lg text-label-md focus:ring-2 focus:ring-primary/20 w-64" placeholder="Search facilities..." type="text"/>
-            </div>
-            <span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">notifications</span>
-            <span class="material-symbols-outlined text-on-surface-variant cursor-pointer hover:text-primary transition-colors">help</span>
-        </div>
-    </div>
+<div class="flex justify-between items-center px-margin-mobile md:px-gutter h-full max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Dashboard</h2>
+<div class="hidden lg:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-80 transition-all focus-within:border-primary focus-within:shadow-sm">
+<span class="material-symbols-outlined text-outline text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full" placeholder="Search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer active:opacity-70">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-label-md font-bold leading-none js-user-name">Guest User</p>
+<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider hover:text-error transition-colors js-logout">Log Out</p>
+</div>
+<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm js-user-avatar">?</div>
+</div>
+</div>
+</div>
 </header>
 
 <nav class="lg:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 pb-safe bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
@@ -344,16 +355,13 @@
     requireAuth();
 
     const user = getCurrentUser();
-    if (user) {
-        const name = user.full_name || user.name || 'Guest User';
-        const firstName = name.split(' ')[0];
-        const sidebarName = document.getElementById('sidebar-user-name');
-        const welcomeEl = document.getElementById('welcome-message');
-        if (sidebarName) sidebarName.textContent = name;
-        if (welcomeEl) welcomeEl.textContent = `Welcome back, ${firstName}!`;
-    }
-
-    document.getElementById('logout-btn')?.addEventListener('click', () => doLogout());
+    const name = user ? (user.full_name || user.name || 'Guest User') : 'Guest User';
+    const firstName = name.split(' ')[0];
+    document.querySelectorAll('.js-user-name').forEach((el) => { el.textContent = name; });
+    document.querySelectorAll('.js-user-avatar').forEach((el) => { el.textContent = (name[0] || 'G').toUpperCase(); });
+    const welcomeEl = document.getElementById('welcome-message');
+    if (welcomeEl) welcomeEl.textContent = `Welcome back, ${firstName}!`;
+    document.querySelectorAll('.js-logout').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); doLogout(); }));
 </script>
 <script>
     document.addEventListener('DOMContentLoaded', () => {
