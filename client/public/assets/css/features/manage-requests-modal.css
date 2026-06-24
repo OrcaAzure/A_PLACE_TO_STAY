@@ -30,20 +30,20 @@
 }
 
 .request-summary-card:hover {
-  background: #f3f3fe;
+  background: #F8FAFC;
 }
 
 /* AFTER */
 .request-summary-card:focus-visible {
-  outline: 2px solid #6459ff;
+  outline: 2px solid #1A365D;
   outline-offset: 2px;
 }
 
 .request-summary-card.is-selected {
-  border-color: #6459ff;
-  border-left-color: #6459ff;
-  background: rgba(100, 89, 255, 0.05);
-  box-shadow: 0 1px 3px rgba(100, 89, 255, 0.12);
+  border-color: #1A365D;
+  border-left-color: #1A365D;
+  background: rgba(26, 54, 93, 0.05);
+  box-shadow: 0 1px 3px rgba(26, 54, 93, 0.12);
 }
 
 .request-skeleton {

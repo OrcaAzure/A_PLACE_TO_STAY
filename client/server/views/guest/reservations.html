@@ -5,10 +5,12 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Reservations | AptSpace Guest</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="/assets/js/config/tailwind-theme-base.js"></script>
+<script src="/assets/js/config/tailwind-guest.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <style>
-  body { font-family: 'Inter', sans-serif; }
+  body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
   .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
   }
@@ -17,105 +19,6 @@
     -webkit-backdrop-filter: blur(12px);
   }
 </style>
-<script id="tailwind-config">
-  tailwind.config = {
-    darkMode: "class",
-    theme: {
-      extend: {
-        "colors": {
-          "primary": "#6459ff",
-          "surface": "#faf8ff",
-          "on-error-container": "#93000a",
-          "background": "#faf8ff",
-          "surface-container": "#ededf9",
-          "primary-fixed-dim": "#c4c0ff",
-          "on-secondary-fixed": "#002113",
-          "error-container": "#ffdad6",
-          "outline-variant": "#c3c6d7",
-          "surface-dim": "#d9d9e5",
-          "surface-tint": "#6459ff",
-          "inverse-surface": "#2e3039",
-          "tertiary": "#943700",
-          "secondary-container": "#6cf8bb",
-          "outline": "#737686",
-          "on-primary-container": "#eeefff",
-          "surface-container-lowest": "#ffffff",
-          "secondary-fixed-dim": "#4edea3",
-          "on-tertiary-container": "#ffede6",
-          "surface-variant": "#e1e2ed",
-          "surface-container-low": "#f3f3fe",
-          "tertiary-container": "#bc4800",
-          "on-primary-fixed-variant": "#123f6f",
-          "on-surface-variant": "#434655",
-          "on-primary-fixed": "#00174b",
-          "on-error": "#ffffff",
-          "surface-container-highest": "#e1e2ed",
-          "on-tertiary-fixed-variant": "#7d2d00",
-          "on-surface": "#191b23",
-          "on-secondary-fixed-variant": "#005236",
-          "tertiary-fixed": "#ffdbcd",
-          "error": "#ba1a1a",
-          "primary-fixed": "#eeedff",
-          "surface-container-high": "#e7e7f3",
-          "on-tertiary-fixed": "#360f00",
-          "surface-bright": "#faf8ff",
-          "on-secondary-container": "#00714d",
-          "on-background": "#191b23",
-          "inverse-primary": "#c4c0ff",
-          "secondary": "#006c49",
-          "inverse-on-surface": "#f0f0fb",
-          "on-secondary": "#ffffff",
-          "on-primary": "#ffffff",
-          "tertiary-fixed-dim": "#ffb596",
-          "on-tertiary": "#ffffff",
-          "secondary-fixed": "#6ffbbe",
-          "primary-container": "#6459ff"
-        },
-        "borderRadius": {
-          "DEFAULT": "0.25rem",
-          "lg": "0.5rem",
-          "xl": "0.75rem",
-          "full": "9999px"
-        },
-        "spacing": {
-          "sm": "0.5rem",
-          "margin-mobile": "16px",
-          "lg": "1.5rem",
-          "sidebar-width": "260px",
-          "md": "1rem",
-          "xs": "0.25rem",
-          "xl": "2.5rem",
-          "container-max": "1280px",
-          "gutter": "24px",
-          "base": "4px"
-        },
-        "fontFamily": {
-          "headline-lg-desktop": ["Inter"],
-          "headline-xl": ["Inter"],
-          "label-sm": ["Inter"],
-          "label-md": ["Inter"],
-          "body-md": ["Inter"],
-          "body-lg": ["Inter"],
-          "headline-lg": ["Inter"],
-          "headline-sm": ["Inter"],
-          "headline-md": ["Inter"],
-          "body-sm": ["Inter"]
-        },
-        "fontSize": {
-          "headline-xl": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
-          "label-sm": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "600"}],
-          "label-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
-          "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
-          "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
-          "headline-lg": ["28px", {"lineHeight": "36px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
-          "headline-sm": ["16px", {"lineHeight": "24px", "fontWeight": "600"}],
-          "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
-          "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
-        }
-      },
-    },
-  }
-</script>
 </head>
 <body class="text-on-surface">
 
@@ -206,7 +109,7 @@
         <p class="font-body-md text-body-md text-on-surface-variant">Manage and track your facility reservations with ease.</p>
       </div>
       <div class="flex items-center gap-3">
-        <button id="new-reservation-btn" class="flex items-center gap-2 bg-[#2563EB] text-white px-6 py-3 rounded-xl font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-[0.98]">
+        <button id="new-reservation-btn" class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-xl font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-[0.98]">
           <span class="material-symbols-outlined text-[20px]">add</span>
           New Reservation
         </button>

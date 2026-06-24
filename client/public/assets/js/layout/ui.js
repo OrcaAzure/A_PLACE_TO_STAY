@@ -54,7 +54,7 @@ export async function initAppLayout(config = {}) {
     loadComponent('/components/notifications.html'),
   ]);
 
-  document.body.className = 'bg-[#f1f5f9] text-on-surface font-body-md h-screen overflow-hidden flex relative';
+  document.body.className = 'bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative';
 
   const sidebar = sidebarTpl
     .replace('{{NAV_ITEMS}}', renderSidebarNav(ADMIN_NAV, activePage))
