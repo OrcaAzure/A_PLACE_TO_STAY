@@ -1,23 +1,20 @@
-<aside id="app-sidebar" class="w-[260px] bg-white border-r border-outline-variant flex flex-col py-lg px-md z-40 shrink-0 h-full drawer-transition">
+<aside id="app-sidebar" class="anim-static w-[280px] bg-white border-r border-outline-variant flex flex-col py-lg px-md z-40 shrink-0 h-full">
   <div class="mb-xl px-sm flex items-center justify-between">
     <div>
       <h1 class="font-headline-md text-headline-md font-bold text-primary">AptSpace</h1>
-      <p class="text-body-sm text-on-surface-variant">{{PORTAL_LABEL}}</p>
+      <p class="text-body-md text-on-surface-variant mt-1">{{PORTAL_LABEL}}</p>
     </div>
-    <button id="menu-toggle" type="button" class="lg:hidden p-1 text-on-surface-variant" aria-label="Menu">
-      <span class="material-symbols-outlined">menu</span>
+    <button id="menu-toggle" type="button" class="lg:hidden p-2 text-on-surface-variant min-h-[3rem] min-w-[3rem] flex items-center justify-center rounded-lg hover:bg-surface-variant/50" aria-label="Open menu">
+      <span class="material-symbols-outlined text-[1.5rem]">menu</span>
     </button>
   </div>
 
-  <nav class="flex-1 space-y-1">{{NAV_ITEMS}}</nav>
-
-  
+  <nav class="flex-1 space-y-1.5" aria-label="Main navigation">{{NAV_ITEMS}}</nav>
 
   <div class="mt-auto border-t border-outline-variant pt-lg">
-    <!-- logout-btn is handled by ui.js bindLayoutEvents -->
-    <button id="logout-btn" type="button" class="w-full flex items-center gap-md px-md py-sm text-on-surface-variant hover:bg-surface-variant/50 rounded-lg">
-      <span class="material-symbols-outlined">logout</span>
-      <span class="font-body-md">Log Out</span>
+    <button id="logout-btn" type="button" class="w-full flex items-center gap-md px-md py-md text-on-surface-variant hover:bg-surface-variant/50 rounded-lg min-h-[3rem]">
+      <span class="material-symbols-outlined text-[1.35rem]">logout</span>
+      <span class="font-body-md font-medium">Log Out</span>
     </button>
   </div>
 </aside>

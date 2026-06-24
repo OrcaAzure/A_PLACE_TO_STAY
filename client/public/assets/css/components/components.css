@@ -55,13 +55,13 @@
 .data-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 1rem;
 }
 
 .data-table th {
   text-align: left;
-  padding: 12px 16px;
-  font-size: 11px;
+  padding: 1rem 1.25rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -71,7 +71,7 @@
 }
 
 .data-table td {
-  padding: 14px 16px;
+  padding: 1rem 1.25rem;
   border-bottom: 1px solid #e1e2ed;
   color: #191b23;
 }

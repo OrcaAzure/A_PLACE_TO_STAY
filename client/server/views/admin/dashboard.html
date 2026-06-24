@@ -12,141 +12,119 @@
   <link rel="stylesheet" href="/assets/css/global/main.css" />
   <link rel="stylesheet" href="/assets/css/components/components.css" />
   <link rel="stylesheet" href="/assets/css/global/responsive.css" />
+  <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
   <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
 </head>
-<body class="h-full bg-slate-50/50">
+<body>
 
-  <div id="page-content" class="w-full flex flex-col space-y-6 antialiased text-slate-700">
-    
-    <section class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-blue-500/30 transition-colors">
-        <div class="flex justify-between items-start mb-2">
-          <div class="p-2 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[18px]">calendar_today</span>
-          </div>
-          <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full" id="kpi-upcoming-label">Live</span>
-        </div>
-        <div>
-          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Upcoming</p>
-          <h3 class="text-xl font-bold text-slate-800 mt-0.5" id="kpi-upcoming">—</h3>
-        </div>
-      </div>
+  <div id="page-content">
 
-      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-rose-500/30 transition-colors">
+    <section class="kpi-grid kpi-grid--6 opacity-0">
+      <article class="kpi-card">
         <div class="flex justify-between items-start mb-2">
-          <div class="p-2 bg-rose-50 text-rose-600 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[18px]">assignment_late</span>
+          <div class="p-2.5 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">calendar_today</span>
           </div>
-          <span class="text-[9px] font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full uppercase tracking-tight">Action Req</span>
+          <span class="kpi-badge bg-primary/10 text-primary" id="kpi-upcoming-label">Live</span>
         </div>
-        <div>
-          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Pending</p>
-          <h3 class="text-xl font-bold text-slate-800 mt-0.5" id="kpi-pending-count">—</h3>
-        </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-emerald-500/30 transition-colors">
+        <p class="kpi-label">Upcoming</p>
+        <p class="kpi-value" id="kpi-upcoming">—</p>
+      </article>
+      <article class="kpi-card">
         <div class="flex justify-between items-start mb-2">
-          <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[18px]">verified</span>
+          <div class="p-2.5 bg-secondary/10 text-secondary rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">assignment_late</span>
           </div>
-          <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full" id="kpi-approval-rate">—</span>
+          <span class="kpi-badge bg-secondary/10 text-secondary">Needs Action</span>
         </div>
-        <div>
-          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Approved</p>
-          <h3 class="text-xl font-bold text-slate-800 mt-0.5" id="kpi-approved">—</h3>
-        </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-blue-500/30 transition-colors">
+        <p class="kpi-label">Pending</p>
+        <p class="kpi-value" id="kpi-pending-count">—</p>
+      </article>
+      <article class="kpi-card">
         <div class="flex justify-between items-start mb-2">
-          <div class="p-2 bg-slate-50 text-slate-600 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[18px]">meeting_room</span>
+          <div class="p-2.5 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">verified</span>
           </div>
-          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight" id="kpi-rooms-available-label">—</span>
+          <span class="kpi-badge bg-emerald-50 text-emerald-700" id="kpi-approval-rate">—</span>
         </div>
-        <div>
-          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Total Rooms</p>
-          <h3 class="text-xl font-bold text-slate-800 mt-0.5" id="kpi-total-rooms">—</h3>
-        </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-emerald-500/30 transition-colors">
+        <p class="kpi-label">Approved</p>
+        <p class="kpi-value" id="kpi-approved">—</p>
+      </article>
+      <article class="kpi-card">
         <div class="flex justify-between items-start mb-2">
-          <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[18px]">bed</span>
+          <div class="p-2.5 bg-surface-container text-on-surface-variant rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">meeting_room</span>
           </div>
-          <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full" id="kpi-maintenance-label">—</span>
+          <span class="kpi-badge bg-surface-container text-on-surface-variant" id="kpi-rooms-available-label">—</span>
         </div>
-        <div>
-          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Occupancy</p>
-          <h3 class="text-xl font-bold text-slate-800 mt-0.5" id="kpi-occupancy">—</h3>
-        </div>
-      </div>
-
-      <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col justify-between group hover:border-amber-500/30 transition-colors">
+        <p class="kpi-label">Total Rooms</p>
+        <p class="kpi-value" id="kpi-total-rooms">—</p>
+      </article>
+      <article class="kpi-card">
         <div class="flex justify-between items-start mb-2">
-          <div class="p-2 bg-amber-50 text-amber-600 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[18px]">restaurant</span>
+          <div class="p-2.5 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">bed</span>
           </div>
-          <span class="text-[9px] font-bold text-slate-400 uppercase tracking-tight" id="kpi-revenue-label">Paid</span>
+          <span class="kpi-badge bg-emerald-50 text-emerald-700" id="kpi-maintenance-label">—</span>
         </div>
-        <div>
-          <p class="text-slate-400 text-[10px] font-bold tracking-wider uppercase">Revenue</p>
-          <h3 class="text-xl font-bold text-slate-800 mt-0.5" id="kpi-revenue">—</h3>
+        <p class="kpi-label">Occupancy</p>
+        <p class="kpi-value" id="kpi-occupancy">—</p>
+      </article>
+      <article class="kpi-card">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2.5 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">payments</span>
+          </div>
+          <span class="kpi-badge bg-amber-50 text-amber-700" id="kpi-revenue-label">Paid</span>
         </div>
-      </div>
+        <p class="kpi-label">Revenue</p>
+        <p class="kpi-value" id="kpi-revenue">—</p>
+      </article>
     </section>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-      
-      <section class="lg:col-span-2 bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+      <section class="lg:col-span-2 admin-panel">
+        <div class="admin-panel-header">
           <div>
-            <h2 class="text-base font-bold text-slate-800">Facility Utilization</h2>
-            <p class="text-xs text-slate-400">Real-time usage trends across seminary buildings</p>
+            <h2>Facility Utilization</h2>
+            <p>Usage trends across seminary buildings (last 30 days)</p>
           </div>
-          <span class="bg-slate-50 border border-slate-200 rounded-lg text-xs py-1.5 px-3 text-slate-600 font-medium" id="chart-period-label">Last 30 days · approved bookings</span>
+          <span class="text-body-sm text-on-surface-variant font-medium px-3 py-2 bg-surface-container-low rounded-lg border border-outline-variant" id="chart-period-label">Loading…</span>
         </div>
-        
-        <div class="p-6 h-[340px] relative flex items-end justify-between gap-6" id="building-chart-mount">
-          <p class="text-xs text-slate-400 absolute inset-0 flex items-center justify-center">Loading utilization data...</p>
+        <div class="admin-panel-body h-[340px] relative flex items-end justify-between gap-4" id="building-chart-mount">
+          <p class="text-body-sm text-on-surface-variant absolute inset-0 flex items-center justify-center">Loading utilization data…</p>
         </div>
       </section>
-
-      <section class="bg-white rounded-xl border border-slate-100 shadow-sm flex flex-col h-full overflow-hidden">
-        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
-          <h2 class="text-base font-bold text-slate-800">Recent Activity</h2>
-          <a href="reservations.html" class="text-blue-600 font-bold text-xs hover:underline">View All</a>
+      <section class="admin-panel flex flex-col">
+        <div class="admin-panel-header">
+          <h2>Recent Activity</h2>
+          <a href="reservations.html" class="text-primary font-bold text-body-sm hover:underline">View All</a>
         </div>
-        
-        <div class="p-6 space-y-6" id="recent-activity-mount">
-          <p class="text-xs text-slate-400">Loading activity...</p>
+        <div class="admin-panel-body space-y-5" id="recent-activity-mount">
+          <p class="text-body-sm text-on-surface-variant">Loading activity…</p>
         </div>
       </section>
     </div>
 
-    <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-      <div class="p-6 border-b border-slate-100 flex items-center justify-between">
-        <h2 class="text-base font-bold text-slate-800">Reservation Queue</h2>
-        <div class="flex items-center gap-4">
-          <a href="reservations.html" class="px-4 py-2 text-xs font-bold bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm shadow-blue-500/10">View All</a>
-        </div>
+    <section class="admin-panel">
+      <div class="admin-panel-header">
+        <h2>Reservation Queue</h2>
+        <a href="reservations.html" class="btn-primary">View All Reservations</a>
       </div>
       <div class="overflow-x-auto">
-        <table class="w-full text-left border-collapse">
+        <table class="data-table admin-table w-full">
           <thead>
-            <tr class="bg-slate-50/70 border-b border-slate-100">
-              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider py-4">Requester</th>
-              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider py-4">Facility/Room</th>
-              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider py-4">Dates</th>
-              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider py-4">Guests</th>
-              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider py-4">Status</th>
-              <th class="px-6 text-xs font-bold text-slate-400 uppercase tracking-wider text-right py-4">Actions</th>
+            <tr>
+              <th>Requester</th>
+              <th>Facility / Room</th>
+              <th>Dates</th>
+              <th>Guests</th>
+              <th>Status</th>
+              <th class="text-right">Actions</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-slate-50" id="queue-tbody">
-            <tr><td colspan="6" class="px-6 py-8 text-center text-xs text-slate-400">Loading queue...</td></tr>
+          <tbody id="queue-tbody">
+            <tr><td colspan="6" class="text-center py-8 text-on-surface-variant">Loading queue…</td></tr>
           </tbody>
         </table>
       </div>

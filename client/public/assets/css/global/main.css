@@ -70,7 +70,8 @@ body {
   }
 }
 
-[data-tab-content].hidden { display: none; }
+[data-tab-content].hidden,
+[data-drawer-panel].hidden { display: none; }
 
 .loading-overlay {
   position: absolute;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Settings | AptSpace</title>
+  <title>Settings | AptSpace Admin</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="/assets/js/config/tailwind-theme-base.js"></script>
   <script src="/assets/js/config/tailwind-admin.js"></script>
@@ -12,8 +12,10 @@
   <link rel="stylesheet" href="/assets/css/global/main.css" />
   <link rel="stylesheet" href="/assets/css/components/components.css" />
   <link rel="stylesheet" href="/assets/css/global/responsive.css" />
+  <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
+  <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
 </head>
-<body class="h-full bg-slate-50/50">
+<body>
   <div id="page-content">
     <section class="timeline-workspace min-h-[500px] bg-white rounded-xl border border-slate-100 shadow-sm">
       <div class="timeline-workspace-header border-b border-slate-100 p-6">
@@ -22,9 +24,9 @@
           <h3 class="font-headline-sm text-on-surface">System Settings</h3>
         </div>
         <div class="flex gap-2">
-          <button type="button" data-settings-tab="account" class="px-4 py-1.5 border-b-2 border-primary text-primary text-label-sm font-bold">Account</button>
-          <button type="button" data-settings-tab="roles" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">User Roles</button>
-          <button type="button" data-settings-tab="system" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">System</button>
+          <button type="button" data-settings-tab="account" class="px-5 py-3 min-h-[3rem] border-b-2 border-primary text-primary text-body-sm font-bold">Account</button>
+          <button type="button" data-settings-tab="roles" class="px-5 py-3 min-h-[3rem] border-b-2 border-transparent text-on-surface-variant text-body-sm">User Roles</button>
+          <button type="button" data-settings-tab="system" class="px-5 py-3 min-h-[3rem] border-b-2 border-transparent text-on-surface-variant text-body-sm">System</button>
         </div>
       </div>
 
@@ -43,7 +45,7 @@
             <input type="text" id="settings-role" readonly class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm bg-slate-50" />
           </div>
           <div id="settings-feedback" class="hidden"></div>
-          <button type="button" id="settings-save-btn" class="px-6 py-2.5 bg-primary text-on-primary rounded-lg font-label-md">Save Changes</button>
+          <button type="button" id="settings-save-btn" class="btn-primary">Save Changes</button>
         </div>
 
         <div data-settings-panel="roles" class="hidden">

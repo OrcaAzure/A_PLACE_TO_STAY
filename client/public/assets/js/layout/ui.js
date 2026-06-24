@@ -1,4 +1,7 @@
 import { initManageRequestsModal, isManageRequestsModalOpen, closeManageRequestsModal } from '/assets/js/features/manage-requests.js';
+import { initManageReservationsModal, isManageReservationsModalOpen, closeManageReservationsModal } from '/assets/js/features/manage-reservations.js';
+import { initManageFacilitiesModal, isManageFacilitiesModalOpen, closeManageFacilitiesModal } from '/assets/js/features/manage-facilities.js';
+import { initAdminEnhancements, animateDrawerOpen, animateModalOpen, animateNotificationsPanel, animateDrawerTabSwitch } from '/assets/js/layout/animations.js';
 
 export const ADMIN_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard.html' },
@@ -16,9 +19,9 @@ export async function loadComponent(url) {
 }
 
 function navLinkClass(active, id) {
-  const base = 'flex items-center gap-md px-md py-sm transition-colors duration-200 rounded-lg';
+  const base = 'flex items-center gap-md px-md py-md transition-colors duration-200 rounded-lg text-body-md';
   return active === id
-    ? `${base} text-primary font-bold bg-primary-container/10`
+    ? `${base} admin-nav-active text-primary font-bold`
     : `${base} hover:bg-surface-variant/50 text-on-surface-variant`;
 }
 
@@ -45,16 +48,18 @@ export async function initAppLayout(config = {}) {
   const userRole = user.role || 'Ops Commander';
   const userInitial = userName.charAt(0).toUpperCase();
 
-  const [sidebarTpl, headerTpl, drawerTpl, modalTpl, manageRequestsTpl, notifTpl] = await Promise.all([
+  const [sidebarTpl, headerTpl, drawerTpl, modalTpl, manageRequestsTpl, manageReservationsTpl, manageFacilitiesTpl, notifTpl] = await Promise.all([
     loadComponent('/components/sidebar.html'),
     loadComponent('/components/header.html'),
     loadComponent('/components/drawer.html'),
     loadComponent('/components/modal.html'),
     loadComponent('/components/manage-requests-modal.html'),
+    loadComponent('/components/manage-reservations-modal.html'),
+    loadComponent('/components/manage-facilities-modal.html'),
     loadComponent('/components/notifications.html'),
   ]);
 
-  document.body.className = 'bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative';
+  document.body.className = 'admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative';
 
   const sidebar = sidebarTpl
     .replace('{{NAV_ITEMS}}', renderSidebarNav(ADMIN_NAV, activePage))
@@ -75,17 +80,22 @@ export async function initAppLayout(config = {}) {
     ${sidebar}
     <main class="flex-1 flex flex-col overflow-hidden h-full">
       ${header}
-      <div id="page-content" class="flex-1 overflow-y-auto p-6 space-y-6">${savedContent}</div>
+      <div id="page-content" class="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6 lg:space-y-8">${savedContent}</div>
     </main>
     ${drawerTpl}
     ${modalTpl}
     ${manageRequestsTpl}
+    ${manageReservationsTpl}
+    ${manageFacilitiesTpl}
     ${notifTpl}
     <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[45]"></div>
   `;
 
   bindLayoutEvents();
   initManageRequestsModal();
+  initManageReservationsModal();
+  initManageFacilitiesModal();
+  initAdminEnhancements().catch(() => {});
 }
 
 function bindLayoutEvents() {
@@ -105,11 +115,21 @@ function bindLayoutEvents() {
   document.getElementById('sidebar-overlay')?.addEventListener('click', closeSidebar);
 
   document.getElementById('notifications-btn')?.addEventListener('click', () => {
-    document.getElementById('notifications-panel')?.classList.toggle('hidden');
+    const panel = document.getElementById('notifications-panel');
+    if (!panel) return;
+    const opening = panel.classList.contains('hidden');
+    if (opening) {
+      animateNotificationsPanel(panel, true).catch(() => panel.classList.remove('hidden'));
+    } else {
+      animateNotificationsPanel(panel, false).catch(() => panel.classList.add('hidden'));
+    }
   });
 
   document.getElementById('close-notifications')?.addEventListener('click', () => {
-    document.getElementById('notifications-panel')?.classList.add('hidden');
+    const panel = document.getElementById('notifications-panel');
+    if (panel) {
+      animateNotificationsPanel(panel, false).catch(() => panel.classList.add('hidden'));
+    }
   });
 
   document.getElementById('drawer-close')?.addEventListener('click', closeDrawer);
@@ -120,14 +140,22 @@ function bindLayoutEvents() {
     if (e.target.id === 'app-modal') closeModal();
   });
 
-  document.querySelectorAll('[data-tab]').forEach((btn) => {
-    btn.addEventListener('click', () => switchTab(btn.getAttribute('data-tab')));
+  document.querySelectorAll('#managementDrawer [data-drawer-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => switchDrawerTab(btn.getAttribute('data-drawer-tab')));
   });
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       if (isManageRequestsModalOpen()) {
         closeManageRequestsModal();
+        return;
+      }
+      if (isManageReservationsModalOpen()) {
+        closeManageReservationsModal();
+        return;
+      }
+      if (isManageFacilitiesModalOpen()) {
+        closeManageFacilitiesModal();
         return;
       }
       closeModal();
@@ -141,7 +169,9 @@ function updateBodyScrollLock() {
   const modalOpen = !document.getElementById('app-modal')?.classList.contains('hidden');
   const drawer = document.getElementById('managementDrawer');
   const drawerOpen = drawer && !drawer.classList.contains('translate-x-full');
-  const manageOpen = isManageRequestsModalOpen();
+  const manageOpen = isManageRequestsModalOpen()
+    || isManageReservationsModalOpen()
+    || isManageFacilitiesModalOpen();
   document.body.style.overflow = (modalOpen || drawerOpen || manageOpen) ? 'hidden' : '';
 }
 
@@ -156,10 +186,12 @@ export function openDrawer(id, title, bodyHtml = '') {
   document.getElementById('drawerTitle').textContent = title;
   const body = document.getElementById('drawerBody');
   if (body && bodyHtml) body.innerHTML = bodyHtml;
-  switchTab('details');
+  switchDrawerTab('details');
   document.getElementById('managementDrawer')?.classList.remove('translate-x-full');
   document.getElementById('drawerOverlay')?.classList.remove('hidden');
   updateBodyScrollLock();
+  const drawer = document.getElementById('managementDrawer');
+  animateDrawerOpen(drawer).catch(() => {});
 }
 
 export function closeDrawer() {
@@ -186,6 +218,8 @@ export function openModal(title, bodyHtml, options = {}) {
   document.getElementById('modal-overlay')?.classList.remove('hidden');
   updateBodyScrollLock();
   document.getElementById('modal-close')?.focus();
+  const shell = document.querySelector('#app-modal > div');
+  animateModalOpen(shell).catch(() => {});
 }
 
 export function closeModal() {
@@ -194,17 +228,24 @@ export function closeModal() {
   updateBodyScrollLock();
 }
 
-export function switchTab(tabId) {
-  document.querySelectorAll('[data-tab]').forEach((btn) => {
-    const active = btn.getAttribute('data-tab') === tabId;
+export function switchDrawerTab(tabId) {
+  document.querySelectorAll('#managementDrawer [data-drawer-tab]').forEach((btn) => {
+    const active = btn.getAttribute('data-drawer-tab') === tabId;
     btn.classList.toggle('border-primary', active);
     btn.classList.toggle('text-primary', active);
     btn.classList.toggle('border-transparent', !active);
     btn.classList.toggle('text-on-surface-variant', !active);
   });
-  document.querySelectorAll('[data-tab-content]').forEach((el) => {
-    el.classList.toggle('hidden', el.getAttribute('data-tab-content') !== tabId);
+  document.querySelectorAll('#managementDrawer [data-drawer-panel]').forEach((el) => {
+    const show = el.getAttribute('data-drawer-panel') === tabId;
+    el.classList.toggle('hidden', !show);
+    if (show) animateDrawerTabSwitch(el).catch(() => {});
   });
+}
+
+/** @deprecated Use switchDrawerTab — kept for backward compatibility */
+export function switchTab(tabId) {
+  switchDrawerTab(tabId);
 }
 
 export function syncTimelineScroll() {

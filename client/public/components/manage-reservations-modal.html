@@ -1,0 +1,70 @@
+<div id="manage-reservations-overlay" class="hidden fixed inset-0 bg-black/40 z-[70]" aria-hidden="true"></div>
+<div
+  id="manage-reservations-modal"
+  class="hidden fixed inset-0 z-[80] flex items-center justify-center p-4"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="manage-reservations-title"
+  aria-hidden="true"
+>
+  <div class="admin-crud-shell bg-white rounded-xl w-full max-w-5xl border border-outline-variant flex flex-col max-h-[90vh]">
+    <header class="px-5 py-4 border-b border-outline-variant flex items-start justify-between gap-4 shrink-0 bg-gradient-to-r from-primary/5 to-transparent">
+      <div class="flex items-start gap-3 min-w-0">
+        <div class="w-11 h-11 bg-primary text-white rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+          <span class="material-symbols-outlined">event_note</span>
+        </div>
+        <div class="min-w-0">
+          <h2 id="manage-reservations-title" class="font-headline-sm text-on-surface">Manage Reservations</h2>
+          <p class="text-body-sm text-on-surface-variant mt-0.5">Create, edit, and remove facility bookings</p>
+        </div>
+      </div>
+      <button id="manage-reservations-close" type="button" class="p-2 hover:bg-surface-variant/50 rounded-lg shrink-0" aria-label="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <div class="px-5 py-3 border-b border-outline-variant shrink-0 bg-surface-container-low/30">
+      <div class="flex flex-wrap items-center gap-3">
+        <div class="relative flex-1 min-w-[180px]">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">search</span>
+          <input
+            id="manage-reservations-search"
+            type="search"
+            placeholder="Search guest, room, or ID…"
+            class="w-full pl-10 pr-3 py-2.5 text-body-sm border border-outline-variant rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            autocomplete="off"
+          />
+        </div>
+        <select id="manage-reservations-status-filter" class="py-2.5 px-3 text-body-sm border border-outline-variant rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-primary/30" aria-label="Filter by status">
+          <option value="all">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <button id="manage-reservations-new" type="button" class="admin-crud-btn-primary shrink-0">
+          <span class="material-symbols-outlined text-[20px]">add</span>
+          New Reservation
+        </button>
+      </div>
+    </div>
+
+    <div id="manage-reservations-body" class="admin-crud-body flex flex-1 min-h-0 relative">
+      <div id="manage-reservations-list-panel" class="admin-crud-list-panel w-full md:w-[38%] border-r border-outline-variant overflow-y-auto min-h-0 bg-surface-container-low/20">
+        <div id="manage-reservations-list" class="p-3 space-y-2" role="listbox" aria-label="Reservation list"></div>
+      </div>
+      <div id="manage-reservations-form-panel" class="admin-crud-form-panel flex-1 overflow-y-auto min-h-0">
+        <div id="manage-reservations-detail" class="p-5"></div>
+      </div>
+      <div id="manage-reservations-loading" class="hidden loading-overlay rounded-b-xl"></div>
+    </div>
+
+    <footer class="px-5 py-4 border-t border-outline-variant flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0 bg-surface-container-low/20">
+      <div>
+        <p id="manage-reservations-footer-count" class="text-body-sm text-on-surface-variant">Showing 0 reservations</p>
+        <p id="manage-reservations-feedback" class="hidden text-body-sm mt-1"></p>
+      </div>
+      <div id="manage-reservations-footer-actions" class="flex flex-wrap gap-2 justify-end"></div>
+    </footer>
+  </div>
+</div>

@@ -107,6 +107,24 @@ export async function deleteBooking(id) {
   return apiRequest(`/bookings/${id}`, { method: 'DELETE' });
 }
 
+export async function createRoom(payload) {
+  return apiRequest('/rooms', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateRoom(id, payload) {
+  return apiRequest(`/rooms/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteRoom(id) {
+  return apiRequest(`/rooms/${id}`, { method: 'DELETE' });
+}
+
 export async function getPayments() {
   try {
     const data = await apiRequest('/payments');

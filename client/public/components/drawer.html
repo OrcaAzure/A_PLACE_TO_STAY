@@ -2,22 +2,22 @@
 <aside id="managementDrawer" class="fixed top-0 right-0 h-full w-full max-w-md bg-white shadow-2xl z-[60] drawer-transition translate-x-full flex flex-col">
   <div class="p-5 border-b border-outline-variant flex items-center justify-between shrink-0">
     <div>
-      <p id="drawerID" class="text-[10px] font-bold text-primary uppercase tracking-widest">#APT-0000</p>
+      <p id="drawerID" class="text-body-sm font-bold text-primary uppercase tracking-widest">#APT-0000</p>
       <h3 id="drawerTitle" class="font-headline-sm text-on-surface mt-1">Reservation Details</h3>
     </div>
-    <button id="drawer-close" type="button" class="p-2 hover:bg-surface-variant/50 rounded-lg" aria-label="Close">
+    <button id="drawer-close" type="button" class="p-2.5 min-h-[3rem] min-w-[3rem] flex items-center justify-center hover:bg-surface-variant/50 rounded-lg" aria-label="Close drawer">
       <span class="material-symbols-outlined">close</span>
     </button>
   </div>
   <div class="border-b border-outline-variant px-5 flex gap-4">
-    <button type="button" data-tab="details" class="py-3 border-b-2 border-primary text-primary text-label-sm font-bold">Details</button>
-    <button type="button" data-tab="history" class="py-3 border-b-2 border-transparent text-on-surface-variant text-label-sm font-medium">History</button>
+    <button type="button" data-drawer-tab="details" class="py-3 border-b-2 border-primary text-primary text-label-sm font-bold min-h-[3rem]">Details</button>
+    <button type="button" data-drawer-tab="history" class="py-3 border-b-2 border-transparent text-on-surface-variant text-label-sm font-medium min-h-[3rem]">History</button>
   </div>
   <div class="flex-1 overflow-y-auto p-5">
-    <div data-tab-content="details" id="drawerBody">
+    <div data-drawer-panel="details" id="drawerBody">
       <p class="text-body-sm text-on-surface-variant">Select a timeline item to view details.</p>
     </div>
-    <div data-tab-content="history" class="hidden">
+    <div data-drawer-panel="history" class="hidden">
       <p class="text-body-sm text-on-surface-variant">No history available.</p>
     </div>
   </div>
