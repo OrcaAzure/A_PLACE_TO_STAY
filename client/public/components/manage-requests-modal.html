@@ -1,119 +1,35 @@
-<div id="manage-requests-overlay" class="hidden fixed inset-0 bg-black/40 z-[70]" aria-hidden="true"></div>
-<div
-  id="manage-requests-modal"
-  class="hidden fixed inset-0 z-[80] flex items-center justify-center p-4"
-  role="dialog"
-  aria-modal="true"
-  aria-labelledby="manage-requests-title"
-  aria-hidden="true"
->
-  <div class="manage-requests-shell bg-white rounded-xl shadow-xl w-full max-w-5xl border border-outline-variant flex flex-col max-h-[90vh] modal-transition">
-    <header class="px-5 py-4 border-b border-outline-variant flex items-start justify-between gap-4 shrink-0">
-      <div class="flex items-start gap-3 min-w-0">
-        <div class="w-10 h-10 bg-primary-container/10 text-primary rounded-lg flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined">verified</span>
-        </div>
-        <div class="min-w-0">
-          <div class="flex items-center gap-2 flex-wrap">
-            <h2 id="manage-requests-title" class="font-headline-sm text-on-surface">Manage Requests</h2>
-            <span id="manage-requests-pending-badge" class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold shrink-0">0 pending</span>
-          </div>
-          <p class="text-body-sm text-on-surface-variant mt-0.5">Review pending facility bookings</p>
-        </div>
-      </div>
-      <button id="manage-requests-close" type="button" class="p-2 hover:bg-surface-variant/50 rounded-lg shrink-0" aria-label="Close">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </header>
-
-    <div class="px-5 py-3 border-b border-outline-variant shrink-0">
-      <div class="manage-requests-toolbar flex flex-wrap items-center gap-3">
-        <div class="relative flex-1 min-w-[180px] w-full sm:w-auto">
-          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px] pointer-events-none">search</span>
-          <input
-            id="manage-requests-search"
-            type="search"
-            placeholder="Search requests…"
-            class="w-full pl-10 pr-3 py-2 text-body-sm border border-outline-variant rounded-lg bg-white text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-            autocomplete="off"
-          />
-        </div>
-        <div id="manage-requests-advanced-filters" class="manage-requests-advanced-filters hidden w-full flex flex-wrap items-center gap-3 sm:flex sm:w-auto">
-          <select
-            id="manage-requests-status-filter"
-            class="py-2 px-3 text-body-sm border border-outline-variant rounded-lg bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary flex-1 sm:flex-none"
-            aria-label="Filter by status"
-          >
-            <option value="pending">Pending</option>
-            <option value="all">All Statuses</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <select
-            id="manage-requests-facility-filter"
-            class="py-2 px-3 text-body-sm border border-outline-variant rounded-lg bg-white text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary flex-1 sm:flex-none"
-            aria-label="Filter by facility"
-          >
-            <option value="all">All Facilities</option>
-          </select>
-          <button
-            id="manage-requests-refresh"
-            type="button"
-            class="py-2 px-3 border border-outline-variant rounded-lg text-label-md text-on-surface-variant hover:bg-surface-variant/30 transition-colors flex items-center gap-1.5"
-            aria-label="Refresh request list"
-          >
-            <span class="material-symbols-outlined text-[18px]">refresh</span>
-            <span class="hidden sm:inline">Refresh</span>
-          </button>
-        </div>
-        <button
-          id="manage-requests-filters-toggle"
-          type="button"
-          class="manage-requests-filters-toggle py-2 px-3 border border-outline-variant rounded-lg text-label-md text-on-surface-variant hover:bg-surface-variant/30 transition-colors flex items-center gap-1.5"
-          aria-expanded="false"
-          aria-controls="manage-requests-advanced-filters"
-        >
-          <span class="material-symbols-outlined text-[18px]">tune</span>
-          Filters
-        </button>
-      </div>
-    </div>
-
-    <div id="manage-requests-body" class="manage-requests-body flex flex-1 min-h-0 relative">
-      <div id="manage-requests-list-panel" class="manage-requests-list-panel w-full md:w-[38%] lg:w-[35%] border-r border-outline-variant overflow-y-auto min-h-0">
-        <div id="manage-requests-list" class="p-3 space-y-2" role="listbox" aria-label="Request list"></div>
-      </div>
-      <div id="manage-requests-detail-panel" class="manage-requests-detail-panel flex-1 overflow-y-auto min-h-0">
-        <div id="manage-requests-detail" class="p-5"></div>
-      </div>
-      <div id="manage-requests-loading" class="hidden loading-overlay rounded-b-xl"></div>
-    </div>
-
-    <footer class="px-5 py-4 border-t border-outline-variant flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 shrink-0">
+<div id="manage-requests-overlay" class="hidden fixed inset-0 bg-black/40 z-[70]"></div>
+<div id="manage-requests-modal" class="hidden fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  <div class="res-modal bg-white rounded-xl w-full max-w-4xl flex flex-col max-h-[90vh]">
+    <header class="res-modal-header">
       <div>
-        <p id="manage-requests-footer-count" class="text-body-sm text-on-surface-variant">Showing 0 of 0 requests</p>
-        <p id="manage-requests-action-feedback" class="hidden text-body-sm mt-1"></p>
+        <h2 class="res-modal-title">Guest Requests <span id="manage-requests-pending-badge" class="res-action-badge res-action-badge--warn">0 waiting</span></h2>
+        <p class="res-hint">Only pending requests need your action.</p>
       </div>
-      <div class="manage-requests-footer-actions flex flex-col sm:flex-row gap-2 sm:gap-3">
-        <button
-          id="manage-requests-approve"
-          type="button"
-          class="py-2.5 px-4 bg-primary text-on-primary rounded-lg font-label-md disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled
-        >Approve</button>
-        <button
-          id="manage-requests-reject"
-          type="button"
-          class="py-2.5 px-4 border border-outline-variant rounded-lg font-label-md text-on-surface-variant disabled:opacity-50 disabled:cursor-not-allowed"
-          disabled
-        >Reject</button>
-        <button
-          id="manage-requests-footer-close"
-          type="button"
-          class="py-2.5 px-4 border border-outline-variant rounded-lg font-label-md text-on-surface-variant hover:bg-surface-variant/30 transition-colors"
-        >Close</button>
-      </div>
+      <button id="manage-requests-close" type="button" class="res-icon-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+    </header>
+    <div class="res-modal-toolbar">
+      <input id="manage-requests-search" type="search" class="res-input" placeholder="Search guest name or request ID…" />
+      <select id="manage-requests-status-filter" class="res-input res-input--select">
+        <option value="pending">Pending only</option>
+        <option value="all">All</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+    <div id="manage-requests-list-view" class="res-modal-body">
+      <table class="res-table">
+        <thead><tr>
+          <th>Request ID</th><th>Guest</th><th>Dates</th><th>Room</th><th>Status</th><th>Action</th>
+        </tr></thead>
+        <tbody id="manage-requests-table-body"></tbody>
+      </table>
+    </div>
+    <div id="manage-requests-reject-view" class="res-modal-body hidden"></div>
+    <footer class="res-modal-footer">
+      <p id="manage-requests-footer-count" class="res-hint"></p>
+      <p id="manage-requests-feedback" class="hidden res-hint"></p>
+      <button id="manage-requests-close-btn" type="button" class="res-btn res-btn--ghost">Close</button>
     </footer>
   </div>
 </div>

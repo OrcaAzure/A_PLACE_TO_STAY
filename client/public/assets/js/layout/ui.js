@@ -1,6 +1,7 @@
 import { initManageRequestsModal, isManageRequestsModalOpen, closeManageRequestsModal } from '/assets/js/features/manage-requests.js';
 import { initManageReservationsModal, isManageReservationsModalOpen, closeManageReservationsModal } from '/assets/js/features/manage-reservations.js';
 import { initManageFacilitiesModal, isManageFacilitiesModalOpen, closeManageFacilitiesModal } from '/assets/js/features/manage-facilities.js';
+import { initReservationWizard, isReservationWizardOpen, closeReservationWizard } from '/assets/js/features/reservation-wizard.js';
 import { initAdminEnhancements, animateDrawerOpen, animateModalOpen, animateNotificationsPanel, animateDrawerTabSwitch } from '/assets/js/layout/animations.js';
 
 export const ADMIN_NAV = [
@@ -48,7 +49,7 @@ export async function initAppLayout(config = {}) {
   const userRole = user.role || 'Ops Commander';
   const userInitial = userName.charAt(0).toUpperCase();
 
-  const [sidebarTpl, headerTpl, drawerTpl, modalTpl, manageRequestsTpl, manageReservationsTpl, manageFacilitiesTpl, notifTpl] = await Promise.all([
+  const [sidebarTpl, headerTpl, drawerTpl, modalTpl, manageRequestsTpl, manageReservationsTpl, manageFacilitiesTpl, reservationWizardTpl, notifTpl] = await Promise.all([
     loadComponent('/components/sidebar.html'),
     loadComponent('/components/header.html'),
     loadComponent('/components/drawer.html'),
@@ -56,6 +57,7 @@ export async function initAppLayout(config = {}) {
     loadComponent('/components/manage-requests-modal.html'),
     loadComponent('/components/manage-reservations-modal.html'),
     loadComponent('/components/manage-facilities-modal.html'),
+    loadComponent('/components/reservation-wizard-modal.html'),
     loadComponent('/components/notifications.html'),
   ]);
 
@@ -87,6 +89,7 @@ export async function initAppLayout(config = {}) {
     ${manageRequestsTpl}
     ${manageReservationsTpl}
     ${manageFacilitiesTpl}
+    ${reservationWizardTpl}
     ${notifTpl}
     <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[45]"></div>
   `;
@@ -95,6 +98,7 @@ export async function initAppLayout(config = {}) {
   initManageRequestsModal();
   initManageReservationsModal();
   initManageFacilitiesModal();
+  initReservationWizard();
   initAdminEnhancements().catch(() => {});
 }
 
@@ -158,6 +162,10 @@ function bindLayoutEvents() {
         closeManageFacilitiesModal();
         return;
       }
+      if (isReservationWizardOpen()) {
+        closeReservationWizard();
+        return;
+      }
       closeModal();
       closeDrawer();
       closeSidebar();
@@ -171,7 +179,8 @@ function updateBodyScrollLock() {
   const drawerOpen = drawer && !drawer.classList.contains('translate-x-full');
   const manageOpen = isManageRequestsModalOpen()
     || isManageReservationsModalOpen()
-    || isManageFacilitiesModalOpen();
+    || isManageFacilitiesModalOpen()
+    || isReservationWizardOpen();
   document.body.style.overflow = (modalOpen || drawerOpen || manageOpen) ? 'hidden' : '';
 }
 

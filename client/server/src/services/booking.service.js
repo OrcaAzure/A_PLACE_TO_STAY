@@ -1,4 +1,5 @@
 import { pool } from '../config/db.js';
+import bcrypt from 'bcryptjs';
 import { calcNights, isEmpty } from '../utils/helpers.js';
 
 const ACTIVE_STATUSES = ['Pending', 'Approved'];
@@ -105,6 +106,27 @@ export function validateGuestCapacity(room, guestCount) {
   return null;
 }
 
+/** Resolve user_id for admin-created bookings (existing guest, email lookup, or new walk-in). */
+export async function resolveGuestUser({ userId, guestName, email }) {
+  if (userId) return Number(userId);
+  const name = String(guestName || '').trim();
+  if (!name) throw new Error('Guest name is required');
+
+  const trimmedEmail = String(email || '').trim().toLowerCase();
+  if (trimmedEmail) {
+    const [rows] = await pool.query('SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1', [trimmedEmail]);
+    if (rows.length) return rows[0].id;
+  }
+
+  const guestEmail = trimmedEmail || `guest-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@aptspace.local`;
+  const hashedPassword = await bcrypt.hash(Math.random().toString(36).slice(2), 10);
+  const [result] = await pool.query(
+    'INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)',
+    [name, guestEmail, hashedPassword, 'Student']
+  );
+  return result.insertId;
+}
+
 export async function prepareBookingInsert({
   roomId,
   checkIn,
@@ -127,7 +149,7 @@ export async function prepareBookingInsert({
   if (capacityError) throw new Error(capacityError);
 
   const overlap = await hasOverlappingBooking(roomId, checkIn, checkOut);
-  if (overlap) throw new Error('Room is not available for the selected dates');
+  if (overlap) throw new Error('This room is already reserved for the selected dates.');
 
   const resolvedSeason = season || (await resolveSeason(checkIn));
   const resolvedOccupancy = occupancyItem || defaultOccupancyItem(room.room_type);
@@ -153,7 +175,7 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
   const checkIn = body.check_in ?? existing.check_in;
   const checkOut = body.check_out ?? existing.check_out;
   const guestCount = body.guest_count ?? existing.guest_count;
-  const roomId = existing.room_id;
+  const roomId = body.room_id ?? existing.room_id;
 
   if (new Date(checkOut) <= new Date(checkIn)) {
     throw new Error('check_out must be after check_in');
@@ -161,6 +183,9 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
 
   const room = await getRoomById(roomId);
   if (!room) throw new Error('Room not found');
+  if (room.status === 'Maintenance') {
+    throw new Error('This room is under maintenance and cannot be booked');
+  }
 
   const capacityError = validateGuestCapacity(room, guestCount);
   if (capacityError) throw new Error(capacityError);
@@ -168,14 +193,14 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
   const nextStatus = body.status ?? existing.status;
   if (ACTIVE_STATUSES.includes(nextStatus)) {
     const overlap = await hasOverlappingBooking(roomId, checkIn, checkOut, existing.id);
-    if (overlap) throw new Error('Room is not available for the selected dates');
+    if (overlap) throw new Error('This room is already reserved for the selected dates.');
   }
 
   let season = body.season ?? existing.season;
   let occupancyItem = body.occupancy_item ?? existing.occupancy_item;
   let totalAmount = body.total_amount ?? existing.total_amount;
 
-  if (!isEmpty(body.check_in) || !isEmpty(body.check_out) || body.guest_count != null) {
+  if (!isEmpty(body.check_in) || !isEmpty(body.check_out) || body.guest_count != null || body.room_id != null) {
     season = await resolveSeason(checkIn);
     occupancyItem = occupancyItem || defaultOccupancyItem(room.room_type);
     totalAmount = await calculateTotalAmount({
@@ -187,5 +212,156 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
     });
   }
 
-  return { checkIn, checkOut, guestCount, season, occupancyItem, totalAmount };
+  return { checkIn, checkOut, guestCount, season, occupancyItem, totalAmount, roomId };
+}
+
+export const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner'];
+const DEFAULT_MEAL_RATES = { Breakfast: 175, Lunch: 225, Dinner: 225 };
+
+export async function getMealRates() {
+  try {
+    const [rows] = await pool.query(
+      `SELECT item AS meal_type, rate AS price FROM facilities
+       WHERE category = 'Food Service' AND item IN ('Breakfast', 'Lunch', 'Dinner')`
+    );
+    const rates = { ...DEFAULT_MEAL_RATES };
+    rows.forEach((r) => { rates[r.meal_type] = Number(r.price); });
+    return rates;
+  } catch {
+    return { ...DEFAULT_MEAL_RATES };
+  }
+}
+
+export function calcMealsTotal(meals = {}, rates = DEFAULT_MEAL_RATES) {
+  let total = 0;
+  for (const type of MEAL_TYPES) {
+    const qty = Number(meals[type] || 0);
+    if (qty > 0) total += (rates[type] || 0) * qty;
+  }
+  return Math.round(total * 100) / 100;
+}
+
+export function calcFeesTotal(fees = []) {
+  return Math.round((fees || []).reduce((s, f) => s + Number(f.amount || 0), 0) * 100) / 100;
+}
+
+export async function getBookingMeals(bookingId) {
+  try {
+    const [rows] = await pool.query(
+      'SELECT meal_type, quantity, unit_price, subtotal FROM booking_meals WHERE booking_id = ?',
+      [bookingId]
+    );
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
+export async function getBookingFees(bookingId) {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, fee_name, amount FROM booking_fees WHERE booking_id = ? ORDER BY id',
+      [bookingId]
+    );
+    return rows;
+  } catch {
+    return [];
+  }
+}
+
+export async function saveBookingMeals(bookingId, meals = {}, rates = null) {
+  const mealRates = rates || (await getMealRates());
+  try {
+    await pool.query('DELETE FROM booking_meals WHERE booking_id = ?', [bookingId]);
+    for (const type of MEAL_TYPES) {
+      const qty = Number(meals[type] || 0);
+      if (qty <= 0) continue;
+      const unitPrice = mealRates[type] || 0;
+      const subtotal = Math.round(unitPrice * qty * 100) / 100;
+      await pool.query(
+        'INSERT INTO booking_meals (booking_id, meal_type, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)',
+        [bookingId, type, qty, unitPrice, subtotal]
+      );
+    }
+  } catch { /* tables may not exist yet */ }
+}
+
+export async function saveBookingFees(bookingId, fees = []) {
+  try {
+    await pool.query('DELETE FROM booking_fees WHERE booking_id = ?', [bookingId]);
+    for (const fee of fees || []) {
+      const name = String(fee.fee_name || fee.name || '').trim();
+      const amount = Number(fee.amount || 0);
+      if (!name || amount <= 0) continue;
+      await pool.query(
+        'INSERT INTO booking_fees (booking_id, fee_name, amount) VALUES (?, ?, ?)',
+        [bookingId, name, amount]
+      );
+    }
+  } catch { /* tables may not exist yet */ }
+}
+
+export async function computeGrandTotal({ roomTotal, meals, fees, mealRates = null }) {
+  const rates = mealRates || (await getMealRates());
+  return Math.round((Number(roomTotal || 0) + calcMealsTotal(meals, rates) + calcFeesTotal(fees)) * 100) / 100;
+}
+
+export async function getAvailableRooms({ checkIn, checkOut, guestCount = 1, excludeBookingId = null }) {
+  if (new Date(checkOut) <= new Date(checkIn)) {
+    throw new Error('check_out must be after check_in');
+  }
+
+  const [rooms] = await pool.query(
+    `SELECT rooms.*, buildings.name AS building_name
+     FROM rooms LEFT JOIN buildings ON buildings.id = rooms.building_id
+     ORDER BY buildings.name, rooms.room_number`
+  );
+
+  const season = await resolveSeason(checkIn);
+  const nights = calcNights(checkIn, checkOut);
+  const count = Number(guestCount) || 1;
+  const results = [];
+
+  for (const room of rooms) {
+    const fitsCapacity = count >= room.capacity_min && count <= room.capacity_max;
+    let availabilityStatus = 'available';
+
+    if (room.status === 'Maintenance') availabilityStatus = 'maintenance';
+    else if (!fitsCapacity) availabilityStatus = 'too_small';
+    else if (await hasOverlappingBooking(room.id, checkIn, checkOut, excludeBookingId)) availabilityStatus = 'booked';
+
+    const occupancyItem = defaultOccupancyItem(room.room_type);
+    let pricePerNight = null;
+    let estimatedTotal = null;
+
+    if (fitsCapacity && availabilityStatus !== 'maintenance') {
+      pricePerNight = await getRate(room.room_type, occupancyItem, season);
+      if (pricePerNight != null) {
+        estimatedTotal = await calculateTotalAmount({
+          roomType: room.room_type,
+          occupancyItem,
+          season,
+          guestCount: count,
+          nights,
+        });
+      }
+    }
+
+    results.push({
+      id: room.id,
+      building_name: room.building_name,
+      room_number: room.room_number,
+      room_type: room.room_type,
+      capacity_min: room.capacity_min,
+      capacity_max: room.capacity_max,
+      status: room.status,
+      availability_status: availabilityStatus,
+      fits_capacity: fitsCapacity,
+      price_per_night: pricePerNight,
+      estimated_total: estimatedTotal,
+      nights,
+    });
+  }
+
+  return results;
 }

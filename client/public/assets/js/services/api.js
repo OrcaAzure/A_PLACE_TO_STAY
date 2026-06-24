@@ -125,6 +125,20 @@ export async function deleteRoom(id) {
   return apiRequest(`/rooms/${id}`, { method: 'DELETE' });
 }
 
+export async function getRoomAvailability(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.check_in) qs.set('check_in', params.check_in);
+  if (params.check_out) qs.set('check_out', params.check_out);
+  if (params.guest_count) qs.set('guest_count', String(params.guest_count));
+  if (params.exclude_booking_id) qs.set('exclude_booking_id', String(params.exclude_booking_id));
+  return apiRequest(`/bookings/availability?${qs.toString()}`);
+}
+
+export async function getMealRates() {
+  const data = await apiRequest('/bookings/meal-rates');
+  return data.rates || { Breakfast: 175, Lunch: 225, Dinner: 225 };
+}
+
 export async function getPayments() {
   try {
     const data = await apiRequest('/payments');

@@ -175,6 +175,7 @@ CREATE TABLE IF NOT EXISTS bookings (
                      'Cancelled'
                    ) NOT NULL DEFAULT 'Pending',
     notes          TEXT DEFAULT NULL,
+    contact_phone  VARCHAR(30) DEFAULT NULL,
 
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -195,6 +196,27 @@ CREATE TABLE IF NOT EXISTS bookings (
 );
 
 CREATE INDEX idx_bookings_room_dates ON bookings (room_id, check_in, check_out, status);
+
+CREATE TABLE IF NOT EXISTS booking_meals (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id INT NOT NULL,
+    meal_type  ENUM('Breakfast', 'Lunch', 'Dinner') NOT NULL,
+    quantity   INT NOT NULL DEFAULT 0,
+    unit_price DECIMAL(10,2) NOT NULL,
+    subtotal   DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_meal_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_booking_meal (booking_id, meal_type)
+);
+
+CREATE TABLE IF NOT EXISTS booking_fees (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id INT NOT NULL,
+    fee_name   VARCHAR(100) NOT NULL,
+    amount     DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_fee_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+);
 
 -- ============================================
 -- TRIGGER

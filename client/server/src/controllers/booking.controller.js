@@ -1,7 +1,18 @@
 import { pool } from '../config/db.js';
 import Booking from '../models/Booking.js';
 import { isEmpty } from '../utils/helpers.js';
-import { prepareBookingInsert, validateBookingUpdate } from '../services/booking.service.js';
+import {
+  prepareBookingInsert,
+  validateBookingUpdate,
+  getMealRates,
+  saveBookingMeals,
+  saveBookingFees,
+  computeGrandTotal,
+  getAvailableRooms,
+  getBookingMeals,
+  getBookingFees,
+  resolveGuestUser,
+} from '../services/booking.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -19,6 +30,13 @@ const bookingSelect = `
   JOIN buildings b ON r.building_id = b.id
 `;
 
+async function enrichBooking(row) {
+  const booking = new Booking(row);
+  booking.meals = await getBookingMeals(booking.id);
+  booking.fees = await getBookingFees(booking.id);
+  return booking;
+}
+
 export const getAllBookings = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
@@ -31,7 +49,8 @@ export const getAllBookings = async (req, res) => {
         [userId]
       );
     }
-    res.status(200).json({ bookings: rows.map((r) => new Booking(r)) });
+    const bookings = await Promise.all(rows.map((r) => enrichBooking(r)));
+    res.status(200).json({ bookings });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -42,12 +61,37 @@ export const getBookingById = async (req, res) => {
     const { role, id: userId } = req.user;
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ? LIMIT 1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Booking not found' });
-
     if (!ADMIN_ROLES.includes(role) && rows[0].user_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
     }
+    res.status(200).json({ booking: await enrichBooking(rows[0]) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
-    res.status(200).json({ booking: new Booking(rows[0]) });
+export const getRoomAvailability = async (req, res) => {
+  try {
+    const { check_in, check_out, guest_count, exclude_booking_id } = req.query;
+    if (isEmpty(check_in) || isEmpty(check_out)) {
+      return res.status(400).json({ message: 'check_in and check_out are required' });
+    }
+    const rooms = await getAvailableRooms({
+      checkIn: check_in,
+      checkOut: check_out,
+      guestCount: guest_count || 1,
+      excludeBookingId: exclude_booking_id || null,
+    });
+    const availableCount = rooms.filter((r) => r.availability_status === 'available').length;
+    res.status(200).json({ rooms, available_count: availableCount });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const getMealRateList = async (_req, res) => {
+  try {
+    res.status(200).json({ rates: await getMealRates() });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -56,10 +100,15 @@ export const getBookingById = async (req, res) => {
 export const createBooking = async (req, res) => {
   try {
     const { role, id: requesterId } = req.user;
-    const { user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, notes } = req.body;
+    const {
+      user_id, room_id, check_in, check_out, guest_count,
+      season, occupancy_item, notes, contact_phone, status, meals, fees,
+      guest_name, email,
+    } = req.body;
 
-    const effectiveUserId = ADMIN_ROLES.includes(role) ? (user_id || requesterId) : requesterId;
-
+    const effectiveUserId = ADMIN_ROLES.includes(role)
+      ? await resolveGuestUser({ userId: user_id, guestName: guest_name, email })
+      : requesterId;
     if (isEmpty(room_id) || isEmpty(check_in) || isEmpty(check_out)) {
       return res.status(400).json({ message: 'room_id, check_in, and check_out are required' });
     }
@@ -73,28 +122,34 @@ export const createBooking = async (req, res) => {
       occupancyItem: occupancy_item,
     });
 
+    const mealRates = await getMealRates();
+    const grandTotal = await computeGrandTotal({
+      roomTotal: prepared.total_amount,
+      meals,
+      fees,
+      mealRates,
+    });
+
+    const bookingStatus = ADMIN_ROLES.includes(role) ? (status || 'Approved') : 'Pending';
+
     const [result] = await pool.query(
-      `INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        effectiveUserId,
-        room_id,
-        check_in,
-        check_out,
-        guest_count || 1,
-        prepared.season,
-        prepared.occupancy_item,
-        prepared.total_amount,
-        notes || null,
+        effectiveUserId, room_id, check_in, check_out, guest_count || 1,
+        prepared.season, prepared.occupancy_item, grandTotal, bookingStatus,
+        notes || null, contact_phone || null,
       ]
     );
 
+    await saveBookingMeals(result.insertId, meals, mealRates);
+    await saveBookingFees(result.insertId, fees);
+
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [result.insertId]);
-    res.status(201).json({ message: 'Booking created', booking: new Booking(rows[0]) });
+    res.status(201).json({ message: 'Booking created', booking: await enrichBooking(rows[0]) });
   } catch (error) {
-    const status = error.message.includes('not available') || error.message.includes('Maximum') || error.message.includes('Minimum') || error.message.includes('maintenance')
-      ? 409
-      : 400;
+    const status = error.message.includes('already reserved') || error.message.includes('Maximum') || error.message.includes('Minimum') || error.message.includes('maintenance')
+      ? 409 : 400;
     res.status(status).json({ message: error.message });
   }
 };
@@ -106,8 +161,8 @@ export const updateBooking = async (req, res) => {
 
     const [existingRows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
     if (!existingRows.length) return res.status(404).json({ message: 'Booking not found' });
-
     const existing = existingRows[0];
+
     if (!isAdmin && existing.user_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
     }
@@ -117,45 +172,58 @@ export const updateBooking = async (req, res) => {
       if (status !== 'Cancelled' || existing.status !== 'Pending') {
         return res.status(403).json({ message: 'You can only cancel your own pending bookings' });
       }
-
       await pool.query('UPDATE bookings SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
       const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
-      return res.status(200).json({ message: 'Booking cancelled', booking: new Booking(rows[0]) });
+      return res.status(200).json({ message: 'Booking cancelled', booking: await enrichBooking(rows[0]) });
     }
 
     const validated = await validateBookingUpdate(existing, req.body, true);
-    const { check_in, check_out, guest_count, status, season, notes, total_amount } = req.body;
+    const { check_in, check_out, guest_count, status, notes, contact_phone, room_id, meals, fees, guest_name, email } = req.body;
+    const mealRates = await getMealRates();
+    const grandTotal = meals != null || fees != null
+      ? await computeGrandTotal({ roomTotal: validated.totalAmount, meals, fees, mealRates })
+      : validated.totalAmount;
+
+    let resolvedUserId = req.body.user_id;
+    if (guest_name || email || req.body.user_id) {
+      resolvedUserId = await resolveGuestUser({
+        userId: req.body.user_id || existing.user_id,
+        guestName: guest_name,
+        email,
+      });
+    }
 
     await pool.query(
       `UPDATE bookings SET
+        user_id = COALESCE(?, user_id),
+        room_id = COALESCE(?, room_id),
         check_in = COALESCE(?, check_in),
         check_out = COALESCE(?, check_out),
         guest_count = COALESCE(?, guest_count),
         status = COALESCE(?, status),
-        season = ?,
-        occupancy_item = ?,
+        season = ?, occupancy_item = ?,
         notes = COALESCE(?, notes),
+        contact_phone = COALESCE(?, contact_phone),
         total_amount = ?
       WHERE id = ?`,
       [
-        check_in,
-        check_out,
-        guest_count,
-        status,
-        validated.season,
-        validated.occupancyItem,
-        notes,
-        validated.totalAmount,
+        resolvedUserId,
+        room_id ?? validated.roomId,
+        check_in, check_out, guest_count, status,
+        validated.season, validated.occupancyItem,
+        notes, contact_phone, grandTotal,
         req.params.id,
       ]
     );
 
+    if (meals != null) await saveBookingMeals(req.params.id, meals, mealRates);
+    if (fees != null) await saveBookingFees(req.params.id, fees);
+
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
-    res.status(200).json({ message: 'Booking updated', booking: new Booking(rows[0]) });
+    res.status(200).json({ message: 'Booking updated', booking: await enrichBooking(rows[0]) });
   } catch (error) {
-    const status = error.message.includes('not available') || error.message.includes('Maximum') || error.message.includes('Minimum')
-      ? 409
-      : 400;
+    const status = error.message.includes('already reserved') || error.message.includes('Maximum') || error.message.includes('Minimum')
+      ? 409 : 400;
     res.status(status).json({ message: error.message });
   }
 };

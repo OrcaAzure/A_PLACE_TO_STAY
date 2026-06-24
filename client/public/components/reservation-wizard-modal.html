@@ -1,0 +1,22 @@
+<div id="reservation-wizard-overlay" class="hidden fixed inset-0 bg-black/40 z-[85]"></div>
+<div id="reservation-wizard-modal" class="hidden fixed inset-0 z-[90] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  <div class="res-modal res-modal--wizard bg-white rounded-xl w-full max-w-lg flex flex-col max-h-[92vh]">
+    <header class="res-modal-header">
+      <div>
+        <h2 id="reservation-wizard-title" class="res-modal-title">Create Reservation</h2>
+        <p id="reservation-wizard-subtitle" class="res-hint">Step-by-step guide</p>
+      </div>
+      <button id="reservation-wizard-close" type="button" class="res-icon-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+    </header>
+    <div id="reservation-wizard-steps" class="res-steps"></div>
+    <div id="reservation-wizard-body" class="res-modal-body res-wizard-body"></div>
+    <footer class="res-modal-footer res-wizard-footer">
+      <p id="reservation-wizard-error" class="res-error hidden"></p>
+      <div class="res-actions-row">
+        <button type="button" id="reservation-wizard-back" class="res-btn res-btn--ghost hidden">Back</button>
+        <button type="button" id="reservation-wizard-next" class="res-btn res-btn--primary">Next Step</button>
+        <button type="button" id="reservation-wizard-confirm" class="res-btn res-btn--primary hidden">Save Reservation</button>
+      </div>
+    </footer>
+  </div>
+</div>
