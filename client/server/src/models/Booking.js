@@ -11,7 +11,16 @@ export default class Booking {
     this.total_amount   = data.total_amount;
     this.status         = data.status;
     this.notes          = data.notes;
+    this.contact_phone   = data.contact_phone || null;
+    this.meals           = data.meals || [];
+    this.fees            = data.fees || [];
     this.created_at     = data.created_at;
     this.updated_at     = data.updated_at;
+    this.guest_name    = data.guest_name;
+    this.guest_email  = data.guest_email;
+    this.guest_role   = data.guest_role;
+    this.room_number   = data.room_number;
+    this.room_type     = data.room_type;
+    this.building_name = data.building_name;
   }
 }

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reservations | AptSpace Admin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="/assets/js/config/tailwind-theme-base.js"></script>
+  <script src="/assets/js/config/tailwind-admin.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <link rel="stylesheet" href="/assets/css/components/components.css" />
+  <link rel="stylesheet" href="/assets/css/global/responsive.css" />
+  <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
+  <link rel="stylesheet" href="/assets/css/features/reservation-admin.css" />
+</head>
+<body>
+  <div id="page-content" class="p-6 space-y-6 max-w-[1600px] mx-auto w-full">
+    <div id="action-cards-mount"></div>
+    <div id="timeline-mount" class="w-full flex flex-col"></div>
+  </div>
+
+  <script type="module">
+    import { requireAuth }          from '/assets/js/services/auth.js';
+    import { initAppLayout }        from '/assets/js/layout/ui.js';
+    import { mountBookingTimeline } from '/assets/js/features/timeline.js';
+    import { getBookings, getGroups } from '/assets/js/services/api.js';
+
+    if (!requireAuth()) throw new Error('Not authenticated');
+
+    async function syncPendingBadge() {
+      const [bookings, groups] = await Promise.all([getBookings(), getGroups()]);
+      const pending = bookings.filter((b) => !b.group_id && String(b.status).toLowerCase() === 'pending').length
+        + groups.filter((g) => String(g.status).toLowerCase() === 'pending').length;
+      const countEl = document.getElementById('pending-count');
+      if (countEl) countEl.textContent = `${pending} PENDING`;
+    }
+
+    // Utility function that extracts today's clean verbal date string
+    function getTodayDateString() {
+      const now = new Date();
+      const options = { month: 'long', day: 'numeric', year: 'numeric' };
+      return now.toLocaleDateString('en-US', options);
+    }
+
+    // Ticking digital clock configuration that targets the header indicators directly
+    function runLiveClockSync() {
+      const clockLoop = () => {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+        
+        const timeStr = `${hrs}:${mins}:${secs}`;
+        const dateStr = getTodayDateString();
+
+        document.querySelectorAll('.live-date-display').forEach(el => el.innerText = dateStr);
+        document.querySelectorAll('.live-time-display').forEach(el => el.innerText = timeStr);
+      };
+
+      clockLoop();
+      setInterval(clockLoop, 1000);
+    }
+
+    // 1. Fetch action metrics row container panels elements
+    const actionCards = await fetch('/components/action-cards-reservations.html').then(r => r.text());
+    document.getElementById('action-cards-mount').innerHTML = actionCards;
+
+    // 2. Initialize framework application sidebar and templates
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'reservations',
+      title:      'Reservation Operations Center',
+      subtitle:   'Mission Control',
+    });
+
+    // 3. Render scheduling table entries natively from backend arrays
+    await mountBookingTimeline({
+      mountEl: document.getElementById('timeline-mount'),
+      title:   'Reservation Master Timeline',
+      onData:  () => { syncPendingBadge(); },
+    });
+
+    window.addEventListener('booking:updated', syncPendingBadge);
+    syncPendingBadge();
+
+    // 4. Fire continuous live synchronization updates loops
+    runLiveClockSync();
+  </script>
+</body>
+</html>

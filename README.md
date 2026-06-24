@@ -1,190 +1,68 @@
 # AptSpace
 
-AptSpace is a web-based housing and accommodation management system built with a Node.js + Express backend, MySQL database, and static frontend starter pages.
+AptSpace is a web-based housing and accommodation management system for Asia Pacific Theological Seminary (APTS).
 
-## Project Structure
+## Quick start
+
+```bash
+# 1. Install server dependencies
+npm run install:server
+
+# 2. Copy env template and edit credentials
+cp .env.example client/server/.env
+
+# 3. Import database schema (MySQL must be running)
+mysql -u root -p < client/database/schema.sql
+
+# 4. Start the server (seeds users + demo data on first boot)
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000)
+
+**Admin login:** `admin@aptspace.com` / `password` (or your `DEFAULT_PASSWORD`)
+
+## Configuration
+
+The app reads **`client/server/.env`** only. The root `.env.example` is a template for your team — copy it to `client/server/.env`.
+
+Required variables: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`
+
+On startup the server will:
+1. Test the MySQL connection (exit if it fails)
+2. Seed default users if missing
+3. Seed demo bookings/payments if the bookings table is empty
+
+## Project structure
 
 ```txt
-APSTPACE-cleaned/
-├── .env.example
-├── README.md
+APSTPACE/
+├── .env.example              ← team template (copy to client/server/.env)
+├── package.json              ← root scripts (npm run dev)
+├── scripts/restructure.mjs   ← one-time folder move helper (already applied)
 └── client/
-    ├── database/
-    │   └── schema.sql
-    ├── public/
+    ├── database/schema.sql
+    ├── public/               ← static assets only (marketing + shared files)
     │   ├── index.html
-    │   ├── login.html
-    │   ├── dashboard.html
-    │   └── assests/
-    │       ├── css/
-    │       │   └── main.css
-    │       └── js/
-    │           ├── api.js
-    │           ├── auth.js
-    │           └── ui.js
+    │   ├── components/       ← sidebar, header, modals (loaded by fetch)
+    │   └── assets/
+    │       ├── css/global|components|features/
+    │       └── js/config|layout|services|features/
     └── server/
-        ├── package.json
-        └── src/
-            ├── app.js
-            ├── server.js
-            ├── config/
-            │   ├── db.js
-            │   └── env.js
-            ├── controllers/
-            │   ├── auth.controller.js
-            │   ├── booking.controller.js
-            │   ├── room.controller.js
-            │   └── user.controller.js
-            ├── middleware/
-            │   ├── auth.middleware.js
-            │   └── role.middleware.js
-            ├── models/
-            │   ├── Booking.js
-            │   ├── Payment.js
-            │   ├── Room.js
-            │   └── User.js
-            ├── routes/
-            │   ├── auth.routes.js
-            │   ├── booking.routes.js
-            │   ├── room.routes.js
-            │   └── user.routes.js
-            ├── services/
-            │   ├── auth.service.js
-            │   ├── booking.service.js
-            │   └── email.service.js
-            └── utils/
-                ├── constants.js
-                └── helpers.js
+        ├── views/            ← app pages (served at same URLs as before)
+        │   ├── auth/login.html
+        │   ├── admin/*.html
+        │   └── guest/*.html
+        └── src/              ← Express API + page routes
 ```
 
-## Features
+**URLs are unchanged:** `/login.html`, `/admin/dashboard.html`, `/guest/reservations.html`, etc.  
+App HTML lives in `client/server/views/`; CSS/JS live under `client/public/assets/`.
 
-- JWT-based authentication
-- Role-based access control
-- Room management
-- Booking management
-- User management
-- Basic payment model support
-- Starter frontend pages
+## API highlights
 
-## Prerequisites
+- `GET /api/stats/summary` — admin dashboard KPIs (live from DB)
+- `PATCH /api/auth/me` — update logged-in user profile
+- Bookings auto-calculate price, season, and check room availability
 
-- Node.js 18+
-- npm
-- MySQL 8+
-
-## Setup
-
-### 1. Clone the repository
-
-```bash
-git clone <repository-url>
-cd APSTPACE-cleaned
-```
-
-### 2. Install backend dependencies
-
-```bash
-cd client/server
-npm install
-```
-
-### 3. Configure environment variables
-
-Create a `.env` file inside `client/server` using `.env.example` as a guide.
-
-Example:
-
-```env
-PORT=3000
-DB_HOST=localhost
-DB_USER=root
-DB_PASSWORD=
-DB_NAME=aptspace
-JWT_SECRET=your_secret_key
-JWT_EXPIRES_IN=7d
-```
-
-### 4. Set up the database
-
-Import the SQL file:
-
-```txt
-client/database/schema.sql
-```
-
-This file contains the starter database tables used by the project.
-
-### 5. Run the backend server
-
-```bash
-cd client/server
-npm run dev
-```
-
-The API should be available at:
-
-```txt
-http://localhost:3000
-```
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register`
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-
-### Rooms
-- `GET /api/rooms`
-- `GET /api/rooms/:id`
-- `POST /api/rooms`
-- `PATCH /api/rooms/:id`
-- `DELETE /api/rooms/:id`
-
-### Bookings
-- `GET /api/bookings`
-- `GET /api/bookings/:id`
-- `POST /api/bookings`
-- `PATCH /api/bookings/:id`
-- `DELETE /api/bookings/:id`
-
-### Users
-- `GET /api/users`
-- `GET /api/users/:id`
-- `PATCH /api/users/:id`
-- `DELETE /api/users/:id`
-
-## Roles
-
-- Super Admin
-- Admin
-- Housing Admin
-- GNC View Only
-- Faculty
-- Staff
-- Missionary
-- Student
-
-## Notes
-
-- The folder name `assests` is kept as-is to match the current project structure.
-- The current files are starter code and can be expanded as the project grows.
-- Do not commit your `.env` file.
-- Keep database credentials private.
-
-## Common Commands
-
-```bash
-npm run dev
-npm start
-```
-
-## Troubleshooting
-
-If the server does not start, check these first:
-
-- MySQL is running
-- The database name in `.env` matches your schema
-- `client/server/.env` exists
-- Dependencies are installed inside `client/server`
+See previous README sections for full endpoint list.

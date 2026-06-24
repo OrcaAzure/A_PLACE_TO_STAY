@@ -7,34 +7,24 @@ USE aptspace;
 
 -- ============================================
 -- BUILDINGS
--- Stores each physical building on the property
--- e.g. PCALM, House, Thesda, Sampaguita, Peranza
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS buildings (
     id          INT AUTO_INCREMENT PRIMARY KEY,
-    name        VARCHAR(100) NOT NULL UNIQUE,   -- e.g. 'PCALM', 'Thesda'
-    description VARCHAR(255),                   -- optional notes about the building
+    name        VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(255),
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- ============================================
 -- ROOMS
--- Each room belongs to a building.
--- capacity_min / capacity_max enforce the guest
--- count rules from the FY26 rate sheet:
---   Dorm             = min 5, max 10
---   Superior         = min 1, max 4
---   Standard Apt     = min 1, max 4
---   Deluxe 2 BR      = min 1, max 4
---   Deluxe 3 BR      = min 1, max 6
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS rooms (
     id            INT AUTO_INCREMENT PRIMARY KEY,
-    building_id   INT NOT NULL,                 -- which building this room is in
-    room_number   VARCHAR(50) NOT NULL,         -- e.g. '101', 'BG1', 'A', 'CHAPEL'
+    building_id   INT NOT NULL,
+    room_number   VARCHAR(50) NOT NULL,
     room_type     ENUM(
                     'Dorm',
                     'Superior Guest Room',
@@ -42,9 +32,9 @@ CREATE TABLE IF NOT EXISTS rooms (
                     'Deluxe 2 BR',
                     'Deluxe 3 BR'
                   ) NOT NULL,
-    capacity_min  INT NOT NULL DEFAULT 1,       -- minimum guests allowed (Dorm = 5)
-    capacity_max  INT NOT NULL DEFAULT 1,       -- maximum guests allowed
-    occupancy     INT NOT NULL DEFAULT 0,       -- current number of guests in room
+    capacity_min  INT NOT NULL DEFAULT 1,
+    capacity_max  INT NOT NULL DEFAULT 1,
+    occupancy     INT NOT NULL DEFAULT 0,
     status        ENUM(
                     'Available',
                     'Occupied',
@@ -53,28 +43,19 @@ CREATE TABLE IF NOT EXISTS rooms (
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    -- prevent deleting a building that still has rooms
     CONSTRAINT fk_room_building
         FOREIGN KEY (building_id) REFERENCES buildings(id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
-    -- room numbers are unique per building
-    -- (so PCALM 101 and Thesda 101 can both exist)
     UNIQUE KEY uq_building_room (building_id, room_number),
 
-    -- min must be at least 1, max must be >= min
     CONSTRAINT chk_capacity CHECK (capacity_min >= 1 AND capacity_max >= capacity_min),
-
-    -- current occupancy can never exceed the room max
     CONSTRAINT chk_occupancy CHECK (occupancy >= 0 AND occupancy <= capacity_max)
 );
 
 -- ============================================
 -- ROOM RATES
--- Stores nightly rates per room type, occupancy
--- item, and season from the FY26 rate sheet.
--- Used to calculate booking total_amount.
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS room_rates (
@@ -87,18 +68,15 @@ CREATE TABLE IF NOT EXISTS room_rates (
                 'Deluxe 3 BR'
               ) NOT NULL,
     item      ENUM(
-                'Per person per Night',       -- Dorm only
-                'Single/Double Occupancy',    -- 1-2 guests
-                'Daily Maximum',              -- flat rate for 3-4 (or 3-6) guests
-                'Extra Bed or Extra Person'   -- add-on per extra guest
+                'Per person per Night',
+                'Single/Double Occupancy',
+                'Daily Maximum',
+                'Extra Bed or Extra Person'
               ) NOT NULL,
     season    ENUM('Regular', 'Peak', 'Super Peak') NOT NULL,
     rate      DECIMAL(10,2) NOT NULL,
 
-    -- each combo of type + item + season must be unique
     UNIQUE KEY uq_room_rate (room_type, item, season),
-
-    -- rate must always be a positive number
     CONSTRAINT chk_rate CHECK (rate > 0),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -107,47 +85,34 @@ CREATE TABLE IF NOT EXISTS room_rates (
 
 -- ============================================
 -- SEASON DEFINITIONS
--- Maps date ranges to seasons so the app can
--- automatically determine Regular / Peak /
--- Super Peak for any given booking date.
--- Populate this each fiscal year.
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS season_definitions (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     season     ENUM('Regular', 'Peak', 'Super Peak') NOT NULL,
-    start_date DATE NOT NULL,                  -- first day of this season window
-    end_date   DATE NOT NULL,                  -- last day of this season window
-    label      VARCHAR(100),                   -- optional label e.g. 'Christmas Peak 2026'
+    start_date DATE NOT NULL,
+    end_date   DATE NOT NULL,
+    label      VARCHAR(100),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    -- end date must be on or after start date
     CONSTRAINT chk_season_dates CHECK (end_date >= start_date)
 );
 
 -- ============================================
 -- FACILITIES
--- Non-room bookable spaces and services from
--- the FY26 rate sheet: chapel, garden, laundry,
--- food, courts, prayer mountain, etc.
--- capacity_min/max are NULL for services that
--- have no headcount limit (e.g. laundry, food).
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS facilities (
     id           INT AUTO_INCREMENT PRIMARY KEY,
-    category     VARCHAR(50)  NOT NULL,        -- e.g. 'GMC Chapel', 'Garden', 'Laundry'
-    item         VARCHAR(100) NOT NULL,        -- e.g. 'Wedding 4 hrs', 'Breakfast'
+    category     VARCHAR(50)  NOT NULL,
+    item         VARCHAR(100) NOT NULL,
     season       ENUM('Regular', 'Peak', 'N/A') NOT NULL DEFAULT 'N/A',
-    rate         DECIMAL(10,2) NOT NULL,       -- rate in PHP
-    capacity_min INT DEFAULT NULL,             -- NULL = no minimum headcount
-    capacity_max INT DEFAULT NULL,             -- NULL = no maximum headcount
+    rate         DECIMAL(10,2) NOT NULL,
+    capacity_min INT DEFAULT NULL,
+    capacity_max INT DEFAULT NULL,
 
     UNIQUE KEY uq_facility_rate (category, item, season),
-
     CONSTRAINT chk_facility_rate CHECK (rate > 0),
-
-    -- if one capacity is set, both must be set and valid
     CONSTRAINT chk_facility_capacity CHECK (
         (capacity_min IS NULL AND capacity_max IS NULL) OR
         (capacity_min >= 1 AND capacity_max >= capacity_min)
@@ -159,18 +124,22 @@ CREATE TABLE IF NOT EXISTS facilities (
 
 -- ============================================
 -- USERS
--- All staff and guests who use the system.
--- Roles control what each user can see/do.
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS users (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     full_name  VARCHAR(150) NOT NULL,
     email      VARCHAR(150) NOT NULL UNIQUE,
-    password   VARCHAR(255) NOT NULL,          -- always stored as bcrypt hash, never plain text
+    password   VARCHAR(255) NOT NULL,
     role       ENUM(
+<<<<<<< HEAD
                  'Super Admin',                -- full access
                  'Admin',                      -- manage bookings and users
+=======
+                 'Super Admin',
+                 'Admin',
+                 'GNC View Only',
+>>>>>>> front-end-UI-development
                  'Faculty',
                  'Staff',
                  'Missionary',
@@ -181,17 +150,51 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- ============================================
+-- RESERVATION GROUPS (multi-room stays)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS reservation_groups (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    user_id         INT NOT NULL,
+    group_name      VARCHAR(150) NOT NULL,
+    contact_name    VARCHAR(150) NOT NULL,
+    contact_phone   VARCHAR(30) DEFAULT NULL,
+    contact_email   VARCHAR(150) DEFAULT NULL,
+    check_in        DATE NOT NULL,
+    check_out       DATE NOT NULL,
+    total_guests    INT NOT NULL DEFAULT 1,
+    rooms_requested INT DEFAULT NULL,
+    status          ENUM(
+                      'Pending',
+                      'Approved',
+                      'Rejected',
+                      'Cancelled'
+                    ) NOT NULL DEFAULT 'Pending',
+    notes           TEXT DEFAULT NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_group_user
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT chk_group_dates CHECK (check_out > check_in),
+    CONSTRAINT chk_group_guests CHECK (total_guests >= 1)
+);
+
+CREATE INDEX idx_groups_status ON reservation_groups (status);
+CREATE INDEX idx_groups_dates ON reservation_groups (check_in, check_out);
+
+-- ============================================
 -- BOOKINGS
--- A booking links a user to a room for a date
--- range. total_amount is stored at booking time
--- so historical prices are preserved even if
--- rates change in future fiscal years.
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS bookings (
     id             INT AUTO_INCREMENT PRIMARY KEY,
-    user_id        INT NOT NULL,               -- the guest making the booking
-    room_id        INT NOT NULL,               -- the room being booked
+    user_id        INT NOT NULL,
+    room_id        INT NOT NULL,
+    group_id       INT DEFAULT NULL,
     check_in       DATE NOT NULL,
     check_out      DATE NOT NULL,
     season         ENUM(
@@ -205,47 +208,66 @@ CREATE TABLE IF NOT EXISTS bookings (
                      'Daily Maximum',
                      'Extra Bed or Extra Person'
                    ) NOT NULL DEFAULT 'Single/Double Occupancy',
-    guest_count    INT NOT NULL DEFAULT 1,     -- number of guests in this booking
-    total_amount   DECIMAL(10,2) DEFAULT NULL, -- computed and stored at booking creation
+    guest_count    INT NOT NULL DEFAULT 1,
+    total_amount   DECIMAL(10,2) DEFAULT NULL,
     status         ENUM(
-                     'Pending',                -- just submitted
-                     'Approved',              -- confirmed by admin
-                     'Rejected',              -- denied by admin
-                     'Cancelled'              -- cancelled by guest or admin
+                     'Pending',
+                     'Approved',
+                     'Rejected',
+                     'Cancelled'
                    ) NOT NULL DEFAULT 'Pending',
-    notes          TEXT DEFAULT NULL,          -- any special requests or remarks
+    notes          TEXT DEFAULT NULL,
+    contact_phone  VARCHAR(30) DEFAULT NULL,
 
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    -- prevent deleting a user who has bookings
     CONSTRAINT fk_booking_user
         FOREIGN KEY (user_id) REFERENCES users(id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
-    -- prevent deleting a room that has bookings
     CONSTRAINT fk_booking_room
         FOREIGN KEY (room_id) REFERENCES rooms(id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
-    -- check_out must always be after check_in
+    CONSTRAINT fk_booking_group
+        FOREIGN KEY (group_id) REFERENCES reservation_groups(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
     CONSTRAINT chk_dates  CHECK (check_out > check_in),
-
-    -- at least 1 guest required
     CONSTRAINT chk_guests CHECK (guest_count >= 1),
-
-    -- total must be positive if set
     CONSTRAINT chk_total  CHECK (total_amount IS NULL OR total_amount > 0)
 );
 
+CREATE INDEX idx_bookings_room_dates ON bookings (room_id, check_in, check_out, status);
+CREATE INDEX idx_bookings_group ON bookings (group_id);
+
+CREATE TABLE IF NOT EXISTS booking_meals (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id INT NOT NULL,
+    meal_type  ENUM('Breakfast', 'Lunch', 'Dinner') NOT NULL,
+    quantity   INT NOT NULL DEFAULT 0,
+    unit_price DECIMAL(10,2) NOT NULL,
+    subtotal   DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_meal_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_booking_meal (booking_id, meal_type)
+);
+
+CREATE TABLE IF NOT EXISTS booking_fees (
+    id         INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id INT NOT NULL,
+    fee_name   VARCHAR(100) NOT NULL,
+    amount     DECIMAL(10,2) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_fee_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+);
+
 -- ============================================
--- TRIGGER: auto-update room status and
--- occupancy when a booking is approved,
--- rejected, or cancelled.
--- Approved   -> room becomes Occupied
--- Rejected / Cancelled -> room becomes Available
+-- TRIGGER
 -- ============================================
 
 DELIMITER //
@@ -253,7 +275,6 @@ CREATE TRIGGER trg_booking_status_change
 AFTER UPDATE ON bookings
 FOR EACH ROW
 BEGIN
-    -- when booking is approved, mark the room as Occupied
     IF NEW.status = 'Approved' AND OLD.status != 'Approved' THEN
         UPDATE rooms
         SET status    = 'Occupied',
@@ -261,8 +282,6 @@ BEGIN
         WHERE id = NEW.room_id;
     END IF;
 
-    -- when a previously approved booking is cancelled or rejected,
-    -- free up the room
     IF NEW.status IN ('Rejected', 'Cancelled') AND OLD.status = 'Approved' THEN
         UPDATE rooms
         SET status    = 'Available',
@@ -274,63 +293,53 @@ DELIMITER ;
 
 -- ============================================
 -- PAYMENTS
--- One or more payments can be linked to a
--- booking (supports partial payments).
--- paid_at records the exact timestamp a
--- payment was marked as Paid.
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS payments (
     id         INT AUTO_INCREMENT PRIMARY KEY,
-    booking_id INT NOT NULL,                   -- which booking this payment is for
-    amount     DECIMAL(10,2) NOT NULL,         -- amount paid in PHP
+    booking_id INT NOT NULL,
+    amount     DECIMAL(10,2) NOT NULL,
     method     ENUM(
                  'Cash',
                  'GCash',
                  'Bank Transfer'
                ) NOT NULL,
     status     ENUM(
-                 'Pending',                    -- payment submitted but not confirmed
-                 'Paid',                       -- confirmed received
-                 'Failed'                      -- payment did not go through
+                 'Pending',
+                 'Paid',
+                 'Failed'
                ) NOT NULL DEFAULT 'Pending',
-    paid_at    TIMESTAMP NULL DEFAULT NULL,    -- set when status changes to Paid
+    paid_at    TIMESTAMP NULL DEFAULT NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    -- prevent deleting a booking that has payments
     CONSTRAINT fk_payment_booking
         FOREIGN KEY (booking_id) REFERENCES bookings(id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
-    -- payment amount must always be positive
     CONSTRAINT chk_amount CHECK (amount > 0)
 );
 
 -- ============================================
 -- FACILITY BOOKINGS
--- Allows users to reserve facilities like the
--- chapel, garden, basketball court, etc.
--- Works the same as room bookings but for
--- facilities instead of rooms.
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS facility_bookings (
     id           INT AUTO_INCREMENT PRIMARY KEY,
-    user_id      INT NOT NULL,                 -- the guest making the reservation
-    facility_id  INT NOT NULL,                 -- which facility is being booked
-    event_date   DATE NOT NULL,                -- date of the event
-    start_time   TIME NOT NULL,                -- event start time
-    end_time     TIME NOT NULL,                -- event end time
-    guest_count  INT NOT NULL DEFAULT 1,       -- expected number of attendees
+    user_id      INT NOT NULL,
+    facility_id  INT NOT NULL,
+    event_date   DATE NOT NULL,
+    start_time   TIME NOT NULL,
+    end_time     TIME NOT NULL,
+    guest_count  INT NOT NULL DEFAULT 1,
     season       ENUM(
                    'Regular',
                    'Peak',
                    'N/A'
                  ) NOT NULL DEFAULT 'Regular',
-    total_amount DECIMAL(10,2) DEFAULT NULL,   -- stored at booking time
+    total_amount DECIMAL(10,2) DEFAULT NULL,
     status       ENUM(
                    'Pending',
                    'Approved',
@@ -352,13 +361,8 @@ CREATE TABLE IF NOT EXISTS facility_bookings (
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
-    -- end time must be after start time
     CONSTRAINT chk_fb_times  CHECK (end_time > start_time),
-
-    -- at least 1 attendee required
     CONSTRAINT chk_fb_guests CHECK (guest_count >= 1),
-
-    -- total must be positive if set
     CONSTRAINT chk_fb_total  CHECK (total_amount IS NULL OR total_amount > 0)
 );
 
@@ -376,9 +380,6 @@ ON DUPLICATE KEY UPDATE name = name;
 
 -- ============================================
 -- SEED DATA: ROOMS
--- room_type assignments are best guesses based
--- on the room board photo. Update any that are
--- wrong once confirmed with housing staff.
 -- ============================================
 
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
@@ -502,8 +503,6 @@ ON DUPLICATE KEY UPDATE room_number = room_number;
 
 -- ============================================
 -- SEED DATA: ROOM RATES (FY26)
--- Source: Housing_Guest_Services_Rate_FY26
--- All amounts in Philippine Peso (PHP)
 -- ============================================
 
 INSERT INTO room_rates (room_type, item, season, rate) VALUES
@@ -551,9 +550,6 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
 -- SEED DATA: FACILITIES (FY26)
--- Source: Housing_Guest_Services_Rate_FY26
--- capacity_min/max from person limits in sheet
--- All amounts in Philippine Peso (PHP)
 -- ============================================
 
 INSERT INTO facilities (category, item, season, rate, capacity_min, capacity_max) VALUES
@@ -616,26 +612,13 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
 -- SEED DATA: USERS
--- Default admin account for first login.
--- Password is bcrypt hash of 'aptspace'.
--- IMPORTANT: Change this password immediately
--- after first login via the app.
+-- NOTE: User passwords are NOT seeded here.
+-- Run `node seedUsers.js` after importing this schema
+-- to insert users with properly hashed passwords.
 -- ============================================
 
-INSERT INTO users (full_name, email, password, role, status)
-VALUES (
-    'System Administrator',
-    'admin@aptspace.com',
-    '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy',
-    'Super Admin',
-    'Active'
-) ON DUPLICATE KEY UPDATE email = email;
-
 -- ============================================
--- SEED DATA: SEASON DEFINITIONS (FY26 example)
--- Add your actual peak/super peak date ranges
--- here. These are placeholders -- update with
--- real dates from your housing calendar.
+-- SEED DATA: SEASON DEFINITIONS (FY26)
 -- ============================================
 
 INSERT INTO season_definitions (season, start_date, end_date, label) VALUES
@@ -644,3 +627,6 @@ INSERT INTO season_definitions (season, start_date, end_date, label) VALUES
     ('Regular',    '2026-06-01', '2026-10-31', 'Regular Jun-Oct 2026'),
     ('Peak',       '2026-11-01', '2026-11-30', 'Peak Nov 2026'),
     ('Super Peak', '2026-12-01', '2026-12-31', 'Super Peak Christmas 2026');
+
+-- Demo bookings, payments, and room status samples are seeded by the server
+-- on startup (see client/server/src/config/seed.js) after users are created.

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Dashboard | AptSpace Guest</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="/assets/js/config/tailwind-theme-base.js"></script>
+    <script src="/assets/js/config/tailwind-guest.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8FAFC;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        .reveal { opacity: 0; animation: fadeInUp .5s cubic-bezier(.22,.61,.36,1) forwards; }
+        .skeleton { background: #eef2f7; border-radius: 12px; animation: pulse 1.3s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+        @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+    </style>
+    <script type="module">
+      import { requireAuth } from '/assets/js/services/auth.js';
+      requireAuth();
+    </script>
+</head>
+<body class="text-on-surface">
+
+<aside class="hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
+    <div class="px-6 mb-8">
+        <h1 class="font-headline-sm text-headline-sm font-black text-primary">AptSpace</h1>
+        <p class="text-body-sm text-on-surface-variant mt-1 js-portal-label">Guest Portal</p>
+    </div>
+    <nav class="flex-1 px-3 space-y-1">
+        <a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 border-l-4 border-primary font-bold transition-all active:scale-95 duration-150" href="./dashboard.html">
+            <span class="material-symbols-outlined">dashboard</span>
+            <span class="font-label-md text-label-md">Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./reservations.html">
+            <span class="material-symbols-outlined">event_available</span>
+            <span class="font-label-md text-label-md">Reservations</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./facilities.html">
+            <span class="material-symbols-outlined">domain</span>
+            <span class="font-label-md text-label-md">Facilities</span>
+        </a>
+        <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./settings.html">
+            <span class="material-symbols-outlined">settings</span>
+            <span class="font-label-md text-label-md">Settings</span>
+        </a>
+    </nav>
+    <div class="p-lg mt-auto border-t border-outline-variant">
+        <div class="flex items-center gap-md">
+            <div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center">
+                <span class="material-symbols-outlined text-primary">account_circle</span>
+            </div>
+            <div class="overflow-hidden">
+                <p class="font-label-md text-label-md truncate js-user-name" id="sidebar-user-name">Guest User</p>
+                <p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer js-logout">Log Out</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<header class="fixed top-0 right-0 left-0 lg:left-[260px] h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant z-30 shadow-sm transition-all">
+<div class="flex justify-between items-center px-margin-mobile md:px-gutter h-full max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Dashboard</h2>
+<div class="hidden lg:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-80 transition-all focus-within:border-primary focus-within:shadow-sm">
+<span class="material-symbols-outlined text-outline text-[20px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full" placeholder="Search..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer active:opacity-70">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-label-md font-bold leading-none js-user-name">Guest User</p>
+<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider hover:text-error transition-colors js-logout">Log Out</p>
+</div>
+<span class="js-role-badge hidden px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider"></span>
+<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm js-user-avatar">?</div>
+</div>
+</div>
+</div>
+</header>
+
+<nav class="lg:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 pb-safe bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
+    <a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 touch-manipulation duration-200" href="./dashboard.html">
+        <span class="material-symbols-outlined">dashboard</span>
+        <span class="font-label-sm text-[10px]">Dashboard</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./reservations.html">
+        <span class="material-symbols-outlined">event_available</span>
+        <span class="font-label-sm text-[10px]">Reservations</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./facilities.html">
+        <span class="material-symbols-outlined">domain</span>
+        <span class="font-label-sm text-[10px]">Facilities</span>
+    </a>
+    <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./settings.html">
+        <span class="material-symbols-outlined">settings</span>
+        <span class="font-label-sm text-[10px]">Settings</span>
+    </a>
+</nav>
+
+<main class="pt-24 pb-24 lg:pb-12 px-margin-mobile md:px-gutter lg:ml-[260px] max-w-container-max mx-auto min-h-screen">
+    <section class="mb-10 reveal">
+        <div class="relative overflow-hidden rounded-xl bg-primary-container p-8 md:p-10 shadow-lg text-on-primary-container">
+            <div class="relative z-10 max-w-2xl">
+                <h2 class="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl mb-4" id="welcome-message">
+                    Welcome back!
+                </h2>
+                <p class="font-body-lg text-body-lg opacity-90 leading-relaxed">
+                    Your spiritual journey and comfortable stay are our priority. Here's an overview of your reservations.
+                </p>
+            </div>
+            <div class="absolute -top-24 -right-24 w-96 h-96 bg-primary-fixed-dim/20 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-12 right-12 w-64 h-64 bg-secondary-fixed-dim/10 rounded-full blur-2xl"></div>
+        </div>
+    </section>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter mb-10">
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.05s">
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Total</p>
+            <p class="font-headline-md text-headline-md" id="stat-total">—</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.1s">
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Pending</p>
+            <p class="font-headline-md text-headline-md text-amber-600" id="stat-pending">—</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.15s">
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Approved</p>
+            <p class="font-headline-md text-headline-md text-emerald-600" id="stat-approved">—</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.2s">
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Upcoming</p>
+            <p class="font-headline-md text-headline-md text-primary" id="stat-upcoming">—</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+        <div class="lg:col-span-8 space-y-gutter">
+            <div id="active-stay-mount" class="reveal" style="animation-delay:.1s">
+                <div class="skeleton h-40"></div>
+            </div>
+
+            <section class="reveal" style="animation-delay:.15s">
+                <div class="flex items-center justify-between mb-4">
+                    <h4 class="font-headline-sm text-headline-sm">Upcoming Reservations</h4>
+                    <a class="text-primary font-label-md text-label-md hover:underline" href="./reservations.html">View All</a>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="upcoming-mount">
+                    <div class="skeleton h-44"></div>
+                    <div class="skeleton h-44"></div>
+                </div>
+            </section>
+        </div>
+
+        <div class="lg:col-span-4 space-y-gutter">
+            <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6 reveal" style="animation-delay:.2s">
+                <h4 class="font-headline-sm text-headline-sm mb-6">Quick Actions</h4>
+                <div class="space-y-3">
+                    <a href="./reservations.html" class="js-requires-write w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
+                        <div class="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
+                            <span class="material-symbols-outlined">add_task</span>
+                        </div>
+                        <div>
+                            <p class="font-label-md text-label-md font-bold">New Reservation</p>
+                            <p class="text-[12px] text-on-surface-variant">Book a room for your stay</p>
+                        </div>
+                    </a>
+                    <a href="./facilities.html" class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
+                        <div class="w-10 h-10 bg-secondary/10 text-secondary rounded-full flex items-center justify-center">
+                            <span class="material-symbols-outlined">explore</span>
+                        </div>
+                        <div>
+                            <p class="font-label-md text-label-md font-bold">Explore Facilities</p>
+                            <p class="text-[12px] text-on-surface-variant">Browse available rooms</p>
+                        </div>
+                    </a>
+                    <a href="./settings.html" class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
+                        <div class="w-10 h-10 bg-tertiary/10 text-tertiary rounded-full flex items-center justify-center">
+                            <span class="material-symbols-outlined">manage_accounts</span>
+                        </div>
+                        <div>
+                            <p class="font-label-md text-label-md font-bold">Account Settings</p>
+                            <p class="text-[12px] text-on-surface-variant">Update your profile</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6 reveal" style="animation-delay:.25s">
+                <div class="flex items-center justify-between mb-6">
+                    <h4 class="font-headline-sm text-headline-sm">Recent Activity</h4>
+                </div>
+                <div class="space-y-6" id="activity-mount">
+                    <div class="skeleton h-10"></div>
+                    <div class="skeleton h-10"></div>
+                    <div class="skeleton h-10"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer class="lg:ml-[260px] border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
+    <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+        <div class="flex items-center gap-2">
+            <span class="font-headline-sm text-primary">AptSpace</span>
+            <span class="text-on-surface-variant text-body-sm">© 2026 Asia Pacific Theological Seminary</span>
+        </div>
+        <div class="flex gap-6">
+            <a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+            <a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+            <a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact Support</a>
+        </div>
+    </div>
+</footer>
+
+<script type="module">
+    import { requireAuth, doLogout, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
+    import { getBookings, getGroups, normalizeBooking, formatGroupId } from '/assets/js/services/api.js';
+
+    requireAuth();
+
+    const BLOCKED_BUILDINGS = ['House'];
+    const isBlocked = (n) => BLOCKED_BUILDINGS.includes(String(n || '').trim());
+
+    const user = getCurrentUser();
+    const name = user ? (user.full_name || user.name || 'Guest User') : 'Guest User';
+    const firstName = name.split(' ')[0];
+    document.querySelectorAll('.js-user-name').forEach((el) => { el.textContent = name; });
+    document.querySelectorAll('.js-user-avatar').forEach((el) => { el.textContent = (name[0] || 'G').toUpperCase(); });
+    const welcomeEl = document.getElementById('welcome-message');
+    if (welcomeEl) welcomeEl.textContent = `Welcome back, ${firstName}!`;
+    document.querySelectorAll('.js-logout').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); doLogout(); }));
+
+    const { readOnly } = applyRoleUI();
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+    const fmt = (d) => {
+      if (!d) return '—';
+      const raw = String(d).slice(0, 10);
+      const dt = new Date(`${raw}T00:00:00`);
+      return Number.isNaN(dt.getTime()) ? raw : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    const statusPill = (s) => ({
+      approved: 'bg-emerald-50 text-emerald-700',
+      pending: 'bg-amber-50 text-amber-700',
+      rejected: 'bg-red-50 text-red-700',
+      cancelled: 'bg-red-50 text-red-700',
+    }[s] || 'bg-surface-container text-on-surface-variant');
+
+    function relTime(d) {
+      if (!d) return '';
+      const t = new Date(d).getTime();
+      if (Number.isNaN(t)) return '';
+      const diffMin = Math.floor((Date.now() - t) / 60000);
+      if (diffMin < 1) return 'Just now';
+      if (diffMin < 60) return `${diffMin} min ago`;
+      const h = Math.floor(diffMin / 60);
+      if (h < 24) return `${h} hr ago`;
+      const days = Math.floor(h / 24);
+      if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
+      return fmt(d);
+    }
+
+    function renderError(msg) {
+      ['active-stay-mount', 'upcoming-mount', 'activity-mount'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<div class="text-error text-body-sm py-4">${msg}</div>`;
+      });
+    }
+
+    function renderStats(items) {
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      set('stat-total', items.length);
+      set('stat-pending', items.filter((b) => b.status === 'pending').length);
+      set('stat-approved', items.filter((b) => b.status === 'approved').length);
+      set('stat-upcoming', items.filter((b) => b.status === 'approved' && b.startDate > todayStr).length);
+    }
+
+    function renderActive(items) {
+      const mount = document.getElementById('active-stay-mount');
+      const active = items.find((b) => b.status === 'approved' && b.startDate <= todayStr && b.endDate > todayStr);
+      if (!active) {
+        const cta = readOnly
+          ? ''
+          : `<a href="./reservations.html" class="inline-flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-lg font-label-md text-label-md">
+              <span class="material-symbols-outlined text-[18px]">add</span>Make a reservation
+            </a>`;
+        mount.innerHTML = `
+          <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-8 text-center">
+            <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-2">hotel</span>
+            <h3 class="font-headline-sm text-headline-sm mb-1">No active stay</h3>
+            <p class="font-body-md text-on-surface-variant mb-4">${readOnly ? 'You have view-only access. Reservations are managed by housing staff.' : "You're not currently checked in. Plan your next visit anytime."}</p>
+            ${cta}
+          </div>`;
+        return;
+      }
+      const label = active.kind === 'group' ? formatGroupId(active.id) : `#APT-${active.id}`;
+      const total = active.totalAmount != null ? peso(active.totalAmount) : '—';
+      mount.innerHTML = `
+        <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6 overflow-hidden relative">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <span class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-700 text-label-sm font-label-sm rounded-full mb-2">
+                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>Active Stay
+              </span>
+              <h3 class="font-headline-lg text-headline-lg">${active.facilityLabel || active.title}</h3>
+              <p class="font-body-md text-on-surface-variant">${label} · Asia Pacific Theological Seminary</p>
+            </div>
+            <div class="flex flex-col md:items-end">
+              <span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">Status</span>
+              <span class="font-headline-sm text-headline-sm text-secondary">Checked In</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-y border-outline-variant mb-6">
+            <div><p class="text-label-sm font-label-sm text-outline">Check-in</p><p class="font-body-md font-semibold">${fmt(active.startDate)}</p></div>
+            <div><p class="text-label-sm font-label-sm text-outline">Check-out</p><p class="font-body-md font-semibold">${fmt(active.endDate)}</p></div>
+            <div><p class="text-label-sm font-label-sm text-outline">Guests</p><p class="font-body-md font-semibold">${active.guestCount || 1}</p></div>
+            <div><p class="text-label-sm font-label-sm text-outline">Total</p><p class="font-body-md font-semibold">${total}</p></div>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            <a href="./reservations.html" class="px-5 py-2.5 border border-outline-variant hover:bg-surface-container-low rounded-lg font-label-md text-label-md flex items-center gap-2 transition-all ml-auto">
+              View in Reservations<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+            </a>
+          </div>
+        </div>`;
+    }
+
+    function renderUpcoming(items) {
+      const mount = document.getElementById('upcoming-mount');
+      const up = items
+        .filter((b) => b.status === 'approved' && b.startDate > todayStr)
+        .sort((a, b) => a.startDate.localeCompare(b.startDate))
+        .slice(0, 4);
+      if (!up.length) {
+        mount.innerHTML = `<div class="md:col-span-2 bg-white p-6 rounded-xl border border-outline-variant text-center text-on-surface-variant">No upcoming reservations.</div>`;
+        return;
+      }
+      mount.innerHTML = up.map((b) => {
+        const icon = b.kind === 'group' ? 'groups' : 'meeting_room';
+        const label = b.kind === 'group' ? formatGroupId(b.id) : `#APT-${b.id}`;
+        return `
+          <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
+            <div class="flex items-start justify-between mb-4">
+              <div class="w-12 h-12 bg-surface-container-low rounded-lg flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined">${icon}</span>
+              </div>
+              <span class="px-2 py-0.5 ${statusPill(b.status)} text-label-sm font-label-sm rounded uppercase tracking-wider">Approved</span>
+            </div>
+            <h5 class="font-headline-sm text-headline-sm mb-1 group-hover:text-primary transition-colors">${b.facilityLabel || b.title}</h5>
+            <p class="text-label-md font-label-md text-on-surface-variant mb-4">${fmt(b.startDate)} – ${fmt(b.endDate)}</p>
+            <a href="./reservations.html" class="block text-center w-full py-2 border border-outline-variant hover:border-primary hover:text-primary rounded-lg font-label-md text-label-md transition-all">View</a>
+          </div>`;
+      }).join('');
+    }
+
+    function renderActivity(items) {
+      const mount = document.getElementById('activity-mount');
+      const recent = [...items]
+        .sort((a, b) => String(b.updatedAt || b.startDate).localeCompare(String(a.updatedAt || a.startDate)))
+        .slice(0, 5);
+      if (!recent.length) {
+        mount.innerHTML = `<p class="text-body-sm text-on-surface-variant">No recent activity yet.</p>`;
+        return;
+      }
+      const meta = (b) => {
+        const label = b.kind === 'group' ? formatGroupId(b.id) : `#APT-${b.id}`;
+        const place = b.facilityLabel || b.title || label;
+        switch (b.status) {
+          case 'approved': return { t: 'Reservation approved', d: `${label} · ${place} is confirmed.`, c: 'bg-emerald-500' };
+          case 'pending': return { t: 'Request submitted', d: `${label} · ${place} is awaiting approval.`, c: 'bg-amber-500' };
+          case 'rejected': return { t: 'Request declined', d: `${label} · ${place} was not approved.`, c: 'bg-red-500' };
+          case 'cancelled': return { t: 'Reservation cancelled', d: `${label} · ${place} was cancelled.`, c: 'bg-outline' };
+          default: return { t: 'Reservation update', d: `${label} · ${place}`, c: 'bg-primary' };
+        }
+      };
+      mount.innerHTML = recent.map((b, i) => {
+        const m = meta(b);
+        const line = i < recent.length - 1
+          ? '<div class="absolute top-2 left-1 w-[1px] h-12 bg-outline-variant opacity-30"></div>'
+          : '';
+        return `
+          <div class="flex gap-4">
+            <div class="mt-1 relative">
+              <div class="w-2 h-2 ${m.c} rounded-full"></div>${line}
+            </div>
+            <div>
+              <p class="font-label-md text-label-md leading-tight">${m.t}</p>
+              <p class="text-[12px] text-on-surface-variant mb-1">${m.d}</p>
+              <p class="text-[10px] text-outline">${relTime(b.updatedAt || b.startDate)}</p>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function load() {
+      let items = [];
+      try {
+        const [raw, groups] = await Promise.all([getBookings(), getGroups()]);
+        const singles = raw
+          .filter((b) => !b.group_id)
+          .map(normalizeBooking)
+          .filter((b) => !isBlocked(b.buildingName))
+          .map((s) => ({
+            kind: 'single',
+            ...s,
+            startDate: String(s.startDate || '').slice(0, 10),
+            endDate: String(s.endDate || '').slice(0, 10),
+            updatedAt: s.updatedAt || s.createdAt,
+          }));
+        const groupItems = groups.map((g) => ({
+          kind: 'group',
+          id: g.id,
+          title: g.group_name,
+          facilityLabel: `${g.room_count || 0} room(s) · ${g.total_guests} guest(s)`,
+          startDate: String(g.check_in).slice(0, 10),
+          endDate: String(g.check_out).slice(0, 10),
+          status: (g.status || 'Pending').toLowerCase(),
+          guestCount: g.total_guests,
+          totalAmount: g.grand_total,
+          updatedAt: g.updated_at || g.created_at,
+        }));
+        items = [...singles, ...groupItems];
+      } catch (err) {
+        renderError(err.message || 'Could not load your reservations');
+        return;
+      }
+      renderStats(items);
+      renderActive(items);
+      renderUpcoming(items);
+      renderActivity(items);
+    }
+
+    load();
+</script>
+</body>
+</html>

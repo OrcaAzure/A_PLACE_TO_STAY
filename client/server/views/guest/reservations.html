@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Reservations | AptSpace Guest</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/config/tailwind-theme-base.js"></script>
+<script src="/assets/js/config/tailwind-guest.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<style>
+  body { font-family: 'Inter', sans-serif; background-color: #F8FAFC; }
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  }
+  .glass-header {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* ---------- Animations ---------- */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes scaleIn {
+    from { opacity: 0; transform: translateY(8px) scale(.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes shimmer {
+    0%   { background-position: -468px 0; }
+    100% { background-position: 468px 0; }
+  }
+  @keyframes pulseRing {
+    0%   { box-shadow: 0 0 0 0 rgba(16,185,129,.45); }
+    70%  { box-shadow: 0 0 0 10px rgba(16,185,129,0); }
+    100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); }
+  }
+  @keyframes floatBlob {
+    0%,100% { transform: translate(0,0) scale(1); }
+    50%     { transform: translate(10px,-12px) scale(1.08); }
+  }
+
+  .animate-fade-up { animation: fadeInUp .55s cubic-bezier(.22,.61,.36,1) both; }
+  .animate-fade-in { animation: fadeIn .5s ease both; }
+  .animate-scale-in { animation: scaleIn .35s cubic-bezier(.22,.61,.36,1) both; }
+  .reveal { opacity: 0; animation: fadeInUp .5s cubic-bezier(.22,.61,.36,1) forwards; }
+
+  .live-dot { animation: pulseRing 2s infinite; }
+  .float-blob { animation: floatBlob 9s ease-in-out infinite; }
+
+  /* lift on hover */
+  .lift { transition: transform .3s cubic-bezier(.22,.61,.36,1), box-shadow .3s ease, border-color .3s ease; }
+  .lift:hover { transform: translateY(-4px); }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    background: #eef2f7;
+    background-image: linear-gradient(90deg, #eef2f7 0px, #f7fafc 40px, #eef2f7 80px);
+    background-size: 600px 100%;
+    animation: shimmer 1.3s infinite linear;
+    border-radius: 10px;
+  }
+
+  /* Modal transitions */
+  .modal-overlay { transition: opacity .25s ease; }
+  .modal-overlay.is-hidden { opacity: 0; pointer-events: none; }
+  .modal-panel { transition: transform .3s cubic-bezier(.22,.61,.36,1), opacity .3s ease; }
+  .modal-overlay.is-hidden .modal-panel { transform: translateY(18px) scale(.97); opacity: 0; }
+
+  /* Room option card selection */
+  .room-option { transition: all .2s ease; }
+  .room-option.selected {
+    border-color: var(--tw-prose-links, #1d4ed8);
+    box-shadow: 0 0 0 2px rgba(29,78,216,.18);
+  }
+
+  /* Segmented filter buttons */
+  .seg-btn { transition: all .2s ease; }
+
+  /* Nice scrollbar inside modals */
+  .nice-scroll::-webkit-scrollbar { width: 6px; }
+  .nice-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  .nice-scroll::-webkit-scrollbar-track { background: transparent; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body class="text-on-surface">
+
+<aside class="hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
+<div class="px-6 mb-8">
+<h1 class="font-headline-sm text-headline-sm font-black text-primary">AptSpace</h1>
+<p class="text-body-sm text-on-surface-variant mt-1 js-portal-label">Guest Portal</p>
+</div>
+<nav class="flex-1 px-3 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./dashboard.html">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-md text-label-md">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 rounded-lg font-bold transition-all active:scale-95 duration-150" href="./reservations.html">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">event_available</span>
+<span class="font-label-md text-label-md">Reservations</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./facilities.html">
+<span class="material-symbols-outlined">domain</span>
+<span class="font-label-md text-label-md">Facilities</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./settings.html">
+<span class="material-symbols-outlined">settings</span>
+<span class="font-label-md text-label-md">Settings</span>
+</a>
+</nav>
+<div class="px-6 mt-auto js-requires-write">
+<button id="new-reservation-sidebar" class="w-full py-3 bg-primary text-on-primary rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-all shadow-sm active:scale-[0.98] hover:shadow-md">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                New Reservation
+            </button>
+</div>
+</aside>
+
+<header class="fixed top-0 right-0 left-0 lg:left-[260px] h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant z-30 shadow-sm transition-all">
+<div class="flex justify-between items-center px-margin-mobile md:px-gutter h-full max-w-container-max mx-auto">
+<div class="flex items-center gap-4">
+<h2 class="font-headline-md text-headline-md font-bold text-primary">Reservations</h2>
+<div class="hidden lg:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-80 transition-all focus-within:border-primary focus-within:shadow-sm">
+<span class="material-symbols-outlined text-outline text-[20px]">search</span>
+<input id="header-search" class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full" placeholder="Search your reservations..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
+<span class="material-symbols-outlined">help</span>
+</button>
+<div class="h-8 w-px bg-outline-variant mx-2"></div>
+<div class="flex items-center gap-3 cursor-pointer active:opacity-70">
+<div class="text-right hidden sm:block">
+<p class="font-label-md text-label-md font-bold leading-none js-user-name">Guest User</p>
+<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider hover:text-error transition-colors js-logout">Log Out</p>
+</div>
+<span class="js-role-badge hidden px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider"></span>
+<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm js-user-avatar">?</div>
+</div>
+</div>
+</div>
+</header>
+
+<nav class="lg:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 pb-safe bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./dashboard.html">
+    <span class="material-symbols-outlined">dashboard</span>
+    <span class="font-label-sm text-[10px]">Dashboard</span>
+  </a>
+  <a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 touch-manipulation duration-200" href="./reservations.html">
+    <span class="material-symbols-outlined">event_available</span>
+    <span class="font-label-sm text-[10px]">Reservations</span>
+  </a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./facilities.html">
+    <span class="material-symbols-outlined">domain</span>
+    <span class="font-label-sm text-[10px]">Facilities</span>
+  </a>
+  <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./settings.html">
+    <span class="material-symbols-outlined">settings</span>
+    <span class="font-label-sm text-[10px]">Settings</span>
+  </a>
+</nav>
+
+<main class="pt-24 pb-24 lg:pb-12 px-margin-mobile md:px-gutter lg:ml-[260px] max-w-container-max mx-auto min-h-screen">
+  <div class="p-lg">
+
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-xl animate-fade-up">
+      <div>
+        <h2 class="font-headline-xl text-headline-xl text-on-surface">My Reservations</h2>
+        <p class="font-body-md text-body-md text-on-surface-variant">Manage and track your facility reservations with ease.</p>
+      </div>
+      <div class="flex flex-wrap items-center gap-3 js-requires-write">
+        <button id="new-reservation-btn" class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-xl font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-[0.98] hover:-translate-y-0.5">
+          <span class="material-symbols-outlined text-[20px]">person</span>
+          Single Room
+        </button>
+        <button id="new-group-btn" type="button" class="flex items-center gap-2 bg-surface-container-high text-on-surface px-6 py-3 rounded-xl font-label-md text-label-md font-bold border border-outline-variant hover:shadow-lg transition-all active:scale-[0.98] hover:-translate-y-0.5">
+          <span class="material-symbols-outlined text-[20px]">groups</span>
+          Group Stay
+        </button>
+      </div>
+    </div>
+
+    <div class="js-readonly-banner hidden mb-xl flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-800 rounded-2xl p-4 animate-fade-up">
+      <span class="material-symbols-outlined mt-0.5">visibility</span>
+      <div>
+        <p class="font-label-md text-label-md font-bold">View-only access</p>
+        <p class="text-body-sm text-on-surface-variant">Your role lets you review reservations but not create, edit, or cancel them. Contact housing staff for changes.</p>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter mb-xl">
+      <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm lift hover:shadow-md reveal" style="animation-delay:.05s">
+        <div class="flex items-center gap-4">
+          <div class="p-3 bg-primary/10 rounded-xl text-primary">
+            <span class="material-symbols-outlined">calendar_month</span>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Total Reservations</p>
+            <p class="font-headline-md text-headline-md text-on-surface" id="stat-total" data-count="0">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm lift hover:shadow-md reveal" style="animation-delay:.12s">
+        <div class="flex items-center gap-4">
+          <div class="p-3 bg-amber-500/10 rounded-xl text-amber-600">
+            <span class="material-symbols-outlined">pending_actions</span>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Pending Approvals</p>
+            <p class="font-headline-md text-headline-md text-on-surface" id="stat-pending" data-count="0">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm lift hover:shadow-md reveal" style="animation-delay:.19s">
+        <div class="flex items-center gap-4">
+          <div class="p-3 bg-emerald-500/10 rounded-xl text-emerald-600">
+            <span class="material-symbols-outlined">check_circle</span>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Approved</p>
+            <p class="font-headline-md text-headline-md text-on-surface" id="stat-approved" data-count="0">—</p>
+          </div>
+        </div>
+      </div>
+      <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm lift hover:shadow-md reveal" style="animation-delay:.26s">
+        <div class="flex items-center gap-4">
+          <div class="p-3 bg-tertiary/10 rounded-xl text-tertiary">
+            <span class="material-symbols-outlined">schedule</span>
+          </div>
+          <div>
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Upcoming</p>
+            <p class="font-headline-md text-headline-md text-on-surface" id="stat-upcoming" data-count="0">—</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+      <div class="lg:col-span-8 space-y-gutter">
+
+        <div id="featured-card" class="hidden"></div>
+
+        <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex flex-wrap items-center gap-3 reveal" style="animation-delay:.3s">
+          <div class="flex items-center gap-2 mr-1 text-on-surface-variant">
+            <span class="material-symbols-outlined text-[20px]">filter_list</span>
+            <span class="text-label-sm uppercase tracking-wider font-bold">Filter</span>
+          </div>
+          <div id="status-filter" class="flex flex-wrap gap-1.5">
+            <button data-status="" class="seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-primary text-on-primary">All</button>
+            <button data-status="approved" class="seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Approved</button>
+            <button data-status="pending" class="seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Pending</button>
+            <button data-status="rejected" class="seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Rejected</button>
+            <button data-status="cancelled" class="seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Cancelled</button>
+          </div>
+          <div class="ml-auto flex items-center gap-2 text-body-sm text-on-surface-variant">
+            <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+            <span id="current-month-label">This Month</span>
+          </div>
+        </div>
+
+        <div class="space-y-4" id="reservations-list">
+          <div class="skeleton h-28 rounded-2xl"></div>
+          <div class="skeleton h-28 rounded-2xl"></div>
+          <div class="skeleton h-28 rounded-2xl"></div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-4 space-y-gutter">
+        <div class="bg-primary text-white p-6 rounded-2xl shadow-lg relative overflow-hidden group reveal" style="animation-delay:.35s">
+          <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl float-blob"></div>
+          <h4 class="font-headline-sm text-headline-sm mb-4 relative z-10">Need Assistance?</h4>
+          <p class="font-body-sm text-body-sm text-white/80 mb-6 relative z-10">Our facility managers are available to help you with special equipment requests or catering.</p>
+          <button class="w-full bg-white text-primary py-3 rounded-xl font-bold font-label-md text-label-md hover:bg-primary-fixed transition-all relative z-10 active:scale-[0.98] hover:shadow-lg">
+            Contact Support
+          </button>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.42s">
+          <h4 class="font-headline-sm text-headline-sm mb-6 flex items-center justify-between">
+            Reservation Timeline
+            <span class="text-[12px] font-bold text-on-surface-variant" id="timeline-month"></span>
+          </h4>
+          <div class="relative pl-6 border-l-2 border-surface-container" id="timeline-list">
+            <div class="space-y-6">
+              <div class="skeleton h-12"></div>
+              <div class="skeleton h-12"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-surface-container-low p-6 rounded-2xl border border-outline-variant reveal" style="animation-delay:.49s">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-amber-600 mt-1">info</span>
+            <div>
+              <h5 class="font-label-md text-label-md font-bold text-on-surface mb-2">Reservation Policy</h5>
+              <p class="text-body-sm text-on-surface-variant leading-relaxed">
+                Cancellations must be made at least 24 hours prior to the event. Approved reservations that are no-shows for more than 30 minutes may be automatically released.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ============ Single booking modal ============ -->
+<div id="booking-modal-overlay" class="modal-overlay is-hidden fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
+  <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[92vh] overflow-y-auto nice-scroll">
+    <div class="p-6 border-b border-outline-variant flex items-center justify-between sticky top-0 bg-white z-10">
+      <div>
+        <h3 class="font-headline-md text-headline-md">New Reservation</h3>
+        <p class="text-body-sm text-on-surface-variant">Pick your dates, then choose an available room.</p>
+      </div>
+      <button type="button" id="booking-modal-close" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-full p-1 transition-colors">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form id="booking-form" class="p-6 space-y-5">
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-in">Check-in</label>
+          <input type="date" id="booking-check-in" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+        </div>
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-out">Check-out</label>
+          <input type="date" id="booking-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+        </div>
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-guests">Guests</label>
+        <input type="number" id="booking-guests" min="1" value="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+      </div>
+
+      <button type="button" id="find-rooms-btn" class="w-full py-3 bg-surface-container-high text-on-surface rounded-lg font-label-md font-bold border border-outline-variant hover:bg-surface-container transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+        <span class="material-symbols-outlined text-[20px]">search</span>
+        Find available rooms
+      </button>
+
+      <div id="room-results-wrap" class="hidden">
+        <div class="flex items-center justify-between mb-2">
+          <label class="text-label-sm text-on-surface-variant block">Available rooms</label>
+          <span id="room-results-count" class="text-[11px] font-bold text-on-surface-variant uppercase"></span>
+        </div>
+        <div id="room-results" class="space-y-2 max-h-64 overflow-y-auto nice-scroll pr-1"></div>
+      </div>
+
+      <input type="hidden" id="booking-room" />
+
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-notes">Notes (optional)</label>
+        <textarea id="booking-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Special requests, arrival time, etc."></textarea>
+      </div>
+
+      <div id="booking-summary" class="hidden bg-surface-container-low rounded-xl p-4 border border-outline-variant animate-scale-in">
+        <div class="flex items-center justify-between text-body-sm">
+          <span class="text-on-surface-variant" id="booking-summary-room">—</span>
+          <span class="font-bold text-primary text-headline-sm" id="booking-summary-total">—</span>
+        </div>
+        <p class="text-[11px] text-on-surface-variant mt-1" id="booking-summary-meta"></p>
+      </div>
+
+      <div id="booking-form-error" class="hidden text-body-sm text-error bg-error-container rounded-lg px-3 py-2"></div>
+      <div class="flex gap-3 pt-1">
+        <button type="button" id="booking-cancel-btn" class="flex-1 py-3 border border-outline-variant rounded-lg font-label-md hover:bg-surface-container transition-colors">Cancel</button>
+        <button type="submit" id="booking-submit-btn" disabled class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">Submit Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ Group request modal ============ -->
+<div id="group-modal-overlay" class="modal-overlay is-hidden fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
+  <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[92vh] overflow-y-auto nice-scroll">
+    <div class="p-6 border-b border-outline-variant flex items-center justify-between sticky top-0 bg-white z-10">
+      <div>
+        <h3 class="font-headline-md text-headline-md">Group Stay Request</h3>
+        <p class="text-body-sm text-on-surface-variant">Housing will assign rooms after you submit.</p>
+      </div>
+      <button type="button" id="group-modal-close" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-full p-1 transition-colors">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form id="group-form" class="p-6 space-y-4">
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-name">Group / organization name</label>
+        <input type="text" id="group-name" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="e.g. Youth Camp 2026" />
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-contact">Contact person</label>
+        <input type="text" id="group-contact" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-phone">Contact number</label>
+        <input type="tel" id="group-phone" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-check-in">Check-in</label>
+          <input type="date" id="group-check-in" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+        </div>
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-check-out">Check-out</label>
+          <input type="date" id="group-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-total-guests">Total guests</label>
+          <input type="number" id="group-total-guests" min="2" value="10" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+        </div>
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-rooms-needed">Rooms needed (estimate)</label>
+          <input type="number" id="group-rooms-needed" min="1" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Optional" />
+        </div>
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-notes">Notes (optional)</label>
+        <textarea id="group-notes" rows="3" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Special needs, meal preferences, etc."></textarea>
+      </div>
+      <div id="group-form-error" class="hidden text-body-sm text-error bg-error-container rounded-lg px-3 py-2"></div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" id="group-cancel-btn" class="flex-1 py-3 border border-outline-variant rounded-lg font-label-md hover:bg-surface-container transition-colors">Cancel</button>
+        <button type="submit" id="group-submit-btn" class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90 transition-all active:scale-[0.98]">Submit Group Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer class="lg:ml-[260px] border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
+<div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+<div class="flex items-center gap-2">
+<span class="font-headline-sm text-primary">AptSpace</span>
+<span class="text-on-surface-variant text-body-sm">© 2026 Asia Pacific Theological Seminary</span>
+</div>
+<div class="flex gap-6">
+<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact Support</a>
+</div>
+</div>
+</footer>
+
+<script type="module">
+  import { requireAuth, doLogout, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
+  import {
+    getBookings, getGroups, createBooking, createGroup, updateBooking, updateGroup,
+    getRoomAvailability, normalizeBooking, formatGroupId,
+  } from '/assets/js/services/api.js';
+
+  requireAuth();
+
+  /* Buildings guests are not allowed to view/book. */
+  const BLOCKED_BUILDINGS = ['House'];
+  const isBlockedBuilding = (name) => BLOCKED_BUILDINGS.includes(String(name || '').trim());
+
+  const user = getCurrentUser();
+  const displayName = user ? (user.full_name || user.name || 'Guest User') : 'Guest User';
+  document.querySelectorAll('.js-user-name').forEach((el) => { el.textContent = displayName; });
+  document.querySelectorAll('.js-user-avatar').forEach((el) => { el.textContent = (displayName[0] || 'G').toUpperCase(); });
+  document.querySelectorAll('.js-logout').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); doLogout(); }));
+
+  const { readOnly } = applyRoleUI();
+
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+  document.getElementById('current-month-label').textContent =
+    now.toLocaleString('default', { month: 'long', year: 'numeric' });
+  document.getElementById('timeline-month').textContent =
+    now.toLocaleString('default', { month: 'long' });
+
+  const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+  const fmtDate = (d) => {
+    if (!d) return '—';
+    const raw = String(d).slice(0, 10);
+    const dt = new Date(`${raw}T00:00:00`);
+    return Number.isNaN(dt.getTime()) ? raw : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  function statusBadge(status) {
+    const map = {
+      approved:  'bg-emerald-500/10 text-emerald-700',
+      pending:   'bg-amber-500/10 text-amber-700',
+      rejected:  'bg-red-500/10 text-red-700',
+      cancelled: 'bg-red-500/10 text-red-700',
+    };
+    return map[status] || 'bg-surface-container text-on-surface-variant';
+  }
+
+  /* Smooth count-up for stat numbers */
+  function countTo(el, target) {
+    const dur = 700;
+    const start = performance.now();
+    const from = 0;
+    function tick(t) {
+      const p = Math.min(1, (t - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = Math.round(from + (target - from) * eased);
+      if (p < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  /* ---------- Featured (next active/upcoming) card ---------- */
+  function renderFeatured(bookings) {
+    const wrap = document.getElementById('featured-card');
+    const candidates = bookings
+      .filter((b) => b.status === 'approved' && b.endDate >= todayStr)
+      .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)));
+    const feat = candidates[0];
+    if (!feat) { wrap.classList.add('hidden'); return; }
+
+    const isActive = feat.startDate <= todayStr && feat.endDate >= todayStr;
+    const days = Math.max(0, Math.ceil((new Date(`${feat.startDate}T00:00:00`) - now) / 86400000));
+    const startInfo = isActive
+      ? '<span class="text-emerald-600 font-bold">In progress</span>'
+      : `Starts in <span class="text-primary font-bold">${days} day${days === 1 ? '' : 's'}</span>`;
+    const isGroup = feat.kind === 'group';
+    const idLabel = isGroup ? formatGroupId(feat.id) : `#APT-${feat.id}`;
+
+    wrap.className = 'relative overflow-hidden bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg p-6 reveal';
+    wrap.innerHTML = `
+      <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl float-blob"></div>
+      <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2 mb-2">
+            <span class="w-2 h-2 rounded-full bg-emerald-300 live-dot"></span>
+            <span class="text-[11px] font-bold uppercase tracking-widest text-white/80">${isActive ? 'Active stay' : 'Approved & upcoming'}</span>
+          </div>
+          <h3 class="font-headline-md text-headline-md">${feat.facilityLabel || feat.title}</h3>
+          <p class="text-body-sm text-white/80 flex items-center gap-1 mt-1">
+            <span class="material-symbols-outlined text-[18px]">confirmation_number</span>${idLabel}
+          </p>
+          <p class="text-body-sm text-white/80 flex items-center gap-1 mt-1">
+            <span class="material-symbols-outlined text-[18px]">calendar_month</span>${fmtDate(feat.startDate)} → ${fmtDate(feat.endDate)}
+          </p>
+        </div>
+        <div class="text-right shrink-0">
+          <p class="text-label-sm text-white/70">${startInfo}</p>
+          <p class="text-white font-bold text-headline-lg mt-1">${feat.guestCount || 1}</p>
+          <p class="text-[11px] uppercase tracking-wider text-white/70">Guest(s)</p>
+        </div>
+      </div>`;
+    wrap.classList.remove('hidden');
+  }
+
+  function renderCard(b, index) {
+    const isGroup = b.kind === 'group';
+    const idLabel = isGroup ? formatGroupId(b.id) : `#APT-${b.id}`;
+    const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
+    const typeBadge = isGroup
+      ? '<span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">Group</span>'
+      : '<span class="bg-surface-container text-on-surface-variant px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">Single</span>';
+    return `
+      <div class="group bg-white p-5 rounded-2xl border border-outline-variant hover:border-primary/40 hover:shadow-lg lift reveal" style="animation-delay:${0.05 * index}s" data-booking-id="${b.id}" data-kind="${b.kind || 'single'}">
+        <div class="flex flex-col sm:flex-row gap-6">
+          <div class="flex-1">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <h4 class="font-headline-sm text-headline-sm flex items-center">${typeBadge}${idLabel}</h4>
+                <p class="text-body-sm text-on-surface-variant mt-0.5">${b.facilityLabel || b.title}</p>
+              </div>
+              <span class="${statusBadge(b.status)} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${b.status}</span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              <div>
+                <p class="text-[11px] font-bold text-on-surface-variant uppercase">Check-in</p>
+                <p class="text-body-sm font-medium">${fmtDate(b.startDate)}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-bold text-on-surface-variant uppercase">Check-out</p>
+                <p class="text-body-sm font-medium">${fmtDate(b.endDate)}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-bold text-on-surface-variant uppercase">Guests</p>
+                <p class="text-body-sm font-medium">${b.guestCount || 1}</p>
+              </div>
+              ${amount ? `<div><p class="text-[11px] font-bold text-on-surface-variant uppercase">Total</p><p class="text-body-sm font-medium">${amount}</p></div>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
+          ${(!readOnly && b.status === 'pending') ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">Cancel request</button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function renderTimeline(bookings) {
+    const upcoming = bookings
+      .filter((b) => b.status === 'approved' && b.startDate >= todayStr)
+      .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)))
+      .slice(0, 3);
+
+    const el = document.getElementById('timeline-list');
+    if (!upcoming.length) {
+      el.innerHTML = '<p class="text-body-sm text-on-surface-variant">No upcoming reservations.</p>';
+      return;
+    }
+    el.innerHTML = upcoming.map((b, i) => `
+      <div class="mb-8 relative reveal ${i > 0 ? 'opacity-70' : ''}" style="animation-delay:${0.1 * i}s">
+        <div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full ${i === 0 ? 'bg-primary live-dot' : 'bg-surface-container'} border-4 border-white shadow-sm"></div>
+        <p class="text-[11px] font-bold ${i === 0 ? 'text-primary' : 'text-on-surface-variant'} uppercase">${fmtDate(b.startDate)}</p>
+        <h5 class="text-body-md font-bold">${b.facilityLabel || b.title}</h5>
+        <p class="text-body-sm text-on-surface-variant">${b.guestCount || 1} Guest(s)</p>
+      </div>`).join('');
+  }
+
+  let allBookings = [];
+  let activeStatus = '';
+  let searchTerm = '';
+
+  async function loadBookings() {
+    try {
+      const [raw, groups] = await Promise.all([getBookings(), getGroups()]);
+      const singles = raw
+        .filter((b) => !b.group_id)
+        .map(normalizeBooking)
+        .filter((b) => !isBlockedBuilding(b.buildingName));
+      const groupItems = groups.map((g) => ({
+        kind: 'group',
+        id: g.id,
+        title: g.group_name,
+        facilityLabel: `${g.room_count || 0} room(s) assigned · ${g.total_guests} guest(s)`,
+        startDate: String(g.check_in).slice(0, 10),
+        endDate: String(g.check_out).slice(0, 10),
+        status: (g.status || 'Pending').toLowerCase(),
+        guestCount: g.total_guests,
+        totalAmount: g.grand_total,
+      }));
+      allBookings = [...singles, ...groupItems].sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)));
+
+      countTo(document.getElementById('stat-total'), allBookings.length);
+      countTo(document.getElementById('stat-pending'), allBookings.filter((b) => b.status === 'pending').length);
+      countTo(document.getElementById('stat-approved'), allBookings.filter((b) => b.status === 'approved').length);
+      countTo(document.getElementById('stat-upcoming'), allBookings.filter((b) => b.status === 'approved' && b.startDate >= todayStr).length);
+
+      renderFeatured(allBookings);
+      renderTimeline(allBookings);
+      applyAndRender();
+    } catch (err) {
+      document.getElementById('reservations-list').innerHTML =
+        `<div class="text-center py-12 text-error animate-fade-in"><span class="material-symbols-outlined text-[40px] mb-2 block">error</span><p>${err.message}</p></div>`;
+    }
+  }
+
+  function applyAndRender() {
+    let items = allBookings;
+    if (activeStatus) items = items.filter((b) => b.status === activeStatus);
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      items = items.filter((b) =>
+        String(b.id).includes(q) ||
+        (b.facilityLabel || '').toLowerCase().includes(q) ||
+        (b.title || '').toLowerCase().includes(q) ||
+        (b.status || '').toLowerCase().includes(q));
+    }
+    renderList(items);
+  }
+
+  function renderList(bookings) {
+    const list = document.getElementById('reservations-list');
+    if (!bookings.length) {
+      list.innerHTML = `
+        <div class="text-center py-16 text-on-surface-variant animate-fade-in">
+          <span class="material-symbols-outlined text-[48px] mb-2 block">event_busy</span>
+          <p class="font-body-md text-body-md">No reservations found.</p>
+          ${readOnly ? '' : '<button type="button" id="empty-new-booking" class="mt-4 text-primary font-label-md hover:underline">Create your first reservation</button>'}
+        </div>`;
+      document.getElementById('empty-new-booking')?.addEventListener('click', openBookingModal);
+      return;
+    }
+    list.innerHTML = bookings.map((b, i) => renderCard(b, i)).join('');
+    list.querySelectorAll('.cancel-booking-btn').forEach((btn) => {
+      btn.addEventListener('click', () => cancelBooking(btn.dataset.id, btn.dataset.kind));
+    });
+  }
+
+  async function cancelBooking(id, kind = 'single') {
+    if (!confirm('Cancel this pending request?')) return;
+    try {
+      if (kind === 'group') await updateGroup(id, { status: 'Cancelled' });
+      else await updateBooking(id, { status: 'Cancelled' });
+      await loadBookings();
+    } catch (err) {
+      alert(err.message || 'Could not cancel');
+    }
+  }
+
+  /* ---------- Status filter pills ---------- */
+  document.getElementById('status-filter').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-status]');
+    if (!btn) return;
+    activeStatus = btn.dataset.status;
+    document.querySelectorAll('#status-filter button').forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle('bg-primary', on);
+      b.classList.toggle('text-on-primary', on);
+      b.classList.toggle('bg-surface-container-low', !on);
+      b.classList.toggle('border', !on);
+      b.classList.toggle('border-outline-variant', !on);
+    });
+    applyAndRender();
+  });
+
+  /* ---------- Header search ---------- */
+  let searchTimer;
+  document.getElementById('header-search')?.addEventListener('input', (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => { searchTerm = e.target.value.trim(); applyAndRender(); }, 250);
+  });
+
+  /* ---------- Modal helpers (animated) ---------- */
+  function openModal(overlay) {
+    overlay.classList.remove('is-hidden');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(overlay) {
+    overlay.classList.add('is-hidden');
+    document.body.style.overflow = '';
+  }
+
+  /* ---------- Single booking modal (availability flow) ---------- */
+  const modal = document.getElementById('booking-modal-overlay');
+  const form = document.getElementById('booking-form');
+  const roomInput = document.getElementById('booking-room');
+  const submitBtn = document.getElementById('booking-submit-btn');
+  let availableRooms = [];
+  let selectedRoom = null;
+
+  function resetBookingResults() {
+    availableRooms = [];
+    selectedRoom = null;
+    roomInput.value = '';
+    submitBtn.disabled = true;
+    document.getElementById('room-results-wrap').classList.add('hidden');
+    document.getElementById('booking-summary').classList.add('hidden');
+  }
+
+  function closeBookingModal() {
+    closeModal(modal);
+    form.reset();
+    resetBookingResults();
+    document.getElementById('booking-form-error').classList.add('hidden');
+  }
+
+  function openBookingModal() {
+    form.reset();
+    resetBookingResults();
+    document.getElementById('booking-form-error').classList.add('hidden');
+    document.getElementById('booking-check-in').min = todayStr;
+    document.getElementById('booking-check-out').min = todayStr;
+    openModal(modal);
+  }
+
+  function renderRoomResults() {
+    const wrap = document.getElementById('room-results-wrap');
+    const list = document.getElementById('room-results');
+    const countEl = document.getElementById('room-results-count');
+    wrap.classList.remove('hidden');
+
+    const bookable = availableRooms
+      .filter((r) => r.availability_status === 'available' && !isBlockedBuilding(r.building_name));
+
+    countEl.textContent = `${bookable.length} available`;
+
+    if (!bookable.length) {
+      list.innerHTML = '<p class="text-body-sm text-on-surface-variant py-4 text-center">No rooms available for these dates. Try different dates or guest count.</p>';
+      return;
+    }
+
+    list.innerHTML = bookable.map((r) => `
+      <button type="button" class="room-option w-full text-left p-3 rounded-xl border border-outline-variant hover:border-primary/50 bg-white flex items-center justify-between gap-3" data-room-id="${r.id}">
+        <div>
+          <p class="font-label-md font-bold text-body-sm">${r.building_name} ${r.room_number}</p>
+          <p class="text-[11px] text-on-surface-variant">${r.room_type} · max ${r.capacity_max} guests</p>
+        </div>
+        <div class="text-right shrink-0">
+          <p class="font-bold text-primary text-body-sm">${r.estimated_total != null ? peso(r.estimated_total) : '—'}</p>
+          <p class="text-[10px] text-on-surface-variant uppercase">${r.nights} night(s)</p>
+        </div>
+      </button>`).join('');
+
+    list.querySelectorAll('.room-option').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.roomId;
+        selectedRoom = bookable.find((r) => String(r.id) === String(id));
+        roomInput.value = id;
+        list.querySelectorAll('.room-option').forEach((b) => b.classList.remove('selected'));
+        btn.classList.add('selected');
+        submitBtn.disabled = false;
+        showBookingSummary();
+      });
+    });
+  }
+
+  function showBookingSummary() {
+    if (!selectedRoom) return;
+    const box = document.getElementById('booking-summary');
+    document.getElementById('booking-summary-room').textContent =
+      `${selectedRoom.building_name} ${selectedRoom.room_number} · ${selectedRoom.room_type}`;
+    document.getElementById('booking-summary-total').textContent =
+      selectedRoom.estimated_total != null ? peso(selectedRoom.estimated_total) : '—';
+    document.getElementById('booking-summary-meta').textContent =
+      `${selectedRoom.nights} night(s) · ${document.getElementById('booking-guests').value} guest(s) · estimate, subject to confirmation`;
+    box.classList.remove('hidden');
+  }
+
+  async function findRooms() {
+    const checkIn = document.getElementById('booking-check-in').value;
+    const checkOut = document.getElementById('booking-check-out').value;
+    const guests = Number(document.getElementById('booking-guests').value) || 1;
+    const errorEl = document.getElementById('booking-form-error');
+    errorEl.classList.add('hidden');
+
+    if (!checkIn || !checkOut) {
+      errorEl.textContent = 'Please choose check-in and check-out dates first.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (new Date(checkOut) <= new Date(checkIn)) {
+      errorEl.textContent = 'Check-out must be after check-in.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    const btn = document.getElementById('find-rooms-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span> Searching…';
+    resetBookingResults();
+    try {
+      const data = await getRoomAvailability({ check_in: checkIn, check_out: checkOut, guest_count: guests });
+      availableRooms = data.rooms || [];
+      renderRoomResults();
+    } catch (err) {
+      errorEl.textContent = err.message || 'Could not load availability';
+      errorEl.classList.remove('hidden');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '<span class="material-symbols-outlined text-[20px]">search</span> Find available rooms';
+    }
+  }
+
+  document.getElementById('find-rooms-btn').addEventListener('click', findRooms);
+  document.getElementById('new-reservation-btn')?.addEventListener('click', openBookingModal);
+  document.getElementById('new-reservation-sidebar')?.addEventListener('click', openBookingModal);
+  document.getElementById('booking-modal-close').addEventListener('click', closeBookingModal);
+  document.getElementById('booking-cancel-btn').addEventListener('click', closeBookingModal);
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeBookingModal(); });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!roomInput.value) return;
+    const errorEl = document.getElementById('booking-form-error');
+    errorEl.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting…';
+    try {
+      await createBooking({
+        room_id: Number(roomInput.value),
+        check_in: document.getElementById('booking-check-in').value,
+        check_out: document.getElementById('booking-check-out').value,
+        guest_count: Number(document.getElementById('booking-guests').value) || 1,
+        notes: document.getElementById('booking-notes').value.trim() || null,
+      });
+      closeBookingModal();
+      await loadBookings();
+    } catch (err) {
+      errorEl.textContent = err.message || 'Booking failed';
+      errorEl.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Request';
+    }
+  });
+
+  /* ---------- Group request modal ---------- */
+  const groupModal = document.getElementById('group-modal-overlay');
+  const groupForm = document.getElementById('group-form');
+
+  function closeGroupModal() {
+    closeModal(groupModal);
+    groupForm.reset();
+    document.getElementById('group-form-error').classList.add('hidden');
+  }
+
+  function openGroupModal() {
+    groupForm.reset();
+    document.getElementById('group-form-error').classList.add('hidden');
+    if (user) document.getElementById('group-contact').value = user.full_name || user.name || '';
+    document.getElementById('group-check-in').min = todayStr;
+    document.getElementById('group-check-out').min = todayStr;
+    openModal(groupModal);
+  }
+
+  document.getElementById('new-group-btn')?.addEventListener('click', openGroupModal);
+  document.getElementById('group-modal-close').addEventListener('click', closeGroupModal);
+  document.getElementById('group-cancel-btn').addEventListener('click', closeGroupModal);
+  groupModal.addEventListener('click', (e) => { if (e.target === groupModal) closeGroupModal(); });
+
+  groupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('group-form-error');
+    const gSubmit = document.getElementById('group-submit-btn');
+    errorEl.classList.add('hidden');
+    gSubmit.disabled = true;
+    gSubmit.textContent = 'Submitting…';
+    try {
+      await createGroup({
+        group_name: document.getElementById('group-name').value.trim(),
+        contact_name: document.getElementById('group-contact').value.trim(),
+        contact_phone: document.getElementById('group-phone').value.trim() || undefined,
+        check_in: document.getElementById('group-check-in').value,
+        check_out: document.getElementById('group-check-out').value,
+        total_guests: Number(document.getElementById('group-total-guests').value) || 2,
+        rooms_requested: Number(document.getElementById('group-rooms-needed').value) || undefined,
+        notes: document.getElementById('group-notes').value.trim() || undefined,
+      });
+      closeGroupModal();
+      await loadBookings();
+    } catch (err) {
+      errorEl.textContent = err.message || 'Request failed';
+      errorEl.classList.remove('hidden');
+    } finally {
+      gSubmit.disabled = false;
+      gSubmit.textContent = 'Submit Group Request';
+    }
+  });
+
+  /* ESC closes any open modal */
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    if (!modal.classList.contains('is-hidden')) closeBookingModal();
+    if (!groupModal.classList.contains('is-hidden')) closeGroupModal();
+  });
+
+  loadBookings();
+</script>
+</body>
+</html>

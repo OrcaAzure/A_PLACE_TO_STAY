@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payments | AptSpace Admin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="/assets/js/config/tailwind-theme-base.js"></script>
+  <script src="/assets/js/config/tailwind-admin.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <link rel="stylesheet" href="/assets/css/components/components.css" />
+  <link rel="stylesheet" href="/assets/css/global/responsive.css" />
+  <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
+  <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
+</head>
+<body>
+  <div id="page-content">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="action-card">
+        <div class="action-card-icon bg-primary-container/10 text-primary">
+          <span class="material-symbols-outlined text-[28px]">payments</span>
+        </div>
+        <div>
+          <h4 class="font-headline-sm text-on-surface">Collected Revenue</h4>
+          <p class="text-body-sm text-on-surface-variant mt-1">Total payments received this month.</p>
+        </div>
+        <div class="mt-auto pt-4 border-t border-outline-variant/30">
+          <span id="total-revenue" class="text-primary text-[10px] font-bold">LOADING...</span>
+        </div>
+      </div>
+      <div class="action-card">
+        <div class="action-card-icon bg-surface-container-high text-on-surface-variant">
+          <span class="material-symbols-outlined text-[28px]">pending_actions</span>
+        </div>
+        <div>
+          <h4 class="font-headline-sm text-on-surface">Pending Payments</h4>
+          <p class="text-body-sm text-on-surface-variant mt-1">Outstanding invoices awaiting payment.</p>
+        </div>
+        <div class="mt-auto pt-4 border-t border-outline-variant/30">
+          <span id="pending-amount" class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold">LOADING...</span>
+        </div>
+      </div>
+    </div>
+
+    <section class="timeline-workspace">
+      <div class="timeline-workspace-header">
+        <div class="flex items-center gap-4">
+          <div class="w-1.5 h-8 bg-primary rounded-full"></div>
+          <h3 class="font-headline-sm text-on-surface">Payment Monitoring Center</h3>
+        </div>
+        <div class="flex gap-2">
+          <button type="button" data-tab="all" class="px-4 py-1.5 border-b-2 border-primary text-primary text-label-sm font-bold">All</button>
+          <button type="button" data-tab="paid" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">Paid</button>
+          <button type="button" data-tab="pending" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">Pending</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="data-table">
+          <thead><tr><th>Booking ID</th><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody id="payments-tbody">
+            <tr><td colspan="5" class="text-center text-on-surface-variant py-8">Loading payments...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script type="module">
+    import { requireAuth }   from '/assets/js/services/auth.js';
+    import { initAppLayout } from '/assets/js/layout/ui.js';
+    import { getPayments }   from '/assets/js/services/api.js';
+
+    if (!requireAuth()) throw new Error('Not authenticated');
+
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'payments',
+      title:      'Payment Operations Center',
+      subtitle:   'Mission Control',
+    });
+
+    try {
+      const payments = await getPayments();
+      let allRows = payments;
+
+      const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+
+      const paid    = payments.filter(p => p.status === 'Paid');
+      const pending = payments.filter(p => p.status === 'Pending');
+      const revenue = paid.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+      const due     = pending.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
+
+      document.getElementById('total-revenue').textContent  = fmt(revenue);
+      document.getElementById('pending-amount').textContent = `${fmt(due)} DUE`;
+
+      function renderRows(list) {
+        if (list.length === 0) return '<tr><td colspan="5" class="text-center text-on-surface-variant py-8">No payments found.</td></tr>';
+        return list.map(p => {
+          const statusClass = p.status === 'Paid' ? 'status-pill-approved' : 'status-pill-pending';
+          const date = p.paid_at || p.created_at
+            ? new Date(p.paid_at || p.created_at).toLocaleDateString('en-PH', { month:'short', day:'2-digit', year:'numeric' })
+            : '—';
+          return `<tr>
+            <td>#${p.booking_id}</td>
+            <td>${fmt(p.amount)}</td>
+            <td>${p.method}</td>
+            <td>${date}</td>
+            <td><span class="${statusClass} text-[10px] px-2 py-0.5 rounded-full font-bold">${p.status}</span></td>
+          </tr>`;
+        }).join('');
+      }
+
+      const tbody = document.getElementById('payments-tbody');
+      tbody.innerHTML = renderRows(allRows);
+
+      // tab filter — runs after initAppLayout so the tabs are in the DOM
+      document.querySelectorAll('[data-tab]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const t = btn.getAttribute('data-tab');
+          const filtered = t === 'paid' ? paid : t === 'pending' ? pending : payments;
+          tbody.innerHTML = renderRows(filtered);
+        });
+      });
+
+    } catch (err) {
+      document.getElementById('payments-tbody').innerHTML =
+        `<tr><td colspan="5" class="text-center text-error py-8">${err.message}</td></tr>`;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<div id="manage-requests-overlay" class="hidden fixed inset-0 bg-black/40 z-[70]"></div>
+<div id="manage-requests-modal" class="hidden fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  <div class="res-modal bg-white rounded-xl w-full max-w-5xl flex flex-col max-h-[90vh]">
+    <header class="res-modal-header">
+      <div>
+        <h2 class="res-modal-title">Guest Requests <span id="manage-requests-pending-badge" class="res-action-badge res-action-badge--warn">0 waiting</span></h2>
+        <p class="res-hint">Single-room and group requests appear here.</p>
+      </div>
+      <button id="manage-requests-close" type="button" class="res-icon-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+    </header>
+    <div class="res-modal-toolbar">
+      <input id="manage-requests-search" type="search" class="res-input" placeholder="Search name, group, or ID…" />
+      <select id="manage-requests-status-filter" class="res-input res-input--select">
+        <option value="pending">Pending only</option>
+        <option value="all">All</option>
+        <option value="approved">Approved</option>
+        <option value="rejected">Rejected</option>
+      </select>
+    </div>
+    <div id="manage-requests-list-view" class="res-modal-body">
+      <table class="res-table">
+        <thead><tr>
+          <th>ID</th><th>Type</th><th>Guest / Group</th><th>Dates</th><th>Details</th><th>Status</th><th>Action</th>
+        </tr></thead>
+        <tbody id="manage-requests-table-body"></tbody>
+      </table>
+    </div>
+    <div id="manage-requests-reject-view" class="res-modal-body hidden"></div>
+    <footer class="res-modal-footer">
+      <p id="manage-requests-footer-count" class="res-hint"></p>
+      <p id="manage-requests-feedback" class="hidden res-hint"></p>
+      <button id="manage-requests-close-btn" type="button" class="res-btn res-btn--ghost">Close</button>
+    </footer>
+  </div>
+</div>

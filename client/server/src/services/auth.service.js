@@ -86,3 +86,12 @@ export const getMe = async (userId) => {
 
   return safeUser(rows[0]);
 };
+
+export const updateMe = async (userId, { full_name }) => {
+  if (isEmpty(full_name)) {
+    throw new Error('Full name is required');
+  }
+
+  await pool.query('UPDATE users SET full_name = ? WHERE id = ?', [full_name.trim(), userId]);
+  return getMe(userId);
+};

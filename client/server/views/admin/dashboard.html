@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard | AptSpace Admin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="/assets/js/config/tailwind-theme-base.js"></script>
+  <script src="/assets/js/config/tailwind-admin.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <link rel="stylesheet" href="/assets/css/components/components.css" />
+  <link rel="stylesheet" href="/assets/css/global/responsive.css" />
+  <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
+  <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
+</head>
+<body>
+
+  <div id="page-content">
+
+    <section class="kpi-grid kpi-grid--6 opacity-0">
+      <article class="kpi-card">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2.5 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">calendar_today</span>
+          </div>
+          <span class="kpi-badge bg-primary/10 text-primary" id="kpi-upcoming-label">Live</span>
+        </div>
+        <p class="kpi-label">Upcoming</p>
+        <p class="kpi-value" id="kpi-upcoming">—</p>
+      </article>
+      <article class="kpi-card">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2.5 bg-secondary/10 text-secondary rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">assignment_late</span>
+          </div>
+          <span class="kpi-badge bg-secondary/10 text-secondary">Needs Action</span>
+        </div>
+        <p class="kpi-label">Pending</p>
+        <p class="kpi-value" id="kpi-pending-count">—</p>
+      </article>
+      <article class="kpi-card">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2.5 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">verified</span>
+          </div>
+          <span class="kpi-badge bg-emerald-50 text-emerald-700" id="kpi-approval-rate">—</span>
+        </div>
+        <p class="kpi-label">Approved</p>
+        <p class="kpi-value" id="kpi-approved">—</p>
+      </article>
+      <article class="kpi-card">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2.5 bg-surface-container text-on-surface-variant rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">meeting_room</span>
+          </div>
+          <span class="kpi-badge bg-surface-container text-on-surface-variant" id="kpi-rooms-available-label">—</span>
+        </div>
+        <p class="kpi-label">Total Rooms</p>
+        <p class="kpi-value" id="kpi-total-rooms">—</p>
+      </article>
+      <article class="kpi-card">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2.5 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">bed</span>
+          </div>
+          <span class="kpi-badge bg-emerald-50 text-emerald-700" id="kpi-maintenance-label">—</span>
+        </div>
+        <p class="kpi-label">Occupancy</p>
+        <p class="kpi-value" id="kpi-occupancy">—</p>
+      </article>
+      <article class="kpi-card">
+        <div class="flex justify-between items-start mb-2">
+          <div class="p-2.5 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center">
+            <span class="material-symbols-outlined text-[1.35rem]">payments</span>
+          </div>
+          <span class="kpi-badge bg-amber-50 text-amber-700" id="kpi-revenue-label">Paid</span>
+        </div>
+        <p class="kpi-label">Revenue</p>
+        <p class="kpi-value" id="kpi-revenue">—</p>
+      </article>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+      <section class="lg:col-span-2 admin-panel">
+        <div class="admin-panel-header">
+          <div>
+            <h2>Facility Utilization</h2>
+            <p>Usage trends across seminary buildings (last 30 days)</p>
+          </div>
+          <span class="text-body-sm text-on-surface-variant font-medium px-3 py-2 bg-surface-container-low rounded-lg border border-outline-variant" id="chart-period-label">Loading…</span>
+        </div>
+        <div class="admin-panel-body h-[340px] relative flex items-end justify-between gap-4" id="building-chart-mount">
+          <p class="text-body-sm text-on-surface-variant absolute inset-0 flex items-center justify-center">Loading utilization data…</p>
+        </div>
+      </section>
+      <section class="admin-panel flex flex-col">
+        <div class="admin-panel-header">
+          <h2>Recent Activity</h2>
+          <a href="reservations.html" class="text-primary font-bold text-body-sm hover:underline">View All</a>
+        </div>
+        <div class="admin-panel-body space-y-5" id="recent-activity-mount">
+          <p class="text-body-sm text-on-surface-variant">Loading activity…</p>
+        </div>
+      </section>
+    </div>
+
+    <section class="admin-panel">
+      <div class="admin-panel-header">
+        <h2>Reservation Queue</h2>
+        <a href="reservations.html" class="btn-primary">View All Reservations</a>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="data-table admin-table w-full">
+          <thead>
+            <tr>
+              <th>Requester</th>
+              <th>Facility / Room</th>
+              <th>Dates</th>
+              <th>Guests</th>
+              <th>Status</th>
+              <th class="text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="queue-tbody">
+            <tr><td colspan="6" class="text-center py-8 text-on-surface-variant">Loading queue…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div id="action-cards-mount" class="hidden"></div>
+    <div id="timeline-mount" class="hidden"></div>
+  </div>
+
+  <script type="module">
+    import { requireAuth }   from '/assets/js/services/auth.js';
+    import { initAppLayout } from '/assets/js/layout/ui.js';
+    import { loadDashboard } from '/assets/js/features/dashboard.js';
+
+    if (!requireAuth()) throw new Error('Not authenticated');
+
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'dashboard',
+      title:      'Reservation Operations Center',
+      subtitle:   'Mission Control',
+    });
+
+    try {
+      await loadDashboard();
+      window.addEventListener('booking:updated', loadDashboard);
+    } catch (err) {
+      const mount = document.getElementById('page-content');
+      if (mount) {
+        mount.insertAdjacentHTML('afterbegin',
+          `<div class="bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-4 py-3 text-sm mb-4">${err.message || 'Failed to load dashboard data.'}</div>`);
+      }
+      console.error('Dashboard load failed:', err);
+    }
+  </script>
+</body>
+</html>
