@@ -79,8 +79,8 @@ export function renderBookingBar(booking, rangeStart, totalDays) {
   const label = booking.status === 'approved' ? 'Confirmed' : booking.status;
 
   return `
-    <div class="gantt-booking-bar h-[64px]" style="grid-column: ${clampedStart} / ${Math.min(colEnd, totalDays + 1)}">
-      <div class="h-full ${pill} rounded-lg p-4 flex flex-col justify-center shadow-sm border-l-4 ${accent} cursor-pointer hover:scale-[1.01] transition-transform"
+    <div class="gantt-booking-bar" style="grid-column: ${clampedStart} / ${Math.min(colEnd, totalDays + 1)}">
+      <div class="h-full min-h-[64px] ${pill} rounded-lg px-4 py-3 flex flex-col justify-center shadow-sm border-l-4 ${accent} cursor-pointer hover:scale-[1.01] transition-transform"
            data-booking-id="${booking.id}" role="button" tabindex="0">
         <span class="text-[12px] font-bold truncate">#APT-${booking.id}: ${booking.title.toUpperCase()}</span>
         <div class="flex items-center gap-1.5 mt-1">
@@ -93,7 +93,7 @@ export function renderBookingBar(booking, rangeStart, totalDays) {
 
 export function renderTimelineRow(room, barsHtml, todayCol, totalDays) {
   const todayLine = todayCol
-    ? `<div class="absolute left-[calc((${todayCol}/${totalDays})*100%)] top-0 bottom-0 w-[2px] bg-primary/20 z-0 pointer-events-none"></div>`
+    ? `<div class="gantt-today-line" style="--today-col: ${todayCol}"></div>`
     : '';
 
   return `
@@ -102,8 +102,8 @@ export function renderTimelineRow(room, barsHtml, todayCol, totalDays) {
         <span class="text-body-md font-bold text-on-surface">${room.building} ${room.roomNumber}</span>
         <span class="text-[10px] font-medium text-on-surface-variant/60 uppercase">${room.building} • ${room.roomType}</span>
       </div>
-      <div class="overflow-x-auto no-scrollbar w-full timeline-scroll">
-        <div class="gantt-grid relative h-full flex items-center py-4" style="--timeline-days: ${totalDays}">
+      <div class="timeline-scroll no-scrollbar w-full">
+        <div class="gantt-grid relative py-4" style="--timeline-days: ${totalDays}">
           ${barsHtml}
           ${todayLine}
         </div>
@@ -152,7 +152,7 @@ export function renderTimelineShell({ title, periodLabel }) {
             <span class="text-[11px] font-bold text-outline uppercase tracking-widest">Facility Unit</span>
             <span class="material-symbols-outlined text-[16px] text-outline">tune</span>
           </div>
-          <div class="overflow-x-auto no-scrollbar w-full border-t border-outline-variant/10 timeline-scroll">
+          <div class="timeline-scroll no-scrollbar w-full border-t border-outline-variant/10">
             <div class="gantt-grid" id="timeline-day-headers" style="--timeline-days: 31"></div>
           </div>
         </div>
