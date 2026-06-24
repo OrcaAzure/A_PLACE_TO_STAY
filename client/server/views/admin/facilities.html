@@ -41,7 +41,6 @@
       font-weight: 600;
       color: #64748b;
       border-radius: 0.625rem;
-      transition: all 0.15s;
     }
     .fac-tab.is-active {
       background: #1a365d;
@@ -95,19 +94,19 @@
     
     <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4">
       <div class="flex items-center gap-2 overflow-x-auto pb-2 xl:pb-0 scrollbar-none">
-        <button type="button" data-status-filter="" class="status-pill-btn bg-blue-600 text-white px-4 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 shrink-0 shadow-sm shadow-blue-500/10">
+        <button type="button" data-status-filter="" class="status-pill-btn bg-blue-600 text-white px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-2 shrink-0 shadow-sm shadow-blue-500/10">
           <span class="material-symbols-outlined text-[18px]">apps</span>
           <span>All Rooms</span>
         </button>
-        <button type="button" data-status-filter="Available" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0">
+        <button type="button" data-status-filter="Available" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 shrink-0">
           <span class="material-symbols-outlined text-[18px] text-emerald-600">check_circle</span>
           <span>Ready</span>
         </button>
-        <button type="button" data-status-filter="Occupied" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0">
+        <button type="button" data-status-filter="Occupied" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 shrink-0">
           <span class="material-symbols-outlined text-[18px] text-amber-500">hotel</span>
           <span>In Use</span>
         </button>
-        <button type="button" data-status-filter="Maintenance" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0">
+        <button type="button" data-status-filter="Maintenance" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg flex items-center gap-2 shrink-0">
           <span class="material-symbols-outlined text-[18px] text-rose-500">build</span>
           <span>Repair</span>
         </button>
@@ -393,10 +392,10 @@
       const triggerMount = document.getElementById('building-tab-triggers');
       const uniqueBuildings = [...new Set(list.map(r => normalizeRoom(r).building))].filter(Boolean);
 
-      let HTML = `<button type="button" data-bldg="" class="bldg-tab-btn px-3 py-1.5 text-xs font-bold bg-white text-slate-800 shadow-sm rounded-md transition-all">All Buildings</button>`;
+      let HTML = `<button type="button" data-bldg="" class="bldg-tab-btn px-3 py-1.5 text-xs font-bold bg-white text-slate-800 shadow-sm rounded-md">All Buildings</button>`;
       
       HTML += uniqueBuildings.map(bldg => {
-        return `<button type="button" data-bldg="${bldg}" class="bldg-tab-btn px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-all">${bldg}</button>`;
+        return `<button type="button" data-bldg="${bldg}" class="bldg-tab-btn px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800">${bldg}</button>`;
       }).join('');
 
       triggerMount.innerHTML = HTML;
@@ -405,9 +404,9 @@
       document.querySelectorAll('.bldg-tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('.bldg-tab-btn').forEach(b => {
-            b.className = "bldg-tab-btn px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-all";
+            b.className = "bldg-tab-btn px-3 py-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800";
           });
-          btn.className = "bldg-tab-btn px-3 py-1.5 text-xs font-bold bg-white text-slate-800 shadow-sm rounded-md transition-all";
+          btn.className = "bldg-tab-btn px-3 py-1.5 text-xs font-bold bg-white text-slate-800 shadow-sm rounded-md";
           currentBuildingFilter = btn.getAttribute('data-bldg');
           generateInteractiveGrid(allRooms);
         });

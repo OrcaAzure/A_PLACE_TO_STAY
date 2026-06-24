@@ -13,10 +13,9 @@ main > header.anim-static {
   opacity: 1;
 }
 
-/* ── Sidebar — compact rail on desktop; expands on hover ── */
+/* ── Sidebar — fixed full width on desktop, no expand animation ── */
 .admin-shell #app-sidebar {
   width: 280px;
-  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s ease;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -41,64 +40,35 @@ main > header.anim-static {
   box-shadow: 0 2px 8px rgba(26, 54, 93, 0.25);
 }
 
-.admin-brand-text {
-  transition: opacity 0.25s ease, max-width 0.35s ease;
-}
-
 @media (min-width: 1024px) {
   .admin-shell #app-sidebar {
-    width: 4.75rem;
-    padding-left: 0.625rem;
-    padding-right: 0.625rem;
-  }
-
-  .admin-shell #app-sidebar:hover,
-  .admin-shell #app-sidebar:focus-within {
     width: 280px;
     padding-left: 1rem;
     padding-right: 1rem;
-    box-shadow: 4px 0 24px rgba(26, 54, 93, 0.1);
   }
 
   .admin-shell #app-sidebar .admin-brand-text,
   .admin-shell #app-sidebar .admin-nav-label,
   .admin-shell #app-sidebar .admin-portal-label {
-    opacity: 0;
-    max-width: 0;
-    overflow: hidden;
+    opacity: 1;
+    max-width: 14rem;
+    overflow: visible;
     white-space: nowrap;
   }
 
-  .admin-shell #app-sidebar:hover .admin-brand-text,
-  .admin-shell #app-sidebar:focus-within .admin-brand-text,
-  .admin-shell #app-sidebar:hover .admin-nav-label,
-  .admin-shell #app-sidebar:focus-within .admin-nav-label,
-  .admin-shell #app-sidebar:hover .admin-portal-label,
-  .admin-shell #app-sidebar:focus-within .admin-portal-label {
-    opacity: 1;
-    max-width: 14rem;
-  }
-
   .admin-shell #app-sidebar nav a {
-    justify-content: center;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-  }
-
-  .admin-shell #app-sidebar:hover nav a,
-  .admin-shell #app-sidebar:focus-within nav a {
     justify-content: flex-start;
     padding-left: 1rem;
     padding-right: 1rem;
   }
 
   .admin-shell #app-sidebar #logout-btn {
-    justify-content: center;
+    justify-content: flex-start;
   }
 
-  .admin-shell #app-sidebar:hover #logout-btn,
-  .admin-shell #app-sidebar:focus-within #logout-btn {
-    justify-content: flex-start;
+  .admin-shell #app-sidebar nav a.admin-nav-active {
+    border-left: 4px solid var(--color-primary, #1A365D);
+    padding-left: calc(1rem - 4px);
   }
 }
 
@@ -107,11 +77,9 @@ main > header.anim-static {
   padding: 0.75rem 1rem;
   font-size: 1rem;
   border-radius: 0.5rem;
-  transition: background-color 0.22s ease, color 0.22s ease, transform 0.2s ease;
 }
 
 .admin-shell #app-sidebar nav a:hover {
-  transform: translateX(3px);
   background: rgba(26, 54, 93, 0.08);
 }
 
@@ -123,22 +91,6 @@ main > header.anim-static {
   background: rgba(26, 54, 93, 0.08);
   color: var(--color-primary, #1A365D);
   font-weight: 700;
-}
-
-@media (min-width: 1024px) {
-  .admin-shell #app-sidebar:not(:hover):not(:focus-within) nav a.admin-nav-active {
-    border-left: none;
-    padding-left: 0.75rem;
-    background: rgba(26, 54, 93, 0.14);
-  }
-}
-
-@media (min-width: 1024px) {
-  .admin-shell #app-sidebar:hover nav a.admin-nav-active,
-  .admin-shell #app-sidebar:focus-within nav a.admin-nav-active {
-    border-left: 4px solid var(--color-primary, #1A365D);
-    padding-left: calc(1rem - 4px);
-  }
 }
 
 @media (max-width: 1023px) {

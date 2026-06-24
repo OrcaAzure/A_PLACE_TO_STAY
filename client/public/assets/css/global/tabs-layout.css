@@ -1,5 +1,5 @@
 /**
- * Shared tab bars + panel transitions (guest & admin).
+ * Shared tab bars (guest & admin).
  */
 
 .app-tabs {
@@ -31,18 +31,12 @@
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   cursor: pointer;
-  transition:
-    color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    background-color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.2s ease;
   white-space: nowrap;
 }
 
 .app-tab-btn:hover {
   color: var(--color-primary, #1A365D);
   background: rgba(26, 54, 93, 0.06);
-  transform: translateY(-1px);
 }
 
 .app-tab-btn:focus-visible {
@@ -65,31 +59,10 @@
 
 .app-tab-panel {
   width: 100%;
-  opacity: 1;
-  transform: translateY(0);
-  transition:
-    opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
-    visibility 0.35s;
-  visibility: visible;
 }
 
 .app-tab-panel.is-tab-hidden {
   display: none !important;
-}
-
-.app-tab-panel.is-tab-leaving {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transform: translateY(10px);
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.app-tab-panel.is-tab-entering {
-  opacity: 0;
-  transform: translateY(10px);
 }
 
 /* Full-width tab workspace (settings, drawers) */
@@ -112,13 +85,5 @@
 @media (min-width: 1024px) {
   .app-tab-workspace .app-tab-panels {
     padding: 1.75rem 2rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .app-tab-btn,
-  .app-tab-panel {
-    transition: none !important;
-    transform: none !important;
   }
 }

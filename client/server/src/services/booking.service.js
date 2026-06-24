@@ -1,6 +1,7 @@
 import { pool } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import { calcNights, isEmpty } from '../utils/helpers.js';
+import { DEFAULT_BOOKING_GUEST_ROLE } from '../utils/constants.js';
 
 const ACTIVE_STATUSES = ['Pending', 'Approved'];
 
@@ -127,7 +128,7 @@ export async function resolveGuestUser({ userId, guestName, email }) {
   const hashedPassword = await bcrypt.hash(Math.random().toString(36).slice(2), 10);
   const [result] = await pool.query(
     'INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)',
-    [name, guestEmail, hashedPassword, 'Student']
+    [name, guestEmail, hashedPassword, DEFAULT_BOOKING_GUEST_ROLE]
   );
   return result.insertId;
 }

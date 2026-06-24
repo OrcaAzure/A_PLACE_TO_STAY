@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../config/db.js';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
 import { safeUser, isEmpty } from '../utils/helpers.js';
+import { DEFAULT_BOOKING_GUEST_ROLE } from '../utils/constants.js';
 
 export const login = async ({ email, password }) => {
   if (isEmpty(email) || isEmpty(password)) {
@@ -60,7 +61,7 @@ export const register = async ({ full_name, email, password, role }) => {
 
   const [result] = await pool.query(
     'INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)',
-    [full_name, email, hashedPassword, role || 'Student']
+    [full_name, email, hashedPassword, role || DEFAULT_BOOKING_GUEST_ROLE]
   );
 
   const [newUser] = await pool.query(

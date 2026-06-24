@@ -5,10 +5,11 @@ const SEED_USERS = [
   { full_name: 'System Administrator', email: 'admin@aptspace.com',          role: 'Super Admin',   status: 'Active' },
   { full_name: 'Admin User',           email: 'admin2@aptspace.com',         role: 'Admin',         status: 'Active' },
   { full_name: 'Maria Santos',         email: 'maria.santos@apts.edu.ph',    role: 'Faculty',       status: 'Active' },
-  { full_name: 'James Reyes',          email: 'james.reyes@apts.edu.ph',     role: 'Student',       status: 'Active' },
+  { full_name: 'James Reyes',          email: 'james.reyes@apts.edu.ph',     role: 'Faculty',       status: 'Active' },
   { full_name: 'Ruth Villanueva',      email: 'ruth.villanueva@apts.edu.ph', role: 'Staff',         status: 'Active' },
-  { full_name: 'Paul Mendoza',         email: 'paul.mendoza@apts.edu.ph',    role: 'Missionary',    status: 'Active' },
-  { full_name: 'Grace Tan',            email: 'grace.tan@apts.edu.ph',       role: 'GNC View Only', status: 'Active' },
+  { full_name: 'Paul Mendoza',         email: 'paul.mendoza@apts.edu.ph',    role: 'Missionary',       status: 'Active' },
+  { full_name: 'Grace Tan',            email: 'grace.tan@apts.edu.ph',       role: 'Supervisory User', status: 'Active' },
+  { full_name: 'David Cho',            email: 'david.cho@apts.edu.ph',       role: 'GMC',              status: 'Active' },
 ];
 
 const DEMO_BOOKINGS = [
@@ -127,6 +128,49 @@ export async function runSchemaPatches() {
     );
   } catch {
     /* column may already include Snack */
+  }
+
+  try {
+    await pool.execute(
+      `ALTER TABLE users
+       MODIFY role ENUM(
+         'Super Admin',
+         'Admin',
+         'GNC View Only',
+         'Supervisory User',
+         'GMC',
+         'Faculty',
+         'Staff',
+         'Missionary'
+       ) NOT NULL DEFAULT 'Faculty'`
+    );
+  } catch {
+    /* enum may already include new values */
+  }
+
+  try {
+    await pool.execute(
+      `UPDATE users SET role = 'Supervisory User' WHERE role = 'GNC View Only'`
+    );
+  } catch {
+    /* legacy role may not exist */
+  }
+
+  try {
+    await pool.execute(
+      `ALTER TABLE users
+       MODIFY role ENUM(
+         'Super Admin',
+         'Admin',
+         'Supervisory User',
+         'GMC',
+         'Faculty',
+         'Staff',
+         'Missionary'
+       ) NOT NULL DEFAULT 'Faculty'`
+    );
+  } catch {
+    /* enum may already be up to date */
   }
 }
 

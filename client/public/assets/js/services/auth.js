@@ -52,7 +52,7 @@ export function getCurrentUser() {
 /* Roles that use the admin portal. Everyone else lands in the guest portal. */
 export const ADMIN_ROLES = ['Super Admin', 'Admin'];
 /* Guest-portal roles that may only view — no creating/editing/cancelling. */
-export const READ_ONLY_ROLES = ['GNC View Only'];
+export const READ_ONLY_ROLES = ['Supervisory User'];
 
 export function getUserRole() {
   const user = getCurrentUser();
@@ -71,7 +71,7 @@ export function isReadOnlyRole() {
  * Tailors the guest UI to the signed-in user's role.
  * - Fills any `.js-portal-label` element with "<Role> Portal".
  * - Reveals/fills any `.js-role-badge` element with the role name.
- * - For read-only roles (e.g. GNC View Only): marks the document with the
+ * - For read-only roles (e.g. Supervisory User): marks the document with the
  *   `is-readonly` class, hides every `.js-requires-write` element, and reveals
  *   any `.js-readonly-banner`.
  * Returns { role, readOnly } so callers can guard dynamically-rendered actions.

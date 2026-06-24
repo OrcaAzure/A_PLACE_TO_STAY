@@ -4,7 +4,6 @@
 
 :root {
   --guest-sidebar-width: 260px;
-  --guest-sidebar-collapsed: 4.5rem;
   --guest-header-height: 4rem;
   --guest-bottom-nav-height: 5.75rem;
 }
@@ -16,10 +15,9 @@
   background-color: #F8FAFC;
 }
 
-/* ── Sidebar ── */
+/* ── Sidebar — fixed width, no expand/collapse animation ── */
 .guest-shell > aside.guest-sidebar {
   width: var(--guest-sidebar-width);
-  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s ease;
   overflow: hidden;
   flex-shrink: 0;
 }
@@ -51,27 +49,10 @@
 
 .guest-shell > aside.guest-sidebar .guest-brand-text {
   min-width: 0;
-  transition: opacity 0.25s ease, max-width 0.35s ease;
-}
-
-.guest-shell > aside.guest-sidebar nav a {
-  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
 }
 
 .guest-shell > aside.guest-sidebar nav a:hover {
   background: rgba(26, 54, 93, 0.08);
-  transform: translateX(2px);
-}
-
-/* Collapsed rail labels / footer — fully removed from layout, not just invisible */
-.guest-shell > aside.guest-sidebar .guest-brand-text,
-.guest-shell > aside.guest-sidebar .guest-nav-label,
-.guest-shell > aside.guest-sidebar .js-portal-label {
-  transition: opacity 0.25s ease, max-width 0.35s ease;
-}
-
-.guest-shell > aside.guest-sidebar .guest-sidebar-footer {
-  transition: opacity 0.25s ease, max-height 0.35s ease, padding 0.35s ease;
 }
 
 /* ── Header ── */
@@ -144,19 +125,13 @@
   }
 }
 
-/* ── Desktop: CSS grid — sidebar + content never overlap ── */
+/* ── Desktop: CSS grid — sidebar always full width ── */
 @media (min-width: 1024px) {
   .guest-shell {
     display: grid;
-    grid-template-columns: var(--guest-sidebar-collapsed) minmax(0, 1fr);
+    grid-template-columns: var(--guest-sidebar-width) minmax(0, 1fr);
     grid-template-rows: auto 1fr auto;
     min-height: 100vh;
-    transition: grid-template-columns 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .guest-shell:has(aside.guest-sidebar:hover),
-  .guest-shell:has(aside.guest-sidebar:focus-within) {
-    grid-template-columns: var(--guest-sidebar-width) minmax(0, 1fr);
   }
 
   .guest-shell > aside.guest-sidebar {
@@ -167,65 +142,30 @@
     left: auto !important;
     height: auto !important;
     min-height: 100vh;
-    width: var(--guest-sidebar-collapsed);
-    padding-left: 0.625rem;
-    padding-right: 0.625rem;
-  }
-
-  .guest-shell > aside.guest-sidebar:hover,
-  .guest-shell > aside.guest-sidebar:focus-within {
     width: var(--guest-sidebar-width);
     padding-left: 1.25rem;
     padding-right: 0.875rem;
-    box-shadow: 4px 0 24px rgba(26, 54, 93, 0.1);
   }
 
   .guest-shell > aside.guest-sidebar .guest-brand-text,
   .guest-shell > aside.guest-sidebar .guest-nav-label,
   .guest-shell > aside.guest-sidebar .js-portal-label {
-    opacity: 0;
-    max-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    pointer-events: none;
-  }
-
-  .guest-shell > aside.guest-sidebar:hover .guest-brand-text,
-  .guest-shell > aside.guest-sidebar:focus-within .guest-brand-text,
-  .guest-shell > aside.guest-sidebar:hover .guest-nav-label,
-  .guest-shell > aside.guest-sidebar:focus-within .guest-nav-label,
-  .guest-shell > aside.guest-sidebar:hover .js-portal-label,
-  .guest-shell > aside.guest-sidebar:focus-within .js-portal-label {
     opacity: 1;
     max-width: 12rem;
+    overflow: visible;
+    white-space: nowrap;
     pointer-events: auto;
   }
 
   .guest-shell > aside.guest-sidebar .guest-sidebar-footer {
-    opacity: 0;
-    max-height: 0;
-    padding-top: 0 !important;
-    padding-bottom: 0 !important;
-    overflow: hidden;
-    pointer-events: none;
-  }
-
-  .guest-shell > aside.guest-sidebar:hover .guest-sidebar-footer,
-  .guest-shell > aside.guest-sidebar:focus-within .guest-sidebar-footer {
     opacity: 1;
-    max-height: 6rem;
+    max-height: none;
     padding-top: 1rem !important;
+    overflow: visible;
     pointer-events: auto;
   }
 
   .guest-shell > aside.guest-sidebar nav a {
-    justify-content: center;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-  }
-
-  .guest-shell > aside.guest-sidebar:hover nav a,
-  .guest-shell > aside.guest-sidebar:focus-within nav a {
     justify-content: flex-start;
     padding-left: 1rem;
     padding-right: 1rem;
@@ -267,17 +207,8 @@
 }
 
 /* Bottom nav */
-.guest-bottom-nav a {
-  transition: background-color 0.25s ease, color 0.25s ease, transform 0.2s ease;
-}
-
 .guest-bottom-nav a:hover {
-  transform: translateY(-2px);
   background: rgba(26, 54, 93, 0.06);
-}
-
-.guest-bottom-nav a:active {
-  transform: translateY(0);
 }
 
 @media (prefers-reduced-motion: reduce) {

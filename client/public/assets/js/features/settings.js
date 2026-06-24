@@ -8,7 +8,8 @@ import { initTabGroup } from '/assets/js/layout/tabs.js';
 const ROLE_DESCRIPTIONS = {
   'Super Admin': 'Full system access',
   Admin: 'Manage bookings, rooms, and users',
-  'GNC View Only': 'Read-only access to reports',
+  'Supervisory User': 'Read-only access to reservations and reports',
+  GMC: 'Guest booking access (GMC staff)',
   Faculty: 'Guest booking access',
   Staff: 'Guest booking access',
   Missionary: 'Guest booking access',

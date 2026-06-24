@@ -1,17 +1,9 @@
 /**
- * Smooth, responsive tab switching for guest & admin surfaces.
+ * Tab switching for guest & admin surfaces (instant, no animation).
  */
-
-import { prefersReducedMotion } from '/assets/js/layout/animations.js';
 
 const TAB_BTN_ACTIVE = 'app-tab-active';
 const PANEL_HIDDEN = 'is-tab-hidden';
-const PANEL_LEAVING = 'is-tab-leaving';
-const PANEL_ENTERING = 'is-tab-entering';
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function setTabButtonsActive(tabs, activeId, tabAttr) {
   tabs.forEach((tab) => {
@@ -21,10 +13,6 @@ function setTabButtonsActive(tabs, activeId, tabAttr) {
     if (active) tab.setAttribute('tabindex', '0');
     else tab.setAttribute('tabindex', '-1');
   });
-}
-
-function findVisiblePanel(panels) {
-  return [...panels].find((p) => !p.classList.contains(PANEL_HIDDEN) && !p.classList.contains('hidden'));
 }
 
 /**
@@ -90,10 +78,8 @@ export function initTabGroup(options = {}) {
   return { switchTo, tabs, panels };
 }
 
-/**
- * Crossfade between tab panels with hover-friendly tab button states.
- */
-export async function switchTabPanel({
+/** Instantly show the selected tab panel. */
+export function switchTabPanel({
   tabs,
   panels,
   activeId,
@@ -104,40 +90,14 @@ export async function switchTabPanel({
   const next = [...panels].find((p) => p.getAttribute(panelAttr) === activeId);
   if (!next) return;
 
-  const current = findVisiblePanel(panels);
+  const current = [...panels].find((p) => !p.classList.contains(PANEL_HIDDEN) && !p.classList.contains('hidden'));
   if (current === next) return;
 
   setTabButtonsActive(tabs, activeId, tabAttr);
 
-  if (prefersReducedMotion()) {
-    panels.forEach((p) => {
-      const show = p.getAttribute(panelAttr) === activeId;
-      p.classList.toggle(PANEL_HIDDEN, !show);
-      if (useHiddenClass) p.classList.toggle('hidden', !show);
-    });
-    return;
-  }
-
-  const duration = 320;
-
-  if (current) {
-    current.classList.add(PANEL_LEAVING);
-    await sleep(duration);
-    current.classList.add(PANEL_HIDDEN);
-    current.classList.remove(PANEL_LEAVING);
-    if (useHiddenClass) current.classList.add('hidden');
-  }
-
-  next.classList.remove(PANEL_HIDDEN);
-  if (useHiddenClass) next.classList.remove('hidden');
-  next.classList.add(PANEL_ENTERING);
-  await sleep(20);
-  next.classList.remove(PANEL_ENTERING);
-
   panels.forEach((p) => {
-    if (p !== next) {
-      p.classList.add(PANEL_HIDDEN);
-      if (useHiddenClass) p.classList.add('hidden');
-    }
+    const show = p.getAttribute(panelAttr) === activeId;
+    p.classList.toggle(PANEL_HIDDEN, !show);
+    if (useHiddenClass) p.classList.toggle('hidden', !show);
   });
 }
