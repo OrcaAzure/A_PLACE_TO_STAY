@@ -13,9 +13,93 @@ main > header.anim-static {
   opacity: 1;
 }
 
-/* ── Sidebar ── */
+/* ── Sidebar — compact rail on desktop; expands on hover ── */
 .admin-shell #app-sidebar {
   width: 280px;
+  transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.35s ease;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.admin-brand {
+  color: inherit;
+}
+
+.admin-brand-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 0.625rem;
+  background: linear-gradient(145deg, #1A365D 0%, #2C5282 100%);
+  color: #fff;
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  box-shadow: 0 2px 8px rgba(26, 54, 93, 0.25);
+}
+
+.admin-brand-text {
+  transition: opacity 0.25s ease, max-width 0.35s ease;
+}
+
+@media (min-width: 1024px) {
+  .admin-shell #app-sidebar {
+    width: 4.75rem;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+  }
+
+  .admin-shell #app-sidebar:hover,
+  .admin-shell #app-sidebar:focus-within {
+    width: 280px;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    box-shadow: 4px 0 24px rgba(26, 54, 93, 0.1);
+  }
+
+  .admin-shell #app-sidebar .admin-brand-text,
+  .admin-shell #app-sidebar .admin-nav-label,
+  .admin-shell #app-sidebar .admin-portal-label {
+    opacity: 0;
+    max-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .admin-shell #app-sidebar:hover .admin-brand-text,
+  .admin-shell #app-sidebar:focus-within .admin-brand-text,
+  .admin-shell #app-sidebar:hover .admin-nav-label,
+  .admin-shell #app-sidebar:focus-within .admin-nav-label,
+  .admin-shell #app-sidebar:hover .admin-portal-label,
+  .admin-shell #app-sidebar:focus-within .admin-portal-label {
+    opacity: 1;
+    max-width: 14rem;
+  }
+
+  .admin-shell #app-sidebar nav a {
+    justify-content: center;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .admin-shell #app-sidebar:hover nav a,
+  .admin-shell #app-sidebar:focus-within nav a {
+    justify-content: flex-start;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .admin-shell #app-sidebar #logout-btn {
+    justify-content: center;
+  }
+
+  .admin-shell #app-sidebar:hover #logout-btn,
+  .admin-shell #app-sidebar:focus-within #logout-btn {
+    justify-content: flex-start;
+  }
 }
 
 .admin-shell #app-sidebar nav a {
@@ -23,6 +107,12 @@ main > header.anim-static {
   padding: 0.75rem 1rem;
   font-size: 1rem;
   border-radius: 0.5rem;
+  transition: background-color 0.22s ease, color 0.22s ease, transform 0.2s ease;
+}
+
+.admin-shell #app-sidebar nav a:hover {
+  transform: translateX(3px);
+  background: rgba(26, 54, 93, 0.08);
 }
 
 .admin-shell #app-sidebar nav a .material-symbols-outlined {
@@ -30,11 +120,32 @@ main > header.anim-static {
 }
 
 .admin-shell #app-sidebar nav a.admin-nav-active {
-  border-left: 4px solid var(--color-primary, #1A365D);
-  padding-left: calc(1rem - 4px);
   background: rgba(26, 54, 93, 0.08);
   color: var(--color-primary, #1A365D);
   font-weight: 700;
+}
+
+@media (min-width: 1024px) {
+  .admin-shell #app-sidebar:not(:hover):not(:focus-within) nav a.admin-nav-active {
+    border-left: none;
+    padding-left: 0.75rem;
+    background: rgba(26, 54, 93, 0.14);
+  }
+}
+
+@media (min-width: 1024px) {
+  .admin-shell #app-sidebar:hover nav a.admin-nav-active,
+  .admin-shell #app-sidebar:focus-within nav a.admin-nav-active {
+    border-left: 4px solid var(--color-primary, #1A365D);
+    padding-left: calc(1rem - 4px);
+  }
+}
+
+@media (max-width: 1023px) {
+  .admin-shell #app-sidebar nav a.admin-nav-active {
+    border-left: 4px solid var(--color-primary, #1A365D);
+    padding-left: calc(1rem - 4px);
+  }
 }
 
 .admin-shell #logout-btn {
@@ -47,11 +158,214 @@ main > header.anim-static {
   font-size: 1.35rem !important;
 }
 
-/* ── Header ── */
+/* ── App header (top bar) ── */
+.admin-app-header {
+  background: #fff;
+  border-bottom: 1px solid var(--color-outline-variant, #CBD5E0);
+  box-shadow: 0 1px 0 rgba(26, 54, 93, 0.04);
+}
+
+.admin-app-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 4.5rem;
+  padding: 0.75rem 1.5rem;
+  max-width: 100%;
+}
+
+.admin-app-header__lead {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-app-header__context {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-neutral, #4A5568);
+  margin-bottom: 0.125rem;
+  line-height: 1.2;
+}
+
+.admin-page-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.admin-page-title {
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: var(--color-primary, #1A365D);
+  line-height: 1.25;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-page-subtitle {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-neutral, #4A5568);
+  line-height: 1.3;
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: 9999px;
+  background: #F0FFF4;
+  border: 1px solid #C6F6D5;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #22543D;
+}
+
+.admin-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: #38A169;
+  box-shadow: 0 0 0 3px rgba(56, 161, 105, 0.2);
+}
+
+.admin-header-icon-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  color: var(--color-neutral, #4A5568);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.admin-header-icon-btn:hover {
+  background: rgba(26, 54, 93, 0.06);
+  color: var(--color-primary, #1A365D);
+}
+
+.admin-header-icon-btn .material-symbols-outlined {
+  font-size: 1.5rem !important;
+}
+
+.admin-notif-dot {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--color-secondary, #A81D23);
+  border: 2px solid #fff;
+}
+
+.admin-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-left: 0.75rem;
+  margin-left: 0.25rem;
+  border-left: 1px solid var(--color-outline-variant, #CBD5E0);
+}
+
+.admin-user-chip__text {
+  text-align: right;
+  min-width: 0;
+  max-width: 11rem;
+}
+
+.admin-user-chip__name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #1A202C;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-user-chip__role {
+  font-size: 0.8125rem;
+  color: var(--color-neutral, #4A5568);
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-user-chip__avatar {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1rem;
+  color: var(--color-primary, #1A365D);
+  background: rgba(26, 54, 93, 0.08);
+  border: 2px solid rgba(26, 54, 93, 0.12);
+}
+
+@media (max-width: 639px) {
+  .admin-app-header__inner {
+    padding: 0.625rem 1rem;
+    min-height: 4rem;
+  }
+
+  .admin-page-title {
+    font-size: 1.125rem;
+  }
+
+  .admin-status-badge span:last-child {
+    display: none;
+  }
+
+  .admin-status-badge {
+    padding: 0.5rem;
+  }
+}
+
+/* Legacy selectors — keep for any pages not using new header markup */
 .admin-shell main > header {
   min-height: 4.5rem;
   padding-left: 1.5rem;
   padding-right: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.admin-shell main > header > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.admin-shell main > header > div:last-child {
+  flex-shrink: 0;
 }
 
 .admin-shell main > header h2 {
@@ -65,9 +379,17 @@ main > header.anim-static {
 }
 
 /* ── Page content ── */
+.admin-shell main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .admin-shell #page-content {
   padding: 1.75rem 2rem;
   gap: 1.75rem;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 /* ── Shared admin panels (replaces mixed slate / token markup) ── */
@@ -115,13 +437,23 @@ main > header.anim-static {
 
 @media (min-width: 1024px) {
   .kpi-grid--6 {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
 @media (min-width: 1280px) {
   .kpi-grid--6 {
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .kpi-card .kpi-value {
+    font-size: 1.5rem;
+  }
+
+  .kpi-card .kpi-badge {
+    font-size: 0.6875rem;
   }
 }
 

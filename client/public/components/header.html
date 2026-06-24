@@ -1,25 +1,27 @@
-<header class="anim-static min-h-[4.5rem] border-b border-outline-variant flex justify-between items-center px-lg bg-white shrink-0 z-30">
-  <div class="flex items-center gap-md min-w-0">
-    <h2 class="font-headline-md text-headline-md text-on-surface truncate">{{TITLE}}</h2>
-    <div class="h-5 w-px bg-outline-variant hidden sm:block" aria-hidden="true"></div>
-    <p class="text-body-sm text-on-surface-variant font-semibold hidden sm:block">{{SUBTITLE}}</p>
-  </div>
-  <div class="flex items-center gap-md shrink-0">
-    <div class="admin-status-badge flex items-center gap-2 bg-surface-container-low px-3 py-2 rounded-full border border-outline-variant/30" title="System is running normally">
-      <span class="w-2.5 h-2.5 rounded-full bg-secondary" aria-hidden="true"></span>
-      <span class="text-body-sm font-bold text-on-surface-variant">System Live</span>
-    </div>
-    <button id="notifications-btn" type="button" class="p-2.5 min-h-[3rem] min-w-[3rem] flex items-center justify-center text-on-surface-variant hover:bg-surface-variant/50 rounded-lg transition-colors relative" aria-label="Notifications">
-      <span class="material-symbols-outlined text-[1.5rem]">notifications</span>
-      <span class="absolute top-2 right-2 w-2.5 h-2.5 bg-error rounded-full" aria-hidden="true"></span>
-    </button>
-    <div class="flex items-center gap-sm pl-3 ml-1 border-l border-outline-variant/30">
-      <div class="text-right hidden sm:block">
-        <p class="text-body-sm font-bold text-on-surface leading-tight">{{USER_NAME}}</p>
-        <p class="text-body-sm text-on-surface-variant">{{USER_ROLE}}</p>
+<header class="admin-app-header anim-static shrink-0 z-30">
+  <div class="admin-app-header__inner">
+    <div class="admin-app-header__lead min-w-0">
+      <p class="admin-app-header__context">AptSpace Admin</p>
+      <div class="admin-page-heading">
+        <h2 class="admin-page-title">{{TITLE}}</h2>
+        <p class="admin-page-subtitle">{{SUBTITLE}}</p>
       </div>
-      <div class="w-11 h-11 rounded-full ring-2 ring-primary/15 bg-primary/10 flex items-center justify-center text-primary font-bold text-base" aria-hidden="true">
-        {{USER_INITIAL}}
+    </div>
+    <div class="admin-app-header__actions shrink-0">
+      <div class="admin-status-badge" title="System is running normally">
+        <span class="admin-status-dot" aria-hidden="true"></span>
+        <span>System Live</span>
+      </div>
+      <button id="notifications-btn" type="button" class="admin-header-icon-btn" aria-label="Notifications">
+        <span class="material-symbols-outlined">notifications</span>
+        <span class="admin-notif-dot" aria-hidden="true"></span>
+      </button>
+      <div class="admin-user-chip">
+        <div class="admin-user-chip__text hidden sm:block">
+          <p class="admin-user-chip__name">{{USER_NAME}}</p>
+          <p class="admin-user-chip__role">{{USER_ROLE}}</p>
+        </div>
+        <div class="admin-user-chip__avatar" aria-hidden="true">{{USER_INITIAL}}</div>
       </div>
     </div>
   </div>

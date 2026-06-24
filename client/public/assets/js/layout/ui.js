@@ -3,7 +3,8 @@ import { initManageReservationsModal, isManageReservationsModalOpen, closeManage
 import { initManageFacilitiesModal, isManageFacilitiesModalOpen, closeManageFacilitiesModal } from '/assets/js/features/manage-facilities.js';
 import { initReservationWizard, isReservationWizardOpen, closeReservationWizard } from '/assets/js/features/reservation-wizard.js';
 import { initGroupWizard, isGroupWizardOpen, closeGroupWizard } from '/assets/js/features/group-reservation-wizard.js';
-import { initAdminEnhancements, animateDrawerOpen, animateModalOpen, animateNotificationsPanel, animateDrawerTabSwitch } from '/assets/js/layout/animations.js';
+import { initTabGroup, switchTabPanel } from '/assets/js/layout/tabs.js';
+import { initAdminEnhancements, animateDrawerOpen, animateModalOpen, animateNotificationsPanel } from '/assets/js/layout/animations.js';
 
 export const ADMIN_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard.html' },
@@ -31,7 +32,7 @@ function renderSidebarNav(items, active) {
   return items.map((item) => `
     <a class="${navLinkClass(active, item.id)}" href="${item.href}">
       <span class="material-symbols-outlined">${item.icon}</span>
-      <span class="font-body-md">${item.label}</span>
+      <span class="font-body-md admin-nav-label">${item.label}</span>
     </a>
   `).join('');
 }
@@ -103,7 +104,19 @@ export async function initAppLayout(config = {}) {
   initManageFacilitiesModal();
   initReservationWizard();
   initGroupWizard();
+  initDrawerTabs();
   initAdminEnhancements().catch(() => {});
+}
+
+function initDrawerTabs() {
+  const drawer = document.getElementById('managementDrawer');
+  if (!drawer) return;
+  initTabGroup({
+    root: drawer,
+    tabAttr: 'data-drawer-tab',
+    panelAttr: 'data-drawer-panel',
+    useHiddenClass: true,
+  });
 }
 
 function bindLayoutEvents() {
@@ -247,17 +260,29 @@ export function closeModal() {
 }
 
 export function switchDrawerTab(tabId) {
-  document.querySelectorAll('#managementDrawer [data-drawer-tab]').forEach((btn) => {
+  const drawer = document.getElementById('managementDrawer');
+  if (!drawer) return;
+
+  const tabs = drawer.querySelectorAll('[data-drawer-tab]');
+  const panels = drawer.querySelectorAll('[data-drawer-panel]');
+
+  tabs.forEach((btn) => {
     const active = btn.getAttribute('data-drawer-tab') === tabId;
+    btn.classList.toggle('app-tab-active', active);
     btn.classList.toggle('border-primary', active);
     btn.classList.toggle('text-primary', active);
     btn.classList.toggle('border-transparent', !active);
     btn.classList.toggle('text-on-surface-variant', !active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
   });
-  document.querySelectorAll('#managementDrawer [data-drawer-panel]').forEach((el) => {
-    const show = el.getAttribute('data-drawer-panel') === tabId;
-    el.classList.toggle('hidden', !show);
-    if (show) animateDrawerTabSwitch(el).catch(() => {});
+
+  switchTabPanel({
+    tabs,
+    panels,
+    activeId: tabId,
+    tabAttr: 'data-drawer-tab',
+    panelAttr: 'data-drawer-panel',
+    useHiddenClass: true,
   });
 }
 

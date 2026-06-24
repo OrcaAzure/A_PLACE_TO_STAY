@@ -3,6 +3,7 @@
  */
 
 import { getProfile, updateProfile, getAdminSummary } from '/assets/js/services/api.js';
+import { initTabGroup } from '/assets/js/layout/tabs.js';
 
 const ROLE_DESCRIPTIONS = {
   'Super Admin': 'Full system access',
@@ -60,20 +61,12 @@ export async function loadAdminSettings() {
 }
 
 function bindTabs() {
-  const tabs = document.querySelectorAll('[data-settings-tab]');
-  tabs.forEach((tab) => {
-    tab.addEventListener('click', () => {
-      const id = tab.getAttribute('data-settings-tab');
-      tabs.forEach((t) => {
-        const active = t.getAttribute('data-settings-tab') === id;
-        t.className = active
-          ? 'px-4 py-1.5 border-b-2 border-primary text-primary text-label-sm font-bold'
-          : 'px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm';
-      });
-      document.querySelectorAll('[data-settings-panel]').forEach((panel) => {
-        panel.classList.toggle('hidden', panel.getAttribute('data-settings-panel') !== id);
-      });
-    });
+  initTabGroup({
+    tabAttr: 'data-settings-tab',
+    panelAttr: 'data-settings-panel',
+    tabsSelector: '[role="tablist"]',
+    panelsSelector: '.app-tab-panels',
+    useHiddenClass: true,
   });
 }
 

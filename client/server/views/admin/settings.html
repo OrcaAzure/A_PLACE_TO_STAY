@@ -17,21 +17,21 @@
 </head>
 <body>
   <div id="page-content">
-    <section class="timeline-workspace min-h-[500px] bg-white rounded-xl border border-slate-100 shadow-sm">
-      <div class="timeline-workspace-header border-b border-slate-100 p-6">
+    <section class="timeline-workspace min-h-[500px] bg-white rounded-xl border border-slate-100 shadow-sm app-tab-workspace">
+      <div class="timeline-workspace-header border-b border-slate-100 p-6 shrink-0">
         <div class="flex items-center gap-4 mb-4">
-          <div class="w-1.5 h-8 bg-primary rounded-full"></div>
+          <div class="w-1.5 h-8 bg-primary rounded-full shrink-0"></div>
           <h3 class="font-headline-sm text-on-surface">System Settings</h3>
         </div>
-        <div class="flex gap-2">
-          <button type="button" data-settings-tab="account" class="px-5 py-3 min-h-[3rem] border-b-2 border-primary text-primary text-body-sm font-bold">Account</button>
-          <button type="button" data-settings-tab="roles" class="px-5 py-3 min-h-[3rem] border-b-2 border-transparent text-on-surface-variant text-body-sm">User Roles</button>
-          <button type="button" data-settings-tab="system" class="px-5 py-3 min-h-[3rem] border-b-2 border-transparent text-on-surface-variant text-body-sm">System</button>
+        <div class="app-tabs w-full" role="tablist" aria-label="Settings sections">
+          <button type="button" role="tab" data-settings-tab="account" class="app-tab-btn app-tab-active" aria-selected="true">Account</button>
+          <button type="button" role="tab" data-settings-tab="roles" class="app-tab-btn" aria-selected="false">User Roles</button>
+          <button type="button" role="tab" data-settings-tab="system" class="app-tab-btn" aria-selected="false">System</button>
         </div>
       </div>
 
-      <div class="p-6 max-w-2xl">
-        <div data-settings-panel="account" class="space-y-4">
+      <div class="app-tab-panels max-w-full">
+        <div data-settings-panel="account" class="app-tab-panel space-y-4" role="tabpanel">
           <div>
             <label class="text-label-sm text-on-surface-variant block mb-1" for="settings-name">Full Name</label>
             <input type="text" id="settings-name" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
@@ -48,7 +48,7 @@
           <button type="button" id="settings-save-btn" class="btn-primary">Save Changes</button>
         </div>
 
-        <div data-settings-panel="roles" class="hidden">
+        <div data-settings-panel="roles" class="app-tab-panel is-tab-hidden hidden" role="tabpanel">
           <table class="data-table w-full">
             <thead><tr><th>Role</th><th>Description</th><th>Users</th></tr></thead>
             <tbody id="settings-roles-tbody">
@@ -57,7 +57,7 @@
           </table>
         </div>
 
-        <div data-settings-panel="system" class="hidden space-y-4">
+        <div data-settings-panel="system" class="app-tab-panel is-tab-hidden hidden space-y-4" role="tabpanel">
           <div class="grid grid-cols-2 gap-4">
             <div class="p-4 rounded-lg border border-outline-variant/50">
               <p class="text-label-sm text-on-surface-variant">Total Rooms</p>
