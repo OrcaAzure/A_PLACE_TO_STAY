@@ -1,5 +1,6 @@
 /**
  * Manage Facilities modal — admin CRUD for rooms.
+ * Designed for simple room setup changes (e.g. conference → group sleep with mattresses).
  */
 
 import {
@@ -10,15 +11,81 @@ import {
 } from '/assets/js/services/api.js';
 import { animateModalOpen } from '/assets/js/layout/animations.js';
 
-const ROOM_TYPES = [
-  'Dorm',
-  'Superior Guest Room',
-  'Standard Apartment',
-  'Deluxe 2 BR',
-  'Deluxe 3 BR',
+const ROOM_TYPE_OPTIONS = [
+  {
+    value: 'Dorm',
+    label: 'Group Sleep Room',
+    subtitle: 'Mattresses on the floor',
+    icon: 'night_shelter',
+    capacity: { min: 5, max: 12 },
+  },
+  {
+    value: 'Superior Guest Room',
+    label: 'Guest Room',
+    subtitle: 'Standard beds, 1–4 people',
+    icon: 'king_bed',
+    capacity: { min: 1, max: 4 },
+  },
+  {
+    value: 'Standard Apartment',
+    label: 'Apartment',
+    subtitle: 'Self-contained unit',
+    icon: 'apartment',
+    capacity: { min: 1, max: 4 },
+  },
+  {
+    value: 'Deluxe 2 BR',
+    label: '2-Bedroom Suite',
+    subtitle: 'Larger family unit',
+    icon: 'holiday_village',
+    capacity: { min: 1, max: 6 },
+  },
+  {
+    value: 'Deluxe 3 BR',
+    label: '3-Bedroom Suite',
+    subtitle: 'Biggest unit',
+    icon: 'villa',
+    capacity: { min: 1, max: 8 },
+  },
 ];
 
-const ROOM_STATUSES = ['Available', 'Occupied', 'Maintenance'];
+const QUICK_SETUPS = [
+  {
+    id: 'group-sleep',
+    label: 'Group Sleep',
+    short: 'Mattresses for a big group',
+    icon: 'night_shelter',
+    type: 'Dorm',
+    capacityMin: 5,
+    capacityMax: 12,
+  },
+  {
+    id: 'guest-room',
+    label: 'Guest Room',
+    short: 'Normal beds (1–4 guests)',
+    icon: 'king_bed',
+    type: 'Superior Guest Room',
+    capacityMin: 1,
+    capacityMax: 4,
+  },
+  {
+    id: 'meeting-space',
+    label: 'Meeting',
+    short: 'Chairs & tables only',
+    icon: 'groups',
+    type: 'Superior Guest Room',
+    capacityMin: 1,
+    capacityMax: 15,
+  },
+];
+
+const ROOM_STATUSES = [
+  { value: 'Available', label: 'Ready to use', icon: 'check_circle', tone: 'available' },
+  { value: 'Occupied', label: 'In use now', icon: 'hotel', tone: 'occupied' },
+  { value: 'Maintenance', label: 'Under repair', icon: 'build', tone: 'maintenance' },
+];
+
+const FLEX_SPACE_PATTERN = /^(commons|chapel|conf(erence)?)/i;
 
 let initialized = false;
 let previouslyFocused = null;
@@ -38,6 +105,7 @@ const state = {
   error: null,
   message: null,
   mobileForm: false,
+  activeQuickSetup: null,
 };
 
 function debounce(fn, ms = 300) {
@@ -62,25 +130,68 @@ function roomStatusBadge(status) {
   return `admin-crud-badge admin-crud-badge--${key}`;
 }
 
+function getTypeOption(value) {
+  return ROOM_TYPE_OPTIONS.find((t) => t.value === value) || null;
+}
+
+function getTypeLabel(value) {
+  return getTypeOption(value)?.label || value || 'Room';
+}
+
+/** Human-friendly label for how a room is currently set up (grid, list, detail). */
+export function getRoomSetupMeta(room) {
+  if (!room) return { label: 'Room', icon: 'meeting_room', tone: 'guest', presetId: null };
+  const flex = isFlexOrMeetingSpace(room);
+  if (room.room_type === 'Dorm') {
+    return { label: 'Group Sleep', icon: 'night_shelter', tone: 'sleep', presetId: 'group-sleep' };
+  }
+  if (flex && Number(room.capacity_max) > 6) {
+    return { label: 'Meeting Space', icon: 'groups_3', tone: 'meeting', presetId: 'meeting-space' };
+  }
+  if (flex) {
+    return { label: 'Meeting / Conference', icon: 'groups_3', tone: 'meeting', presetId: 'meeting-space' };
+  }
+  const opt = getTypeOption(room.room_type);
+  return {
+    label: opt?.label || room.room_type || 'Guest Room',
+    icon: opt?.icon || 'king_bed',
+    tone: 'guest',
+    presetId: room.room_type === 'Superior Guest Room' ? 'guest-room' : null,
+  };
+}
+
+function getActivePresetId(room) {
+  return getRoomSetupMeta(room).presetId;
+}
+
+function isFlexOrMeetingSpace(room) {
+  if (!room) return false;
+  const num = String(room.room_number || '');
+  return FLEX_SPACE_PATTERN.test(num) || /conference|commons|chapel|meeting/i.test(num);
+}
+
 function emptyForm() {
+  const first = ROOM_TYPE_OPTIONS[1];
   return {
     building_id: '',
     room_number: '',
-    room_type: ROOM_TYPES[0],
-    capacity_min: 1,
-    capacity_max: 2,
+    room_type: first.value,
+    capacity_min: first.capacity.min,
+    capacity_max: first.capacity.max,
     occupancy: 0,
     status: 'Available',
   };
 }
 
 function roomToForm(r) {
+  const fallback = ROOM_TYPE_OPTIONS[1];
+  const typeOpt = getTypeOption(r.room_type);
   return {
     building_id: r.building_id ?? '',
     room_number: r.room_number ?? '',
-    room_type: r.room_type ?? ROOM_TYPES[0],
-    capacity_min: r.capacity_min ?? 1,
-    capacity_max: r.capacity_max ?? 2,
+    room_type: r.room_type ?? fallback.value,
+    capacity_min: r.capacity_min ?? typeOpt?.capacity.min ?? fallback.capacity.min,
+    capacity_max: r.capacity_max ?? typeOpt?.capacity.max ?? fallback.capacity.max,
     occupancy: r.occupancy ?? 0,
     status: r.status ?? 'Available',
   };
@@ -102,7 +213,7 @@ function filterRooms() {
   state.filtered = state.rooms.filter((r) => {
     if (st !== 'all' && r.status !== st) return false;
     if (!q) return true;
-    const hay = [r.room_number, r.building_name, r.room_type, r.status].join(' ').toLowerCase();
+    const hay = [r.room_number, r.building_name, r.room_type, getTypeLabel(r.room_type), r.status].join(' ').toLowerCase();
     return hay.includes(q);
   });
 }
@@ -126,22 +237,21 @@ function renderList() {
       <div class="admin-crud-empty">
         <span class="material-symbols-outlined">meeting_room</span>
         <p class="font-semibold text-on-surface">No rooms found</p>
-        <p class="text-body-sm mt-1">Adjust filters or add a new room.</p>
+        <p class="text-body-sm mt-1">Try a different search, or add a new room.</p>
       </div>`;
   } else {
     mount.innerHTML = state.filtered.map((r) => {
       const sel = String(r.id) === String(state.selectedId);
+      const setup = getRoomSetupMeta(r);
       return `
         <button type="button" data-room-id="${r.id}" class="admin-crud-list-item${sel ? ' is-selected' : ''}" role="option" aria-selected="${sel}">
-          <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center justify-between gap-2">
             <div class="min-w-0">
               <p class="text-label-md font-bold text-on-surface truncate">${escapeHtml(r.room_number)}</p>
-              <p class="text-body-sm text-on-surface-variant truncate">${escapeHtml(r.building_name || 'Building')}</p>
+              <p class="text-body-sm text-on-surface-variant truncate">${escapeHtml(r.building_name || 'Building')} · ${escapeHtml(setup.label)}</p>
             </div>
             <span class="${roomStatusBadge(r.status)}">${escapeHtml(r.status)}</span>
           </div>
-          <p class="text-body-sm text-on-surface-variant mt-2">${escapeHtml(r.room_type)}</p>
-          <p class="text-[11px] text-on-surface-variant/70 mt-1">Cap. ${r.capacity_min}–${r.capacity_max} · Occ. ${r.occupancy ?? 0}</p>
         </button>`;
     }).join('');
   }
@@ -151,21 +261,102 @@ function renderList() {
   }
 }
 
-function renderFormFields() {
-  const bldgOpts = state.buildings.map((b) =>
-    `<option value="${b.id}"${String(b.id) === String(state.form.building_id) ? ' selected' : ''}>${escapeHtml(b.name)}</option>`
-  ).join('');
+function renderRoomTypeCards() {
+  const current = state.form.room_type;
+  const knownValues = new Set(ROOM_TYPE_OPTIONS.map((t) => t.value));
+  const extraOption = current && !knownValues.has(current)
+    ? [{ value: current, label: current, subtitle: 'Current type', icon: 'meeting_room', capacity: { min: 1, max: state.form.capacity_max || 4 } }]
+    : [];
 
-  const typeOpts = ROOM_TYPES.map((t) =>
-    `<option value="${t}"${state.form.room_type === t ? ' selected' : ''}>${escapeHtml(t)}</option>`
-  ).join('');
-
-  const statusOpts = ROOM_STATUSES.map((s) =>
-    `<option value="${s}"${state.form.status === s ? ' selected' : ''}>${s}</option>`
-  ).join('');
+  const options = [...ROOM_TYPE_OPTIONS, ...extraOption];
 
   return `
-    <form id="manage-facilities-form" class="admin-crud-form-grid" novalidate>
+    <div class="admin-crud-field span-full">
+      <label class="mf-field-label">What kind of space is this?</label>
+      <p class="mf-field-hint">Choose the setup that matches how the room is being used right now.</p>
+      <div class="mf-type-grid" role="radiogroup" aria-label="Room type">
+        ${options.map((opt) => {
+          const active = state.form.room_type === opt.value;
+          return `
+            <button
+              type="button"
+              class="mf-type-card${active ? ' is-selected' : ''}"
+              data-room-type="${escapeHtml(opt.value)}"
+              role="radio"
+              aria-checked="${active}"
+            >
+              <span class="material-symbols-outlined mf-type-icon">${opt.icon}</span>
+              <span class="mf-type-label">${escapeHtml(opt.label)}</span>
+              <span class="mf-type-sub">${escapeHtml(opt.subtitle)}</span>
+            </button>`;
+        }).join('')}
+      </div>
+      <input type="hidden" id="mf-room-type" name="room_type" value="${escapeHtml(state.form.room_type)}" />
+    </div>`;
+}
+
+function renderStatusPills() {
+  return `
+    <div class="admin-crud-field span-full">
+      <label class="mf-field-label">Room status</label>
+      <div class="mf-status-pills" role="radiogroup" aria-label="Room status">
+        ${ROOM_STATUSES.map((s) => {
+          const active = state.form.status === s.value;
+          return `
+            <button
+              type="button"
+              class="mf-status-pill mf-status-pill--${s.tone}${active ? ' is-selected' : ''}"
+              data-room-status="${s.value}"
+              role="radio"
+              aria-checked="${active}"
+            >
+              <span class="material-symbols-outlined text-[18px]">${s.icon}</span>
+              <span>${escapeHtml(s.label)}</span>
+            </button>`;
+        }).join('')}
+      </div>
+      <input type="hidden" id="mf-status" name="status" value="${escapeHtml(state.form.status)}" />
+    </div>`;
+}
+
+function renderCapacityStepper() {
+  const max = state.form.capacity_max ?? 4;
+  const occ = state.form.occupancy ?? 0;
+  return `
+    <div class="admin-crud-field span-full">
+      <label class="mf-field-label" for="mf-cap-max">How many people can stay here?</label>
+      <p class="mf-field-hint">Include everyone — beds, extra mattresses, or floor mats.</p>
+      <div class="mf-stepper">
+        <button type="button" class="mf-stepper-btn" data-step="capacity_max" data-delta="-1" aria-label="Decrease capacity">
+          <span class="material-symbols-outlined">remove</span>
+        </button>
+        <input
+          id="mf-cap-max"
+          name="capacity_max"
+          type="number"
+          min="1"
+          max="50"
+          required
+          class="mf-stepper-input"
+          value="${escapeHtml(max)}"
+        />
+        <button type="button" class="mf-stepper-btn" data-step="capacity_max" data-delta="1" aria-label="Increase capacity">
+          <span class="material-symbols-outlined">add</span>
+        </button>
+      </div>
+      <p class="mf-capacity-note">
+        <span class="material-symbols-outlined text-[16px]">group</span>
+        Currently ${occ} guest${occ === 1 ? '' : 's'} checked in
+      </p>
+      <input type="hidden" id="mf-cap-min" name="capacity_min" value="${escapeHtml(state.form.capacity_min ?? 1)}" />
+      <input type="hidden" id="mf-occupancy" name="occupancy" value="${escapeHtml(occ)}" />
+    </div>`;
+}
+
+function renderAdvancedFields(bldgOpts) {
+  return `
+      ${renderRoomTypeCards()}
+
       <div class="admin-crud-field">
         <label for="mf-building">Building</label>
         <select id="mf-building" name="building_id" required>
@@ -174,53 +365,69 @@ function renderFormFields() {
         </select>
       </div>
       <div class="admin-crud-field">
-        <label for="mf-room-number">Room number</label>
-        <input id="mf-room-number" name="room_number" type="text" required value="${escapeHtml(state.form.room_number)}" placeholder="e.g. 101" />
+        <label for="mf-room-number">Room name / number</label>
+        <input id="mf-room-number" name="room_number" type="text" required value="${escapeHtml(state.form.room_number)}" placeholder="e.g. 201, COMMONS, CHAPEL" />
       </div>
-      <div class="admin-crud-field span-full">
-        <label for="mf-room-type">Room type</label>
-        <select id="mf-room-type" name="room_type" required>${typeOpts}</select>
-      </div>
-      <div class="admin-crud-field">
-        <label for="mf-cap-min">Min capacity</label>
-        <input id="mf-cap-min" name="capacity_min" type="number" min="1" required value="${escapeHtml(state.form.capacity_min)}" />
-      </div>
-      <div class="admin-crud-field">
-        <label for="mf-cap-max">Max capacity</label>
-        <input id="mf-cap-max" name="capacity_max" type="number" min="1" required value="${escapeHtml(state.form.capacity_max)}" />
-      </div>
-      <div class="admin-crud-field">
-        <label for="mf-occupancy">Current occupancy</label>
-        <input id="mf-occupancy" name="occupancy" type="number" min="0" required value="${escapeHtml(state.form.occupancy)}" />
-      </div>
-      <div class="admin-crud-field">
-        <label for="mf-status">Status</label>
-        <select id="mf-status" name="status">${statusOpts}</select>
-      </div>
+
+      ${renderCapacityStepper()}
+      ${renderStatusPills()}`;
+}
+
+function renderFormFields() {
+  const bldgOpts = state.buildings.map((b) =>
+    `<option value="${b.id}"${String(b.id) === String(state.form.building_id) ? ' selected' : ''}>${escapeHtml(b.name)}</option>`
+  ).join('');
+
+  return `
+    <form id="manage-facilities-form" class="admin-crud-form-grid mf-form" novalidate>
+      ${renderAdvancedFields(bldgOpts)}
     </form>`;
 }
 
-function renderDetailView(r) {
+function renderDetailQuickActions(r) {
+  const currentPreset = getActivePresetId(r);
   return `
-    <div class="space-y-5">
-      <div class="flex items-start justify-between gap-3">
+    <div class="mf-switch-row" aria-label="Change room setup">
+      ${QUICK_SETUPS.map((preset) => {
+        const isCurrent = currentPreset === preset.id;
+        return `
+          <button
+            type="button"
+            class="mf-switch-btn${isCurrent ? ' is-current' : ''}"
+            data-quick-setup="${preset.id}"
+            data-quick-instant="1"
+            ${isCurrent ? 'disabled aria-current="true"' : ''}
+          >
+            <span class="material-symbols-outlined">${preset.icon}</span>
+            <span class="mf-switch-label">${escapeHtml(preset.label)}</span>
+          </button>`;
+      }).join('')}
+    </div>`;
+}
+
+function renderDetailView(r) {
+  const setup = getRoomSetupMeta(r);
+  const flex = isFlexOrMeetingSpace(r);
+
+  return `
+    <div class="mf-detail">
+      <div class="mf-detail-head">
         <div>
-          <p class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">Room ${escapeHtml(r.room_number)}</p>
-          <h3 class="font-headline-sm text-on-surface mt-1">${escapeHtml(r.building_name || 'Building')}</h3>
-          <p class="text-body-sm text-on-surface-variant">${escapeHtml(r.room_type)}</p>
+          <h3 class="mf-detail-title">${escapeHtml(r.room_number)}</h3>
+          <p class="mf-detail-sub">${escapeHtml(r.building_name || 'Building')}</p>
         </div>
         <span class="${roomStatusBadge(r.status)}">${escapeHtml(r.status)}</span>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div class="admin-panel p-4 rounded-lg">
-          <p class="text-[11px] font-bold uppercase text-on-surface-variant">Capacity</p>
-          <p class="font-semibold text-on-surface mt-1">${r.capacity_min} – ${r.capacity_max} guests</p>
-        </div>
-        <div class="admin-panel p-4 rounded-lg">
-          <p class="text-[11px] font-bold uppercase text-on-surface-variant">Occupancy</p>
-          <p class="font-semibold text-on-surface mt-1">${r.occupancy ?? 0} currently occupied</p>
-        </div>
-      </div>
+
+      <p class="mf-detail-meta">
+        <span class="material-symbols-outlined text-[18px]">${setup.icon}</span>
+        ${escapeHtml(setup.label)} · up to ${r.capacity_max} guests · ${r.occupancy ?? 0} checked in
+      </p>
+
+      ${flex ? `
+        <p class="mf-detail-note">This room can be used for meetings or group sleep. Pick a setup below:</p>
+        ${renderDetailQuickActions(r)}` : `
+        <p class="mf-detail-note">Need to change capacity or status? Use <strong>Customize</strong> below.</p>`}
     </div>`;
 }
 
@@ -235,11 +442,11 @@ function renderDetail() {
 
   if (state.error) {
     feedback?.classList.remove('hidden');
-    feedback.className = 'text-body-sm mt-1 text-error';
+    feedback.className = 'text-body-sm mt-1 text-error font-medium';
     feedback.textContent = state.error;
   } else if (state.message) {
     feedback?.classList.remove('hidden');
-    feedback.className = 'text-body-sm mt-1 text-secondary';
+    feedback.className = 'text-body-sm mt-1 text-secondary font-medium';
     feedback.textContent = state.message;
   } else {
     feedback?.classList.add('hidden');
@@ -251,8 +458,8 @@ function renderDetail() {
         <button type="button" id="manage-facilities-back" class="admin-crud-btn-ghost md:hidden mb-3">
           <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back
         </button>
-        <h3 class="font-headline-sm text-on-surface">Add Room</h3>
-        <p class="text-body-sm text-on-surface-variant">Register a new facility unit in an existing building.</p>
+        <h3 class="font-headline-sm text-on-surface">Add a New Room</h3>
+        <p class="text-body-sm text-on-surface-variant">Fill in the details below for a new facility unit.</p>
       </div>
       ${renderFormFields()}`;
     actions.innerHTML = `
@@ -271,14 +478,14 @@ function renderDetail() {
         <button type="button" id="manage-facilities-back" class="admin-crud-btn-ghost md:hidden mb-3">
           <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back
         </button>
-        <h3 class="font-headline-sm text-on-surface">Edit Room ${escapeHtml(r?.room_number || '')}</h3>
-        <p class="text-body-sm text-on-surface-variant">Update room details and operational status.</p>
+        <h3 class="font-headline-sm text-on-surface">Edit Room — ${escapeHtml(r?.room_number || '')}</h3>
+        <p class="text-body-sm text-on-surface-variant">Adjust capacity, status, or building details.</p>
       </div>
       ${renderFormFields()}`;
     actions.innerHTML = `
       <button type="button" id="manage-facilities-cancel" class="admin-crud-btn-ghost">Cancel</button>
       <button type="button" id="manage-facilities-delete" class="admin-crud-btn-danger"${state.saving ? ' disabled' : ''}>
-        <span class="material-symbols-outlined text-[18px]">delete</span> Delete
+        <span class="material-symbols-outlined text-[18px]">delete</span> Delete Room
       </button>
       <button type="button" id="manage-facilities-save" class="admin-crud-btn-primary"${state.saving ? ' disabled' : ''}>
         <span class="material-symbols-outlined text-[18px]">save</span>
@@ -292,8 +499,8 @@ function renderDetail() {
     mount.innerHTML = `
       <div class="admin-crud-empty h-full min-h-[280px]">
         <span class="material-symbols-outlined">touch_app</span>
-        <p class="font-semibold text-on-surface">Select a room</p>
-        <p class="text-body-sm mt-1">Pick a room from the list or add a new one.</p>
+        <p class="font-semibold text-on-surface">Select a room from the list</p>
+        <p class="text-body-sm mt-1">Click any room on the left to see details, or tap a room card on the Facilities page.</p>
       </div>`;
     actions.innerHTML = `
       <button type="button" id="manage-facilities-footer-close" class="admin-crud-btn-ghost">Close</button>`;
@@ -303,8 +510,8 @@ function renderDetail() {
   mount.innerHTML = renderDetailView(selected);
   actions.innerHTML = `
     <button type="button" id="manage-facilities-footer-close" class="admin-crud-btn-ghost">Close</button>
-    <button type="button" id="manage-facilities-edit" class="admin-crud-btn-primary">
-      <span class="material-symbols-outlined text-[18px]">edit</span> Edit
+    <button type="button" id="manage-facilities-edit" class="admin-crud-btn-ghost">
+      <span class="material-symbols-outlined text-[18px]">tune</span> Customize
     </button>`;
 }
 
@@ -313,19 +520,133 @@ function render() {
   renderDetail();
 }
 
+function syncFormHiddenFields() {
+  const typeInput = document.getElementById('mf-room-type');
+  const statusInput = document.getElementById('mf-status');
+  const minInput = document.getElementById('mf-cap-min');
+  if (typeInput) typeInput.value = state.form.room_type;
+  if (statusInput) statusInput.value = state.form.status;
+  if (minInput) minInput.value = state.form.capacity_min ?? 1;
+  const maxInput = document.getElementById('mf-cap-max');
+  if (maxInput) maxInput.value = state.form.capacity_max ?? 4;
+}
+
 function readFormFromDom() {
   const form = document.getElementById('manage-facilities-form');
   if (!form) return state.form;
   const fd = new FormData(form);
+  const roomType = fd.get('room_type') || state.form.room_type;
+  const typeOpt = getTypeOption(roomType);
+  let capacityMax = Number(fd.get('capacity_max')) || state.form.capacity_max || 4;
+  let capacityMin = Number(fd.get('capacity_min')) || state.form.capacity_min || 1;
+
+  if (roomType === 'Dorm' && capacityMin < 2) {
+    capacityMin = Math.min(5, capacityMax);
+  } else if (roomType !== 'Dorm' && capacityMin > capacityMax) {
+    capacityMin = 1;
+  }
+
   return {
     building_id: fd.get('building_id'),
     room_number: fd.get('room_number'),
-    room_type: fd.get('room_type'),
-    capacity_min: Number(fd.get('capacity_min')) || 1,
-    capacity_max: Number(fd.get('capacity_max')) || 1,
-    occupancy: Number(fd.get('occupancy')) || 0,
-    status: fd.get('status') || 'Available',
+    room_type: roomType,
+    capacity_min: capacityMin,
+    capacity_max: capacityMax,
+    occupancy: Number(fd.get('occupancy')) || state.form.occupancy || 0,
+    status: fd.get('status') || state.form.status || 'Available',
   };
+}
+
+function validateForm(form) {
+  if (!form.building_id) return 'Please choose a building.';
+  if (!String(form.room_number || '').trim()) return 'Please enter a room name or number.';
+  if (!form.room_type) return 'Please choose what kind of space this is.';
+  if (form.capacity_max < 1) return 'Capacity must be at least 1 guest.';
+  if (form.capacity_min > form.capacity_max) return 'Minimum capacity cannot be greater than maximum.';
+  if (form.occupancy > form.capacity_max) {
+    return `There are ${form.occupancy} guests checked in — raise capacity to at least ${form.occupancy}, or lower occupancy first.`;
+  }
+  return null;
+}
+
+function applyQuickSetup(presetId, { previewOnly = false } = {}) {
+  const preset = QUICK_SETUPS.find((p) => p.id === presetId);
+  if (!preset) return;
+  state.activeQuickSetup = presetId;
+  state.form = {
+    ...state.form,
+    room_type: preset.type,
+    capacity_min: preset.capacityMin,
+    capacity_max: preset.capacityMax,
+  };
+  if (previewOnly) {
+    state.message = `Previewing "${preset.label}" — tap Save Changes when ready.`;
+    state.error = null;
+    render();
+    return;
+  }
+  state.message = `Applied "${preset.label}" — review below, then save.`;
+  state.error = null;
+  render();
+}
+
+async function applyAndSaveQuickSetup(presetId) {
+  const preset = QUICK_SETUPS.find((p) => p.id === presetId);
+  const room = getSelected();
+  if (!preset || !room || state.saving) return;
+
+  const currentPreset = getActivePresetId(room);
+  if (currentPreset === presetId) {
+    state.message = `"${preset.label}" is already active for ${room.room_number}.`;
+    state.error = null;
+    render();
+    return;
+  }
+
+  const confirmed = window.confirm(
+    `Switch ${room.room_number} to "${preset.label}"?\n\n${preset.short}`
+  );
+  if (!confirmed) return;
+
+  state.form = {
+    ...roomToForm(room),
+    room_type: preset.type,
+    capacity_min: preset.capacityMin,
+    capacity_max: preset.capacityMax,
+  };
+  state.activeQuickSetup = presetId;
+  state.mode = state.mode === 'view' ? 'view' : 'edit';
+  await persistRoomForm({ successMessage: `"${preset.label}" saved for ${room.room_number}.` });
+}
+
+function applyRoomType(typeValue) {
+  const opt = getTypeOption(typeValue);
+  state.form.room_type = typeValue;
+  state.activeQuickSetup = null;
+  if (opt) {
+    state.form.capacity_min = opt.capacity.min;
+    state.form.capacity_max = opt.capacity.max;
+  }
+  state.message = null;
+  render();
+}
+
+function applyStatus(statusValue) {
+  state.form.status = statusValue;
+  render();
+}
+
+function adjustStepper(field, delta) {
+  const current = Number(state.form[field]) || 1;
+  const next = Math.max(1, Math.min(50, current + delta));
+  state.form[field] = next;
+  if (field === 'capacity_max' && state.form.room_type !== 'Dorm') {
+    state.form.capacity_min = 1;
+  }
+  state.activeQuickSetup = null;
+  syncFormHiddenFields();
+  const input = document.getElementById('mf-cap-max');
+  if (input) input.value = next;
 }
 
 async function loadData() {
@@ -338,7 +659,9 @@ async function loadData() {
     state.rooms = await getRooms();
     state.buildings = extractBuildings(state.rooms);
     filterRooms();
-    if (!state.selectedId && state.filtered.length) {
+    if (state.selectedId && !getSelected()) {
+      state.selectedId = state.filtered.length ? state.filtered[0].id : null;
+    } else if (!state.selectedId && state.filtered.length) {
       state.selectedId = state.filtered[0].id;
     }
   } catch (err) {
@@ -383,6 +706,7 @@ function resetState() {
   state.error = null;
   state.message = null;
   state.mobileForm = false;
+  state.activeQuickSetup = null;
   state.filter = { search: '', status: 'all' };
   const search = document.getElementById('manage-facilities-search');
   const status = document.getElementById('manage-facilities-status-filter');
@@ -394,12 +718,51 @@ export function isManageFacilitiesModalOpen() {
   return state.isOpen;
 }
 
-export async function openManageFacilitiesModal() {
-  if (state.isOpen) return;
+export async function openManageFacilitiesModal(options = {}) {
+  const roomId = options.roomId != null ? Number(options.roomId) : null;
+
+  if (state.isOpen) {
+    if (roomId) {
+      const match = state.rooms.find((r) => Number(r.id) === roomId);
+      if (match) {
+        state.selectedId = match.id;
+        state.mobileForm = true;
+        state.error = null;
+        state.message = null;
+        state.activeQuickSetup = null;
+        if (options.edit !== false) {
+          state.mode = 'edit';
+          state.form = roomToForm(match);
+        } else {
+          state.mode = 'view';
+        }
+        render();
+      }
+    }
+    return;
+  }
+
   dataChanged = false;
   state.isOpen = true;
   showModal();
   await loadData();
+
+  if (roomId) {
+    const match = state.rooms.find((r) => Number(r.id) === roomId);
+    if (match) {
+      state.selectedId = match.id;
+      state.mobileForm = true;
+      if (options.edit !== false) {
+        state.mode = 'edit';
+        state.form = roomToForm(match);
+        state.activeQuickSetup = null;
+      } else {
+        state.mode = 'view';
+      }
+      render();
+    }
+  }
+
   if (state.buildings.length && state.mode === 'create') {
     state.form.building_id = state.buildings[0].id;
   }
@@ -424,6 +787,7 @@ function selectRoom(id) {
   state.mobileForm = true;
   state.error = null;
   state.message = null;
+  state.activeQuickSetup = null;
   render();
 }
 
@@ -435,6 +799,7 @@ function startCreate() {
   state.mobileForm = true;
   state.error = null;
   state.message = null;
+  state.activeQuickSetup = null;
   render();
 }
 
@@ -446,6 +811,7 @@ function startEdit() {
   state.mobileForm = true;
   state.error = null;
   state.message = null;
+  state.activeQuickSetup = null;
   render();
 }
 
@@ -453,18 +819,28 @@ function cancelForm() {
   state.mode = 'view';
   state.mobileForm = false;
   state.error = null;
+  state.message = null;
+  state.activeQuickSetup = null;
   render();
 }
 
-async function saveForm() {
+async function persistRoomForm({ successMessage } = {}) {
   state.form = readFormFromDom();
+  const validationError = validateForm(state.form);
+  if (validationError) {
+    state.error = validationError;
+    state.message = null;
+    render();
+    return false;
+  }
+
   state.saving = true;
   state.error = null;
   render();
 
   const payload = {
     building_id: Number(state.form.building_id),
-    room_number: state.form.room_number,
+    room_number: String(state.form.room_number).trim(),
     room_type: state.form.room_type,
     capacity_min: state.form.capacity_min,
     capacity_max: state.form.capacity_max,
@@ -475,29 +851,39 @@ async function saveForm() {
   try {
     if (state.mode === 'create') {
       await createRoom(payload);
-      state.message = 'Room added successfully.';
+      state.message = successMessage || 'Room added successfully.';
       state.mode = 'view';
-    } else if (state.mode === 'edit' && state.selectedId) {
+    } else if (state.selectedId) {
       await updateRoom(state.selectedId, payload);
-      state.message = 'Room updated successfully.';
+      const preset = QUICK_SETUPS.find((p) => p.id === state.activeQuickSetup);
+      state.message = successMessage || (preset
+        ? `"${preset.label}" saved for room ${payload.room_number}.`
+        : `Room ${payload.room_number} updated successfully.`);
       state.mode = 'view';
+      state.activeQuickSetup = null;
     }
     dataChanged = true;
     await loadData();
+    return true;
   } catch (err) {
-    state.error = err.message || 'Could not save room.';
+    state.error = err.message || 'Could not save room. Please try again.';
     render();
+    return false;
   } finally {
     state.saving = false;
     render();
   }
 }
 
+async function saveForm() {
+  await persistRoomForm();
+}
+
 async function removeRoom() {
   if (!state.selectedId || state.saving) return;
   const r = getSelected();
   if (!r) return;
-  if (!window.confirm(`Delete room ${r.room_number} in ${r.building_name}? This cannot be undone.`)) return;
+  if (!window.confirm(`Delete room "${r.room_number}" in ${r.building_name}?\n\nThis cannot be undone.`)) return;
 
   state.saving = true;
   state.error = null;
@@ -521,10 +907,41 @@ async function removeRoom() {
 
 function handleClick(e) {
   const card = e.target.closest('[data-room-id]');
-  if (card) {
+  if (card && card.closest('#manage-facilities-list')) {
     selectRoom(Number(card.getAttribute('data-room-id')));
     return;
   }
+
+  const quickBtn = e.target.closest('[data-quick-setup]');
+  if (quickBtn) {
+    const presetId = quickBtn.getAttribute('data-quick-setup');
+    const instant = quickBtn.getAttribute('data-quick-instant') === '1';
+    if (instant) {
+      applyAndSaveQuickSetup(presetId);
+    } else {
+      applyQuickSetup(presetId, { previewOnly: true });
+    }
+    return;
+  }
+
+  const typeCard = e.target.closest('[data-room-type]');
+  if (typeCard) {
+    applyRoomType(typeCard.getAttribute('data-room-type'));
+    return;
+  }
+
+  const statusPill = e.target.closest('[data-room-status]');
+  if (statusPill) {
+    applyStatus(statusPill.getAttribute('data-room-status'));
+    return;
+  }
+
+  const stepBtn = e.target.closest('[data-step]');
+  if (stepBtn) {
+    adjustStepper(stepBtn.getAttribute('data-step'), Number(stepBtn.getAttribute('data-delta')));
+    return;
+  }
+
   if (e.target.closest('#manage-facilities-new')) {
     startCreate();
     return;
@@ -547,6 +964,14 @@ function handleClick(e) {
   }
   if (e.target.closest('#manage-facilities-footer-close')) {
     closeManageFacilitiesModal();
+  }
+}
+
+function handleInput(e) {
+  if (e.target.id === 'mf-cap-max') {
+    state.form.capacity_max = Math.max(1, Number(e.target.value) || 1);
+    state.activeQuickSetup = null;
+    syncFormHiddenFields();
   }
 }
 
@@ -581,11 +1006,18 @@ export function initManageFacilitiesModal() {
     handleClick(e);
   });
 
+  document.getElementById('manage-facilities-modal')?.addEventListener('input', handleInput);
+
   document.addEventListener('click', (e) => {
     const trigger = e.target.closest('[data-open-manage-facilities]');
     if (trigger) {
       e.preventDefault();
       openManageFacilitiesModal();
     }
+  });
+
+  window.addEventListener('manage-facilities:open', (e) => {
+    const { roomId, edit } = e.detail || {};
+    openManageFacilitiesModal({ roomId, edit: edit !== false });
   });
 }

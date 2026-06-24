@@ -79,6 +79,11 @@ export async function getRoomById(id) {
   return data.room;
 }
 
+export async function getVenueFacilities() {
+  const data = await apiRequest('/facilities');
+  return data.venues || [];
+}
+
 export async function getBookings() {
   const data = await apiRequest('/bookings');
   return data.bookings || [];

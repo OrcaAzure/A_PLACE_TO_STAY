@@ -35,11 +35,54 @@
       outline-offset: 2px;
     }
 
+    .fac-tab {
+      padding: 0.625rem 1.25rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #64748b;
+      border-radius: 0.625rem;
+      transition: all 0.15s;
+    }
+    .fac-tab.is-active {
+      background: #1a365d;
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(26, 54, 93, 0.15);
+    }
+    .fac-tab:not(.is-active):hover {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .venue-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.875rem;
+      padding: 1.25rem;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .venue-card:hover {
+      border-color: #cbd5e0;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
+    }
+
   </style>
 </head>
 <body class="h-full bg-slate-50/50">
 
   <div id="page-content" class="w-full flex flex-col space-y-6 antialiased text-slate-700">
+
+    <div class="flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-100 shadow-sm">
+        <button type="button" data-fac-tab="rooms" class="fac-tab is-active">Rooms</button>
+        <button type="button" data-fac-tab="venues" class="fac-tab">Venues &amp; Spaces</button>
+      </div>
+      <button type="button" data-open-manage-facilities class="admin-crud-btn-primary shadow-sm">
+        <span class="material-symbols-outlined text-[20px]">edit</span>
+        Manage Rooms
+      </button>
+    </div>
+
+    <div id="fac-panel-rooms" class="space-y-6">
     
     <div class="bg-white p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-4">
       <div class="flex items-center gap-2 overflow-x-auto pb-2 xl:pb-0 scrollbar-none">
@@ -103,16 +146,12 @@
         <div class="flex items-center gap-3 min-w-0">
           <div class="w-1 h-6 bg-blue-600 rounded-full shrink-0"></div>
           <div class="min-w-0">
-            <h3 class="text-sm font-semibold text-slate-800">Key Status Matrix Board</h3>
-            <p class="text-[11px] text-slate-400 leading-snug">Room statuses across buildings</p>
+            <h3 class="text-sm font-semibold text-slate-800">Room Status Board</h3>
+            <p class="text-[11px] text-slate-400 leading-snug">Click a room to change its setup</p>
           </div>
         </div>
         
         <div class="flex flex-wrap items-center gap-3 shrink-0">
-          <button type="button" data-open-manage-facilities class="admin-crud-btn-primary shadow-sm">
-            <span class="material-symbols-outlined text-[20px]">domain</span>
-            Manage Facilities
-          </button>
           <div class="flex items-center gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100 overflow-x-auto scrollbar-none" id="building-tab-triggers"></div>
         </div>
       </div>
@@ -123,12 +162,27 @@
       </div>
     </section>
 
+    </div>
+
+    <div id="fac-panel-venues" class="hidden space-y-4">
+      <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="text-base font-semibold text-slate-800">Campus Venues</h3>
+          <p class="text-sm text-slate-500 mt-0.5">Chapels, prayer mountain, commons, and other bookable spaces from the rate catalog.</p>
+        </div>
+        <div id="venues-grid-mount" class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[120px]">
+          <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading venues…</p>
+        </div>
+      </section>
+    </div>
+
   </div>
 
   <script type="module">
     import { requireAuth }             from '/assets/js/services/auth.js';
     import { initAppLayout }           from '/assets/js/layout/ui.js';
-    import { getRooms, normalizeRoom } from '/assets/js/services/api.js';
+    import { getRooms, getVenueFacilities, normalizeRoom } from '/assets/js/services/api.js';
+    import { getRoomSetupMeta } from '/assets/js/features/manage-facilities.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
 
@@ -140,8 +194,69 @@
     });
 
     let allRooms = [];
+    let allVenues = [];
     let currentBuildingFilter = "";
     let currentStatusFilter = "";
+    let activeFacTab = "rooms";
+
+    const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
+
+    function switchFacTab(tab) {
+      activeFacTab = tab;
+      document.querySelectorAll('[data-fac-tab]').forEach((btn) => {
+        btn.classList.toggle('is-active', btn.getAttribute('data-fac-tab') === tab);
+      });
+      document.getElementById('fac-panel-rooms')?.classList.toggle('hidden', tab !== 'rooms');
+      document.getElementById('fac-panel-venues')?.classList.toggle('hidden', tab !== 'venues');
+    }
+
+    function formatCapacity(min, max) {
+      if (max != null && max > 0) {
+        if (min != null && min > 1) return `${min}–${max} people`;
+        return `Up to ${max} people`;
+      }
+      return null;
+    }
+
+    function renderVenuesGrid() {
+      const mount = document.getElementById('venues-grid-mount');
+      if (!mount) return;
+
+      if (!allVenues.length) {
+        mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No venues found.</p>';
+        return;
+      }
+
+      mount.innerHTML = allVenues.map((venue) => {
+        const itemsHtml = venue.items.map((item) => {
+          const regular = item.rates.find((r) => r.season === 'Regular') || item.rates[0];
+          const peak = item.rates.find((r) => r.season === 'Peak');
+          const cap = formatCapacity(item.capacity_min, item.capacity_max);
+          return `
+            <li class="flex items-start justify-between gap-3 py-2 border-b border-slate-100 last:border-0">
+              <div class="min-w-0">
+                <p class="text-sm font-medium text-slate-700">${escapeHtml(item.item)}</p>
+                ${cap ? `<p class="text-xs text-slate-400 mt-0.5">${escapeHtml(cap)}</p>` : ''}
+              </div>
+              <div class="text-right shrink-0">
+                <p class="text-sm font-semibold text-slate-800">${peso(regular?.rate)}</p>
+                ${peak ? `<p class="text-[11px] text-slate-400">Peak ${peso(peak.rate)}</p>` : ''}
+              </div>
+            </li>`;
+        }).join('');
+
+        return `
+          <article class="venue-card">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined">${escapeHtml(venue.icon || 'place')}</span>
+              </div>
+              <h4 class="text-base font-bold text-slate-800">${escapeHtml(venue.category)}</h4>
+            </div>
+            <ul class="space-y-0">${itemsHtml}</ul>
+          </article>`;
+      }).join('');
+    }
 
     function refreshFacilitiesStats() {
       document.getElementById('total-rooms').textContent     = `${allRooms.length} Total`;
@@ -180,19 +295,6 @@
       };
     }
 
-    function formatCapacityMeta(n) {
-      if (n.capacityMax != null && n.capacityMax !== '') {
-        const cap = Number(n.capacityMax);
-        if (!Number.isNaN(cap) && cap > 0) {
-          if (n.occupancy != null && n.occupancy !== '' && Number(n.occupancy) >= 0) {
-            return `${n.occupancy} / ${cap} guests`;
-          }
-          return `Up to ${cap} guests`;
-        }
-      }
-      return '';
-    }
-
     function escapeHtml(value) {
       return String(value ?? '')
         .replace(/&/g, '&amp;')
@@ -225,45 +327,23 @@
       gridMount.innerHTML = filtered.map(r => {
         const n = normalizeRoom(r);
         const tokens = getStatusTokens(n.status);
-        const capacityMeta = formatCapacityMeta(n);
+        const setup = getRoomSetupMeta(r);
         const roomLabel = escapeHtml(n.roomNumber);
-        const roomType = escapeHtml(n.roomType);
         const building = escapeHtml(n.building);
         const statusLabel = escapeHtml(n.status);
         
         return `
-          <div class="matrix-room-card group cursor-pointer rounded-xl border border-slate-200/90 ${tokens.accent} bg-white px-3.5 py-3 shadow-sm shadow-slate-200/60 transition-all duration-200 hover:border-slate-300 hover:shadow-md hover:shadow-slate-300/50 hover:-translate-y-0.5 flex flex-col min-w-0 text-left">
+          <button type="button" data-facility-room-id="${n.id}" class="matrix-room-card group cursor-pointer rounded-xl border border-slate-200/90 ${tokens.accent} bg-white px-3.5 py-3 shadow-sm transition-all duration-150 hover:border-blue-300 hover:shadow-md flex flex-col min-w-0 text-left w-full">
             <div class="flex items-start justify-between gap-2 min-w-0">
-              <h4 class="text-sm font-bold text-slate-800 leading-snug truncate" title="${roomLabel}">${roomLabel}</h4>
-              <span class="inline-flex items-center gap-1 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold leading-tight ${tokens.pill}">
+              <h4 class="text-sm font-bold text-slate-800 truncate">${roomLabel}</h4>
+              <span class="inline-flex items-center gap-1 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${tokens.pill}">
                 <span class="w-1.5 h-1.5 rounded-full ${tokens.dot}"></span>
                 ${statusLabel}
               </span>
             </div>
-
-            <div class="mt-2 space-y-1.5 min-w-0">
-              <p class="text-xs text-slate-500 truncate flex items-center gap-1.5 min-w-0" title="${roomType}">
-                <span class="material-symbols-outlined text-[15px] text-slate-400 shrink-0">meeting_room</span>
-                <span class="truncate">${roomType}</span>
-              </p>
-              ${capacityMeta ? `
-              <p class="text-xs text-slate-600 flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-[15px] text-slate-400 shrink-0">group</span>
-                <span class="font-medium tabular-nums">${escapeHtml(capacityMeta)}</span>
-              </p>` : ''}
-            </div>
-
-            <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2 min-w-0">
-              <span class="text-[11px] text-slate-400 truncate flex items-center gap-1 min-w-0" title="${building}">
-                <span class="material-symbols-outlined text-[14px] shrink-0">location_on</span>
-                <span class="truncate">${building}</span>
-              </span>
-              <span class="text-[11px] text-slate-400 shrink-0 flex items-center gap-1">
-                <span class="material-symbols-outlined text-[14px] ${tokens.iconColor}">${tokens.icon}</span>
-                <span class="hidden sm:inline">${escapeHtml(tokens.footer)}</span>
-              </span>
-            </div>
-          </div>`;
+            <p class="text-xs text-slate-500 mt-1.5 truncate">${escapeHtml(setup.label)} · ${building}</p>
+            <p class="text-[11px] text-slate-400 mt-2">Up to ${n.capacityMax} guests</p>
+          </button>`;
       }).join('');
     }
 
@@ -294,10 +374,17 @@
     }
 
     try {
-      allRooms = await getRooms();
+      const [rooms, venues] = await Promise.all([getRooms(), getVenueFacilities()]);
+      allRooms = rooms;
+      allVenues = venues;
       refreshFacilitiesStats();
       buildTabTriggers(allRooms);
       generateInteractiveGrid(allRooms);
+      renderVenuesGrid();
+
+      document.querySelectorAll('[data-fac-tab]').forEach((btn) => {
+        btn.addEventListener('click', () => switchFacTab(btn.getAttribute('data-fac-tab')));
+      });
 
       // Event listener registration structure setup for status triggers
       document.querySelectorAll('.status-pill-btn').forEach(btn => {
@@ -316,6 +403,14 @@
         refreshFacilitiesStats();
         buildTabTriggers(allRooms);
         generateInteractiveGrid(allRooms);
+      });
+
+      document.getElementById('key-tags-grid-mount')?.addEventListener('click', (e) => {
+        const card = e.target.closest('[data-facility-room-id]');
+        if (!card) return;
+        window.dispatchEvent(new CustomEvent('manage-facilities:open', {
+          detail: { roomId: Number(card.getAttribute('data-facility-room-id')), edit: false },
+        }));
       });
 
     } catch (err) {
