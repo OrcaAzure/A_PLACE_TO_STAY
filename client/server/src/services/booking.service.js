@@ -76,7 +76,7 @@ export async function calculateTotalAmount({
   return Math.round(total * 100) / 100;
 }
 
-export async function hasOverlappingBooking(roomId, checkIn, checkOut, excludeBookingId = null) {
+export async function hasOverlappingBooking(roomId, checkIn, checkOut, excludeBookingId = null, excludeGroupId = null) {
   const params = [roomId, checkOut, checkIn];
   let sql = `
     SELECT id FROM bookings
@@ -89,6 +89,11 @@ export async function hasOverlappingBooking(roomId, checkIn, checkOut, excludeBo
   if (excludeBookingId) {
     sql += ' AND id != ?';
     params.push(excludeBookingId);
+  }
+
+  if (excludeGroupId) {
+    sql += ' AND (group_id IS NULL OR group_id != ?)';
+    params.push(excludeGroupId);
   }
 
   sql += ' LIMIT 1';
@@ -306,7 +311,9 @@ export async function computeGrandTotal({ roomTotal, meals, fees, mealRates = nu
   return Math.round((Number(roomTotal || 0) + calcMealsTotal(meals, rates) + calcFeesTotal(fees)) * 100) / 100;
 }
 
-export async function getAvailableRooms({ checkIn, checkOut, guestCount = 1, excludeBookingId = null }) {
+export async function getAvailableRooms({
+  checkIn, checkOut, guestCount = 1, excludeBookingId = null, excludeGroupId = null, groupPicker = false,
+}) {
   if (new Date(checkOut) <= new Date(checkIn)) {
     throw new Error('check_out must be after check_in');
   }
@@ -323,25 +330,31 @@ export async function getAvailableRooms({ checkIn, checkOut, guestCount = 1, exc
   const results = [];
 
   for (const room of rooms) {
-    const fitsCapacity = count >= room.capacity_min && count <= room.capacity_max;
+    const fitsCapacity = groupPicker
+      ? count <= room.capacity_max
+      : count >= room.capacity_min && count <= room.capacity_max;
     let availabilityStatus = 'available';
 
     if (room.status === 'Maintenance') availabilityStatus = 'maintenance';
-    else if (!fitsCapacity) availabilityStatus = 'too_small';
-    else if (await hasOverlappingBooking(room.id, checkIn, checkOut, excludeBookingId)) availabilityStatus = 'booked';
+    else if (!groupPicker && !fitsCapacity) availabilityStatus = 'too_small';
+    else if (groupPicker && count > room.capacity_max) availabilityStatus = 'too_small';
+    else if (await hasOverlappingBooking(room.id, checkIn, checkOut, excludeBookingId, excludeGroupId)) {
+      availabilityStatus = 'booked';
+    }
 
     const occupancyItem = defaultOccupancyItem(room.room_type);
     let pricePerNight = null;
     let estimatedTotal = null;
+    const pricingGuests = groupPicker ? Math.max(room.capacity_min, Math.min(count, room.capacity_max)) : count;
 
-    if (fitsCapacity && availabilityStatus !== 'maintenance') {
+    if (availabilityStatus !== 'maintenance' && availabilityStatus !== 'booked') {
       pricePerNight = await getRate(room.room_type, occupancyItem, season);
       if (pricePerNight != null) {
         estimatedTotal = await calculateTotalAmount({
           roomType: room.room_type,
           occupancyItem,
           season,
-          guestCount: count,
+          guestCount: pricingGuests,
           nights,
         });
       }

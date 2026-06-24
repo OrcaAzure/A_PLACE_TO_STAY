@@ -1,6 +1,9 @@
-/** Guest requests — simple table, approve opens wizard, reject with optional note. */
+/** Guest requests — singles + group requests. */
 
-import { getBookings, updateBooking, normalizeManageRequest } from '/assets/js/services/api.js';
+import {
+  getBookings, getGroups, updateBooking, updateGroup,
+  normalizeManageRequest, normalizeManageGroupRequest,
+} from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDisplayId, formatDateLong, statusBadge, debounce, normStatus,
 } from '/assets/js/features/reservation-shared.js';
@@ -10,7 +13,7 @@ let isOpen = false;
 let requests = [];
 let filtered = [];
 let view = 'list';
-let rejectId = null;
+let rejectTarget = null;
 let filter = { search: '', status: 'pending' };
 let loading = false;
 let saving = false;
@@ -23,7 +26,11 @@ function applyFilter() {
   filtered = requests.filter((r) => {
     if (filter.status !== 'all' && normStatus(r.status) !== filter.status) return false;
     if (!q) return true;
-    return [r.displayId, r.requester?.name, r.id, r.requester?.email].join(' ').toLowerCase().includes(q);
+    const hay = [
+      r.displayId, r.requester?.name, r.id, r.requester?.email,
+      r.groupName, r.kind,
+    ].join(' ').toLowerCase();
+    return hay.includes(q);
   });
 }
 
@@ -35,29 +42,41 @@ function syncBadge() {
   if (b) b.textContent = `${n} waiting`;
 }
 
+function typeLabel(r) {
+  return r.kind === 'group'
+    ? '<span class="res-pill res-pill--pending">GROUP</span>'
+    : '<span class="res-pill">SINGLE</span>';
+}
+
 function renderTable() {
   const body = $('manage-requests-table-body');
   if (!body) return;
   if (loading) {
-    body.innerHTML = '<tr><td colspan="6" class="res-empty-cell">Loading…</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="res-empty-cell">Loading…</td></tr>';
     return;
   }
   if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="6" class="res-empty-cell">No requests found.</td></tr>';
+    body.innerHTML = '<tr><td colspan="7" class="res-empty-cell">No requests found.</td></tr>';
     return;
   }
   body.innerHTML = filtered.map((r) => {
     const pending = normStatus(r.status) === 'pending';
-    const room = `${r.facility?.building || ''} ${r.facility?.roomNumber || ''}`.trim();
+    const isGroup = r.kind === 'group';
+    const guestLabel = isGroup ? escapeHtml(r.groupName || r.requester?.name) : escapeHtml(r.requester?.name || '—');
+    const room = isGroup
+      ? `${r.totalGuests} guests · ~${r.roomsRequested || '?'} rooms`
+      : `${r.facility?.building || ''} ${r.facility?.roomNumber || ''}`.trim() || '—';
+    const key = isGroup ? `g-${r.id}` : `b-${r.id}`;
     return `<tr>
       <td><strong>${escapeHtml(r.displayId)}</strong></td>
-      <td>${escapeHtml(r.requester?.name || '—')}</td>
+      <td>${typeLabel(r)}</td>
+      <td>${guestLabel}</td>
       <td>${formatDateLong(r.schedule?.checkIn)} – ${formatDateLong(r.schedule?.checkOut)}</td>
-      <td>${escapeHtml(room || '—')}</td>
+      <td>${escapeHtml(room)}</td>
       <td>${statusBadge(r.status)}</td>
       <td class="res-td-actions">${pending
-        ? `<button type="button" class="res-btn res-btn--primary" data-approve="${r.id}">Approve</button>
-           <button type="button" class="res-btn res-btn--ghost" data-reject="${r.id}">Reject</button>`
+        ? `<button type="button" class="res-btn res-btn--primary" data-approve="${key}">Approve</button>
+           <button type="button" class="res-btn res-btn--ghost" data-reject="${key}">Reject</button>`
         : '—'}</td>
     </tr>`;
   }).join('');
@@ -65,15 +84,15 @@ function renderTable() {
 }
 
 function renderReject() {
-  const r = requests.find((x) => String(x.id) === String(rejectId));
+  const r = rejectTarget;
   $('manage-requests-list-view')?.classList.add('hidden');
   $('manage-requests-reject-view')?.classList.remove('hidden');
   $('manage-requests-reject-view').innerHTML = `
     <div class="res-reject-box">
-      <h3 class="res-subhead">Reject request ${escapeHtml(r?.displayId || '')}?</h3>
-      <p class="res-hint">Guest: ${escapeHtml(r?.requester?.name || '')}</p>
+      <h3 class="res-subhead">Reject ${escapeHtml(r?.displayId || '')}?</h3>
+      <p class="res-hint">${r?.kind === 'group' ? escapeHtml(r.groupName) : escapeHtml(r?.requester?.name || '')}</p>
       <label class="res-label">Reason (optional)</label>
-      <textarea id="reject-note" class="res-input" rows="3" placeholder="e.g. Room not available on requested dates"></textarea>
+      <textarea id="reject-note" class="res-input" rows="3"></textarea>
       <div class="res-actions-row">
         <button type="button" class="res-btn res-btn--ghost" data-reject-cancel>Go Back</button>
         <button type="button" class="res-btn res-btn--danger" data-reject-confirm>${saving ? 'Rejecting…' : 'Confirm Reject'}</button>
@@ -94,8 +113,15 @@ function render() {
 async function load() {
   loading = true; render();
   try {
-    requests = (await getBookings()).map(normalizeManageRequest)
+    const [bookings, groups] = await Promise.all([getBookings(), getGroups()]);
+    const singles = bookings
+      .filter((b) => !b.group_id)
+      .map(normalizeManageRequest)
       .filter((r) => ['pending', 'approved', 'rejected'].includes(normStatus(r.status)));
+    const groupRows = groups
+      .map(normalizeManageGroupRequest)
+      .filter((r) => ['pending', 'approved', 'rejected'].includes(normStatus(r.status)));
+    requests = [...singles, ...groupRows].sort((a, b) => String(b.schedule?.checkIn).localeCompare(String(a.schedule?.checkIn)));
     applyFilter(); syncBadge();
   } finally { loading = false; render(); }
 }
@@ -116,7 +142,7 @@ export function isManageRequestsModalOpen() { return isOpen; }
 
 export async function openManageRequestsModal() {
   if (isOpen) return;
-  isOpen = true; view = 'list'; rejectId = null; message = null;
+  isOpen = true; view = 'list'; rejectTarget = null; message = null;
   show(); await load();
 }
 
@@ -125,40 +151,76 @@ export function closeManageRequestsModal() {
   isOpen = false; view = 'list'; hide(); render();
 }
 
-function approve(id) {
-  const r = requests.find((x) => String(x.id) === String(id));
+function parseKey(key) {
+  if (String(key).startsWith('g-')) return { kind: 'group', id: key.slice(2) };
+  if (String(key).startsWith('b-')) return { kind: 'single', id: key.slice(2) };
+  return { kind: 'single', id: key };
+}
+
+function approve(key) {
+  const { kind, id } = parseKey(key);
+  const r = requests.find((x) => x.kind === kind && String(x.id) === String(id));
   if (!r) return;
   closeManageRequestsModal();
-  window.dispatchEvent(new CustomEvent('reservation-wizard:open', {
-    detail: {
-      fromRequestId: r.id,
-      prefill: {
-        userId: r.userId, guestName: r.requester?.name, email: r.requester?.email,
-        checkIn: r.schedule?.checkIn, checkOut: r.schedule?.checkOut,
-        guestCount: r.guestCount, roomId: r.roomId, notes: r.notes,
+  if (kind === 'group') {
+    window.dispatchEvent(new CustomEvent('group-wizard:open', {
+      detail: {
+        fromRequestId: r.id,
+        prefill: {
+          groupName: r.groupName,
+          contactName: r.requester?.name,
+          contactPhone: r.contactPhone,
+          email: r.requester?.email,
+          checkIn: r.schedule?.checkIn,
+          checkOut: r.schedule?.checkOut,
+          totalGuests: r.totalGuests,
+          roomsRequested: r.roomsRequested,
+          notes: r.notes,
+          userId: r.userId,
+        },
       },
-    },
-  }));
+    }));
+  } else {
+    window.dispatchEvent(new CustomEvent('reservation-wizard:open', {
+      detail: {
+        fromRequestId: r.id,
+        prefill: {
+          userId: r.userId, guestName: r.requester?.name, email: r.requester?.email,
+          checkIn: r.schedule?.checkIn, checkOut: r.schedule?.checkOut,
+          guestCount: r.guestCount, roomId: r.roomId, notes: r.notes,
+        },
+      },
+    }));
+  }
 }
 
 async function confirmReject() {
-  if (!rejectId || saving) return;
+  if (!rejectTarget || saving) return;
   saving = true; render();
-  const r = requests.find((x) => String(x.id) === String(rejectId));
   const note = $('reject-note')?.value?.trim();
-  const notes = note ? `${r?.notes ? r.notes + '\n' : ''}[Rejected] ${note}` : r?.notes;
+  const notes = note ? `${rejectTarget.notes ? rejectTarget.notes + '\n' : ''}[Rejected] ${note}` : rejectTarget.notes;
   try {
-    await updateBooking(rejectId, { status: 'Rejected', notes });
-    message = 'Request rejected.'; view = 'list'; rejectId = null;
+    if (rejectTarget.kind === 'group') {
+      await updateGroup(rejectTarget.id, { status: 'Rejected', notes });
+    } else {
+      await updateBooking(rejectTarget.id, { status: 'Rejected', notes });
+    }
+    message = 'Request rejected.'; view = 'list'; rejectTarget = null;
     window.dispatchEvent(new CustomEvent('booking:updated'));
     await load();
   } finally { saving = false; render(); }
 }
 
 function onClick(e) {
-  if (e.target.closest('[data-approve]')) { approve(e.target.closest('[data-approve]').getAttribute('data-approve')); return; }
-  if (e.target.closest('[data-reject]')) { view = 'reject'; rejectId = e.target.closest('[data-reject]').getAttribute('data-reject'); render(); return; }
-  if (e.target.closest('[data-reject-cancel]')) { view = 'list'; rejectId = null; render(); return; }
+  const approveBtn = e.target.closest('[data-approve]');
+  if (approveBtn) { approve(approveBtn.getAttribute('data-approve')); return; }
+  const rejectBtn = e.target.closest('[data-reject]');
+  if (rejectBtn) {
+    const { kind, id } = parseKey(rejectBtn.getAttribute('data-reject'));
+    rejectTarget = requests.find((x) => x.kind === kind && String(x.id) === String(id));
+    view = 'reject'; render(); return;
+  }
+  if (e.target.closest('[data-reject-cancel]')) { view = 'list'; rejectTarget = null; render(); return; }
   if (e.target.closest('[data-reject-confirm]')) { confirmReject(); return; }
   if (e.target.closest('#manage-requests-close-btn')) closeManageRequestsModal();
 }

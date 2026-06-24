@@ -25,8 +25,17 @@
     import { requireAuth }          from '/assets/js/services/auth.js';
     import { initAppLayout }        from '/assets/js/layout/ui.js';
     import { mountBookingTimeline } from '/assets/js/features/timeline.js';
+    import { getBookings, getGroups } from '/assets/js/services/api.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
+
+    async function syncPendingBadge() {
+      const [bookings, groups] = await Promise.all([getBookings(), getGroups()]);
+      const pending = bookings.filter((b) => !b.group_id && String(b.status).toLowerCase() === 'pending').length
+        + groups.filter((g) => String(g.status).toLowerCase() === 'pending').length;
+      const countEl = document.getElementById('pending-count');
+      if (countEl) countEl.textContent = `${pending} PENDING`;
+    }
 
     // Utility function that extracts today's clean verbal date string
     function getTodayDateString() {
@@ -70,12 +79,11 @@
     await mountBookingTimeline({
       mountEl: document.getElementById('timeline-mount'),
       title:   'Reservation Master Timeline',
-      onData:  ({ bookings }) => {
-        const pending = bookings.filter((b) => b.status === 'pending').length;
-        const countEl = document.getElementById('pending-count');
-        if (countEl) countEl.textContent = `${pending} PENDING`;
-      },
+      onData:  () => { syncPendingBadge(); },
     });
+
+    window.addEventListener('booking:updated', syncPendingBadge);
+    syncPendingBadge();
 
     // 4. Fire continuous live synchronization updates loops
     runLiveClockSync();

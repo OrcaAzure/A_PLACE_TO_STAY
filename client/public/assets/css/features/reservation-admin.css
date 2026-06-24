@@ -108,7 +108,51 @@
 
 .res-reject-box { max-width: 28rem; margin: 0 auto; padding: 1rem 0; }
 
+/* Group room picker — table-like rows, no checkboxes */
+.res-selected-panel {
+  padding: 1rem 1.125rem; border-radius: 0.75rem; margin-bottom: 1rem; border: 2px solid #E2E8F0;
+}
+.res-selected-panel--ok { background: #ECFDF5; border-color: #A7F3D0; }
+.res-selected-panel--warn { background: #FFFBEB; border-color: #FCD34D; }
+.res-selected-panel-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem; font-size: 1rem; margin-bottom: 0.5rem; }
+.res-selected-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.res-selected-chip {
+  display: inline-flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.75rem;
+  background: #fff; border: 1px solid #CBD5E0; border-radius: 9999px; font-size: 0.9375rem; font-weight: 600;
+}
+.res-chip-remove {
+  border: none; background: #F1F5F9; color: #64748B; width: 1.5rem; height: 1.5rem; border-radius: 9999px;
+  font-size: 1.125rem; line-height: 1; cursor: pointer; padding: 0;
+}
+.res-chip-remove:hover { background: #FEE2E2; color: #991B1B; }
+
+.res-group-toolbar { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.75rem; margin-bottom: 1rem; }
+.res-group-toolbar .res-input { flex: 1 1 12rem; min-width: 0; }
+.res-group-toolbar .res-btn--primary { flex: 1 1 100%; min-height: 3.25rem; font-size: 1.0625rem; }
+
+.res-room-list { display: flex; flex-direction: column; gap: 0.625rem; }
+.res-room-row {
+  border: 2px solid #E2E8F0; border-radius: 0.75rem; background: #fff; overflow: hidden;
+  transition: border-color .15s, box-shadow .15s;
+}
+.res-room-row.is-selected { border-color: #1A365D; box-shadow: 0 0 0 3px rgba(26,54,93,.1); background: #F8FAFC; }
+.res-room-row-main {
+  display: grid; grid-template-columns: 1fr auto auto auto; gap: 0.75rem 1rem; align-items: center;
+  padding: 1rem 1.125rem;
+}
+.res-room-row-id { display: flex; align-items: center; gap: 0.75rem; min-width: 0; }
+.res-room-icon { font-size: 1.75rem; color: #1A365D; flex-shrink: 0; }
+.res-room-row-num { display: block; font-size: 1.0625rem; color: #1A202C; }
+.res-room-row-cap { font-size: 0.9375rem; font-weight: 600; color: #1A365D; white-space: nowrap; }
+.res-room-row-price { font-size: 0.9375rem; font-weight: 700; color: #4A5568; white-space: nowrap; }
+.res-room-row-guests {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;
+  padding: 0.75rem 1.125rem; border-top: 1px solid #E2E8F0; background: #fff;
+}
+.res-room-row-guests .res-label { margin: 0; }
+
 @media (max-width: 640px) {
+  .res-room-row-main { grid-template-columns: 1fr; }
   .res-row { grid-template-columns: 1fr; }
   .res-modal-toolbar .res-input { flex: 1 1 100%; }
   .res-step-label { display: none; }

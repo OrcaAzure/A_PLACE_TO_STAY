@@ -72,7 +72,7 @@ export const getBookingById = async (req, res) => {
 
 export const getRoomAvailability = async (req, res) => {
   try {
-    const { check_in, check_out, guest_count, exclude_booking_id } = req.query;
+    const { check_in, check_out, guest_count, exclude_booking_id, exclude_group_id, group_picker } = req.query;
     if (isEmpty(check_in) || isEmpty(check_out)) {
       return res.status(400).json({ message: 'check_in and check_out are required' });
     }
@@ -81,6 +81,8 @@ export const getRoomAvailability = async (req, res) => {
       checkOut: check_out,
       guestCount: guest_count || 1,
       excludeBookingId: exclude_booking_id || null,
+      excludeGroupId: exclude_group_id || null,
+      groupPicker: group_picker === '1' || group_picker === 'true',
     });
     const availableCount = rooms.filter((r) => r.availability_status === 'available').length;
     res.status(200).json({ rooms, available_count: availableCount });
@@ -133,10 +135,10 @@ export const createBooking = async (req, res) => {
     const bookingStatus = ADMIN_ROLES.includes(role) ? (status || 'Approved') : 'Pending';
 
     const [result] = await pool.query(
-      `INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bookings (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        effectiveUserId, room_id, check_in, check_out, guest_count || 1,
+        effectiveUserId, room_id, req.body.group_id || null, check_in, check_out, guest_count || 1,
         prepared.season, prepared.occupancy_item, grandTotal, bookingStatus,
         notes || null, contact_phone || null,
       ]

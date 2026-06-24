@@ -8,6 +8,7 @@ import bookingRoutes from './routes/booking.routes.js';
 import userRoutes    from './routes/user.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import statsRoutes   from './routes/stats.routes.js';
+import groupRoutes   from './routes/group.routes.js';
 import pageRoutes    from './routes/pages.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -37,6 +38,7 @@ app.use('/api/auth',     authRoutes);
 app.use('/api/users',    userRoutes);
 app.use('/api/rooms',    roomRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/groups',   groupRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/stats',    statsRoutes);
 

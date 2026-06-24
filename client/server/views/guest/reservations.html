@@ -108,10 +108,14 @@
         <h2 class="font-headline-xl text-headline-xl text-on-surface">My Reservations</h2>
         <p class="font-body-md text-body-md text-on-surface-variant">Manage and track your facility reservations with ease.</p>
       </div>
-      <div class="flex items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3">
         <button id="new-reservation-btn" class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-xl font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-[0.98]">
-          <span class="material-symbols-outlined text-[20px]">add</span>
-          New Reservation
+          <span class="material-symbols-outlined text-[20px]">person</span>
+          Single Room
+        </button>
+        <button id="new-group-btn" type="button" class="flex items-center gap-2 bg-surface-container-high text-on-surface px-6 py-3 rounded-xl font-label-md text-label-md font-bold border border-outline-variant hover:shadow-lg transition-all active:scale-[0.98]">
+          <span class="material-symbols-outlined text-[20px]">groups</span>
+          Group Stay
         </button>
       </div>
     </div>
@@ -298,6 +302,61 @@
   </div>
 </div>
 
+<div id="group-modal-overlay" class="hidden fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div class="p-6 border-b border-outline-variant flex items-center justify-between">
+      <h3 class="font-headline-md text-headline-md">Group Stay Request</h3>
+      <button type="button" id="group-modal-close" class="text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form id="group-form" class="p-6 space-y-4">
+      <p class="text-body-sm text-on-surface-variant">Request multiple rooms for your group. Housing will assign rooms after you submit.</p>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-name">Group / organization name</label>
+        <input type="text" id="group-name" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="e.g. Youth Camp 2026" />
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-contact">Contact person</label>
+        <input type="text" id="group-contact" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-phone">Contact number</label>
+        <input type="tel" id="group-phone" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-check-in">Check-in</label>
+          <input type="date" id="group-check-in" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-check-out">Check-out</label>
+          <input type="date" id="group-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-total-guests">Total guests</label>
+          <input type="number" id="group-total-guests" min="2" value="10" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-rooms-needed">Rooms needed (estimate)</label>
+          <input type="number" id="group-rooms-needed" min="1" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Optional" />
+        </div>
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-notes">Notes (optional)</label>
+        <textarea id="group-notes" rows="3" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Special needs, meal preferences, etc."></textarea>
+      </div>
+      <div id="group-form-error" class="hidden text-body-sm text-error bg-error-container rounded-lg px-3 py-2"></div>
+      <div class="flex gap-3 pt-2">
+        <button type="button" id="group-cancel-btn" class="flex-1 py-3 border border-outline-variant rounded-lg font-label-md">Cancel</button>
+        <button type="submit" id="group-submit-btn" class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90">Submit Group Request</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <footer class="lg:ml-[260px] border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
 <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
 <div class="flex items-center gap-2">
@@ -314,7 +373,7 @@
 
 <script type="module">
   import { requireAuth, doLogout, getCurrentUser } from '/assets/js/services/auth.js';
-  import { getBookings, getRooms, createBooking, updateBooking, normalizeBooking, normalizeRoom } from '/assets/js/services/api.js';
+  import { getBookings, getGroups, getRooms, createBooking, createGroup, updateBooking, updateGroup, normalizeBooking, normalizeRoom, formatGroupId } from '/assets/js/services/api.js';
 
   requireAuth();
 
@@ -348,16 +407,21 @@
   }
 
   function renderCard(b) {
+    const isGroup = b.kind === 'group';
+    const idLabel = isGroup ? formatGroupId(b.id) : `#APT-${b.id}`;
     const amount = b.totalAmount != null
       ? `₱${Number(b.totalAmount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
       : '';
+    const typeBadge = isGroup
+      ? '<span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">Group</span>'
+      : '';
     return `
-      <div class="group bg-white p-4 rounded-[16px] border border-outline-variant hover:border-primary/40 hover:shadow-lg transition-all duration-300" data-booking-id="${b.id}">
+      <div class="group bg-white p-4 rounded-[16px] border border-outline-variant hover:border-primary/40 hover:shadow-lg transition-all duration-300" data-booking-id="${b.id}" data-kind="${b.kind || 'single'}">
         <div class="flex flex-col sm:flex-row gap-6">
           <div class="flex-1">
             <div class="flex justify-between items-start mb-2">
               <div>
-                <h4 class="font-headline-sm text-headline-sm">#APT-${b.id}</h4>
+                <h4 class="font-headline-sm text-headline-sm">${typeBadge}${idLabel}</h4>
                 <p class="text-body-sm text-on-surface-variant">${b.facilityLabel || b.title}</p>
               </div>
               <span class="${statusBadge(b.status)} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${b.status}</span>
@@ -380,7 +444,7 @@
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
-          ${b.status === 'pending' ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error transition-colors" data-id="${b.id}">Cancel</button>` : ''}
+          ${b.status === 'pending' ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">Cancel</button>` : ''}
         </div>
       </div>`;
   }
@@ -410,8 +474,20 @@
 
   async function loadBookings() {
     try {
-      const raw = await getBookings();
-      allBookings = raw.map(normalizeBooking);
+      const [raw, groups] = await Promise.all([getBookings(), getGroups()]);
+      const singles = raw.filter((b) => !b.group_id).map(normalizeBooking);
+      const groupItems = groups.map((g) => ({
+        kind: 'group',
+        id: g.id,
+        title: g.group_name,
+        facilityLabel: `${g.room_count || 0} room(s) assigned · ${g.total_guests} guest(s)`,
+        startDate: String(g.check_in).slice(0, 10),
+        endDate: String(g.check_out).slice(0, 10),
+        status: (g.status || 'Pending').toLowerCase(),
+        guestCount: g.total_guests,
+        totalAmount: g.grand_total,
+      }));
+      allBookings = [...singles, ...groupItems].sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)));
 
       const today = now.toISOString().slice(0, 10);
       document.getElementById('stat-total').textContent    = allBookings.length;
@@ -441,17 +517,18 @@
     }
     list.innerHTML = bookings.map(renderCard).join('');
     list.querySelectorAll('.cancel-booking-btn').forEach(btn => {
-      btn.addEventListener('click', () => cancelBooking(btn.dataset.id));
+      btn.addEventListener('click', () => cancelBooking(btn.dataset.id, btn.dataset.kind));
     });
   }
 
-  async function cancelBooking(id) {
-    if (!confirm('Cancel this pending reservation?')) return;
+  async function cancelBooking(id, kind = 'single') {
+    if (!confirm('Cancel this pending request?')) return;
     try {
-      await updateBooking(id, { status: 'Cancelled' });
+      if (kind === 'group') await updateGroup(id, { status: 'Cancelled' });
+      else await updateBooking(id, { status: 'Cancelled' });
       await loadBookings();
     } catch (err) {
-      alert(err.message || 'Could not cancel booking');
+      alert(err.message || 'Could not cancel');
     }
   }
 
@@ -493,6 +570,60 @@
 
   document.getElementById('new-reservation-btn')?.addEventListener('click', openBookingModal);
   document.getElementById('new-reservation-sidebar')?.addEventListener('click', openBookingModal);
+  document.getElementById('new-group-btn')?.addEventListener('click', openGroupModal);
+
+  const groupModal = document.getElementById('group-modal-overlay');
+  const groupForm = document.getElementById('group-form');
+
+  function closeGroupModal() {
+    groupModal?.classList.add('hidden');
+    groupForm?.reset();
+    document.getElementById('group-form-error')?.classList.add('hidden');
+  }
+
+  function openGroupModal() {
+    const u = user;
+    if (u) {
+      document.getElementById('group-contact').value = u.full_name || u.name || '';
+    }
+    groupModal?.classList.remove('hidden');
+  }
+
+  document.getElementById('group-modal-close')?.addEventListener('click', closeGroupModal);
+  document.getElementById('group-cancel-btn')?.addEventListener('click', closeGroupModal);
+  groupModal?.addEventListener('click', (e) => { if (e.target === groupModal) closeGroupModal(); });
+
+  groupForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorEl = document.getElementById('group-form-error');
+    const submitBtn = document.getElementById('group-submit-btn');
+    errorEl?.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    try {
+      await createGroup({
+        group_name: document.getElementById('group-name').value.trim(),
+        contact_name: document.getElementById('group-contact').value.trim(),
+        contact_phone: document.getElementById('group-phone').value.trim() || undefined,
+        check_in: document.getElementById('group-check-in').value,
+        check_out: document.getElementById('group-check-out').value,
+        total_guests: Number(document.getElementById('group-total-guests').value) || 2,
+        rooms_requested: Number(document.getElementById('group-rooms-needed').value) || undefined,
+        notes: document.getElementById('group-notes').value.trim() || undefined,
+      });
+      closeGroupModal();
+      await loadBookings();
+    } catch (err) {
+      if (errorEl) {
+        errorEl.textContent = err.message || 'Request failed';
+        errorEl.classList.remove('hidden');
+      }
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Group Request';
+    }
+  });
+
   document.getElementById('booking-modal-close')?.addEventListener('click', closeBookingModal);
   document.getElementById('booking-cancel-btn')?.addEventListener('click', closeBookingModal);
   modal?.addEventListener('click', (e) => { if (e.target === modal) closeBookingModal(); });

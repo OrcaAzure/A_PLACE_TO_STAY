@@ -1,15 +1,15 @@
 <div id="manage-reservations-overlay" class="hidden fixed inset-0 bg-black/40 z-[70]"></div>
 <div id="manage-reservations-modal" class="hidden fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-  <div class="res-modal bg-white rounded-xl w-full max-w-4xl flex flex-col max-h-[90vh]">
+  <div class="res-modal bg-white rounded-xl w-full max-w-5xl flex flex-col max-h-[90vh]">
     <header class="res-modal-header">
       <div>
         <h2 class="res-modal-title">Reservations</h2>
-        <p class="res-hint">Confirmed bookings only. Use the wizard to add rooms, meals, and fees.</p>
+        <p class="res-hint">Single stays and multi-room groups.</p>
       </div>
       <button id="manage-reservations-close" type="button" class="res-icon-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
     </header>
     <div class="res-modal-toolbar">
-      <input id="manage-reservations-search" type="search" class="res-input" placeholder="Search guest, room, or reservation ID…" />
+      <input id="manage-reservations-search" type="search" class="res-input" placeholder="Search guest, group, room, or ID…" />
       <select id="manage-reservations-status-filter" class="res-input res-input--select">
         <option value="all">All</option>
         <option value="active">Active now</option>
@@ -17,14 +17,17 @@
         <option value="completed">Completed</option>
         <option value="cancelled">Cancelled</option>
       </select>
-      <button type="button" data-open-create-reservation class="res-btn res-btn--primary">
-        <span class="material-symbols-outlined">add</span> New Reservation
+      <button type="button" data-open-create-reservation class="res-btn res-btn--secondary">
+        <span class="material-symbols-outlined">person</span> Single
+      </button>
+      <button type="button" data-open-create-group class="res-btn res-btn--primary">
+        <span class="material-symbols-outlined">groups</span> Group
       </button>
     </div>
     <div class="res-modal-body">
       <table class="res-table">
         <thead><tr>
-          <th>ID</th><th>Guest</th><th>Room</th><th>Check-in</th><th>Check-out</th><th>Guests</th><th>Action</th>
+          <th>ID</th><th>Type</th><th>Guest / Group</th><th>Room(s)</th><th>Check-in</th><th>Check-out</th><th>Guests</th><th>Action</th>
         </tr></thead>
         <tbody id="manage-reservations-table-body"></tbody>
       </table>

@@ -146,6 +146,43 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- ============================================
+-- RESERVATION GROUPS (multi-room stays)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS reservation_groups (
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    user_id         INT NOT NULL,
+    group_name      VARCHAR(150) NOT NULL,
+    contact_name    VARCHAR(150) NOT NULL,
+    contact_phone   VARCHAR(30) DEFAULT NULL,
+    contact_email   VARCHAR(150) DEFAULT NULL,
+    check_in        DATE NOT NULL,
+    check_out       DATE NOT NULL,
+    total_guests    INT NOT NULL DEFAULT 1,
+    rooms_requested INT DEFAULT NULL,
+    status          ENUM(
+                      'Pending',
+                      'Approved',
+                      'Rejected',
+                      'Cancelled'
+                    ) NOT NULL DEFAULT 'Pending',
+    notes           TEXT DEFAULT NULL,
+    created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_group_user
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT chk_group_dates CHECK (check_out > check_in),
+    CONSTRAINT chk_group_guests CHECK (total_guests >= 1)
+);
+
+CREATE INDEX idx_groups_status ON reservation_groups (status);
+CREATE INDEX idx_groups_dates ON reservation_groups (check_in, check_out);
+
+-- ============================================
 -- BOOKINGS
 -- ============================================
 
@@ -153,6 +190,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     id             INT AUTO_INCREMENT PRIMARY KEY,
     user_id        INT NOT NULL,
     room_id        INT NOT NULL,
+    group_id       INT DEFAULT NULL,
     check_in       DATE NOT NULL,
     check_out      DATE NOT NULL,
     season         ENUM(
@@ -190,12 +228,18 @@ CREATE TABLE IF NOT EXISTS bookings (
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
+    CONSTRAINT fk_booking_group
+        FOREIGN KEY (group_id) REFERENCES reservation_groups(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
     CONSTRAINT chk_dates  CHECK (check_out > check_in),
     CONSTRAINT chk_guests CHECK (guest_count >= 1),
     CONSTRAINT chk_total  CHECK (total_amount IS NULL OR total_amount > 0)
 );
 
 CREATE INDEX idx_bookings_room_dates ON bookings (room_id, check_in, check_out, status);
+CREATE INDEX idx_bookings_group ON bookings (group_id);
 
 CREATE TABLE IF NOT EXISTS booking_meals (
     id         INT AUTO_INCREMENT PRIMARY KEY,

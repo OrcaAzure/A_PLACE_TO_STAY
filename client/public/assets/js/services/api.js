@@ -131,7 +131,66 @@ export async function getRoomAvailability(params = {}) {
   if (params.check_out) qs.set('check_out', params.check_out);
   if (params.guest_count) qs.set('guest_count', String(params.guest_count));
   if (params.exclude_booking_id) qs.set('exclude_booking_id', String(params.exclude_booking_id));
+  if (params.exclude_group_id) qs.set('exclude_group_id', String(params.exclude_group_id));
+  if (params.group_picker) qs.set('group_picker', '1');
   return apiRequest(`/bookings/availability?${qs.toString()}`);
+}
+
+export async function getGroups() {
+  const data = await apiRequest('/groups');
+  return data.groups || [];
+}
+
+export async function getGroupById(id) {
+  const data = await apiRequest(`/groups/${id}`);
+  return data.group;
+}
+
+export async function suggestGroupRooms(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.check_in) qs.set('check_in', params.check_in);
+  if (params.check_out) qs.set('check_out', params.check_out);
+  if (params.total_guests) qs.set('total_guests', String(params.total_guests));
+  if (params.exclude_group_id) qs.set('exclude_group_id', String(params.exclude_group_id));
+  return apiRequest(`/groups/suggest-rooms?${qs.toString()}`);
+}
+
+export async function createGroup(payload) {
+  return apiRequest('/groups', { method: 'POST', body: JSON.stringify(payload) });
+}
+
+export async function updateGroup(id, payload) {
+  return apiRequest(`/groups/${id}`, { method: 'PATCH', body: JSON.stringify(payload) });
+}
+
+export async function deleteGroup(id) {
+  return apiRequest(`/groups/${id}`, { method: 'DELETE' });
+}
+
+export function formatGroupId(id) { return `#GRP-${id}`; }
+
+export function normalizeManageGroupRequest(group) {
+  return {
+    id: group.id,
+    kind: 'group',
+    displayId: formatGroupId(group.id),
+    groupName: group.group_name,
+    status: (group.status || 'Pending').toLowerCase(),
+    schedule: {
+      checkIn: String(group.check_in || '').slice(0, 10),
+      checkOut: String(group.check_out || '').slice(0, 10),
+    },
+    totalGuests: group.total_guests,
+    roomsRequested: group.rooms_requested,
+    roomCount: group.room_count || 0,
+    notes: group.notes,
+    requester: {
+      name: group.contact_name || group.requester_name || 'Unknown',
+      email: group.contact_email || group.requester_email || '',
+    },
+    userId: group.user_id,
+    contactPhone: group.contact_phone,
+  };
 }
 
 export async function getMealRates() {
@@ -192,6 +251,7 @@ export function normalizeManageRequest(booking) {
   const toDate = (value) => (value ? String(value).slice(0, 10) : null);
 
   return {
+    kind: 'single',
     id: booking.id,
     displayId: `#APT-${booking.id}`,
     title: booking.guest_name || `Booking #${booking.id}`,
