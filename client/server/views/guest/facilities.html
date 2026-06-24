@@ -23,7 +23,7 @@
 <aside class="hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
 <div class="px-6 mb-8">
 <h1 class="font-headline-sm text-headline-sm font-black text-primary">AptSpace</h1>
-<p class="text-body-sm text-on-surface-variant mt-1">Guest Portal</p>
+<p class="text-body-sm text-on-surface-variant mt-1 js-portal-label">Guest Portal</p>
 </div>
 <nav class="flex-1 px-3 space-y-1">
 <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./dashboard.html">
@@ -43,7 +43,7 @@
 <span class="font-label-md text-label-md">Settings</span>
 </a>
 </nav>
-<div class="px-6 mt-auto">
+<div class="px-6 mt-auto js-requires-write">
 <a href="./reservations.html" class="w-full py-3 bg-primary text-on-primary rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-colors shadow-sm">
 <span class="material-symbols-outlined text-[18px]">add</span>
                 New Reservation
@@ -73,6 +73,7 @@
 <p class="font-label-md text-label-md font-bold leading-none js-user-name">Guest User</p>
 <p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider hover:text-error transition-colors js-logout">Log Out</p>
 </div>
+<span class="js-role-badge hidden px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider"></span>
 <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm js-user-avatar">?</div>
 </div>
 </div>
@@ -167,7 +168,7 @@
 </footer>
 
 <script type="module">
-  import { requireAuth, doLogout, getCurrentUser } from '/assets/js/services/auth.js';
+  import { requireAuth, doLogout, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
   import { getRooms, getRoomAvailability, normalizeRoom } from '/assets/js/services/api.js';
 
   requireAuth();
@@ -180,6 +181,8 @@
   document.querySelectorAll('.js-user-name').forEach((el) => { el.textContent = displayName; });
   document.querySelectorAll('.js-user-avatar').forEach((el) => { el.textContent = (displayName[0] || 'G').toUpperCase(); });
   document.querySelectorAll('.js-logout').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); doLogout(); }));
+
+  const { readOnly } = applyRoleUI();
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
@@ -259,9 +262,14 @@
     const priceLine = price && price.perNight != null
       ? `<p class="text-body-sm text-on-surface-variant mb-4">${peso(price.perNight)} / night · ${price.nights} night(s)</p>`
       : '<div class="mb-4"></div>';
-    const reserveBtn = st.bookable
-      ? `<a href="./reservations.html" class="mt-auto block text-center w-full py-3 bg-primary text-white rounded-xl font-bold text-label-md hover:brightness-110 transition-all shadow-md active:scale-95">Reserve</a>`
-      : `<button disabled class="mt-auto w-full py-3 bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md cursor-not-allowed">${st.label}</button>`;
+    let reserveBtn;
+    if (readOnly) {
+      reserveBtn = `<div class="mt-auto w-full py-3 text-center bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">visibility</span>View only</div>`;
+    } else if (st.bookable) {
+      reserveBtn = `<a href="./reservations.html" class="mt-auto block text-center w-full py-3 bg-primary text-white rounded-xl font-bold text-label-md hover:brightness-110 transition-all shadow-md active:scale-95">Reserve</a>`;
+    } else {
+      reserveBtn = `<button disabled class="mt-auto w-full py-3 bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md cursor-not-allowed">${st.label}</button>`;
+    }
     return `
       <div class="group flex flex-col bg-white rounded-2xl overflow-hidden border border-outline-variant hover:border-primary/40 hover:shadow-xl transition-all duration-300 reveal">
         <div class="relative h-28 bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center">

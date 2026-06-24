@@ -33,7 +33,7 @@
 <aside class="hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
     <div class="px-6 mb-8">
         <h1 class="font-headline-sm text-headline-sm font-black text-primary">AptSpace</h1>
-        <p class="text-body-sm text-on-surface-variant mt-1">Guest Portal</p>
+        <p class="text-body-sm text-on-surface-variant mt-1 js-portal-label">Guest Portal</p>
     </div>
     <nav class="flex-1 px-3 space-y-1">
         <a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 border-l-4 border-primary font-bold transition-all active:scale-95 duration-150" href="./dashboard.html">
@@ -88,6 +88,7 @@
 <p class="font-label-md text-label-md font-bold leading-none js-user-name">Guest User</p>
 <p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider hover:text-error transition-colors js-logout">Log Out</p>
 </div>
+<span class="js-role-badge hidden px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider"></span>
 <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm js-user-avatar">?</div>
 </div>
 </div>
@@ -170,7 +171,7 @@
             <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6 reveal" style="animation-delay:.2s">
                 <h4 class="font-headline-sm text-headline-sm mb-6">Quick Actions</h4>
                 <div class="space-y-3">
-                    <a href="./reservations.html" class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
+                    <a href="./reservations.html" class="js-requires-write w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
                         <div class="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
                             <span class="material-symbols-outlined">add_task</span>
                         </div>
@@ -229,7 +230,7 @@
 </footer>
 
 <script type="module">
-    import { requireAuth, doLogout, getCurrentUser } from '/assets/js/services/auth.js';
+    import { requireAuth, doLogout, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
     import { getBookings, getGroups, normalizeBooking, formatGroupId } from '/assets/js/services/api.js';
 
     requireAuth();
@@ -245,6 +246,8 @@
     const welcomeEl = document.getElementById('welcome-message');
     if (welcomeEl) welcomeEl.textContent = `Welcome back, ${firstName}!`;
     document.querySelectorAll('.js-logout').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); doLogout(); }));
+
+    const { readOnly } = applyRoleUI();
 
     const todayStr = new Date().toISOString().slice(0, 10);
     const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
@@ -294,14 +297,17 @@
       const mount = document.getElementById('active-stay-mount');
       const active = items.find((b) => b.status === 'approved' && b.startDate <= todayStr && b.endDate > todayStr);
       if (!active) {
+        const cta = readOnly
+          ? ''
+          : `<a href="./reservations.html" class="inline-flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-lg font-label-md text-label-md">
+              <span class="material-symbols-outlined text-[18px]">add</span>Make a reservation
+            </a>`;
         mount.innerHTML = `
           <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-8 text-center">
             <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-2">hotel</span>
             <h3 class="font-headline-sm text-headline-sm mb-1">No active stay</h3>
-            <p class="font-body-md text-on-surface-variant mb-4">You're not currently checked in. Plan your next visit anytime.</p>
-            <a href="./reservations.html" class="inline-flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-lg font-label-md text-label-md">
-              <span class="material-symbols-outlined text-[18px]">add</span>Make a reservation
-            </a>
+            <p class="font-body-md text-on-surface-variant mb-4">${readOnly ? 'You have view-only access. Reservations are managed by housing staff.' : "You're not currently checked in. Plan your next visit anytime."}</p>
+            ${cta}
           </div>`;
         return;
       }

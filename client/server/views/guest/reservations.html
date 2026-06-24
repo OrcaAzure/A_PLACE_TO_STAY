@@ -98,7 +98,7 @@
 <aside class="hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full w-[260px] bg-surface-container-lowest border-r border-outline-variant z-40">
 <div class="px-6 mb-8">
 <h1 class="font-headline-sm text-headline-sm font-black text-primary">AptSpace</h1>
-<p class="text-body-sm text-on-surface-variant mt-1">Guest Portal</p>
+<p class="text-body-sm text-on-surface-variant mt-1 js-portal-label">Guest Portal</p>
 </div>
 <nav class="flex-1 px-3 space-y-1">
 <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./dashboard.html">
@@ -118,7 +118,7 @@
 <span class="font-label-md text-label-md">Settings</span>
 </a>
 </nav>
-<div class="px-6 mt-auto">
+<div class="px-6 mt-auto js-requires-write">
 <button id="new-reservation-sidebar" class="w-full py-3 bg-primary text-on-primary rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:bg-primary-container transition-all shadow-sm active:scale-[0.98] hover:shadow-md">
 <span class="material-symbols-outlined text-[18px]">add</span>
                 New Reservation
@@ -148,6 +148,7 @@
 <p class="font-label-md text-label-md font-bold leading-none js-user-name">Guest User</p>
 <p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider hover:text-error transition-colors js-logout">Log Out</p>
 </div>
+<span class="js-role-badge hidden px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider"></span>
 <div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm js-user-avatar">?</div>
 </div>
 </div>
@@ -181,7 +182,7 @@
         <h2 class="font-headline-xl text-headline-xl text-on-surface">My Reservations</h2>
         <p class="font-body-md text-body-md text-on-surface-variant">Manage and track your facility reservations with ease.</p>
       </div>
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="flex flex-wrap items-center gap-3 js-requires-write">
         <button id="new-reservation-btn" class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-xl font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-[0.98] hover:-translate-y-0.5">
           <span class="material-symbols-outlined text-[20px]">person</span>
           Single Room
@@ -190,6 +191,14 @@
           <span class="material-symbols-outlined text-[20px]">groups</span>
           Group Stay
         </button>
+      </div>
+    </div>
+
+    <div class="js-readonly-banner hidden mb-xl flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-800 rounded-2xl p-4 animate-fade-up">
+      <span class="material-symbols-outlined mt-0.5">visibility</span>
+      <div>
+        <p class="font-label-md text-label-md font-bold">View-only access</p>
+        <p class="text-body-sm text-on-surface-variant">Your role lets you review reservations but not create, edit, or cancel them. Contact housing staff for changes.</p>
       </div>
     </div>
 
@@ -447,7 +456,7 @@
 </footer>
 
 <script type="module">
-  import { requireAuth, doLogout, getCurrentUser } from '/assets/js/services/auth.js';
+  import { requireAuth, doLogout, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
   import {
     getBookings, getGroups, createBooking, createGroup, updateBooking, updateGroup,
     getRoomAvailability, normalizeBooking, formatGroupId,
@@ -464,6 +473,8 @@
   document.querySelectorAll('.js-user-name').forEach((el) => { el.textContent = displayName; });
   document.querySelectorAll('.js-user-avatar').forEach((el) => { el.textContent = (displayName[0] || 'G').toUpperCase(); });
   document.querySelectorAll('.js-logout').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); doLogout(); }));
+
+  const { readOnly } = applyRoleUI();
 
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
@@ -583,7 +594,7 @@
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
-          ${b.status === 'pending' ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">Cancel request</button>` : ''}
+          ${(!readOnly && b.status === 'pending') ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">Cancel request</button>` : ''}
         </div>
       </div>`;
   }
@@ -667,7 +678,7 @@
         <div class="text-center py-16 text-on-surface-variant animate-fade-in">
           <span class="material-symbols-outlined text-[48px] mb-2 block">event_busy</span>
           <p class="font-body-md text-body-md">No reservations found.</p>
-          <button type="button" id="empty-new-booking" class="mt-4 text-primary font-label-md hover:underline">Create your first reservation</button>
+          ${readOnly ? '' : '<button type="button" id="empty-new-booking" class="mt-4 text-primary font-label-md hover:underline">Create your first reservation</button>'}
         </div>`;
       document.getElementById('empty-new-booking')?.addEventListener('click', openBookingModal);
       return;
