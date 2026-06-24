@@ -65,6 +65,14 @@
       box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
     }
 
+    .meal-card {
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.875rem;
+      padding: 1.25rem;
+      text-align: center;
+    }
+
   </style>
 </head>
 <body class="h-full bg-slate-50/50">
@@ -74,7 +82,8 @@
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-100 shadow-sm">
         <button type="button" data-fac-tab="rooms" class="fac-tab is-active">Rooms</button>
-        <button type="button" data-fac-tab="venues" class="fac-tab">Venues &amp; Spaces</button>
+        <button type="button" data-fac-tab="venues" class="fac-tab">Venues</button>
+        <button type="button" data-fac-tab="meals" class="fac-tab">Meals</button>
       </div>
       <button type="button" data-open-manage-facilities class="admin-crud-btn-primary shadow-sm">
         <span class="material-symbols-outlined text-[20px]">edit</span>
@@ -92,50 +101,50 @@
         </button>
         <button type="button" data-status-filter="Available" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0">
           <span class="material-symbols-outlined text-[18px] text-emerald-600">check_circle</span>
-          <span>Available</span>
+          <span>Ready</span>
         </button>
         <button type="button" data-status-filter="Occupied" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0">
           <span class="material-symbols-outlined text-[18px] text-amber-500">hotel</span>
-          <span>Occupied</span>
+          <span>In Use</span>
         </button>
         <button type="button" data-status-filter="Maintenance" class="status-pill-btn text-slate-500 hover:bg-slate-50 px-4 py-2 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 shrink-0">
           <span class="material-symbols-outlined text-[18px] text-rose-500">build</span>
-          <span>Maintenance</span>
+          <span>Repair</span>
         </button>
       </div>
       
-      <div class="flex flex-wrap items-center gap-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider self-start xl:self-auto bg-slate-50/60 p-2 rounded-lg border border-slate-100">
-        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span><span>Vacant</span></div>
-        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span><span>Occupied</span></div>
-        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span><span>Maint.</span></div>
+      <div class="flex flex-wrap items-center gap-4 text-[11px] font-semibold text-slate-400 self-start xl:self-auto">
+        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span><span>Ready</span></div>
+        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span><span>In Use</span></div>
+        <div class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span><span>Repair</span></div>
       </div>
     </div>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
       <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-blue-500/30 transition-colors">
         <div>
-          <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Total Capacity</p>
+          <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">All Rooms</p>
           <h3 class="text-3xl font-bold mt-1 text-slate-800" id="total-rooms">LOADING...</h3>
         </div>
-        <div class="p-3.5 bg-blue-50 text-blue-600 rounded-xl group-hover:bg-blue-600 group-hover:text-white transition-colors flex items-center justify-center">
+        <div class="p-3.5 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center">
           <span class="material-symbols-outlined text-[26px]">meeting_room</span>
         </div>
       </div>
-      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-emerald-500/30 transition-colors">
+      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Available Units</p>
+          <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Ready Now</p>
           <h3 class="text-3xl font-bold mt-1 text-slate-800" id="available-rooms">LOADING...</h3>
         </div>
-        <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl group-hover:bg-emerald-600 group-hover:text-white transition-colors flex items-center justify-center">
+        <div class="p-3.5 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
           <span class="material-symbols-outlined text-[26px]">check_circle</span>
         </div>
       </div>
-      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-amber-500/30 transition-colors">
+      <div class="bg-white p-6 rounded-xl border border-slate-100 shadow-sm flex items-center justify-between">
         <div>
-          <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">Occupied Units</p>
+          <p class="text-slate-400 text-xs font-semibold tracking-wide uppercase">In Use</p>
           <h3 class="text-3xl font-bold mt-1 text-slate-800" id="occupied-rooms">LOADING...</h3>
         </div>
-        <div class="p-3.5 bg-amber-50 text-amber-600 rounded-xl group-hover:bg-amber-600 group-hover:text-white transition-colors flex items-center justify-center">
+        <div class="p-3.5 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center">
           <span class="material-symbols-outlined text-[26px]">hotel</span>
         </div>
       </div>
@@ -143,12 +152,9 @@
 
     <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
       <div class="px-4 py-3 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div class="flex items-center gap-3 min-w-0">
-          <div class="w-1 h-6 bg-blue-600 rounded-full shrink-0"></div>
-          <div class="min-w-0">
-            <h3 class="text-sm font-semibold text-slate-800">Room Status Board</h3>
-            <p class="text-[11px] text-slate-400 leading-snug">Click a room to change its setup</p>
-          </div>
+        <div class="min-w-0">
+          <h3 class="text-base font-semibold text-slate-800">Room Board</h3>
+          <p class="text-sm text-slate-500 mt-0.5">Click any room to change its setup (e.g. conference → group sleep)</p>
         </div>
         
         <div class="flex flex-wrap items-center gap-3 shrink-0">
@@ -168,10 +174,22 @@
       <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100">
           <h3 class="text-base font-semibold text-slate-800">Campus Venues</h3>
-          <p class="text-sm text-slate-500 mt-0.5">Chapels, prayer mountain, commons, and other bookable spaces from the rate catalog.</p>
+          <p class="text-sm text-slate-500 mt-0.5">Chapels, prayer mountain, commons, gardens, and other spaces guests can book.</p>
         </div>
         <div id="venues-grid-mount" class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[120px]">
           <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading venues…</p>
+        </div>
+      </section>
+    </div>
+
+    <div id="fac-panel-meals" class="hidden space-y-4">
+      <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <div class="px-5 py-4 border-b border-slate-100">
+          <h3 class="text-base font-semibold text-slate-800">Meal Prices</h3>
+          <p class="text-sm text-slate-500 mt-0.5">Current rates from the database — used when adding meals to a reservation.</p>
+        </div>
+        <div id="meals-grid-mount" class="p-5 grid grid-cols-2 sm:grid-cols-4 gap-4 min-h-[100px]">
+          <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading meals…</p>
         </div>
       </section>
     </div>
@@ -181,7 +199,7 @@
   <script type="module">
     import { requireAuth }             from '/assets/js/services/auth.js';
     import { initAppLayout }           from '/assets/js/layout/ui.js';
-    import { getRooms, getVenueFacilities, normalizeRoom } from '/assets/js/services/api.js';
+    import { getRooms, getFacilitiesOverview, normalizeRoom } from '/assets/js/services/api.js';
     import { getRoomSetupMeta } from '/assets/js/features/manage-facilities.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
@@ -189,25 +207,27 @@
     await initAppLayout({
       portal:     'admin',
       activePage: 'facilities',
-      title:      'Facilities Operations Center',
-      subtitle:   'Mission Control',
+      title:      'Facilities',
+      subtitle:   'Rooms, venues & meals',
     });
 
     let allRooms = [];
     let allVenues = [];
+    let allMeals = [];
     let currentBuildingFilter = "";
     let currentStatusFilter = "";
-    let activeFacTab = "rooms";
 
     const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
 
+    const STATUS_LABELS = { Available: 'Ready', Occupied: 'In Use', Maintenance: 'Repair' };
+
     function switchFacTab(tab) {
-      activeFacTab = tab;
       document.querySelectorAll('[data-fac-tab]').forEach((btn) => {
         btn.classList.toggle('is-active', btn.getAttribute('data-fac-tab') === tab);
       });
       document.getElementById('fac-panel-rooms')?.classList.toggle('hidden', tab !== 'rooms');
       document.getElementById('fac-panel-venues')?.classList.toggle('hidden', tab !== 'venues');
+      document.getElementById('fac-panel-meals')?.classList.toggle('hidden', tab !== 'meals');
     }
 
     function formatCapacity(min, max) {
@@ -258,10 +278,31 @@
       }).join('');
     }
 
+    function renderMealsGrid() {
+      const mount = document.getElementById('meals-grid-mount');
+      if (!mount) return;
+
+      if (!allMeals.length) {
+        mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No meal prices found.</p>';
+        return;
+      }
+
+      mount.innerHTML = allMeals.map((meal) => `
+        <article class="meal-card">
+          <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-[28px]">${escapeHtml(meal.icon || 'restaurant')}</span>
+          </div>
+          <h4 class="text-base font-bold text-slate-800">${escapeHtml(meal.item)}</h4>
+          <p class="text-2xl font-bold text-slate-900 mt-2">${peso(meal.rate)}</p>
+          <p class="text-xs text-slate-400 mt-1">per person</p>
+        </article>
+      `).join('');
+    }
+
     function refreshFacilitiesStats() {
-      document.getElementById('total-rooms').textContent     = `${allRooms.length} Total`;
+      document.getElementById('total-rooms').textContent = allRooms.length;
       document.getElementById('available-rooms').textContent = allRooms.filter(r => normalizeRoom(r).status === 'Available').length;
-      document.getElementById('occupied-rooms').textContent  = allRooms.filter(r => normalizeRoom(r).status === 'Occupied').length;
+      document.getElementById('occupied-rooms').textContent = allRooms.filter(r => normalizeRoom(r).status === 'Occupied').length;
     }
 
     function getStatusTokens(status) {
@@ -330,7 +371,7 @@
         const setup = getRoomSetupMeta(r);
         const roomLabel = escapeHtml(n.roomNumber);
         const building = escapeHtml(n.building);
-        const statusLabel = escapeHtml(n.status);
+        const statusLabel = escapeHtml(STATUS_LABELS[n.status] || n.status);
         
         return `
           <button type="button" data-facility-room-id="${n.id}" class="matrix-room-card group cursor-pointer rounded-xl border border-slate-200/90 ${tokens.accent} bg-white px-3.5 py-3 shadow-sm transition-all duration-150 hover:border-blue-300 hover:shadow-md flex flex-col min-w-0 text-left w-full">
@@ -374,13 +415,15 @@
     }
 
     try {
-      const [rooms, venues] = await Promise.all([getRooms(), getVenueFacilities()]);
+      const [rooms, catalog] = await Promise.all([getRooms(), getFacilitiesOverview()]);
       allRooms = rooms;
-      allVenues = venues;
+      allVenues = catalog.venues || [];
+      allMeals = catalog.meals || [];
       refreshFacilitiesStats();
       buildTabTriggers(allRooms);
       generateInteractiveGrid(allRooms);
       renderVenuesGrid();
+      renderMealsGrid();
 
       document.querySelectorAll('[data-fac-tab]').forEach((btn) => {
         btn.addEventListener('click', () => switchFacTab(btn.getAttribute('data-fac-tab')));

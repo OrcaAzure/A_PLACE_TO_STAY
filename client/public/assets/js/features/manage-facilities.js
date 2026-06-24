@@ -5,6 +5,7 @@
 
 import {
   getRooms,
+  getBuildings,
   createRoom,
   updateRoom,
   deleteRoom,
@@ -80,8 +81,8 @@ const QUICK_SETUPS = [
 ];
 
 const ROOM_STATUSES = [
-  { value: 'Available', label: 'Ready to use', icon: 'check_circle', tone: 'available' },
-  { value: 'Occupied', label: 'In use now', icon: 'hotel', tone: 'occupied' },
+  { value: 'Available', label: 'Ready', icon: 'check_circle', tone: 'available' },
+  { value: 'Occupied', label: 'In use', icon: 'hotel', tone: 'occupied' },
   { value: 'Maintenance', label: 'Under repair', icon: 'build', tone: 'maintenance' },
 ];
 
@@ -123,6 +124,11 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function roomStatusLabel(status) {
+  const map = { Available: 'Ready', Occupied: 'In use', Maintenance: 'Repair' };
+  return map[status] || status || 'Ready';
 }
 
 function roomStatusBadge(status) {
@@ -197,7 +203,7 @@ function roomToForm(r) {
   };
 }
 
-function extractBuildings(rooms) {
+function extractBuildingsFromRooms(rooms) {
   const map = new Map();
   rooms.forEach((r) => {
     if (r.building_id && !map.has(r.building_id)) {
@@ -205,6 +211,15 @@ function extractBuildings(rooms) {
     }
   });
   return [...map.entries()].map(([id, name]) => ({ id, name }));
+}
+
+function mergeBuildings(apiBuildings, roomBuildings) {
+  const map = new Map();
+  (apiBuildings || []).forEach((b) => map.set(String(b.id), { id: b.id, name: b.name }));
+  roomBuildings.forEach((b) => {
+    if (!map.has(String(b.id))) map.set(String(b.id), b);
+  });
+  return [...map.values()].sort((a, b) => String(a.name).localeCompare(String(b.name)));
 }
 
 function filterRooms() {
@@ -250,7 +265,7 @@ function renderList() {
               <p class="text-label-md font-bold text-on-surface truncate">${escapeHtml(r.room_number)}</p>
               <p class="text-body-sm text-on-surface-variant truncate">${escapeHtml(r.building_name || 'Building')} · ${escapeHtml(setup.label)}</p>
             </div>
-            <span class="${roomStatusBadge(r.status)}">${escapeHtml(r.status)}</span>
+            <span class="${roomStatusBadge(r.status)}">${escapeHtml(roomStatusLabel(r.status))}</span>
           </div>
         </button>`;
     }).join('');
@@ -416,7 +431,7 @@ function renderDetailView(r) {
           <h3 class="mf-detail-title">${escapeHtml(r.room_number)}</h3>
           <p class="mf-detail-sub">${escapeHtml(r.building_name || 'Building')}</p>
         </div>
-        <span class="${roomStatusBadge(r.status)}">${escapeHtml(r.status)}</span>
+        <span class="${roomStatusBadge(r.status)}">${escapeHtml(roomStatusLabel(r.status))}</span>
       </div>
 
       <p class="mf-detail-meta">
@@ -656,8 +671,9 @@ async function loadData() {
   render();
 
   try {
-    state.rooms = await getRooms();
-    state.buildings = extractBuildings(state.rooms);
+    const [rooms, apiBuildings] = await Promise.all([getRooms(), getBuildings()]);
+    state.rooms = rooms;
+    state.buildings = mergeBuildings(apiBuildings, extractBuildingsFromRooms(rooms));
     filterRooms();
     if (state.selectedId && !getSelected()) {
       state.selectedId = state.filtered.length ? state.filtered[0].id : null;

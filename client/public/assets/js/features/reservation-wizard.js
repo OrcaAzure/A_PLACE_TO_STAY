@@ -126,6 +126,7 @@ function renderStep4() {
       ${renderMealRow('Breakfast', state.meals.Breakfast)}
       ${renderMealRow('Lunch', state.meals.Lunch)}
       ${renderMealRow('Dinner', state.meals.Dinner)}
+      ${renderMealRow('Snack', state.meals.Snack)}
       <p class="res-meal-total">Meals subtotal: <strong>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
     </div>
     <h3 class="res-subhead">Additional fees (optional)</h3>
@@ -143,7 +144,7 @@ function renderStep4() {
 function renderStep5() {
   const r = state.selectedRoom;
   const grand = calcGrandTotal(state.roomTotal, state.meals, state.fees, state.mealRates);
-  const mealLines = ['Breakfast', 'Lunch', 'Dinner'].filter((t) => state.meals[t] > 0)
+  const mealLines = ['Breakfast', 'Lunch', 'Dinner', 'Snack'].filter((t) => state.meals[t] > 0)
     .map((t) => `${t} × ${state.meals[t]} = ${formatMoney(state.meals[t] * state.mealRates[t])}`).join('<br>');
   return `
     <p class="res-lead">Please review everything before saving.</p>
@@ -264,7 +265,7 @@ function bindEvents() {
   });
 
   const bodyEl = $('reservation-wizard-body');
-  ['Breakfast', 'Lunch', 'Dinner'].forEach((type) => {
+  ['Breakfast', 'Lunch', 'Dinner', 'Snack'].forEach((type) => {
     bodyEl?.querySelector(`[data-meal-plus="${type}"]`)?.addEventListener('click', () => { state.meals[type]++; renderBody(); });
     bodyEl?.querySelector(`[data-meal-minus="${type}"]`)?.addEventListener('click', () => { state.meals[type] = Math.max(0, state.meals[type] - 1); renderBody(); });
   });
