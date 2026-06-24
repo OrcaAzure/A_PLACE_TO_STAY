@@ -17,16 +17,11 @@
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        .reveal { opacity: 0; animation: fadeInUp .5s cubic-bezier(.22,.61,.36,1) forwards; }
+        .skeleton { background: #eef2f7; border-radius: 12px; animation: pulse 1.3s ease-in-out infinite; }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
+        @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     </style>
     <script type="module">
       import { requireAuth } from '/assets/js/services/auth.js';
@@ -119,14 +114,14 @@
 </nav>
 
 <main class="pt-24 pb-24 lg:pb-12 px-margin-mobile md:px-gutter lg:ml-[260px] max-w-container-max mx-auto min-h-screen">
-    <section class="mb-10">
+    <section class="mb-10 reveal">
         <div class="relative overflow-hidden rounded-xl bg-primary-container p-8 md:p-10 shadow-lg text-on-primary-container">
             <div class="relative z-10 max-w-2xl">
                 <h2 class="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl mb-4" id="welcome-message">
                     Welcome back!
                 </h2>
                 <p class="font-body-lg text-body-lg opacity-90 leading-relaxed">
-                    Your spiritual journey and comfortable stay are our priority. We've prepared everything for your current visit.
+                    Your spiritual journey and comfortable stay are our priority. Here's an overview of your reservations.
                 </p>
             </div>
             <div class="absolute -top-24 -right-24 w-96 h-96 bg-primary-fixed-dim/20 rounded-full blur-3xl"></div>
@@ -134,205 +129,89 @@
         </div>
     </section>
 
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter mb-10">
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.05s">
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Total</p>
+            <p class="font-headline-md text-headline-md" id="stat-total">—</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.1s">
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Pending</p>
+            <p class="font-headline-md text-headline-md text-amber-600" id="stat-pending">—</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.15s">
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Approved</p>
+            <p class="font-headline-md text-headline-md text-emerald-600" id="stat-approved">—</p>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.2s">
+            <p class="font-label-sm text-label-sm text-on-surface-variant uppercase">Upcoming</p>
+            <p class="font-headline-md text-headline-md text-primary" id="stat-upcoming">—</p>
+        </div>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
         <div class="lg:col-span-8 space-y-gutter">
-            <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6 overflow-hidden relative">
-                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-                    <div>
-                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-700 text-label-sm font-label-sm rounded-full mb-2">
-                            <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
-                            Active Stay
-                        </span>
-                        <h3 class="font-headline-lg text-headline-lg">CALM 201 - Deluxe Twin</h3>
-                        <p class="font-body-md text-on-surface-variant">Asia Pacific Theological Seminary Campus</p>
-                    </div>
-                    <div class="flex flex-col md:items-end">
-                        <span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">Status</span>
-                        <span class="font-headline-sm text-headline-sm text-secondary">Checked In</span>
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-y border-outline-variant mb-6">
-                    <div>
-                        <p class="text-label-sm font-label-sm text-outline">Check-in</p>
-                        <p class="font-body-md font-semibold">Oct 12, 2023</p>
-                        <p class="text-[12px] text-on-surface-variant">02:00 PM</p>
-                    </div>
-                    <div>
-                        <p class="text-label-sm font-label-sm text-outline">Check-out</p>
-                        <p class="font-body-md font-semibold">Oct 18, 2023</p>
-                        <p class="text-[12px] text-on-surface-variant">11:00 AM</p>
-                    </div>
-                    <div>
-                        <p class="text-label-sm font-label-sm text-outline">Room Code</p>
-                        <p class="font-body-md font-mono font-bold tracking-widest text-primary">8842</p>
-                    </div>
-                    <div>
-                        <p class="text-label-sm font-label-sm text-outline">Service</p>
-                        <p class="font-body-md font-semibold">Self-Catering</p>
-                    </div>
-                </div>
-                <div class="flex flex-wrap gap-3">
-                    <button class="px-5 py-2.5 bg-surface-container-low hover:bg-surface-container text-primary rounded-lg font-label-md text-label-md flex items-center gap-2 transition-all">
-                        <span class="material-symbols-outlined text-[18px]">wifi</span>
-                        View Wifi Details
-                    </button>
-                    <button class="px-5 py-2.5 bg-surface-container-low hover:bg-surface-container text-primary rounded-lg font-label-md text-label-md flex items-center gap-2 transition-all">
-                        <span class="material-symbols-outlined text-[18px]">room_service</span>
-                        Request Service
-                    </button>
-                    <button class="px-5 py-2.5 border border-outline-variant hover:bg-surface-container-low rounded-lg font-label-md text-label-md flex items-center gap-2 transition-all ml-auto">
-                        Details
-                        <span class="material-symbols-outlined text-[18px]">chevron_right</span>
-                    </button>
-                </div>
+            <div id="active-stay-mount" class="reveal" style="animation-delay:.1s">
+                <div class="skeleton h-40"></div>
             </div>
 
-            <section>
+            <section class="reveal" style="animation-delay:.15s">
                 <div class="flex items-center justify-between mb-4">
                     <h4 class="font-headline-sm text-headline-sm">Upcoming Reservations</h4>
-                    <a class="text-primary font-label-md text-label-md hover:underline" href="#">View All</a>
+                    <a class="text-primary font-label-md text-label-md hover:underline" href="./reservations.html">View All</a>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="w-12 h-12 bg-surface-container-low rounded-lg flex items-center justify-center text-primary">
-                                <span class="material-symbols-outlined">meeting_room</span>
-                            </div>
-                            <span class="px-2 py-0.5 bg-amber-50 text-amber-700 text-label-sm font-label-sm rounded uppercase tracking-wider">Confirmed</span>
-                        </div>
-                        <h5 class="font-headline-sm text-headline-sm mb-1 group-hover:text-primary transition-colors">Study Suite 04</h5>
-                        <p class="text-label-md font-label-md text-on-surface-variant mb-4">Oct 25 - Oct 27, 2023</p>
-                        <button class="w-full py-2 border border-outline-variant hover:border-primary hover:text-primary rounded-lg font-label-md text-label-md transition-all">
-                            Modify
-                        </button>
-                    </div>
-                    <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="w-12 h-12 bg-surface-container-low rounded-lg flex items-center justify-center text-primary">
-                                <span class="material-symbols-outlined">apartment</span>
-                            </div>
-                            <span class="px-2 py-0.5 bg-amber-50 text-amber-700 text-label-sm font-label-sm rounded uppercase tracking-wider">Confirmed</span>
-                        </div>
-                        <h5 class="font-headline-sm text-headline-sm mb-1 group-hover:text-primary transition-colors">Grace Hall B-12</h5>
-                        <p class="text-label-md font-label-md text-on-surface-variant mb-4">Nov 02 - Nov 05, 2023</p>
-                        <button class="w-full py-2 border border-outline-variant hover:border-primary hover:text-primary rounded-lg font-label-md text-label-md transition-all">
-                            Modify
-                        </button>
-                    </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="upcoming-mount">
+                    <div class="skeleton h-44"></div>
+                    <div class="skeleton h-44"></div>
                 </div>
             </section>
         </div>
 
         <div class="lg:col-span-4 space-y-gutter">
-            <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6">
+            <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6 reveal" style="animation-delay:.2s">
                 <h4 class="font-headline-sm text-headline-sm mb-6">Quick Actions</h4>
                 <div class="space-y-3">
-                    <button class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
+                    <a href="./reservations.html" class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
                         <div class="w-10 h-10 bg-primary/10 text-primary rounded-full flex items-center justify-center">
                             <span class="material-symbols-outlined">add_task</span>
                         </div>
                         <div>
                             <p class="font-label-md text-label-md font-bold">New Reservation</p>
-                            <p class="text-[12px] text-on-surface-variant">Book rooms or facilities</p>
+                            <p class="text-[12px] text-on-surface-variant">Book a room for your stay</p>
                         </div>
-                    </button>
-                    <button class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
+                    </a>
+                    <a href="./facilities.html" class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
                         <div class="w-10 h-10 bg-secondary/10 text-secondary rounded-full flex items-center justify-center">
                             <span class="material-symbols-outlined">explore</span>
                         </div>
                         <div>
                             <p class="font-label-md text-label-md font-bold">Explore Facilities</p>
-                            <p class="text-[12px] text-on-surface-variant">View amenities & pricing</p>
+                            <p class="text-[12px] text-on-surface-variant">Browse available rooms</p>
                         </div>
-                    </button>
-                    <button class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
-                        <div class="w-10 h-10 bg-tertiary-container/10 text-tertiary rounded-full flex items-center justify-center">
-                            <span class="material-symbols-outlined">map</span>
+                    </a>
+                    <a href="./settings.html" class="w-full flex items-center gap-4 p-4 rounded-xl hover:bg-surface-container-low border border-transparent hover:border-outline-variant transition-all text-left">
+                        <div class="w-10 h-10 bg-tertiary/10 text-tertiary rounded-full flex items-center justify-center">
+                            <span class="material-symbols-outlined">manage_accounts</span>
                         </div>
                         <div>
-                            <p class="font-label-md text-label-md font-bold">View Campus Map</p>
-                            <p class="text-[12px] text-on-surface-variant">Navigate the seminary grounds</p>
+                            <p class="font-label-md text-label-md font-bold">Account Settings</p>
+                            <p class="text-[12px] text-on-surface-variant">Update your profile</p>
                         </div>
-                    </button>
+                    </a>
                 </div>
             </div>
 
-            <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6">
+            <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6 reveal" style="animation-delay:.25s">
                 <div class="flex items-center justify-between mb-6">
                     <h4 class="font-headline-sm text-headline-sm">Recent Activity</h4>
-                    <button class="text-primary">
-                        <span class="material-symbols-outlined">filter_list</span>
-                    </button>
                 </div>
-                <div class="space-y-6">
-                    <div class="flex gap-4">
-                        <div class="mt-1 relative">
-                            <div class="w-2 h-2 bg-primary rounded-full"></div>
-                            <div class="absolute top-2 left-1 w-[1px] h-10 bg-outline-variant opacity-30"></div>
-                        </div>
-                        <div>
-                            <p class="font-label-md text-label-md leading-tight">Booking Confirmed</p>
-                            <p class="text-[12px] text-on-surface-variant mb-1">Your reservation for Study Suite 04 is confirmed.</p>
-                            <p class="text-[10px] text-outline">2 hours ago</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-4">
-                        <div class="mt-1 relative">
-                            <div class="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                            <div class="absolute top-2 left-1 w-[1px] h-10 bg-outline-variant opacity-30"></div>
-                        </div>
-                        <div>
-                            <p class="font-label-md text-label-md leading-tight">Successful Check-in</p>
-                            <p class="text-[12px] text-on-surface-variant mb-1">You have successfully checked into CALM 201.</p>
-                            <p class="text-[10px] text-outline">Today, 02:15 PM</p>
-                        </div>
-                    </div>
-                    <div class="flex gap-4">
-                        <div class="mt-1">
-                            <div class="w-2 h-2 bg-outline-variant rounded-full"></div>
-                        </div>
-                        <div>
-                            <p class="font-label-md text-label-md leading-tight">Payment Received</p>
-                            <p class="text-[12px] text-on-surface-variant mb-1">Invoice #AP-9928 has been paid in full.</p>
-                            <p class="text-[10px] text-outline">Yesterday</p>
-                        </div>
-                    </div>
-                </div>
-                <button class="w-full mt-6 py-2 text-on-surface-variant hover:text-primary font-label-md text-label-md transition-colors border-t border-outline-variant pt-4">
-                    View All Activity
-                </button>
-            </div>
-
-            <div class="bg-surface-container-high rounded-xl p-6 relative overflow-hidden group">
-                <div class="flex items-center gap-4 mb-2">
-                    <span class="material-symbols-outlined text-[32px] text-amber-500">wb_sunny</span>
-                    <div>
-                        <p class="font-headline-md text-headline-md">28°C</p>
-                        <p class="text-label-sm font-label-sm text-on-surface-variant">Baguio City, PH</p>
-                    </div>
-                </div>
-                <p class="text-label-sm font-label-sm text-on-surface-variant">Perfect weather for a prayer walk in the garden today.</p>
-                <div class="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform">
-                    <span class="material-symbols-outlined text-[100px]">nature_people</span>
+                <div class="space-y-6" id="activity-mount">
+                    <div class="skeleton h-10"></div>
+                    <div class="skeleton h-10"></div>
+                    <div class="skeleton h-10"></div>
                 </div>
             </div>
         </div>
     </div>
-
-    <section class="mt-gutter">
-        <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden h-48 relative cursor-pointer group">
-            <img class="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-500" data-alt="Campus map rendering" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDFO2CsE09QDtakfgBhKj8l2kPYgsygRL2rMxMilDsMzSyW0cECrsB_1eUd13Ew2Vljslvyaj8jqH-U5q30JRlTDRALdHpVaCCxRLB_fXewnvZLftTE9kzaeVKiHPXZMkwLu928IPNbGKv0aYQKyblPeEf3HFP4FhQfu69bk1O-nrVOa9KPelNrjE8furhxvPOh5Mg4oByHTQdaewjE6zFWMHtDJeNnNXs-JvjwO7p48b60aHUB1p-WSKgFQMyZW_iGb82Zk9QgWCJl"/>
-            <div class="absolute inset-0 bg-gradient-to-r from-white via-white/40 to-transparent flex items-center px-8">
-                <div>
-                    <h4 class="font-headline-sm text-headline-sm mb-2">Navigate Campus</h4>
-                    <p class="font-body-md text-on-surface-variant mb-4">Find chapel times, dining halls, and administration offices.</p>
-                    <button class="px-6 py-2 bg-primary text-on-primary rounded-lg font-label-md text-label-md shadow-sm">
-                        Open Interactive Map
-                    </button>
-                </div>
-            </div>
-        </div>
-    </section>
 </main>
 
 <footer class="lg:ml-[260px] border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
@@ -351,8 +230,12 @@
 
 <script type="module">
     import { requireAuth, doLogout, getCurrentUser } from '/assets/js/services/auth.js';
+    import { getBookings, getGroups, normalizeBooking, formatGroupId } from '/assets/js/services/api.js';
 
     requireAuth();
+
+    const BLOCKED_BUILDINGS = ['House'];
+    const isBlocked = (n) => BLOCKED_BUILDINGS.includes(String(n || '').trim());
 
     const user = getCurrentUser();
     const name = user ? (user.full_name || user.name || 'Guest User') : 'Guest User';
@@ -362,28 +245,203 @@
     const welcomeEl = document.getElementById('welcome-message');
     if (welcomeEl) welcomeEl.textContent = `Welcome back, ${firstName}!`;
     document.querySelectorAll('.js-logout').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); doLogout(); }));
-</script>
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const buttons = document.querySelectorAll('button');
-        buttons.forEach(btn => {
-            btn.addEventListener('mousedown', () => { btn.classList.add('scale-95'); });
-            btn.addEventListener('mouseup', () => { btn.classList.remove('scale-95'); });
-        });
-    });
 
-    const searchInput = document.querySelector('input[type="text"]');
-    const searchContainer = searchInput?.parentElement;
-    if(searchInput && searchContainer) {
-        searchInput.addEventListener('focus', () => {
-            searchContainer.classList.add('border-primary', 'shadow-md');
-            searchContainer.classList.remove('border-outline-variant');
-        });
-        searchInput.addEventListener('blur', () => {
-            searchContainer.classList.remove('border-primary', 'shadow-md');
-            searchContainer.classList.add('border-outline-variant');
-        });
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+    const fmt = (d) => {
+      if (!d) return '—';
+      const raw = String(d).slice(0, 10);
+      const dt = new Date(`${raw}T00:00:00`);
+      return Number.isNaN(dt.getTime()) ? raw : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    const statusPill = (s) => ({
+      approved: 'bg-emerald-50 text-emerald-700',
+      pending: 'bg-amber-50 text-amber-700',
+      rejected: 'bg-red-50 text-red-700',
+      cancelled: 'bg-red-50 text-red-700',
+    }[s] || 'bg-surface-container text-on-surface-variant');
+
+    function relTime(d) {
+      if (!d) return '';
+      const t = new Date(d).getTime();
+      if (Number.isNaN(t)) return '';
+      const diffMin = Math.floor((Date.now() - t) / 60000);
+      if (diffMin < 1) return 'Just now';
+      if (diffMin < 60) return `${diffMin} min ago`;
+      const h = Math.floor(diffMin / 60);
+      if (h < 24) return `${h} hr ago`;
+      const days = Math.floor(h / 24);
+      if (days < 30) return `${days} day${days > 1 ? 's' : ''} ago`;
+      return fmt(d);
     }
+
+    function renderError(msg) {
+      ['active-stay-mount', 'upcoming-mount', 'activity-mount'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = `<div class="text-error text-body-sm py-4">${msg}</div>`;
+      });
+    }
+
+    function renderStats(items) {
+      const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+      set('stat-total', items.length);
+      set('stat-pending', items.filter((b) => b.status === 'pending').length);
+      set('stat-approved', items.filter((b) => b.status === 'approved').length);
+      set('stat-upcoming', items.filter((b) => b.status === 'approved' && b.startDate > todayStr).length);
+    }
+
+    function renderActive(items) {
+      const mount = document.getElementById('active-stay-mount');
+      const active = items.find((b) => b.status === 'approved' && b.startDate <= todayStr && b.endDate > todayStr);
+      if (!active) {
+        mount.innerHTML = `
+          <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-8 text-center">
+            <span class="material-symbols-outlined text-[40px] text-on-surface-variant mb-2">hotel</span>
+            <h3 class="font-headline-sm text-headline-sm mb-1">No active stay</h3>
+            <p class="font-body-md text-on-surface-variant mb-4">You're not currently checked in. Plan your next visit anytime.</p>
+            <a href="./reservations.html" class="inline-flex items-center gap-2 bg-primary text-on-primary px-5 py-2.5 rounded-lg font-label-md text-label-md">
+              <span class="material-symbols-outlined text-[18px]">add</span>Make a reservation
+            </a>
+          </div>`;
+        return;
+      }
+      const label = active.kind === 'group' ? formatGroupId(active.id) : `#APT-${active.id}`;
+      const total = active.totalAmount != null ? peso(active.totalAmount) : '—';
+      mount.innerHTML = `
+        <div class="bg-white rounded-xl border border-outline-variant shadow-sm p-6 overflow-hidden relative">
+          <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div>
+              <span class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-700 text-label-sm font-label-sm rounded-full mb-2">
+                <span class="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>Active Stay
+              </span>
+              <h3 class="font-headline-lg text-headline-lg">${active.facilityLabel || active.title}</h3>
+              <p class="font-body-md text-on-surface-variant">${label} · Asia Pacific Theological Seminary</p>
+            </div>
+            <div class="flex flex-col md:items-end">
+              <span class="text-label-sm font-label-sm text-outline uppercase tracking-wider">Status</span>
+              <span class="font-headline-sm text-headline-sm text-secondary">Checked In</span>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-6 py-6 border-y border-outline-variant mb-6">
+            <div><p class="text-label-sm font-label-sm text-outline">Check-in</p><p class="font-body-md font-semibold">${fmt(active.startDate)}</p></div>
+            <div><p class="text-label-sm font-label-sm text-outline">Check-out</p><p class="font-body-md font-semibold">${fmt(active.endDate)}</p></div>
+            <div><p class="text-label-sm font-label-sm text-outline">Guests</p><p class="font-body-md font-semibold">${active.guestCount || 1}</p></div>
+            <div><p class="text-label-sm font-label-sm text-outline">Total</p><p class="font-body-md font-semibold">${total}</p></div>
+          </div>
+          <div class="flex flex-wrap gap-3">
+            <a href="./reservations.html" class="px-5 py-2.5 border border-outline-variant hover:bg-surface-container-low rounded-lg font-label-md text-label-md flex items-center gap-2 transition-all ml-auto">
+              View in Reservations<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+            </a>
+          </div>
+        </div>`;
+    }
+
+    function renderUpcoming(items) {
+      const mount = document.getElementById('upcoming-mount');
+      const up = items
+        .filter((b) => b.status === 'approved' && b.startDate > todayStr)
+        .sort((a, b) => a.startDate.localeCompare(b.startDate))
+        .slice(0, 4);
+      if (!up.length) {
+        mount.innerHTML = `<div class="md:col-span-2 bg-white p-6 rounded-xl border border-outline-variant text-center text-on-surface-variant">No upcoming reservations.</div>`;
+        return;
+      }
+      mount.innerHTML = up.map((b) => {
+        const icon = b.kind === 'group' ? 'groups' : 'meeting_room';
+        const label = b.kind === 'group' ? formatGroupId(b.id) : `#APT-${b.id}`;
+        return `
+          <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm hover:shadow-md transition-shadow group">
+            <div class="flex items-start justify-between mb-4">
+              <div class="w-12 h-12 bg-surface-container-low rounded-lg flex items-center justify-center text-primary">
+                <span class="material-symbols-outlined">${icon}</span>
+              </div>
+              <span class="px-2 py-0.5 ${statusPill(b.status)} text-label-sm font-label-sm rounded uppercase tracking-wider">Approved</span>
+            </div>
+            <h5 class="font-headline-sm text-headline-sm mb-1 group-hover:text-primary transition-colors">${b.facilityLabel || b.title}</h5>
+            <p class="text-label-md font-label-md text-on-surface-variant mb-4">${fmt(b.startDate)} – ${fmt(b.endDate)}</p>
+            <a href="./reservations.html" class="block text-center w-full py-2 border border-outline-variant hover:border-primary hover:text-primary rounded-lg font-label-md text-label-md transition-all">View</a>
+          </div>`;
+      }).join('');
+    }
+
+    function renderActivity(items) {
+      const mount = document.getElementById('activity-mount');
+      const recent = [...items]
+        .sort((a, b) => String(b.updatedAt || b.startDate).localeCompare(String(a.updatedAt || a.startDate)))
+        .slice(0, 5);
+      if (!recent.length) {
+        mount.innerHTML = `<p class="text-body-sm text-on-surface-variant">No recent activity yet.</p>`;
+        return;
+      }
+      const meta = (b) => {
+        const label = b.kind === 'group' ? formatGroupId(b.id) : `#APT-${b.id}`;
+        const place = b.facilityLabel || b.title || label;
+        switch (b.status) {
+          case 'approved': return { t: 'Reservation approved', d: `${label} · ${place} is confirmed.`, c: 'bg-emerald-500' };
+          case 'pending': return { t: 'Request submitted', d: `${label} · ${place} is awaiting approval.`, c: 'bg-amber-500' };
+          case 'rejected': return { t: 'Request declined', d: `${label} · ${place} was not approved.`, c: 'bg-red-500' };
+          case 'cancelled': return { t: 'Reservation cancelled', d: `${label} · ${place} was cancelled.`, c: 'bg-outline' };
+          default: return { t: 'Reservation update', d: `${label} · ${place}`, c: 'bg-primary' };
+        }
+      };
+      mount.innerHTML = recent.map((b, i) => {
+        const m = meta(b);
+        const line = i < recent.length - 1
+          ? '<div class="absolute top-2 left-1 w-[1px] h-12 bg-outline-variant opacity-30"></div>'
+          : '';
+        return `
+          <div class="flex gap-4">
+            <div class="mt-1 relative">
+              <div class="w-2 h-2 ${m.c} rounded-full"></div>${line}
+            </div>
+            <div>
+              <p class="font-label-md text-label-md leading-tight">${m.t}</p>
+              <p class="text-[12px] text-on-surface-variant mb-1">${m.d}</p>
+              <p class="text-[10px] text-outline">${relTime(b.updatedAt || b.startDate)}</p>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function load() {
+      let items = [];
+      try {
+        const [raw, groups] = await Promise.all([getBookings(), getGroups()]);
+        const singles = raw
+          .filter((b) => !b.group_id)
+          .map(normalizeBooking)
+          .filter((b) => !isBlocked(b.buildingName))
+          .map((s) => ({
+            kind: 'single',
+            ...s,
+            startDate: String(s.startDate || '').slice(0, 10),
+            endDate: String(s.endDate || '').slice(0, 10),
+            updatedAt: s.updatedAt || s.createdAt,
+          }));
+        const groupItems = groups.map((g) => ({
+          kind: 'group',
+          id: g.id,
+          title: g.group_name,
+          facilityLabel: `${g.room_count || 0} room(s) · ${g.total_guests} guest(s)`,
+          startDate: String(g.check_in).slice(0, 10),
+          endDate: String(g.check_out).slice(0, 10),
+          status: (g.status || 'Pending').toLowerCase(),
+          guestCount: g.total_guests,
+          totalAmount: g.grand_total,
+          updatedAt: g.updated_at || g.created_at,
+        }));
+        items = [...singles, ...groupItems];
+      } catch (err) {
+        renderError(err.message || 'Could not load your reservations');
+        return;
+      }
+      renderStats(items);
+      renderActive(items);
+      renderUpcoming(items);
+      renderActivity(items);
+    }
+
+    load();
 </script>
 </body>
 </html>
