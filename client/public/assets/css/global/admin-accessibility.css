@@ -6,6 +6,13 @@
 .admin-shell {
   font-size: 17px;
   line-height: 1.55;
+  --admin-gutter-x: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .admin-shell {
+    --admin-gutter-x: 1.75rem;
+  }
 }
 
 /* Top header stays fixed — no entrance animation */
@@ -196,28 +203,29 @@ main > header.anim-static {
 }
 
 .admin-app-header__inner {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   min-height: 4.5rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0.75rem var(--admin-gutter-x);
   max-width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-app-header__start {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.admin-shell.sidebar-collapsed .admin-app-header__inner .sidebar-open-btn {
+  flex-shrink: 0;
 }
 
 .admin-app-header__lead {
   flex: 1 1 auto;
   min-width: 0;
-}
-
-.admin-app-header__context {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--color-neutral, #4A5568);
-  margin-bottom: 0.125rem;
-  line-height: 1.2;
 }
 
 .admin-page-heading {
@@ -363,7 +371,7 @@ main > header.anim-static {
 
 @media (max-width: 639px) {
   .admin-app-header__inner {
-    padding: 0.625rem 1rem;
+    padding: 0.625rem var(--admin-gutter-x);
     min-height: 4rem;
   }
 
@@ -416,7 +424,7 @@ main > header.anim-static {
 }
 
 .admin-shell #page-content {
-  padding: 1.75rem 2rem;
+  padding: 1.75rem var(--admin-gutter-x);
   gap: 1.75rem;
   max-width: 100%;
   min-width: 0;

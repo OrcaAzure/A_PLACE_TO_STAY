@@ -13,6 +13,13 @@
   min-height: 100vh;
   overflow-x: hidden;
   background-color: #F8FAFC;
+  --guest-gutter-x: 1rem;
+}
+
+@media (min-width: 768px) {
+  .guest-shell {
+    --guest-gutter-x: 1.5rem;
+  }
 }
 
 /* ── Sidebar — collapsible with slide animation ── */
@@ -114,14 +121,22 @@
 }
 
 .guest-header .guest-header-inner {
+  position: relative;
   min-width: 0;
   width: 100%;
   gap: 0.5rem;
+  padding-left: var(--guest-gutter-x) !important;
+  padding-right: var(--guest-gutter-x) !important;
 }
 
 .guest-header .guest-header-title {
   min-width: 0;
   flex: 1 1 auto;
+  gap: 0.75rem !important;
+}
+
+.guest-shell.sidebar-collapsed .guest-header .guest-sidebar-open-btn {
+  flex-shrink: 0;
 }
 
 .guest-header .guest-header-title h2 {
@@ -264,6 +279,8 @@
     border-bottom: 1px solid var(--color-outline-variant, #CBD5E0);
     box-shadow: 0 1px 0 rgba(26, 54, 93, 0.04);
   }
+
+  /* Horizontal padding comes from px-margin-mobile / md:px-gutter on guest-header-inner — same as guest-main */
 
   .guest-main {
     grid-column: 2;
