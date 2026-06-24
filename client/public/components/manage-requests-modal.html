@@ -1,35 +1,47 @@
-<div id="manage-requests-overlay" class="hidden fixed inset-0 bg-black/40 z-[70]"></div>
-<div id="manage-requests-modal" class="hidden fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-  <div class="res-modal bg-white rounded-xl w-full max-w-5xl flex flex-col max-h-[90vh]">
-    <header class="res-modal-header">
-      <div>
-        <h2 class="res-modal-title">Guest Requests <span id="manage-requests-pending-badge" class="res-action-badge res-action-badge--warn">0 waiting</span></h2>
-        <p class="res-hint">Single-room and group requests appear here.</p>
+<div id="manage-requests-overlay" class="hidden fixed inset-0 bg-black/50 z-[70]"></div>
+<div id="manage-requests-modal" class="hidden fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="manage-requests-title">
+  <div class="res-modal res-modal--cards bg-white rounded-xl w-full flex flex-col max-h-[92vh]">
+    <header class="res-modal-header res-modal-header--cards">
+      <div class="res-modal-header-main">
+        <div class="res-modal-header-top">
+          <h2 id="manage-requests-title" class="res-modal-title">Guest Requests</h2>
+          <span id="manage-requests-pending-badge" class="res-pending-badge">0 waiting</span>
+        </div>
+        <p class="res-lead res-lead--compact">Review pending single-room and group requests. Click <strong>Approve</strong> to assign rooms, or <strong>Reject</strong> to decline.</p>
       </div>
-      <button id="manage-requests-close" type="button" class="res-icon-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+      <button id="manage-requests-close" type="button" class="res-icon-btn res-icon-btn--lg" aria-label="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
     </header>
-    <div class="res-modal-toolbar">
-      <input id="manage-requests-search" type="search" class="res-input" placeholder="Search name, group, or ID…" />
-      <select id="manage-requests-status-filter" class="res-input res-input--select">
-        <option value="pending">Pending only</option>
-        <option value="all">All</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
-      </select>
+
+    <div class="res-modal-toolbar res-modal-toolbar--filter">
+      <div class="res-field">
+        <label for="manage-requests-search" class="res-field-label">Search</label>
+        <input id="manage-requests-search" type="search" class="res-input" placeholder="Name, group, or request ID…" />
+      </div>
+      <div class="res-field res-field--narrow">
+        <label for="manage-requests-status-filter" class="res-field-label">Show</label>
+        <select id="manage-requests-status-filter" class="res-input res-input--select">
+          <option value="pending">Pending only</option>
+          <option value="all">All requests</option>
+          <option value="approved">Approved</option>
+          <option value="rejected">Rejected</option>
+        </select>
+      </div>
     </div>
-    <div id="manage-requests-list-view" class="res-modal-body">
-      <table class="res-table">
-        <thead><tr>
-          <th>ID</th><th>Type</th><th>Guest / Group</th><th>Dates</th><th>Details</th><th>Status</th><th>Action</th>
-        </tr></thead>
-        <tbody id="manage-requests-table-body"></tbody>
-      </table>
+
+    <div id="manage-requests-list-view" class="res-modal-body res-modal-body--cards">
+      <div id="manage-requests-list" class="res-card-list" role="list"></div>
     </div>
-    <div id="manage-requests-reject-view" class="res-modal-body hidden"></div>
-    <footer class="res-modal-footer">
-      <p id="manage-requests-footer-count" class="res-hint"></p>
-      <p id="manage-requests-feedback" class="hidden res-hint"></p>
-      <button id="manage-requests-close-btn" type="button" class="res-btn res-btn--ghost">Close</button>
+
+    <div id="manage-requests-reject-view" class="res-modal-body res-modal-body--cards hidden"></div>
+
+    <footer class="res-modal-footer res-modal-footer--cards">
+      <div class="res-modal-footer-left">
+        <p id="manage-requests-footer-count" class="res-footer-count">0 request(s)</p>
+        <p id="manage-requests-feedback" class="hidden res-feedback"></p>
+      </div>
+      <button id="manage-requests-close-btn" type="button" class="res-btn res-btn--secondary res-btn--wide">Close</button>
     </footer>
   </div>
 </div>

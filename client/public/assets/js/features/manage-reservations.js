@@ -2,7 +2,7 @@
 
 import { getBookings, getGroups, deleteBooking, deleteGroup, formatGroupId } from '/assets/js/services/api.js';
 import {
-  escapeHtml, formatDisplayId, formatDateLong, debounce, normStatus, getReservationCategory,
+  escapeHtml, formatDisplayId, formatDateLong, statusBadge, debounce, normStatus, getReservationCategory,
 } from '/assets/js/features/reservation-shared.js';
 
 let initialized = false;
@@ -24,43 +24,107 @@ function applyFilter() {
   });
 }
 
-function renderTable() {
-  const body = $('manage-reservations-table-body');
-  if (!body) return;
+function typeLabel(isGroup) {
+  return isGroup
+    ? '<span class="res-pill res-pill--group">Group</span>'
+    : '<span class="res-pill res-pill--single">Single room</span>';
+}
+
+function categoryLabel(item) {
+  const cat = getReservationCategory(item);
+  const labels = {
+    active: 'Active now',
+    upcoming: 'Upcoming',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+  };
+  const classes = {
+    active: 'res-pill--approved',
+    upcoming: 'res-pill--single',
+    completed: 'res-pill--cancelled',
+    cancelled: 'res-pill--rejected',
+  };
+  const label = labels[cat] || cat;
+  return `<span class="res-pill ${classes[cat] || ''}">${escapeHtml(label)}</span>`;
+}
+
+function reservationDetails(item) {
+  const isGroup = item.kind === 'group';
+  if (isGroup) {
+    return `${item.room_count || 0} room(s) · ${item.total_guests} guest(s)`;
+  }
+  const building = item.building_name || '';
+  const room = item.room_number || '';
+  const type = item.room_type || '';
+  const parts = [`${building} ${room}`.trim(), type].filter(Boolean);
+  return parts.join(' · ') || 'Room not specified';
+}
+
+function guestCount(item) {
+  return item.kind === 'group' ? item.total_guests : (item.guest_count ?? '—');
+}
+
+function renderList() {
+  const mount = $('manage-reservations-list');
+  if (!mount) return;
   if (loading) {
-    body.innerHTML = '<tr><td colspan="8" class="res-empty-cell">Loading…</td></tr>';
+    mount.innerHTML = '<div class="res-empty-box">Loading reservations…</div>';
     return;
   }
   if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="8" class="res-empty-cell">No reservations yet. Use New Reservation or New Group.</td></tr>';
+    mount.innerHTML = '<div class="res-empty-box">No reservations found. Create a new single stay or group booking above.</div>';
     return;
   }
-  body.innerHTML = filtered.map((item) => {
+  mount.innerHTML = filtered.map((item) => {
     const isGroup = item.kind === 'group';
     const idLabel = isGroup ? formatGroupId(item.id) : formatDisplayId(item.id);
-    const guest = isGroup ? escapeHtml(item.group_name || item.contact_name) : escapeHtml(item.guest_name || '—');
-    const room = isGroup
-      ? `${item.room_count || 0} rooms · ${item.total_guests} guests`
-      : escapeHtml(`${item.building_name || ''} ${item.room_number || ''}`.trim());
+    const guest = isGroup
+      ? escapeHtml(item.group_name || item.contact_name || 'Unnamed group')
+      : escapeHtml(item.guest_name || 'Unknown guest');
     const key = isGroup ? `g-${item.id}` : `b-${item.id}`;
-    return `<tr>
-      <td><strong>${idLabel}</strong></td>
-      <td>${isGroup ? '<span class="res-pill res-pill--pending">GROUP</span>' : '<span class="res-pill">SINGLE</span>'}</td>
-      <td>${guest}</td>
-      <td>${room}</td>
-      <td>${formatDateLong(item.check_in)}</td>
-      <td>${formatDateLong(item.check_out)}</td>
-      <td>${isGroup ? item.total_guests : (item.guest_count ?? '—')}</td>
-      <td class="res-td-actions">
-        <button type="button" class="res-btn res-btn--ghost" data-edit-res="${key}">Edit</button>
-        <button type="button" class="res-btn res-btn--danger" data-del-res="${key}">Delete</button>
-      </td>
-    </tr>`;
+
+    return `<article class="res-list-card" role="listitem">
+      <div class="res-list-card-head">
+        <div class="res-list-meta">
+          <span class="res-list-id">${idLabel}</span>
+          ${typeLabel(isGroup)}
+        </div>
+        <div class="res-list-badges">
+          ${categoryLabel(item)}
+          ${statusBadge(item.status)}
+        </div>
+      </div>
+      <h3 class="res-list-title">${guest}</h3>
+      <p class="res-list-detail">${escapeHtml(reservationDetails(item))}</p>
+      <dl class="res-list-dates res-list-dates--triple">
+        <div>
+          <dt>Check-in</dt>
+          <dd>${formatDateLong(item.check_in)}</dd>
+        </div>
+        <div>
+          <dt>Check-out</dt>
+          <dd>${formatDateLong(item.check_out)}</dd>
+        </div>
+        <div>
+          <dt>Guests</dt>
+          <dd>${guestCount(item)}</dd>
+        </div>
+      </dl>
+      <div class="res-list-actions">
+        <button type="button" class="res-btn res-btn--primary res-btn--wide" data-edit-res="${key}">
+          <span class="material-symbols-outlined">edit</span> Edit
+        </button>
+        <button type="button" class="res-btn res-btn--reject res-btn--wide" data-del-res="${key}">
+          <span class="material-symbols-outlined">delete</span> Delete
+        </button>
+      </div>
+    </article>`;
   }).join('');
-  $('manage-reservations-footer-count').textContent = `${filtered.length} reservation(s)`;
+  $('manage-reservations-footer-count').textContent =
+    `${filtered.length} reservation${filtered.length === 1 ? '' : 's'} shown`;
 }
 
-function render() { renderTable(); }
+function render() { renderList(); }
 
 async function load() {
   loading = true; render();
@@ -131,7 +195,7 @@ async function remove(key) {
   if (!item) return;
   const label = kind === 'group' ? formatGroupId(id) : formatDisplayId(id);
   const name = kind === 'group' ? item.group_name : item.guest_name;
-  if (!window.confirm(`Delete ${label} (${name})?`)) return;
+  if (!window.confirm(`Delete ${label} (${name})? This cannot be undone.`)) return;
   if (kind === 'group') await deleteGroup(id);
   else await deleteBooking(id);
   window.dispatchEvent(new CustomEvent('booking:updated'));

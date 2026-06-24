@@ -39,48 +39,79 @@ function syncBadge() {
   const el = $('pending-count');
   if (el) el.textContent = `${n} PENDING`;
   const b = $('manage-requests-pending-badge');
-  if (b) b.textContent = `${n} waiting`;
+  if (b) b.textContent = n === 1 ? '1 waiting' : `${n} waiting`;
 }
 
 function typeLabel(r) {
   return r.kind === 'group'
-    ? '<span class="res-pill res-pill--pending">GROUP</span>'
-    : '<span class="res-pill">SINGLE</span>';
+    ? '<span class="res-pill res-pill--group">Group</span>'
+    : '<span class="res-pill res-pill--single">Single room</span>';
 }
 
-function renderTable() {
-  const body = $('manage-requests-table-body');
-  if (!body) return;
+function requestDetails(r) {
+  if (r.kind === 'group') {
+    return `${r.totalGuests} guest(s) · about ${r.roomsRequested || '?'} room(s) requested`;
+  }
+  const building = r.facility?.building || '';
+  const room = r.facility?.roomNumber || '';
+  const type = r.facility?.roomType || '';
+  const parts = [`${building} ${room}`.trim(), type].filter(Boolean);
+  return parts.join(' · ') || 'Room not specified';
+}
+
+function renderList() {
+  const list = $('manage-requests-list');
+  if (!list) return;
   if (loading) {
-    body.innerHTML = '<tr><td colspan="7" class="res-empty-cell">Loading…</td></tr>';
+    list.innerHTML = '<div class="res-empty-box">Loading requests…</div>';
     return;
   }
   if (!filtered.length) {
-    body.innerHTML = '<tr><td colspan="7" class="res-empty-cell">No requests found.</td></tr>';
+    list.innerHTML = '<div class="res-empty-box">No requests match your search or filter.</div>';
     return;
   }
-  body.innerHTML = filtered.map((r) => {
+  list.innerHTML = filtered.map((r) => {
     const pending = normStatus(r.status) === 'pending';
     const isGroup = r.kind === 'group';
-    const guestLabel = isGroup ? escapeHtml(r.groupName || r.requester?.name) : escapeHtml(r.requester?.name || '—');
-    const room = isGroup
-      ? `${r.totalGuests} guests · ~${r.roomsRequested || '?'} rooms`
-      : `${r.facility?.building || ''} ${r.facility?.roomNumber || ''}`.trim() || '—';
+    const guestLabel = isGroup
+      ? escapeHtml(r.groupName || r.requester?.name || 'Unnamed group')
+      : escapeHtml(r.requester?.name || 'Unknown guest');
     const key = isGroup ? `g-${r.id}` : `b-${r.id}`;
-    return `<tr>
-      <td><strong>${escapeHtml(r.displayId)}</strong></td>
-      <td>${typeLabel(r)}</td>
-      <td>${guestLabel}</td>
-      <td>${formatDateLong(r.schedule?.checkIn)} – ${formatDateLong(r.schedule?.checkOut)}</td>
-      <td>${escapeHtml(room)}</td>
-      <td>${statusBadge(r.status)}</td>
-      <td class="res-td-actions">${pending
-        ? `<button type="button" class="res-btn res-btn--primary" data-approve="${key}">Approve</button>
-           <button type="button" class="res-btn res-btn--ghost" data-reject="${key}">Reject</button>`
-        : '—'}</td>
-    </tr>`;
+    const actions = pending
+      ? `<div class="res-list-actions">
+           <button type="button" class="res-btn res-btn--approve res-btn--wide" data-approve="${key}">
+             <span class="material-symbols-outlined">check_circle</span> Approve
+           </button>
+           <button type="button" class="res-btn res-btn--reject res-btn--wide" data-reject="${key}">
+             <span class="material-symbols-outlined">cancel</span> Reject
+           </button>
+         </div>`
+      : `<p class="res-list-done">This request has already been ${normStatus(r.status)}.</p>`;
+
+    return `<article class="res-list-card" role="listitem">
+      <div class="res-list-card-head">
+        <div class="res-list-meta">
+          <span class="res-list-id">${escapeHtml(r.displayId)}</span>
+          ${typeLabel(r)}
+        </div>
+        ${statusBadge(r.status)}
+      </div>
+      <h3 class="res-list-title">${guestLabel}</h3>
+      <p class="res-list-detail">${escapeHtml(requestDetails(r))}</p>
+      <dl class="res-list-dates">
+        <div>
+          <dt>Check-in</dt>
+          <dd>${formatDateLong(r.schedule?.checkIn)}</dd>
+        </div>
+        <div>
+          <dt>Check-out</dt>
+          <dd>${formatDateLong(r.schedule?.checkOut)}</dd>
+        </div>
+      </dl>
+      ${actions}
+    </article>`;
   }).join('');
-  $('manage-requests-footer-count').textContent = `${filtered.length} request(s)`;
+  $('manage-requests-footer-count').textContent = `${filtered.length} request${filtered.length === 1 ? '' : 's'} shown`;
 }
 
 function renderReject() {
@@ -89,13 +120,14 @@ function renderReject() {
   $('manage-requests-reject-view')?.classList.remove('hidden');
   $('manage-requests-reject-view').innerHTML = `
     <div class="res-reject-box">
+      <div class="res-reject-icon" aria-hidden="true"><span class="material-symbols-outlined">warning</span></div>
       <h3 class="res-subhead">Reject ${escapeHtml(r?.displayId || '')}?</h3>
-      <p class="res-hint">${r?.kind === 'group' ? escapeHtml(r.groupName) : escapeHtml(r?.requester?.name || '')}</p>
-      <label class="res-label">Reason (optional)</label>
-      <textarea id="reject-note" class="res-input" rows="3"></textarea>
-      <div class="res-actions-row">
-        <button type="button" class="res-btn res-btn--ghost" data-reject-cancel>Go Back</button>
-        <button type="button" class="res-btn res-btn--danger" data-reject-confirm>${saving ? 'Rejecting…' : 'Confirm Reject'}</button>
+      <p class="res-lead">${r?.kind === 'group' ? escapeHtml(r.groupName) : escapeHtml(r?.requester?.name || '')}</p>
+      <label class="res-label" for="reject-note">Reason (optional)</label>
+      <textarea id="reject-note" class="res-input" rows="4" placeholder="Add a short note for your records…"></textarea>
+      <div class="res-list-actions res-reject-actions">
+        <button type="button" class="res-btn res-btn--secondary res-btn--wide" data-reject-cancel>Go back</button>
+        <button type="button" class="res-btn res-btn--reject res-btn--wide" data-reject-confirm>${saving ? 'Rejecting…' : 'Confirm reject'}</button>
       </div>
     </div>`;
 }
@@ -104,7 +136,7 @@ function render() {
   if (view === 'reject') { renderReject(); return; }
   $('manage-requests-list-view')?.classList.remove('hidden');
   $('manage-requests-reject-view')?.classList.add('hidden');
-  renderTable();
+  renderList();
   const fb = $('manage-requests-feedback');
   if (message) { fb.textContent = message; fb.classList.remove('hidden'); }
   else fb?.classList.add('hidden');
