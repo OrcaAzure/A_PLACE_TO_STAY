@@ -1,15 +1,18 @@
 @media (max-width: 1023px) {
-    #app-sidebar {
+  #app-sidebar {
     position: fixed;
     left: 0;
     top: 0;
     height: 100%;
+    width: 280px;
     transform: translateX(-100%);
     z-index: 50;
+    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   #app-sidebar.sidebar-open {
     transform: translateX(0);
+    box-shadow: 8px 0 24px rgba(26, 54, 93, 0.12);
   }
 
   #sidebar-overlay {
@@ -18,10 +21,13 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
     z-index: 45;
+    opacity: 0;
+    transition: opacity 0.28s ease;
   }
 
   #sidebar-overlay.visible {
     display: block;
+    opacity: 1;
   }
 
   .gantt-container {
@@ -30,10 +36,6 @@
 }
 
 @media (min-width: 1024px) {
-  #menu-toggle {
-    display: none;
-  }
-
   #sidebar-overlay {
     display: none !important;
   }

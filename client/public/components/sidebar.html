@@ -1,14 +1,14 @@
 <aside id="app-sidebar" class="anim-static bg-white border-r border-outline-variant flex flex-col py-lg px-md z-40 shrink-0 h-full">
   <div class="mb-xl px-sm flex items-center justify-between gap-sm min-w-0">
-    <a href="/admin/dashboard.html" class="admin-brand flex items-center gap-md min-w-0 no-underline" aria-label="AptSpace Admin home">
+    <a href="/admin/dashboard.html" class="admin-brand flex items-center gap-md min-w-0 no-underline flex-1" aria-label="AptSpace Admin home">
       <span class="admin-brand-mark" aria-hidden="true">A</span>
       <div class="admin-brand-text min-w-0">
         <h1 class="font-headline-md text-headline-md font-bold text-primary leading-tight truncate">AptSpace</h1>
         <p class="text-body-sm text-on-surface-variant mt-0.5 admin-portal-label truncate">{{PORTAL_LABEL}}</p>
       </div>
     </a>
-    <button id="menu-toggle" type="button" class="lg:hidden p-2 text-on-surface-variant min-h-[3rem] min-w-[3rem] flex items-center justify-center rounded-lg hover:bg-surface-variant/50 shrink-0" aria-label="Open menu">
-      <span class="material-symbols-outlined text-[1.5rem]">menu</span>
+    <button id="sidebar-collapse-btn" type="button" class="admin-sidebar-collapse-btn" aria-label="Hide sidebar" title="Hide sidebar">
+      <span class="material-symbols-outlined">dock_to_right</span>
     </button>
   </div>
 

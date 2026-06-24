@@ -95,13 +95,18 @@
 </head>
 <body class="guest-shell text-on-surface">
 
-<aside class="guest-sidebar hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full bg-surface-container-lowest border-r border-outline-variant z-40">
-<div class="guest-brand-block px-3">
+<aside id="guest-sidebar" class="guest-sidebar hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full bg-surface-container-lowest border-r border-outline-variant z-40">
+<div class="guest-brand-row px-3">
+<div class="guest-brand-block">
 <span class="guest-brand-mark" aria-hidden="true">A</span>
 <div class="guest-brand-text">
 <h1 class="font-headline-sm text-headline-sm font-black text-primary leading-tight">AptSpace</h1>
 <p class="text-body-sm text-on-surface-variant mt-1 js-portal-label">Guest Portal</p>
 </div>
+</div>
+<button id="guest-sidebar-collapse-btn" type="button" class="guest-sidebar-collapse-btn" aria-label="Hide sidebar" title="Hide sidebar">
+<span class="material-symbols-outlined">dock_to_right</span>
+</button>
 </div>
 <nav class="flex-1 px-3 space-y-1">
 <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./dashboard.html">
@@ -132,6 +137,9 @@
 <header class="guest-header fixed top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-outline-variant shadow-sm transition-all">
 <div class="guest-header-inner flex justify-between items-center px-margin-mobile md:px-gutter h-full w-full max-w-none mx-auto">
 <div class="guest-header-title flex items-center gap-4 min-w-0">
+<button id="guest-sidebar-open-btn" type="button" class="guest-sidebar-open-btn" aria-label="Show sidebar" title="Show sidebar">
+<span class="material-symbols-outlined">menu</span>
+</button>
 <h2 class="font-headline-md text-headline-md font-bold text-primary truncate">Reservations</h2>
 <div class="hidden xl:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-72 min-w-0 shrink-0 transition-all focus-within:border-primary focus-within:shadow-sm">
 <span class="material-symbols-outlined text-outline text-[20px]">search</span>
@@ -468,9 +476,11 @@
   } from '/assets/js/services/api.js';
   import { initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
   import { loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint } from '/assets/js/features/reservation-shared.js';
+  import { initGuestSidebar } from '/assets/js/layout/guest-sidebar.js';
 
   requireAuth();
   initGuestPageNavTransitions();
+  initGuestSidebar();
 
   let fiscalBounds = null;
   try {
