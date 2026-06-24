@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS users (
                  'Admin',                      -- manage bookings and users
                  'Faculty',
                  'Staff',
-                 'Missionary',
+                 'Missionary'
                ) NOT NULL DEFAULT 'Faculty',
     status     ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -242,7 +242,7 @@ CREATE INDEX idx_bookings_group ON bookings (group_id);
 CREATE TABLE IF NOT EXISTS booking_meals (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     booking_id INT NOT NULL,
-    meal_type  ENUM('Breakfast', 'Lunch', 'Dinner') NOT NULL,
+    meal_type  ENUM('Breakfast', 'Lunch', 'Dinner', 'Snack') NOT NULL,
     quantity   INT NOT NULL DEFAULT 0,
     unit_price DECIMAL(10,2) NOT NULL,
     subtotal   DECIMAL(10,2) NOT NULL,

@@ -220,14 +220,14 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
   return { checkIn, checkOut, guestCount, season, occupancyItem, totalAmount, roomId };
 }
 
-export const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner'];
-const DEFAULT_MEAL_RATES = { Breakfast: 175, Lunch: 225, Dinner: 225 };
+export const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+const DEFAULT_MEAL_RATES = { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 };
 
 export async function getMealRates() {
   try {
     const [rows] = await pool.query(
       `SELECT item AS meal_type, rate AS price FROM facilities
-       WHERE category = 'Food Service' AND item IN ('Breakfast', 'Lunch', 'Dinner')`
+       WHERE category = 'Food Service' AND item IN ('Breakfast', 'Lunch', 'Dinner', 'Snack')`
     );
     const rates = { ...DEFAULT_MEAL_RATES };
     rows.forEach((r) => { rates[r.meal_type] = Number(r.price); });

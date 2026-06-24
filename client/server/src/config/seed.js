@@ -119,7 +119,19 @@ export async function seedDemoData() {
   console.log('[seed] Demo bookings, payments, and room statuses ready.');
 }
 
+export async function runSchemaPatches() {
+  try {
+    await pool.execute(
+      `ALTER TABLE booking_meals
+       MODIFY meal_type ENUM('Breakfast', 'Lunch', 'Dinner', 'Snack') NOT NULL`
+    );
+  } catch {
+    /* column may already include Snack */
+  }
+}
+
 export async function runSeed() {
+  await runSchemaPatches();
   await seedUsers();
   await seedDemoData();
 }

@@ -1,5 +1,7 @@
 /** Shared reservation UI helpers */
 
+export const MEAL_TYPE_LIST = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
 export const WIZARD_STEPS = [
   { id: 1, label: 'Guest Info', short: 'Who is staying?' },
   { id: 2, label: 'Dates & Guests', short: 'When and how many?' },
@@ -71,16 +73,16 @@ export function emptyWizardState() {
     step: 1, mode: 'create', bookingId: null, fromRequestId: null,
     guestName: '', contactPhone: '', email: '', userId: '',
     checkIn: '', checkOut: '', guestCount: 2, roomId: '', selectedRoom: null,
-    meals: { Breakfast: 0, Lunch: 0, Dinner: 0 },
+    meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     fees: [], notes: '',
     availableRooms: [], availableCount: 0,
-    mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225 },
+    mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 },
     roomTotal: 0, loadingRooms: false, saving: false, error: null,
   };
 }
 
 export function mealsFromBooking(mealsArr = []) {
-  const out = { Breakfast: 0, Lunch: 0, Dinner: 0 };
+  const out = { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 };
   mealsArr.forEach((m) => { if (out[m.meal_type] != null) out[m.meal_type] = Number(m.quantity) || 0; });
   return out;
 }
@@ -112,9 +114,9 @@ export function emptyGroupWizardState() {
     checkIn: '', checkOut: '', totalGuests: 10, roomsRequested: null,
     selectedRooms: [], availableRooms: [], availableCount: 0,
     roomSearch: '', buildingFilter: '',
-    meals: { Breakfast: 0, Lunch: 0, Dinner: 0 },
+    meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     fees: [], notes: '',
-    mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225 },
+    mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 },
     loadingRooms: false, saving: false, error: null,
   };
 }

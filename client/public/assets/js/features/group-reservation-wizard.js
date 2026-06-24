@@ -200,6 +200,7 @@ function renderStep4() {
       ${renderMealRow('Breakfast', state.meals.Breakfast)}
       ${renderMealRow('Lunch', state.meals.Lunch)}
       ${renderMealRow('Dinner', state.meals.Dinner)}
+      ${renderMealRow('Snack', state.meals.Snack)}
       <p class="res-meal-total">Meals subtotal: <strong>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
     </div>
     <h3 class="res-subhead">Additional fees (optional)</h3>
@@ -394,7 +395,7 @@ function bindEvents() {
   });
 
   const bodyEl = $('group-wizard-body');
-  ['Breakfast', 'Lunch', 'Dinner'].forEach((type) => {
+  ['Breakfast', 'Lunch', 'Dinner', 'Snack'].forEach((type) => {
     bodyEl?.querySelector(`[data-meal-plus="${type}"]`)?.addEventListener('click', () => { state.meals[type]++; renderBody(); });
     bodyEl?.querySelector(`[data-meal-minus="${type}"]`)?.addEventListener('click', () => { state.meals[type] = Math.max(0, state.meals[type] - 1); renderBody(); });
   });

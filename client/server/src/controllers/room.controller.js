@@ -2,6 +2,17 @@ import { pool } from '../config/db.js';
 import Room from '../models/Room.js';
 import { isEmpty } from '../utils/helpers.js';
 
+export const getAllBuildings = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT id, name, description FROM buildings ORDER BY name ASC'
+    );
+    res.status(200).json({ buildings: rows });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export const getAllRooms = async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -43,7 +54,13 @@ export const createRoom = async (req, res) => {
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [building_id, room_number, room_type, capacity_min, capacity_max, occupancy || 0, status || 'Available']
     );
-    const [newRoom] = await pool.query('SELECT * FROM rooms WHERE id = ?', [result.insertId]);
+    const [newRoom] = await pool.query(
+      `SELECT rooms.*, buildings.name AS building_name
+       FROM rooms
+       LEFT JOIN buildings ON buildings.id = rooms.building_id
+       WHERE rooms.id = ?`,
+      [result.insertId]
+    );
     res.status(201).json({ message: 'Room created', room: new Room(newRoom[0]) });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -68,7 +85,13 @@ export const updateRoom = async (req, res) => {
       WHERE id = ?`,
       [building_id, room_number, room_type, capacity_min, capacity_max, occupancy, status, req.params.id]
     );
-    const [updated] = await pool.query('SELECT * FROM rooms WHERE id = ?', [req.params.id]);
+    const [updated] = await pool.query(
+      `SELECT rooms.*, buildings.name AS building_name
+       FROM rooms
+       LEFT JOIN buildings ON buildings.id = rooms.building_id
+       WHERE rooms.id = ?`,
+      [req.params.id]
+    );
     res.status(200).json({ message: 'Room updated', room: new Room(updated[0]) });
   } catch (error) {
     res.status(500).json({ message: error.message });
