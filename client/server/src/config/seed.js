@@ -123,6 +123,28 @@ export async function seedDemoData() {
 export async function runSchemaPatches() {
   try {
     await pool.execute(
+      `CREATE TABLE IF NOT EXISTS payments (
+         id         INT AUTO_INCREMENT PRIMARY KEY,
+         booking_id INT NOT NULL,
+         amount     DECIMAL(10,2) NOT NULL,
+         method     ENUM('Cash', 'GCash', 'Bank Transfer') NOT NULL,
+         status     ENUM('Pending', 'Paid', 'Failed') NOT NULL DEFAULT 'Pending',
+         paid_at    TIMESTAMP NULL DEFAULT NULL,
+         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+         CONSTRAINT fk_payment_booking
+           FOREIGN KEY (booking_id) REFERENCES bookings(id)
+           ON DELETE RESTRICT
+           ON UPDATE CASCADE,
+         CONSTRAINT chk_amount CHECK (amount > 0)
+       )`
+    );
+  } catch {
+    /* bookings table may not exist yet if schema was not imported */
+  }
+
+  try {
+    await pool.execute(
       `ALTER TABLE booking_meals
        MODIFY meal_type ENUM('Breakfast', 'Lunch', 'Dinner', 'Snack') NOT NULL`
     );
