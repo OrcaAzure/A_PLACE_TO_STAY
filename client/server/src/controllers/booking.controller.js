@@ -77,6 +77,7 @@ export const getRoomAvailability = async (req, res) => {
     if (isEmpty(check_in) || isEmpty(check_out)) {
       return res.status(400).json({ message: 'check_in and check_out are required' });
     }
+    const isAdmin = ADMIN_ROLES.includes(req.user.role);
     const rooms = await getAvailableRooms({
       checkIn: check_in,
       checkOut: check_out,
@@ -84,6 +85,7 @@ export const getRoomAvailability = async (req, res) => {
       excludeBookingId: exclude_booking_id || null,
       excludeGroupId: exclude_group_id || null,
       groupPicker: group_picker === '1' || group_picker === 'true',
+      bypassAdvanceLimit: isAdmin,
     });
     const availableCount = rooms.filter((r) => r.availability_status === 'available').length;
     res.status(200).json({ rooms, available_count: availableCount });
@@ -116,6 +118,7 @@ export const createBooking = async (req, res) => {
       return res.status(400).json({ message: 'room_id, check_in, and check_out are required' });
     }
 
+    const isAdmin = ADMIN_ROLES.includes(role);
     const prepared = await prepareBookingInsert({
       roomId: room_id,
       checkIn: check_in,
@@ -123,6 +126,7 @@ export const createBooking = async (req, res) => {
       guestCount: guest_count || 1,
       season,
       occupancyItem: occupancy_item,
+      bypassAdvanceLimit: isAdmin,
     });
 
     const mealRates = await getMealRates();
@@ -153,7 +157,7 @@ export const createBooking = async (req, res) => {
     notifyBookingCreated(rows[0]);
     res.status(201).json({ message: 'Booking created', booking });
   } catch (error) {
-    const status = error.message.includes('already reserved') || error.message.includes('Maximum') || error.message.includes('Minimum') || error.message.includes('maintenance')
+    const status = error.message.includes('already reserved') || error.message.includes('Maximum') || error.message.includes('Minimum') || error.message.includes('maintenance') || error.message.includes('advance') || error.message.includes('past')
       ? 409 : 400;
     res.status(status).json({ message: error.message });
   }
@@ -227,7 +231,7 @@ export const updateBooking = async (req, res) => {
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
     res.status(200).json({ message: 'Booking updated', booking: await enrichBooking(rows[0]) });
   } catch (error) {
-    const status = error.message.includes('already reserved') || error.message.includes('Maximum') || error.message.includes('Minimum')
+    const status = error.message.includes('already reserved') || error.message.includes('Maximum') || error.message.includes('Minimum') || error.message.includes('advance') || error.message.includes('past')
       ? 409 : 400;
     res.status(status).json({ message: error.message });
   }

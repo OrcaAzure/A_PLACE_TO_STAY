@@ -9,12 +9,14 @@ import {
   GROUP_WIZARD_STEPS, QUICK_FEES, escapeHtml, formatDateLong, formatMoney,
   emptyGroupWizardState, mealsFromBooking, calcMealsSubtotal, calcFeesSubtotal, calcGroupGrandTotal,
   assignedGuestTotal, debounce,
+  loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint,
 } from '/assets/js/features/reservation-shared.js';
 
 let initialized = false;
 let isOpen = false;
 let state = emptyGroupWizardState();
 let users = [];
+let fiscalBounds = null;
 
 function $(id) { return document.getElementById(id); }
 
@@ -59,6 +61,7 @@ function renderStep2() {
     </div>` : '';
   return `
     <p class="res-lead">When is the group staying, and how many people total?</p>
+    ${fiscalBounds ? `<p class="res-hint">${escapeHtml(formatFiscalYearHint(fiscalBounds))}</p>` : ''}
     <div class="res-row">
       <div><label class="res-label">Check-in</label><input id="gw-check-in" class="res-input" type="date" value="${escapeHtml(state.checkIn)}" /></div>
       <div><label class="res-label">Check-out</label><input id="gw-check-out" class="res-input" type="date" value="${escapeHtml(state.checkOut)}" /></div>
@@ -253,6 +256,9 @@ function renderBody() {
   else err?.classList.add('hidden');
 
   bindEvents();
+  if (state.step === 2) {
+    applyBookingDateBounds($('gw-check-in'), $('gw-check-out'), fiscalBounds);
+  }
 }
 
 /** Read every step's fields from state + any visible DOM inputs. */
@@ -530,7 +536,11 @@ export async function openGroupWizard(options = {}) {
   state.groupId = groupId;
 
   try {
-    [users, state.mealRates] = await Promise.all([getUsers(), getMealRates()]);
+    [users, state.mealRates, fiscalBounds] = await Promise.all([
+      getUsers(),
+      getMealRates(),
+      loadFiscalYearBounds(),
+    ]);
   } catch { users = []; }
 
   if (groupId) {

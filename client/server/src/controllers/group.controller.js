@@ -45,6 +45,7 @@ export const suggestRooms = async (req, res) => {
       checkOut: check_out,
       totalGuests: total_guests || 1,
       excludeGroupId: exclude_group_id || null,
+      bypassAdvanceLimit: ADMIN_ROLES.includes(req.user.role),
     });
     res.status(200).json(result);
   } catch (error) {
@@ -63,7 +64,7 @@ export const createGroup = async (req, res) => {
     });
     res.status(201).json({ message: 'Group reservation created', group });
   } catch (error) {
-    const status = error.message.includes('booked') || error.message.includes('Maximum') || error.message.includes('maintenance')
+    const status = error.message.includes('booked') || error.message.includes('Maximum') || error.message.includes('maintenance') || error.message.includes('advance') || error.message.includes('past')
       ? 409 : 400;
     res.status(status).json({ message: error.message });
   }

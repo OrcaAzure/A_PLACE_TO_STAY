@@ -24,3 +24,10 @@ export const STATUS = {
   REJECTED: 'Rejected',
   CANCELLED: 'Cancelled'
 };
+
+/** Default fiscal year: July 1 start, 12-month advance booking window. */
+export const FISCAL_YEAR_DEFAULTS = {
+  fiscal_year_start_month: 7,
+  fiscal_year_start_day: 1,
+  booking_advance_months: 12,
+};

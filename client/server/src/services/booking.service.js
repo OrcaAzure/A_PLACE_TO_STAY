@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { calcNights, isEmpty } from '../utils/helpers.js';
 import { DEFAULT_BOOKING_GUEST_ROLE } from '../utils/constants.js';
 import { sendBookingConfirmationEmail } from './email.service.js';
+import { validateReservationDates } from './fiscalYear.service.js';
 
 const ACTIVE_STATUSES = ['Pending', 'Approved'];
 
@@ -141,10 +142,9 @@ export async function prepareBookingInsert({
   guestCount = 1,
   season,
   occupancyItem,
+  bypassAdvanceLimit = false,
 }) {
-  if (new Date(checkOut) <= new Date(checkIn)) {
-    throw new Error('check_out must be after check_in');
-  }
+  await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit });
 
   const room = await getRoomById(roomId);
   if (!room) throw new Error('Room not found');
@@ -184,9 +184,7 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
   const guestCount = body.guest_count ?? existing.guest_count;
   const roomId = body.room_id ?? existing.room_id;
 
-  if (new Date(checkOut) <= new Date(checkIn)) {
-    throw new Error('check_out must be after check_in');
-  }
+  await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit: isAdmin });
 
   const room = await getRoomById(roomId);
   if (!room) throw new Error('Room not found');
@@ -315,10 +313,9 @@ export async function computeGrandTotal({ roomTotal, meals, fees, mealRates = nu
 
 export async function getAvailableRooms({
   checkIn, checkOut, guestCount = 1, excludeBookingId = null, excludeGroupId = null, groupPicker = false,
+  bypassAdvanceLimit = false,
 }) {
-  if (new Date(checkOut) <= new Date(checkIn)) {
-    throw new Error('check_out must be after check_in');
-  }
+  await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit });
 
   const [rooms] = await pool.query(
     `SELECT rooms.*, buildings.name AS building_name

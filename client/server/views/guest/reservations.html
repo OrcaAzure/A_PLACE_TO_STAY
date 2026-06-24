@@ -344,6 +344,7 @@
           <input type="date" id="booking-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
         </div>
       </div>
+      <p id="booking-fiscal-hint" class="text-[12px] text-on-surface-variant hidden"></p>
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-guests">Guests</label>
         <input type="number" id="booking-guests" min="1" value="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
@@ -421,6 +422,7 @@
           <input type="date" id="group-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
         </div>
       </div>
+      <p id="group-fiscal-hint" class="text-[12px] text-on-surface-variant hidden"></p>
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="text-label-sm text-on-surface-variant block mb-1" for="group-total-guests">Total guests</label>
@@ -465,9 +467,17 @@
     getRoomAvailability, normalizeBooking, formatGroupId,
   } from '/assets/js/services/api.js';
   import { initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
+  import { loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint } from '/assets/js/features/reservation-shared.js';
 
   requireAuth();
   initGuestPageNavTransitions();
+
+  let fiscalBounds = null;
+  try {
+    fiscalBounds = await loadFiscalYearBounds();
+  } catch (err) {
+    console.warn('Fiscal year settings unavailable', err);
+  }
 
   /* Buildings guests are not allowed to view/book. */
   const BLOCKED_BUILDINGS = ['House'];
@@ -762,12 +772,27 @@
     document.getElementById('booking-form-error').classList.add('hidden');
   }
 
+  function applyFiscalDateLimits(checkInId, checkOutId, hintId) {
+    const checkInEl = document.getElementById(checkInId);
+    const checkOutEl = document.getElementById(checkOutId);
+    const hintEl = document.getElementById(hintId);
+    if (fiscalBounds) {
+      applyBookingDateBounds(checkInEl, checkOutEl, fiscalBounds);
+      if (hintEl) {
+        hintEl.textContent = formatFiscalYearHint(fiscalBounds);
+        hintEl.classList.remove('hidden');
+      }
+    } else {
+      if (checkInEl) checkInEl.min = todayStr;
+      if (checkOutEl) checkOutEl.min = todayStr;
+    }
+  }
+
   function openBookingModal() {
     form.reset();
     resetBookingResults();
     document.getElementById('booking-form-error').classList.add('hidden');
-    document.getElementById('booking-check-in').min = todayStr;
-    document.getElementById('booking-check-out').min = todayStr;
+    applyFiscalDateLimits('booking-check-in', 'booking-check-out', 'booking-fiscal-hint');
     openModal(modal);
   }
 
@@ -906,8 +931,7 @@
     groupForm.reset();
     document.getElementById('group-form-error').classList.add('hidden');
     if (user) document.getElementById('group-contact').value = user.full_name || user.name || '';
-    document.getElementById('group-check-in').min = todayStr;
-    document.getElementById('group-check-out').min = todayStr;
+    applyFiscalDateLimits('group-check-in', 'group-check-out', 'group-fiscal-hint');
     openModal(groupModal);
   }
 

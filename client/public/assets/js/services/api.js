@@ -59,6 +59,17 @@ export async function getAdminSummary() {
   return apiRequest('/stats/summary');
 }
 
+export async function getFiscalYear() {
+  return apiRequest('/settings/fiscal-year');
+}
+
+export async function updateFiscalYearSettings(payload) {
+  return apiRequest('/settings/fiscal-year', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getUsers() {
   const data = await apiRequest('/users');
   return data.users || [];

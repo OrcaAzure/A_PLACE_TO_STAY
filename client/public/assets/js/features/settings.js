@@ -1,9 +1,10 @@
 /**
- * Admin settings — profile and role summary from the database.
+ * Admin settings — profile, roles, system info, and fiscal year configuration.
  */
 
-import { getProfile, updateProfile, getAdminSummary } from '/assets/js/services/api.js';
+import { getProfile, updateProfile, getAdminSummary, getFiscalYear, updateFiscalYearSettings } from '/assets/js/services/api.js';
 import { initTabGroup } from '/assets/js/layout/tabs.js';
+import { formatDate } from '/assets/js/features/reservation-shared.js';
 
 const ROLE_DESCRIPTIONS = {
   'Super Admin': 'Full system access',
@@ -16,13 +17,17 @@ const ROLE_DESCRIPTIONS = {
   Student: 'Guest booking access',
 };
 
+let fiscalYearInfo = null;
+
 export async function loadAdminSettings() {
   bindTabs();
 
-  const [{ user }, summary] = await Promise.all([
+  const [{ user }, summary, fyInfo] = await Promise.all([
     getProfile(),
     getAdminSummary(),
+    getFiscalYear(),
   ]);
+  fiscalYearInfo = fyInfo;
 
   const nameInput = document.getElementById('settings-name');
   const emailInput = document.getElementById('settings-email');
@@ -34,6 +39,7 @@ export async function loadAdminSettings() {
 
   renderRoleTable(summary.usersByRole || []);
   renderSystemInfo(summary.kpis || {});
+  renderFiscalYearSettings(fyInfo);
 
   document.getElementById('settings-save-btn')?.addEventListener('click', async () => {
     const feedback = document.getElementById('settings-feedback');
@@ -59,6 +65,8 @@ export async function loadAdminSettings() {
       btn.disabled = false;
     }
   });
+
+  document.getElementById('fy-settings-save-btn')?.addEventListener('click', saveFiscalYearSettings);
 }
 
 function bindTabs() {
@@ -95,6 +103,59 @@ function renderSystemInfo(kpis) {
   setText('sys-paid-revenue', kpis.paidRevenue != null
     ? `₱${Number(kpis.paidRevenue).toLocaleString('en-PH')}`
     : '—');
+}
+
+function renderFiscalYearSettings(info) {
+  const summary = document.getElementById('sys-fiscal-year-summary');
+  const monthSelect = document.getElementById('fy-start-month');
+  const dayInput = document.getElementById('fy-start-day');
+  const advanceInput = document.getElementById('fy-advance-months');
+
+  if (!info) return;
+
+  const fy = info.currentFiscalYear;
+  if (summary && fy) {
+    summary.textContent = [
+      `Current period: ${fy.label} (${formatDate(fy.startDate)} – ${formatDate(fy.endDate)})`,
+      info.maxCheckInDate
+        ? `Guests may book up to ${info.bookingAdvanceMonths} month(s) ahead (latest check-in: ${formatDate(info.maxCheckInDate)}).`
+        : 'No advance booking limit for admins.',
+    ].join(' ');
+  }
+
+  if (monthSelect && info.settings) monthSelect.value = String(info.settings.fiscal_year_start_month);
+  if (dayInput && info.settings) dayInput.value = String(info.settings.fiscal_year_start_day);
+  if (advanceInput && info.settings) advanceInput.value = String(info.settings.booking_advance_months);
+}
+
+async function saveFiscalYearSettings() {
+  const feedback = document.getElementById('fy-settings-feedback');
+  const btn = document.getElementById('fy-settings-save-btn');
+  btn.disabled = true;
+  feedback?.classList.add('hidden');
+
+  try {
+    const payload = {
+      fiscal_year_start_month: Number(document.getElementById('fy-start-month')?.value),
+      fiscal_year_start_day: Number(document.getElementById('fy-start-day')?.value),
+      booking_advance_months: Number(document.getElementById('fy-advance-months')?.value),
+    };
+    fiscalYearInfo = await updateFiscalYearSettings(payload);
+    renderFiscalYearSettings(fiscalYearInfo);
+    if (feedback) {
+      feedback.textContent = 'Fiscal year settings saved.';
+      feedback.className = 'text-body-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2';
+      feedback.classList.remove('hidden');
+    }
+  } catch (err) {
+    if (feedback) {
+      feedback.textContent = err.message || 'Save failed';
+      feedback.className = 'text-body-sm text-error bg-error-container rounded-lg px-3 py-2';
+      feedback.classList.remove('hidden');
+    }
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 function setText(id, value) {

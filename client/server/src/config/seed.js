@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { pool } from './db.js';
+import { FISCAL_YEAR_DEFAULTS } from '../utils/constants.js';
 
 const SEED_USERS = [
   { full_name: 'System Administrator', email: 'admin@aptspace.com',          role: 'Super Admin',   status: 'Active' },
@@ -193,6 +194,26 @@ export async function runSchemaPatches() {
     );
   } catch {
     /* enum may already be up to date */
+  }
+
+  try {
+    await pool.execute(
+      `CREATE TABLE IF NOT EXISTS system_settings (
+         setting_key   VARCHAR(64) PRIMARY KEY,
+         setting_value VARCHAR(255) NOT NULL,
+         updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+       )`
+    );
+    for (const [key, value] of Object.entries(FISCAL_YEAR_DEFAULTS)) {
+      await pool.execute(
+        `INSERT INTO system_settings (setting_key, setting_value)
+         VALUES (?, ?)
+         ON DUPLICATE KEY UPDATE setting_key = setting_key`,
+        [key, String(value)]
+      );
+    }
+  } catch {
+    /* settings table may not be available yet */
   }
 }
 

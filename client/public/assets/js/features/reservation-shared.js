@@ -159,3 +159,37 @@ export function availLabel(status) {
   };
   return map[status] || map.booked;
 }
+
+let cachedFiscalYear = null;
+
+export async function loadFiscalYearBounds(force = false) {
+  if (cachedFiscalYear && !force) return cachedFiscalYear;
+  const { getFiscalYear } = await import('/assets/js/services/api.js');
+  cachedFiscalYear = await getFiscalYear();
+  return cachedFiscalYear;
+}
+
+export function applyBookingDateBounds(checkInEl, checkOutEl, bounds) {
+  if (!bounds) return;
+  const min = bounds.minDate;
+  const max = bounds.maxCheckInDate;
+  if (checkInEl) {
+    if (min) checkInEl.min = min;
+    if (max) checkInEl.max = max;
+    else checkInEl.removeAttribute('max');
+  }
+  if (checkOutEl && min) {
+    checkOutEl.min = min;
+    checkOutEl.removeAttribute('max');
+  }
+}
+
+export function formatFiscalYearHint(bounds) {
+  if (!bounds?.currentFiscalYear) return '';
+  const fy = bounds.currentFiscalYear;
+  const parts = [`Current fiscal year: ${fy.label} (${formatDate(fy.startDate)} – ${formatDate(fy.endDate)})`];
+  if (bounds.maxCheckInDate) {
+    parts.push(`Book up to ${bounds.bookingAdvanceMonths} month(s) ahead (latest check-in: ${formatDate(bounds.maxCheckInDate)})`);
+  }
+  return parts.join(' · ');
+}

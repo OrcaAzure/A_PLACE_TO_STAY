@@ -14,6 +14,7 @@ import {
   validateGuestCapacity,
   getRoomById,
 } from './booking.service.js';
+import { validateReservationDates } from './fiscalYear.service.js';
 
 const bookingSelect = `
   SELECT bk.*,
@@ -101,13 +102,14 @@ export async function listGroups({ userId = null, admin = false } = {}) {
   return Promise.all(rows.map(async (g) => getGroupById(g.id)));
 }
 
-export async function suggestRoomsForGroup({ checkIn, checkOut, totalGuests, excludeGroupId = null }) {
+export async function suggestRoomsForGroup({ checkIn, checkOut, totalGuests, excludeGroupId = null, bypassAdvanceLimit = false }) {
   const rooms = await getAvailableRooms({
     checkIn,
     checkOut,
     guestCount: 1,
     excludeGroupId,
     groupPicker: true,
+    bypassAdvanceLimit,
   });
   const suggestion = suggestRoomAssignment(rooms, totalGuests);
   const availableCount = rooms.filter((r) => r.availability_status === 'available').length;
@@ -145,6 +147,7 @@ export async function saveGroupBookings({
   contactPhone,
   meals,
   fees,
+  bypassAdvanceLimit = false,
 }) {
   await validateRoomAssignments({ checkIn, checkOut, rooms, excludeGroupId: groupId });
 
@@ -164,6 +167,7 @@ export async function saveGroupBookings({
         checkIn,
         checkOut,
         guestCount: guest_count,
+        bypassAdvanceLimit,
       });
 
       let lineTotal = prepared.total_amount;
@@ -233,9 +237,7 @@ export async function createReservationGroup(raw = {}) {
   if (isEmpty(groupName) || isEmpty(contactName) || isEmpty(checkIn) || isEmpty(checkOut)) {
     throw new Error('group_name, contact_name, check_in, and check_out are required');
   }
-  if (new Date(checkOut) <= new Date(checkIn)) {
-    throw new Error('check_out must be after check_in');
-  }
+  await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit: isAdmin });
 
   const effectiveUserId = isAdmin
     ? await resolveGuestUser({ userId, guestName: contactName || guestName, email: contactEmail || email })
@@ -281,6 +283,7 @@ export async function createReservationGroup(raw = {}) {
       contactPhone,
       meals,
       fees,
+      bypassAdvanceLimit: isAdmin,
     });
   }
 
@@ -310,6 +313,8 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
   const nextCheckOut = check_out || group.check_out;
   const nextGuests = total_guests != null ? Math.max(1, Number(total_guests)) : group.total_guests;
   const nextStatus = status || group.status;
+
+  await validateReservationDates(nextCheckIn, nextCheckOut, { bypassAdvanceLimit: isAdmin });
 
   let resolvedUserId = group.user_id;
   if (user_id || guest_name || email || contact_name) {
@@ -358,6 +363,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       contactPhone: contact_phone ?? group.contact_phone,
       meals,
       fees,
+      bypassAdvanceLimit: isAdmin,
     });
   }
 

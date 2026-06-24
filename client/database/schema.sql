@@ -631,6 +631,16 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 -- ============================================
 
 -- ============================================
+-- SYSTEM SETTINGS
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS system_settings (
+    setting_key   VARCHAR(64) PRIMARY KEY,
+    setting_value VARCHAR(255) NOT NULL,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ============================================
 -- SEED DATA: SEASON DEFINITIONS (FY26)
 -- ============================================
 
@@ -640,6 +650,12 @@ INSERT INTO season_definitions (season, start_date, end_date, label) VALUES
     ('Regular',    '2026-06-01', '2026-10-31', 'Regular Jun-Oct 2026'),
     ('Peak',       '2026-11-01', '2026-11-30', 'Peak Nov 2026'),
     ('Super Peak', '2026-12-01', '2026-12-31', 'Super Peak Christmas 2026');
+
+INSERT INTO system_settings (setting_key, setting_value) VALUES
+    ('fiscal_year_start_month', '7'),
+    ('fiscal_year_start_day', '1'),
+    ('booking_advance_months', '12')
+ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
 
 -- Demo bookings, payments, and room status samples are seeded by the server
 -- on startup (see client/server/src/config/seed.js) after users are created.

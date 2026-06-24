@@ -8,12 +8,14 @@ import {
 import {
   WIZARD_STEPS, QUICK_FEES, escapeHtml, formatDateLong, formatMoney,
   emptyWizardState, mealsFromBooking, calcGrandTotal, calcMealsSubtotal, calcFeesSubtotal, availLabel, debounce,
+  loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint,
 } from '/assets/js/features/reservation-shared.js';
 
 let initialized = false;
 let isOpen = false;
 let state = emptyWizardState();
 let users = [];
+let fiscalBounds = null;
 
 function $(id) { return document.getElementById(id); }
 
@@ -56,6 +58,7 @@ function renderStep2() {
     </div>` : '';
   return `
     <p class="res-lead">Pick the stay dates and how many people will stay.</p>
+    ${fiscalBounds ? `<p class="res-hint">${escapeHtml(formatFiscalYearHint(fiscalBounds))}</p>` : ''}
     <div class="res-row">
       <div><label class="res-label">Check-in</label><input id="wiz-check-in" class="res-input" type="date" value="${escapeHtml(state.checkIn)}" /></div>
       <div><label class="res-label">Check-out</label><input id="wiz-check-out" class="res-input" type="date" value="${escapeHtml(state.checkOut)}" /></div>
@@ -181,6 +184,9 @@ function renderBody() {
   else err?.classList.add('hidden');
 
   bindEvents();
+  if (state.step === 2) {
+    applyBookingDateBounds($('wiz-check-in'), $('wiz-check-out'), fiscalBounds);
+  }
 }
 
 function readFields() {
@@ -382,7 +388,11 @@ export async function openReservationWizard(options = {}) {
   state.fromRequestId = fromRequestId;
 
   try {
-    [users, state.mealRates] = await Promise.all([getUsers(), getMealRates()]);
+    [users, state.mealRates, fiscalBounds] = await Promise.all([
+      getUsers(),
+      getMealRates(),
+      loadFiscalYearBounds(),
+    ]);
   } catch { users = []; }
 
   if (bookingId) {
