@@ -132,14 +132,8 @@ CREATE TABLE IF NOT EXISTS users (
     email      VARCHAR(150) NOT NULL UNIQUE,
     password   VARCHAR(255) NOT NULL,
     role       ENUM(
-<<<<<<< HEAD
                  'Super Admin',                -- full access
                  'Admin',                      -- manage bookings and users
-=======
-                 'Super Admin',
-                 'Admin',
-                 'GNC View Only',
->>>>>>> front-end-UI-development
                  'Faculty',
                  'Staff',
                  'Missionary',
