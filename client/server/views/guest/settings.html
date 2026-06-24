@@ -217,7 +217,9 @@
 <script type="module">
   import { requireAuth, doLogout, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
   import { initTabGroup } from '/assets/js/layout/tabs.js';
+  import { initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
   requireAuth();
+  initGuestPageNavTransitions();
 
   const user = getCurrentUser();
   const displayName = user ? (user.full_name || user.name || 'Guest User') : 'Guest User';

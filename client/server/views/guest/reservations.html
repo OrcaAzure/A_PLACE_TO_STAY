@@ -464,8 +464,10 @@
     getBookings, getGroups, createBooking, createGroup, updateBooking, updateGroup,
     getRoomAvailability, normalizeBooking, formatGroupId,
   } from '/assets/js/services/api.js';
+  import { initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
 
   requireAuth();
+  initGuestPageNavTransitions();
 
   /* Buildings guests are not allowed to view/book. */
   const BLOCKED_BUILDINGS = ['House'];

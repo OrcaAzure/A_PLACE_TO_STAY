@@ -222,3 +222,54 @@
     transition: none !important;
   }
 }
+
+/* ── Page navigation transitions ── */
+.guest-main,
+.guest-header,
+.admin-shell #page-content,
+.admin-shell main > header.admin-app-header,
+.admin-shell main > header.anim-static {
+  transition:
+    opacity 0.32s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.guest-main.page-enter-start,
+.guest-header.page-enter-start,
+.admin-shell #page-content.page-enter-start,
+.admin-shell main > header.page-enter-start {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.guest-main.page-enter-active,
+.guest-header.page-enter-active,
+.admin-shell #page-content.page-enter-active,
+.admin-shell main > header.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.guest-main.page-exit-active,
+.guest-header.page-exit-active,
+.admin-shell #page-content.page-exit-active,
+.admin-shell main > header.page-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  pointer-events: none;
+}
+
+.portal-nav-pending {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .guest-main,
+  .guest-header,
+  .admin-shell #page-content,
+  .admin-shell main > header {
+    transition: none !important;
+    transform: none !important;
+  }
+}

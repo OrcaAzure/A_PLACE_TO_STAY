@@ -5,6 +5,7 @@ import { initReservationWizard, isReservationWizardOpen, closeReservationWizard 
 import { initGroupWizard, isGroupWizardOpen, closeGroupWizard } from '/assets/js/features/group-reservation-wizard.js';
 import { initTabGroup, switchTabPanel } from '/assets/js/layout/tabs.js';
 import { initAdminEnhancements, animateDrawerOpen, animateModalOpen, animateNotificationsPanel } from '/assets/js/layout/animations.js';
+import { initAdminPageNavTransitions } from '/assets/js/layout/page-transitions.js';
 
 export const ADMIN_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard.html' },
@@ -105,13 +106,16 @@ export async function initAppLayout(config = {}) {
   initReservationWizard();
   initGroupWizard();
   initDrawerTabs();
+  initAdminPageNavTransitions();
   initAdminEnhancements().catch(() => {});
 }
+
+let drawerTabGroup = null;
 
 function initDrawerTabs() {
   const drawer = document.getElementById('managementDrawer');
   if (!drawer) return;
-  initTabGroup({
+  drawerTabGroup = initTabGroup({
     root: drawer,
     tabAttr: 'data-drawer-tab',
     panelAttr: 'data-drawer-panel',
@@ -159,10 +163,6 @@ function bindLayoutEvents() {
   document.getElementById('modal-overlay')?.addEventListener('click', closeModal);
   document.getElementById('app-modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'app-modal') closeModal();
-  });
-
-  document.querySelectorAll('#managementDrawer [data-drawer-tab]').forEach((btn) => {
-    btn.addEventListener('click', () => switchDrawerTab(btn.getAttribute('data-drawer-tab')));
   });
 
   window.addEventListener('keydown', (e) => {
@@ -260,6 +260,11 @@ export function closeModal() {
 }
 
 export function switchDrawerTab(tabId) {
+  if (drawerTabGroup) {
+    drawerTabGroup.switchTo(tabId);
+    return;
+  }
+
   const drawer = document.getElementById('managementDrawer');
   if (!drawer) return;
 
