@@ -38,7 +38,6 @@ export async function loadAdminSettings() {
   if (roleInput) roleInput.value = user.role || '';
 
   renderRoleTable(summary.usersByRole || []);
-  renderSystemInfo(summary.kpis || {});
   renderFiscalYearSettings(fyInfo);
 
   document.getElementById('settings-save-btn')?.addEventListener('click', async () => {
@@ -96,15 +95,6 @@ function renderRoleTable(usersByRole) {
     </tr>`).join('');
 }
 
-function renderSystemInfo(kpis) {
-  setText('sys-total-rooms', kpis.totalRooms ?? '—');
-  setText('sys-total-bookings', kpis.totalBookings ?? '—');
-  setText('sys-pending-bookings', kpis.pending ?? '—');
-  setText('sys-paid-revenue', kpis.paidRevenue != null
-    ? `₱${Number(kpis.paidRevenue).toLocaleString('en-PH')}`
-    : '—');
-}
-
 function renderFiscalYearSettings(info) {
   const summary = document.getElementById('sys-fiscal-year-summary');
   const monthSelect = document.getElementById('fy-start-month');
@@ -156,9 +146,4 @@ async function saveFiscalYearSettings() {
   } finally {
     btn.disabled = false;
   }
-}
-
-function setText(id, value) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = value;
 }
