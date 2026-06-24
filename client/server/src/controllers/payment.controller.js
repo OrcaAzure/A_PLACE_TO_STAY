@@ -1,5 +1,6 @@
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
+import { sendPaymentReceiptEmail } from '../services/email.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -55,6 +56,10 @@ export const createPayment = async (req, res) => {
       [booking_id, amount, method]
     );
     const [rows] = await pool.query(`${paymentSelect} WHERE p.id = ?`, [result.insertId]);
+    void sendPaymentReceiptEmail(
+      { full_name: rows[0].guest_name, email: rows[0].guest_email },
+      rows[0]
+    );
     res.status(201).json({ message: 'Payment created', payment: rows[0] });
   } catch (error) {
     res.status(500).json({ message: error.message });

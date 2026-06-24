@@ -26,7 +26,7 @@ Open [http://localhost:3000](http://localhost:3000)
 
 The app reads **`client/server/.env`** only. The root `.env.example` is a template for your team — copy it to `client/server/.env`.
 
-Required variables: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`
+Required variables: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`, `APP_URL`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 
 On startup the server will:
 1. Test the MySQL connection (exit if it fails)

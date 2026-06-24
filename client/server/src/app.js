@@ -52,4 +52,15 @@ app.get('/', (req, res) => {
   res.redirect('/index.html');
 });
 
+app.use((req, res) => {
+  res.status(404).json({ message: 'Not found' });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack || err);
+  res.status(err.statusCode || 500).json({
+    message: err.message || 'Server error',
+  });
+});
+
 export default app;

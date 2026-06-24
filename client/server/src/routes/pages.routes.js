@@ -12,6 +12,8 @@ function sendView(res, relativePath) {
 }
 
 router.get('/login.html', (req, res) => sendView(res, 'auth/login.html'));
+router.get('/forgot-password.html', (req, res) => sendView(res, 'auth/forgot-password.html'));
+router.get('/reset-password.html', (req, res) => sendView(res, 'auth/reset-password.html'));
 
 const adminPages = ['dashboard', 'reservations', 'facilities', 'residents', 'payments', 'settings'];
 for (const page of adminPages) {

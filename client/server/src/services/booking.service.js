@@ -2,6 +2,7 @@ import { pool } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import { calcNights, isEmpty } from '../utils/helpers.js';
 import { DEFAULT_BOOKING_GUEST_ROLE } from '../utils/constants.js';
+import { sendBookingConfirmationEmail } from './email.service.js';
 
 const ACTIVE_STATUSES = ['Pending', 'Approved'];
 
@@ -378,4 +379,11 @@ export async function getAvailableRooms({
   }
 
   return results;
+}
+
+export function notifyBookingCreated(bookingRow) {
+  void sendBookingConfirmationEmail(
+    { full_name: bookingRow.guest_name, email: bookingRow.guest_email },
+    bookingRow
+  );
 }

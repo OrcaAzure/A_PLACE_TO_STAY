@@ -12,6 +12,7 @@ import {
   getBookingMeals,
   getBookingFees,
   resolveGuestUser,
+  notifyBookingCreated,
 } from '../services/booking.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
@@ -148,7 +149,9 @@ export const createBooking = async (req, res) => {
     await saveBookingFees(result.insertId, fees);
 
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [result.insertId]);
-    res.status(201).json({ message: 'Booking created', booking: await enrichBooking(rows[0]) });
+    const booking = await enrichBooking(rows[0]);
+    notifyBookingCreated(rows[0]);
+    res.status(201).json({ message: 'Booking created', booking });
   } catch (error) {
     const status = error.message.includes('already reserved') || error.message.includes('Maximum') || error.message.includes('Minimum') || error.message.includes('maintenance')
       ? 409 : 400;
