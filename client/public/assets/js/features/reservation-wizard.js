@@ -3,12 +3,13 @@
  */
 
 import {
-  createBooking, updateBooking, getMealRates, getRoomAvailability, getUsers, getBookingById,
+  createBooking, updateBooking, getMealRates, getRoomAvailability, getUsers, getBookingById, getFacilitiesOverview,
 } from '/assets/js/services/api.js';
 import {
   WIZARD_STEPS, QUICK_FEES, escapeHtml, formatDateLong, formatMoney,
   emptyWizardState, mealsFromBooking, calcGrandTotal, calcMealsSubtotal, calcFeesSubtotal, availLabel, debounce,
   loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint,
+  recommendRooms, recommendationReason, servicesToQuickFees,
 } from '/assets/js/features/reservation-shared.js';
 
 let initialized = false;
@@ -16,6 +17,7 @@ let isOpen = false;
 let state = emptyWizardState();
 let users = [];
 let fiscalBounds = null;
+let quickFees = QUICK_FEES;
 
 function $(id) { return document.getElementById(id); }
 
@@ -69,19 +71,23 @@ function renderStep2() {
     ${banner}`;
 }
 
-function renderRoomCard(room) {
+function renderRoomCard(room, { recommended = false } = {}) {
   const ok = room.availability_status === 'available';
   const sel = String(room.id) === String(state.roomId);
   const av = availLabel(room.availability_status);
+  const topPick = recommended && room.recommendation_rank === 1;
   return `
-    <button type="button" class="res-room-card${sel ? ' is-selected' : ''}${ok ? '' : ' is-disabled'}"
+    <button type="button" class="res-room-card${sel ? ' is-selected' : ''}${ok ? '' : ' is-disabled'}${recommended ? ' is-recommended' : ''}"
       data-room-id="${room.id}" ${ok ? '' : 'disabled tabindex="-1"'}>
+      ${topPick ? '<span class="res-rec-badge">Top pick</span>' : ''}
+      ${recommended && !topPick ? '<span class="res-rec-badge res-rec-badge--alt">Suggested</span>' : ''}
       <div class="res-room-card-top">
         <strong>Room ${escapeHtml(room.room_number)}</strong>
         <span class="res-pill ${av.cls}">${av.text}</span>
       </div>
       <p class="res-room-meta">${escapeHtml(room.building_name)} · ${escapeHtml(room.room_type)}</p>
       <p class="res-room-cap"><span class="material-symbols-outlined text-[18px]">groups</span> Fits ${room.capacity_min}–${room.capacity_max} guests</p>
+      ${recommended ? `<p class="res-rec-reason">${escapeHtml(recommendationReason(room, state.guestCount))}</p>` : ''}
       ${ok && room.estimated_total != null ? `<p class="res-room-price">${formatMoney(room.estimated_total)} total stay</p>` : ''}
       ${!ok && room.availability_status === 'too_small' ? `<p class="res-room-warn">This room cannot fit ${state.guestCount} guests.</p>` : ''}
       ${!ok && room.availability_status === 'booked' ? `<p class="res-room-warn">Already booked on these dates.</p>` : ''}
@@ -89,14 +95,29 @@ function renderRoomCard(room) {
 }
 
 function renderStep3() {
-  const eligible = state.availableRooms.filter((r) => r.availability_status === 'available');
+  const recommended = recommendRooms(state.availableRooms, state.guestCount, 3);
+  const recIds = new Set(recommended.map((r) => String(r.id)));
+  const others = state.availableRooms.filter(
+    (r) => r.availability_status === 'available' && !recIds.has(String(r.id))
+  );
+
+  const recBlock = recommended.length ? `
+    <div class="res-rec-section">
+      <h3 class="res-rec-head"><span class="material-symbols-outlined">star</span> Suggested for ${state.guestCount} guest(s)</h3>
+      <p class="res-hint">We picked rooms that fit your group and dates. Tap one — you can still pick any room below.</p>
+      <div class="res-room-grid">${recommended.map((r) => renderRoomCard(r, { recommended: true })).join('')}</div>
+    </div>` : '';
+
+  const othersBlock = others.length ? `
+    <h3 class="res-subhead${recommended.length ? ' res-subhead--spaced' : ''}">All other available rooms</h3>
+    <div class="res-room-grid">${others.map((r) => renderRoomCard(r)).join('')}</div>` : '';
+
   return `
-    <p class="res-lead">Rooms shown below fit <strong>${state.guestCount} guest(s)</strong> and are <strong>free on your dates</strong>.</p>
+    <p class="res-lead">Choose a room for the stay. Suggested options appear first when we find a good match.</p>
     ${state.loadingRooms ? '<p>Loading rooms…</p>' : ''}
-    <div class="res-room-grid">
-      ${eligible.length ? eligible.map(renderRoomCard).join('')
-        : '<div class="res-empty-box"><span class="material-symbols-outlined">meeting_room</span><p>No matching rooms. Go back and change dates or guest count.</p></div>'}
-    </div>`;
+    ${!state.loadingRooms && !recommended.length && !others.length
+      ? '<div class="res-empty-box"><span class="material-symbols-outlined">meeting_room</span><p>No matching rooms. Go back and change dates or guest count.</p></div>'
+      : `${recBlock}${othersBlock}`}`;
 }
 
 function renderMealRow(type, qty) {
@@ -120,7 +141,7 @@ function renderStep4() {
   const feeRows = state.fees.map((f, i) => `
     <tr><td>${escapeHtml(f.fee_name)}</td><td>${formatMoney(f.amount)}</td>
     <td><button type="button" class="res-btn-sm res-btn-sm--danger" data-fee-rm="${i}">Remove</button></td></tr>`).join('');
-  const quickBtns = QUICK_FEES.map((f) =>
+  const quickBtns = quickFees.map((f) =>
     `<button type="button" class="res-quick-fee" data-quick-fee="${escapeHtml(f.name)}" data-quick-amt="${f.amount}">${escapeHtml(f.name)} (${formatMoney(f.amount)})</button>`
   ).join('');
   return `
@@ -227,6 +248,13 @@ async function fetchRooms() {
         state.roomId = '';
         state.selectedRoom = null;
         state.roomTotal = 0;
+      }
+    } else if (state.step >= 3) {
+      const top = recommendRooms(state.availableRooms, state.guestCount, 1)[0];
+      if (top) {
+        state.roomId = String(top.id);
+        state.selectedRoom = top;
+        state.roomTotal = top.estimated_total || 0;
       }
     }
   } catch (err) {
@@ -388,12 +416,20 @@ export async function openReservationWizard(options = {}) {
   state.fromRequestId = fromRequestId;
 
   try {
-    [users, state.mealRates, fiscalBounds] = await Promise.all([
+    const [usersResult, mealRatesResult, fiscalResult, catalogResult] = await Promise.all([
       getUsers(),
       getMealRates(),
       loadFiscalYearBounds(),
+      getFacilitiesOverview().catch(() => ({ services: [] })),
     ]);
-  } catch { users = []; }
+    users = usersResult;
+    state.mealRates = mealRatesResult;
+    fiscalBounds = fiscalResult;
+    quickFees = servicesToQuickFees(catalogResult.services || []);
+  } catch {
+    users = [];
+    quickFees = QUICK_FEES;
+  }
 
   if (bookingId) {
     const booking = await getBookingById(bookingId);

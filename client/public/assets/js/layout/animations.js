@@ -308,9 +308,11 @@ export async function animatePanelContent(selector = '.admin-panel-body, .timeli
   );
 }
 
-/** Run all passive page enhancements after layout init. */
+/** Run passive page enhancements — chrome only, no content motion. */
 export async function initAdminEnhancements(root = document) {
-  await initAdminPageAnimations(root);
-  await initActionCardHovers(root);
-  await animatePanelContent(undefined, root);
+  lockStaticChrome(root);
+  root.querySelectorAll('#page-content > *').forEach((el) => {
+    el.style.opacity = '1';
+    el.style.transform = 'none';
+  });
 }

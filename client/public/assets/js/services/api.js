@@ -99,6 +99,24 @@ export async function getFacilitiesOverview() {
   return apiRequest('/facilities/overview');
 }
 
+export async function createFacilityRate(payload) {
+  return apiRequest('/facilities', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateFacilityRate(id, payload) {
+  return apiRequest(`/facilities/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteFacilityRate(id) {
+  return apiRequest(`/facilities/${id}`, { method: 'DELETE' });
+}
+
 export async function getBuildings() {
   const data = await apiRequest('/rooms/buildings/list');
   return data.buildings || [];

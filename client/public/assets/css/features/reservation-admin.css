@@ -86,6 +86,14 @@
 .res-room-cap { display: flex; align-items: center; gap: 0.25rem; font-size: 0.9375rem; font-weight: 600; color: #1A365D; margin-top: 0.375rem; }
 .res-room-price { font-size: 1rem; font-weight: 700; color: #1A365D; margin-top: 0.5rem; }
 .res-room-warn { font-size: 0.8125rem; color: #A81D23; margin-top: 0.375rem; }
+.res-rec-section { background: #F0F9FF; border: 2px solid #BAE6FD; border-radius: 0.875rem; padding: 1rem; margin-bottom: 1.25rem; }
+.res-rec-head { display: flex; align-items: center; gap: 0.375rem; font-size: 1.0625rem; font-weight: 700; color: #1A365D; margin-bottom: 0.375rem; }
+.res-rec-badge { display: inline-block; font-size: 0.6875rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; background: #1A365D; color: #fff; padding: 0.2rem 0.5rem; border-radius: 9999px; margin-bottom: 0.5rem; }
+.res-rec-badge--alt { background: #2C5282; }
+.res-rec-reason { font-size: 0.8125rem; color: #4A5568; margin-top: 0.375rem; line-height: 1.4; }
+.res-room-card.is-recommended { border-color: #90CDF4; background: #fff; }
+.res-room-card.is-recommended.is-selected { border-color: #1A365D; }
+.res-subhead--spaced { margin-top: 1.25rem; }
 .res-empty-box { text-align: center; padding: 2rem; color: #718096; }
 
 .res-meals-box { border: 1px solid #E2E8F0; border-radius: 0.75rem; padding: 0.5rem 1rem; margin-bottom: 1rem; }

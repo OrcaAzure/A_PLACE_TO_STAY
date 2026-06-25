@@ -50,6 +50,44 @@ export function statusBadge(status) {
   return `<span class="res-pill res-pill--${key}">${escapeHtml(labels[key] || status)}</span>`;
 }
 
+export function recommendRooms(rooms, guestCount, limit = 3) {
+  const count = Math.max(1, Number(guestCount) || 1);
+  const available = (rooms || []).filter((r) => r.availability_status === 'available');
+
+  return available
+    .map((room) => {
+      const waste = room.capacity_max - count;
+      const overMin = count - room.capacity_min;
+      return { room, waste, overMin };
+    })
+    .filter(({ waste, overMin }) => waste >= 0 && overMin >= 0)
+    .sort((a, b) => {
+      if (a.waste !== b.waste) return a.waste - b.waste;
+      return (a.room.estimated_total || 0) - (b.room.estimated_total || 0);
+    })
+    .slice(0, limit)
+    .map(({ room }, index) => ({ ...room, recommendation_rank: index + 1 }));
+}
+
+export function recommendationReason(room, guestCount) {
+  const count = Math.max(1, Number(guestCount) || 1);
+  const waste = room.capacity_max - count;
+  if (waste === 0) return 'Fits your group exactly — no wasted space.';
+  if (waste <= 1) return 'Best fit for your group size.';
+  if (room.recommendation_rank === 1) return 'Lowest cost option that fits everyone.';
+  return 'Good alternative if your first choice is taken.';
+}
+
+export function servicesToQuickFees(services = []) {
+  const fees = [];
+  for (const group of services) {
+    for (const item of group.items || []) {
+      fees.push({ name: item.item, amount: item.rate, category: group.category });
+    }
+  }
+  return fees.length ? fees : QUICK_FEES;
+}
+
 export function debounce(fn, ms = 300) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
