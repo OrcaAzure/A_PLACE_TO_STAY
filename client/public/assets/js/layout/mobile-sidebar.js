@@ -59,9 +59,10 @@ export function openMobileSidebar() {
 
   document.documentElement.classList.add('sidebar-user-toggle', 'sidebar-mobile-open');
   sidebarEl()?.classList.add('sidebar-open');
-  overlayEl()?.classList.remove('hidden');
-  overlayEl()?.classList.add('visible');
+  overlayEl()?.classList.add('is-active');
   overlayEl()?.setAttribute('aria-hidden', 'false');
+
+  document.getElementById('notifications-panel')?.classList.add('hidden');
 
   pageContentEl()?.setAttribute('aria-hidden', 'true');
   mainEl()?.setAttribute('inert', '');
@@ -73,8 +74,7 @@ export function openMobileSidebar() {
 export function closeMobileSidebar() {
   document.documentElement.classList.remove('sidebar-mobile-open');
   sidebarEl()?.classList.remove('sidebar-open');
-  overlayEl()?.classList.add('hidden');
-  overlayEl()?.classList.remove('visible');
+  overlayEl()?.classList.remove('is-active');
   overlayEl()?.setAttribute('aria-hidden', 'true');
 
   pageContentEl()?.removeAttribute('aria-hidden');
