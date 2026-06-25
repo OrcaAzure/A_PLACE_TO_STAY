@@ -7,6 +7,7 @@
   font-size: 17px;
   line-height: 1.55;
   --admin-gutter-x: 1.5rem;
+  --portal-bottom-nav-height: 4.75rem;
 }
 
 /* Hide raw page HTML until the admin shell is mounted (prevents sidebar flash). */
@@ -137,22 +138,21 @@ html.admin-chrome-boot .app-tab-panels {
     display: none;
   }
 
-  #app-sidebar.sidebar-open .admin-sidebar-collapse-btn {
-    display: flex;
-  }
-
   .sidebar-open-btn {
-    display: flex;
-  }
-
-  .sidebar-open-btn[hidden] {
     display: none !important;
   }
 
-  .admin-shell #app-sidebar {
-    position: fixed;
-    width: min(280px, 85vw);
-    flex: none;
+  .admin-shell #app-sidebar,
+  .admin-shell #sidebar-overlay {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  .admin-shell > main {
+    width: 100%;
+    flex: 1 1 100%;
+    min-width: 0;
   }
 }
 
@@ -675,85 +675,84 @@ html.admin-chrome-boot .app-tab-panels {
   }
 }
 
-/* ── Mobile sidebar drawer (overlay) — must come after desktop static rules ── */
+/* ── Mobile bottom navigation (admin + guest) ── */
+.portal-bottom-nav {
+  display: none;
+}
+
 @media (max-width: 1023px) {
-  .admin-shell #app-sidebar {
+  .portal-bottom-nav {
     position: fixed;
+    bottom: 0;
     left: 0;
-    top: 0;
-    height: 100%;
-    height: 100dvh;
-    width: min(280px, 85vw);
-    max-width: 280px;
-    z-index: 60;
-    flex: none;
-    pointer-events: none;
-    transform: translateX(-100%);
-    padding-left: 1rem;
-    padding-right: 1rem;
-    border-right: 1px solid var(--color-outline-variant, #CBD5E0);
+    right: 0;
+    z-index: 35;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 0;
+    padding: 0.25rem max(0.25rem, env(safe-area-inset-left)) calc(0.25rem + env(safe-area-inset-bottom)) max(0.25rem, env(safe-area-inset-right));
     background: #fff;
+    border-top: 1px solid #cbd5e0;
+    box-shadow: 0 -2px 12px rgba(26, 54, 93, 0.08);
   }
 
-  html.sidebar-user-toggle .admin-shell #app-sidebar {
-    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .admin-shell #app-sidebar.sidebar-open {
-    transform: translateX(0);
-    pointer-events: auto;
-    box-shadow: 8px 0 24px rgba(26, 54, 93, 0.12);
-  }
-
-  .admin-shell > main {
-    width: 100%;
-    flex: 1 1 100%;
+  .portal-bottom-nav-link {
+    flex: 1 1 0;
+    border-radius: 0.5rem;
     min-width: 0;
+    min-height: 3.375rem;
+    max-height: 3.625rem;
+    padding: 0.25rem 0.125rem;
+    font-weight: 600;
   }
 
-  #sidebar-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.45);
-    z-index: 55;
-    opacity: 0;
-    pointer-events: none;
-    -webkit-tap-highlight-color: transparent;
+  .portal-bottom-nav-link .material-symbols-outlined {
+    font-size: 1.375rem !important;
   }
 
-  html.sidebar-user-toggle #sidebar-overlay {
-    transition: opacity 0.24s ease;
-  }
-
-  #sidebar-overlay.is-active {
-    display: block;
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  html.sidebar-mobile-open .sidebar-open-btn {
-    visibility: hidden;
-    pointer-events: none;
-  }
-
-  html.sidebar-mobile-open .sidebar-open-btn[hidden] {
-    display: none !important;
-    visibility: hidden;
-  }
-
-  html.sidebar-mobile-open .admin-shell #page-content {
+  .guest-bottom-nav-label,
+  .admin-bottom-nav-label {
+    line-height: 1.1;
+    text-align: center;
+    font-size: 0.625rem;
+    font-weight: 600;
+    max-width: 100%;
     overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 0.125rem;
   }
 
-  html.sidebar-mobile-open #notifications-panel {
-    display: none !important;
+  @media (min-width: 390px) {
+    .guest-bottom-nav-label,
+    .admin-bottom-nav-label {
+      font-size: 0.6875rem;
+    }
+  }
+
+  .portal-bottom-nav-link.is-active {
+    background: rgba(26, 54, 93, 0.1);
+    color: var(--color-primary, #1A365D);
+  }
+
+  .portal-bottom-nav-link.is-active .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .portal-bottom-nav-link:not(.is-active) {
+    color: #64748b;
+  }
+
+  .portal-bottom-nav-link:not(.is-active):hover,
+  .portal-bottom-nav-link:not(.is-active):focus-visible {
+    background: rgba(26, 54, 93, 0.05);
+    color: var(--color-primary, #1A365D);
   }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  html.sidebar-user-toggle .admin-shell #app-sidebar,
-  html.sidebar-user-toggle #sidebar-overlay {
-    transition: none !important;
+@media (min-width: 1024px) {
+  .portal-bottom-nav {
+    display: none !important;
   }
 }

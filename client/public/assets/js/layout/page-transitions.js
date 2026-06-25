@@ -85,7 +85,7 @@ export function initGuestPageNavTransitions() {
 
 export function initAdminPageNavTransitions() {
   bindPortalNav({
-    navSelector: '#app-sidebar nav a',
+    navSelector: '#app-sidebar nav a, .admin-bottom-nav a',
     contentSelector: '#page-content',
     headerSelector: 'main > header',
     allowedPages: ADMIN_PAGES,

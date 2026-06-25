@@ -8,11 +8,9 @@ import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDraw
 import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
 import {
   isDesktopSidebar,
-  openMobileSidebar,
   closeMobileSidebar,
   closeSidebarIfMobile,
   syncMobileSidebarToggleUi,
-  bindMobileSidebarEvents,
   isMobileSidebarOpen,
 } from '/assets/js/layout/mobile-sidebar.js';
 
@@ -22,6 +20,15 @@ export const ADMIN_NAV = [
   { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/admin/facilities.html' },
   { id: 'residents', label: 'Residents', icon: 'groups', href: '/admin/residents.html' },
   { id: 'payments', label: 'Payments', icon: 'payments', href: '/admin/payments.html' },
+  { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings.html' },
+];
+
+/** Mobile bottom bar — 5 items max for readable single-row layout (Payments via dashboard). */
+export const ADMIN_MOBILE_NAV = [
+  { id: 'dashboard', label: 'Home', icon: 'dashboard', href: '/admin/dashboard.html' },
+  { id: 'reservations', label: 'Bookings', icon: 'calendar_month', href: '/admin/reservations.html' },
+  { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/admin/facilities.html' },
+  { id: 'residents', label: 'People', icon: 'groups', href: '/admin/residents.html' },
   { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings.html' },
 ];
 
@@ -166,7 +173,6 @@ function buildAdminShell({
 
   return `
     ${sidebar}
-    <div id="sidebar-overlay" aria-hidden="true"></div>
     <main class="flex-1 flex flex-col overflow-hidden h-full min-w-0">
       ${header}
       <div id="page-content" class="flex-1 overflow-y-auto min-h-0">${pageContent}</div>
@@ -183,19 +189,46 @@ function buildAdminShell({
   `;
 }
 
-function guestBottomNavLinkClass(active, id) {
-  const base = 'guest-bottom-nav-link flex flex-col items-center justify-center gap-0.5 flex-1 min-h-[3rem] px-1 py-2 text-[0.6875rem] font-medium no-underline transition-colors';
+function adminBottomNavLinkClass(active, id) {
+  const base = 'portal-bottom-nav-link admin-bottom-nav-link flex flex-col items-center justify-center gap-0.5 flex-1 min-h-0 px-0.5 py-1.5 font-semibold no-underline transition-colors min-w-0';
   return active === id
     ? `${base} is-active text-primary`
     : `${base} text-on-surface-variant`;
 }
 
+function guestBottomNavLinkClass(active, id) {
+  const base = 'portal-bottom-nav-link guest-bottom-nav-link flex flex-col items-center justify-center gap-0.5 flex-1 min-h-0 px-0.5 py-1.5 font-semibold no-underline transition-colors min-w-0';
+  return active === id
+    ? `${base} is-active text-primary`
+    : `${base} text-on-surface-variant`;
+}
+
+const ADMIN_MOBILE_LABELS = {
+  dashboard: 'Home',
+  reservations: 'Bookings',
+  facilities: 'Facilities',
+  residents: 'People',
+  payments: 'Payments',
+  settings: 'Settings',
+};
+
+function renderAdminBottomNav(items, active) {
+  return `
+    <nav class="portal-bottom-nav admin-bottom-nav lg:hidden" aria-label="Mobile navigation">
+      ${items.map((item) => `
+        <a class="${adminBottomNavLinkClass(active, item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}" aria-label="${ADMIN_NAV.find((n) => n.id === item.id)?.label || item.label}">
+          <span class="material-symbols-outlined leading-none" aria-hidden="true">${item.icon}</span>
+          <span class="admin-bottom-nav-label">${ADMIN_MOBILE_LABELS[item.id] || item.label}</span>
+        </a>
+      `).join('')}
+    </nav>`;
+}
 function renderGuestBottomNav(items, active) {
   return `
-    <nav class="guest-bottom-nav lg:hidden" aria-label="Mobile navigation">
+    <nav class="portal-bottom-nav guest-bottom-nav lg:hidden" aria-label="Mobile navigation">
       ${items.map((item) => `
-        <a class="${guestBottomNavLinkClass(active, item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}">
-          <span class="material-symbols-outlined text-[1.35rem] leading-none">${item.icon}</span>
+        <a class="${guestBottomNavLinkClass(active, item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}" aria-label="${item.label}">
+          <span class="material-symbols-outlined leading-none" aria-hidden="true">${item.icon}</span>
           <span class="guest-bottom-nav-label">${item.label}</span>
         </a>
       `).join('')}
@@ -218,13 +251,18 @@ function buildGuestShell(options) {
 }
 
 function updateActiveNav(activePage, navItems = ADMIN_NAV) {
-  document.querySelectorAll('#app-sidebar nav a, .guest-bottom-nav a').forEach((link) => {
+  const mobileNavItems = navItems === ADMIN_NAV ? ADMIN_MOBILE_NAV : navItems;
+  document.querySelectorAll('#app-sidebar nav a, .guest-bottom-nav a, .admin-bottom-nav a').forEach((link) => {
     const href = link.getAttribute('href') || '';
     const page = href.split('/').pop() || '';
-    const id = navItems.find((item) => item.href.endsWith(page))?.id;
+    const pool = link.closest('.admin-bottom-nav') ? mobileNavItems : navItems;
+    const id = pool.find((item) => item.href.endsWith(page))?.id
+      ?? navItems.find((item) => item.href.endsWith(page))?.id;
     const active = id === activePage;
     if (link.closest('.guest-bottom-nav')) {
       link.className = guestBottomNavLinkClass(active, id || '');
+    } else if (link.closest('.admin-bottom-nav')) {
+      link.className = adminBottomNavLinkClass(active, id || '');
     } else {
       link.className = navLinkClass(active, id || '');
     }
@@ -332,7 +370,7 @@ export async function initAppLayout(config = {}) {
         userInitial,
         collapsed,
         brandHref: '/admin/dashboard.html',
-      });
+      }) + renderAdminBottomNav(ADMIN_MOBILE_NAV, activePage);
 
   document.body.innerHTML = shellHtml;
   if (preservedNodes.childNodes.length) {
@@ -376,14 +414,7 @@ let sidebarUiInitialized = false;
 function ensureSidebarUi() {
   if (sidebarUiInitialized) return;
   sidebarUiInitialized = true;
-  if (!document.getElementById('sidebar-overlay') && document.getElementById('app-sidebar')) {
-    const overlay = document.createElement('div');
-    overlay.id = 'sidebar-overlay';
-    overlay.setAttribute('aria-hidden', 'true');
-    document.getElementById('app-sidebar').after(overlay);
-  }
   initSidebarCollapse();
-  bindMobileSidebarEvents({ onScrollLockChange: updateBodyScrollLock });
 }
 
 function initSidebarCollapse() {
@@ -393,21 +424,11 @@ function initSidebarCollapse() {
   syncSidebarToggleUi();
 
   collapseBtn?.addEventListener('click', () => {
-    if (!isDesktopSidebar()) {
-      closeMobileSidebar();
-      return;
-    }
+    if (!isDesktopSidebar()) return;
     setSidebarCollapsed(true);
   });
   openBtn?.addEventListener('click', () => {
-    if (!isDesktopSidebar()) {
-      if (isMobileSidebarOpen()) {
-        closeMobileSidebar();
-      } else {
-        openMobileSidebar();
-      }
-      return;
-    }
+    if (!isDesktopSidebar()) return;
     setSidebarCollapsed(false);
   });
 
@@ -440,11 +461,13 @@ function syncSidebarToggleUi() {
 }
 
 function bindLayoutEvents({ isGuest = false } = {}) {
-  document.getElementById('logout-btn')?.addEventListener('click', (e) => {
-    e.preventDefault();
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    window.location.href = '/login.html';
+  document.querySelectorAll('#logout-btn, [data-action="logout"]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login.html';
+    });
   });
 
   document.getElementById('notifications-btn')?.addEventListener('click', async () => {

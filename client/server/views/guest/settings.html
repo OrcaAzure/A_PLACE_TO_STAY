@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="/assets/css/components/components.css" />
     <link rel="stylesheet" href="/assets/css/global/responsive.css" />
     <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
+    <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
     <link rel="stylesheet" href="/assets/css/global/guest-layout.css" />
     <link rel="stylesheet" href="/assets/css/global/tabs-layout.css" />
     <style>
@@ -118,6 +119,15 @@
                 <div id="password-feedback" class="hidden text-body-sm rounded-lg px-3 py-2"></div>
                 <button id="update-password-btn" class="js-requires-write bg-primary-container text-on-primary-container px-lg py-md rounded-lg font-label-md text-label-md hover:opacity-90">Update Password</button>
             </div>
+        </div>
+
+        <div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg border border-outline-variant/30 lg:hidden">
+            <h3 class="font-headline-sm text-headline-sm mb-md">Session</h3>
+            <p class="font-body-sm text-body-sm text-on-surface-variant mb-lg">Sign out of your guest account on this device.</p>
+            <button type="button" data-action="logout" class="w-full flex items-center justify-center gap-2 px-lg py-md rounded-lg border border-outline-variant text-on-surface-variant font-label-md text-label-md font-semibold hover:bg-surface-container-low transition-colors min-h-[3rem]">
+                <span class="material-symbols-outlined text-[1.25rem]">logout</span>
+                Log Out
+            </button>
         </div>
     </section>
     </div>
