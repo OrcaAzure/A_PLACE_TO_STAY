@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS password_reset_tokens (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     user_id    INT NOT NULL,
-    token      VARCHAR(255) NOT NULL UNIQUE,
+    token      VARCHAR(191) NOT NULL UNIQUE,
     expires_at TIMESTAMP NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
