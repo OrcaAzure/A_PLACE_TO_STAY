@@ -1,12 +1,20 @@
 @media (max-width: 1023px) {
-  #app-sidebar {
+  /* Sidebar overlays content — never participates in flex layout */
+  .admin-shell #app-sidebar {
     position: fixed;
     left: 0;
     top: 0;
     height: 100%;
-    width: 280px;
+    height: 100dvh;
+    width: min(280px, 85vw);
+    max-width: 280px;
     transform: translateX(-100%);
-    z-index: 50;
+    z-index: 55;
+    flex: none;
+    pointer-events: none;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    border-right: 1px solid var(--color-outline-variant, #CBD5E0);
   }
 
   html.sidebar-user-toggle #app-sidebar {
@@ -15,7 +23,15 @@
 
   #app-sidebar.sidebar-open {
     transform: translateX(0);
+    pointer-events: auto;
     box-shadow: 8px 0 24px rgba(26, 54, 93, 0.12);
+  }
+
+  /* Main content keeps full width — no push/shrink when sidebar opens */
+  .admin-shell > main {
+    width: 100%;
+    flex: 1 1 100%;
+    min-width: 0;
   }
 
   #sidebar-overlay {
@@ -23,8 +39,10 @@
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.4);
-    z-index: 45;
+    z-index: 50;
     opacity: 0;
+    pointer-events: none;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html.sidebar-user-toggle #sidebar-overlay {
@@ -34,6 +52,16 @@
   #sidebar-overlay.visible {
     display: block;
     opacity: 1;
+    pointer-events: auto;
+  }
+
+  html.sidebar-mobile-open .sidebar-open-btn {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  html.sidebar-mobile-open .admin-shell #page-content {
+    overflow: hidden;
   }
 
   .gantt-container {
@@ -55,5 +83,12 @@
   .timeline-workspace-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.sidebar-user-toggle #app-sidebar,
+  html.sidebar-user-toggle #sidebar-overlay {
+    transition: none !important;
   }
 }

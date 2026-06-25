@@ -1,4 +1,24 @@
-/** Guest portal — collapsible sidebar (desktop), same pattern as admin. */
+/** Guest portal — delegates to shared mobile sidebar (same as admin). */
+
+import {
+  syncMobileSidebarToggleUi,
+  bindMobileSidebarEvents,
+  closeMobileSidebar,
+  openMobileSidebar,
+  isMobileSidebarOpen,
+} from '/assets/js/layout/mobile-sidebar.js';
+
+export {
+  isDesktopSidebar,
+  isMobileSidebarOpen,
+  openMobileSidebar,
+  closeMobileSidebar,
+  closeSidebarIfMobile,
+  syncMobileSidebarToggleUi,
+  bindMobileSidebarEvents,
+  configureMobileSidebar,
+  SIDEBAR_DESKTOP_MQ,
+} from '/assets/js/layout/mobile-sidebar.js';
 
 const GUEST_SIDEBAR_KEY = 'guest-sidebar-collapsed';
 
@@ -7,11 +27,7 @@ function isDesktop() {
 }
 
 function syncGuestSidebarUi() {
-  const openBtn = document.getElementById('guest-sidebar-open-btn');
-  const collapsed = document.body.classList.contains('sidebar-collapsed');
-  if (openBtn) {
-    openBtn.setAttribute('aria-expanded', String(!collapsed));
-  }
+  syncMobileSidebarToggleUi();
 }
 
 export function setGuestSidebarCollapsed(collapsed) {
@@ -19,20 +35,28 @@ export function setGuestSidebarCollapsed(collapsed) {
   if (isDesktop()) {
     localStorage.setItem(GUEST_SIDEBAR_KEY, collapsed ? '1' : '0');
   }
+  if (collapsed) closeMobileSidebar();
   syncGuestSidebarUi();
 }
 
+/** @deprecated Guest pages use initAppLayout → initSidebarCollapse; kept for compatibility. */
 export function initGuestSidebar() {
   if (isDesktop() && localStorage.getItem(GUEST_SIDEBAR_KEY) === '1') {
     document.body.classList.add('sidebar-collapsed');
   }
   syncGuestSidebarUi();
+  bindMobileSidebarEvents();
 
-  document.getElementById('guest-sidebar-collapse-btn')?.addEventListener('click', () => {
+  document.getElementById('sidebar-collapse-btn')?.addEventListener('click', () => {
     setGuestSidebarCollapsed(true);
   });
 
-  document.getElementById('guest-sidebar-open-btn')?.addEventListener('click', () => {
+  document.getElementById('sidebar-open-btn')?.addEventListener('click', () => {
+    if (!isDesktop()) {
+      if (isMobileSidebarOpen()) closeMobileSidebar();
+      else openMobileSidebar();
+      return;
+    }
     setGuestSidebarCollapsed(false);
   });
 

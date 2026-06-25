@@ -137,8 +137,22 @@ html.admin-chrome-boot .app-tab-panels {
     display: none;
   }
 
+  #app-sidebar.sidebar-open .admin-sidebar-collapse-btn {
+    display: flex;
+  }
+
   .sidebar-open-btn {
     display: flex;
+  }
+
+  .sidebar-open-btn[hidden] {
+    display: none !important;
+  }
+
+  .admin-shell #app-sidebar {
+    position: fixed;
+    width: min(280px, 85vw);
+    flex: none;
   }
 }
 

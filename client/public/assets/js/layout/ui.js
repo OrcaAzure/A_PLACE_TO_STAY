@@ -6,6 +6,15 @@ import { initGroupWizard, isGroupWizardOpen, closeGroupWizard } from '/assets/js
 import { initTabGroup, switchTabPanel } from '/assets/js/layout/tabs.js';
 import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDrawerOpen, animateModalOpen, animateNotificationsPanel } from '/assets/js/layout/animations.js';
 import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
+import {
+  isDesktopSidebar,
+  openMobileSidebar,
+  closeMobileSidebar,
+  closeSidebarIfMobile,
+  syncMobileSidebarToggleUi,
+  bindMobileSidebarEvents,
+  isMobileSidebarOpen,
+} from '/assets/js/layout/mobile-sidebar.js';
 
 export const ADMIN_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard.html' },
@@ -121,10 +130,6 @@ if (typeof window !== 'undefined' && window.location.pathname.includes('/guest/'
   loadGuestTemplates().catch(() => {});
 }
 
-function isDesktopSidebar() {
-  return window.matchMedia('(min-width: 1024px)').matches;
-}
-
 function isSidebarCollapsedPreferred() {
   return isDesktopSidebar() && localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
 }
@@ -174,7 +179,7 @@ function buildAdminShell({
     ${templates.groupWizard || ''}
     ${templates.notifications || ''}
     ${templates.facilityCatalog || ''}
-    <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[45]"></div>
+    <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[50]" aria-hidden="true"></div>
   `;
 }
 
@@ -336,6 +341,7 @@ export async function initAppLayout(config = {}) {
 
   bindLayoutEvents({ isGuest });
   initSidebarCollapse();
+  bindMobileSidebarEvents({ onScrollLockChange: updateBodyScrollLock });
   if (!isGuest) {
     initManageRequestsModal();
     initManageReservationsModal();
@@ -371,10 +377,20 @@ function initSidebarCollapse() {
 
   syncSidebarToggleUi();
 
-  collapseBtn?.addEventListener('click', () => setSidebarCollapsed(true));
+  collapseBtn?.addEventListener('click', () => {
+    if (!isDesktopSidebar()) {
+      closeMobileSidebar();
+      return;
+    }
+    setSidebarCollapsed(true);
+  });
   openBtn?.addEventListener('click', () => {
-    if (window.matchMedia('(max-width: 1023px)').matches) {
-      openMobileSidebar();
+    if (!isDesktopSidebar()) {
+      if (isMobileSidebarOpen()) {
+        closeMobileSidebar();
+      } else {
+        openMobileSidebar();
+      }
       return;
     }
     setSidebarCollapsed(false);
@@ -397,7 +413,7 @@ function setSidebarCollapsed(collapsed) {
   if (isDesktopSidebar()) {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
   }
-  if (collapsed) closeSidebar();
+  if (collapsed) closeMobileSidebar();
   syncSidebarToggleUi();
   requestAnimationFrame(() => {
     document.documentElement.classList.remove('sidebar-user-toggle');
@@ -405,27 +421,7 @@ function setSidebarCollapsed(collapsed) {
 }
 
 function syncSidebarToggleUi() {
-  const openBtn = document.getElementById('sidebar-open-btn');
-  const icon = openBtn?.querySelector('.sidebar-open-btn__icon');
-  const collapsed = document.body.classList.contains('sidebar-collapsed');
-  const mobile = !isDesktopSidebar();
-
-  if (openBtn) {
-    openBtn.setAttribute('aria-expanded', mobile ? 'false' : String(!collapsed));
-    openBtn.setAttribute('aria-label', mobile ? 'Open menu' : 'Show sidebar');
-    openBtn.title = mobile ? 'Open menu' : 'Show sidebar';
-  }
-  if (icon) {
-    icon.textContent = 'menu';
-  }
-}
-
-function openMobileSidebar() {
-  document.documentElement.classList.add('sidebar-user-toggle');
-  document.getElementById('app-sidebar')?.classList.add('sidebar-open');
-  document.getElementById('sidebar-overlay')?.classList.remove('hidden');
-  document.getElementById('sidebar-overlay')?.classList.add('visible');
-  document.getElementById('sidebar-open-btn')?.setAttribute('aria-expanded', 'true');
+  syncMobileSidebarToggleUi();
 }
 
 function bindLayoutEvents({ isGuest = false } = {}) {
@@ -435,8 +431,6 @@ function bindLayoutEvents({ isGuest = false } = {}) {
     localStorage.removeItem('user');
     window.location.href = '/login.html';
   });
-
-  document.getElementById('sidebar-overlay')?.addEventListener('click', closeSidebar);
 
   document.getElementById('notifications-btn')?.addEventListener('click', async () => {
     const panel = document.getElementById('notifications-panel');
@@ -533,7 +527,7 @@ function bindLayoutEvents({ isGuest = false } = {}) {
         closeModal();
         closeDrawer();
       }
-      closeSidebar();
+      closeSidebarIfMobile();
     }
   });
 }
@@ -547,18 +541,13 @@ function updateBodyScrollLock() {
     || isManageFacilitiesModalOpen()
     || isReservationWizardOpen()
     || isGroupWizardOpen();
-  document.body.style.overflow = (modalOpen || drawerOpen || manageOpen) ? 'hidden' : '';
-}
+  const mobileSidebarOpen = isMobileSidebarOpen();
+  document.body.style.overflow = (modalOpen || drawerOpen || manageOpen || mobileSidebarOpen) ? 'hidden' : '';
 
-function closeSidebar() {
-  document.documentElement.classList.add('sidebar-user-toggle');
-  document.getElementById('app-sidebar')?.classList.remove('sidebar-open');
-  document.getElementById('sidebar-overlay')?.classList.add('hidden');
-  document.getElementById('sidebar-overlay')?.classList.remove('visible');
-  syncSidebarToggleUi();
-  requestAnimationFrame(() => {
-    document.documentElement.classList.remove('sidebar-user-toggle');
-  });
+  const pageContent = document.getElementById('page-content');
+  if (pageContent) {
+    pageContent.style.overflow = mobileSidebarOpen ? 'hidden' : '';
+  }
 }
 
 export function openDrawer(id, title, bodyHtml = '') {
