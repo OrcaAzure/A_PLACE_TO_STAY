@@ -37,33 +37,6 @@
       if (countEl) countEl.textContent = `${pending} PENDING`;
     }
 
-    // Utility function that extracts today's clean verbal date string
-    function getTodayDateString() {
-      const now = new Date();
-      const options = { month: 'long', day: 'numeric', year: 'numeric' };
-      return now.toLocaleDateString('en-US', options);
-    }
-
-    // Ticking digital clock configuration that targets the header indicators directly
-    function runLiveClockSync() {
-      const clockLoop = () => {
-        const now = new Date();
-        const hrs = String(now.getHours()).padStart(2, '0');
-        const mins = String(now.getMinutes()).padStart(2, '0');
-        const secs = String(now.getSeconds()).padStart(2, '0');
-        
-        const timeStr = `${hrs}:${mins}:${secs}`;
-        const dateStr = getTodayDateString();
-
-        document.querySelectorAll('.live-date-display').forEach(el => el.innerText = dateStr);
-        document.querySelectorAll('.live-time-display').forEach(el => el.innerText = timeStr);
-      };
-
-      clockLoop();
-      setInterval(clockLoop, 1000);
-    }
-
-    // 1. Fetch action metrics row container panels elements
     const actionCards = await fetch('/components/action-cards-reservations.html').then(r => r.text());
     document.getElementById('action-cards-mount').innerHTML = actionCards;
 
@@ -79,7 +52,7 @@
     // 3. Render scheduling table entries natively from backend arrays
     await mountBookingTimeline({
       mountEl: document.getElementById('timeline-mount'),
-      title:   'Reservation Master Timeline',
+      title:   'Upcoming Reservations',
       onData:  () => { syncPendingBadge(); },
     });
 
@@ -88,9 +61,6 @@
 
     window.addEventListener('booking:updated', syncPendingBadge);
     syncPendingBadge();
-
-    // 4. Fire continuous live synchronization updates loops
-    runLiveClockSync();
   </script>
 </body>
 </html>

@@ -69,8 +69,7 @@ await initAppLayout({
 });
 
 document.getElementById('timeline-mount').innerHTML = renderTimelineShell({
-  title: 'Facility Utilization Master Timeline',
-  periodLabel: new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+  title: 'Upcoming Reservations',
 });
 
 bindTimelineNav();

@@ -1,10 +1,13 @@
 /** Guest requests — singles + group requests. */
 
 import {
-  getBookings, getGroups, updateBooking, updateGroup,
-  getRoomAvailability, suggestGroupRooms,
+  getBookings, getGroups,
   normalizeManageRequest, normalizeManageGroupRequest,
 } from '/assets/js/services/api.js';
+import {
+  approveRequest, rejectRequest, openModifyRequestWizard,
+  parseRequestKey, requestKey, notifyBookingUpdated,
+} from '/assets/js/features/booking-actions.js';
 import {
   escapeHtml, formatDateLong, formatMoney, formatSubmittedAt,
   statusBadge, debounce, normStatus, stayNights,
@@ -189,7 +192,7 @@ function renderRequestCard(r) {
   const subtitle = isGroup
     ? `Contact: ${escapeHtml(r.requester?.name || '—')}`
     : escapeHtml([r.facility?.building, r.facility?.roomNumber].filter(Boolean).join(' ') || 'Room pending assignment');
-  const key = isGroup ? `g-${r.id}` : `b-${r.id}`;
+  const key = requestKey(r);
   const isApproving = approvingKey === key;
 
   const actions = pending
@@ -338,49 +341,8 @@ export function closeManageRequestsModal() {
   isOpen = false; view = 'list'; hide(); render();
 }
 
-function parseKey(key) {
-  if (String(key).startsWith('g-')) return { kind: 'group', id: key.slice(2) };
-  if (String(key).startsWith('b-')) return { kind: 'single', id: key.slice(2) };
-  return { kind: 'single', id: key };
-}
-
-async function approveSingleDirect(r) {
-  const avail = await getRoomAvailability({
-    check_in: r.schedule?.checkIn,
-    check_out: r.schedule?.checkOut,
-    guest_count: r.guestCount || 1,
-    exclude_booking_id: r.id,
-  });
-  const room = (avail.rooms || []).find((x) => String(x.id) === String(r.roomId));
-  if (!room || room.availability_status !== 'available') {
-    throw new Error('The requested room is no longer available on these dates. Use Modify to pick another room.');
-  }
-  await updateBooking(r.id, { status: 'Approved', notify_guest: true });
-}
-
-async function approveGroupDirect(r) {
-  const data = await suggestGroupRooms({
-    check_in: r.schedule?.checkIn,
-    check_out: r.schedule?.checkOut,
-    total_guests: r.totalGuests || 1,
-    exclude_group_id: r.id,
-  });
-  if (!data.suggestion?.length) {
-    throw new Error('Could not auto-assign rooms for this group. Use Modify to pick rooms manually.');
-  }
-  const rooms = data.suggestion.map((s) => ({
-    room_id: s.room_id,
-    guest_count: s.guest_count,
-  }));
-  await updateGroup(r.id, {
-    status: 'Approved',
-    rooms,
-    notify_guest: true,
-  });
-}
-
 async function approve(key) {
-  const { kind, id } = parseKey(key);
+  const { kind, id } = parseRequestKey(key);
   const r = requests.find((x) => x.kind === kind && String(x.id) === String(id));
   if (!r || saving || approvingKey) return;
 
@@ -389,13 +351,9 @@ async function approve(key) {
   render();
 
   try {
-    if (kind === 'group') {
-      await approveGroupDirect(r);
-    } else {
-      await approveSingleDirect(r);
-    }
+    await approveRequest(r);
     message = `${r.displayId} approved. The guest will be notified by email.`;
-    window.dispatchEvent(new CustomEvent('booking:updated'));
+    notifyBookingUpdated();
     await load();
   } catch (err) {
     message = err.message || 'Could not approve this request.';
@@ -407,81 +365,21 @@ async function approve(key) {
 }
 
 function modify(key) {
-  const { kind, id } = parseKey(key);
+  const { kind, id } = parseRequestKey(key);
   const r = requests.find((x) => x.kind === kind && String(x.id) === String(id));
   if (!r) return;
   closeManageRequestsModal();
-  openRequestWizard(r, { modifyRequest: true });
-}
-
-function openRequestWizard(r, { modifyRequest = false } = {}) {
-  if (r.kind === 'group') {
-    window.dispatchEvent(new CustomEvent('group-wizard:open', {
-      detail: {
-        fromRequestId: r.id,
-        modifyRequest,
-        prefill: {
-          groupName: r.groupName,
-          contactName: r.requester?.name,
-          contactPhone: r.contactPhone,
-          email: r.requester?.email,
-          checkIn: r.schedule?.checkIn,
-          checkOut: r.schedule?.checkOut,
-          totalGuests: r.totalGuests,
-          roomsRequested: r.roomsRequested,
-          notes: r.notes,
-          userId: r.userId,
-        },
-        originalRequest: {
-          checkIn: r.schedule?.checkIn,
-          checkOut: r.schedule?.checkOut,
-          roomsRequested: r.roomsRequested,
-        },
-      },
-    }));
-  } else {
-    window.dispatchEvent(new CustomEvent('reservation-wizard:open', {
-      detail: {
-        fromRequestId: r.id,
-        modifyRequest,
-        prefill: {
-          userId: r.userId,
-          guestName: r.requester?.name,
-          email: r.requester?.email,
-          contactPhone: r.contactPhone,
-          checkIn: r.schedule?.checkIn,
-          checkOut: r.schedule?.checkOut,
-          guestCount: r.guestCount,
-          roomId: r.roomId,
-          notes: r.notes,
-          facility: r.facility,
-        },
-        originalRequest: {
-          roomId: r.roomId,
-          checkIn: r.schedule?.checkIn,
-          checkOut: r.schedule?.checkOut,
-          building: r.facility?.building,
-          roomNumber: r.facility?.roomNumber,
-          roomLabel: [r.facility?.building, r.facility?.roomNumber].filter(Boolean).join(' '),
-        },
-      },
-    }));
-  }
+  openModifyRequestWizard(r, { modifyRequest: true });
 }
 
 async function confirmReject() {
   if (!rejectTarget || saving) return;
   saving = true; render();
   const note = $('reject-note')?.value?.trim();
-  const notes = note ? `${rejectTarget.notes ? rejectTarget.notes + '\n' : ''}[Rejected] ${note}` : rejectTarget.notes;
   try {
-    if (rejectTarget.kind === 'group') {
-      await updateGroup(rejectTarget.id, { status: 'Rejected', notes });
-    } else {
-      await updateBooking(rejectTarget.id, { status: 'Rejected', notes });
-    }
+    await rejectRequest(rejectTarget, note);
     message = 'Request declined.'; view = 'list'; rejectTarget = null;
-    window.dispatchEvent(new CustomEvent('booking:updated'));
+    notifyBookingUpdated();
     await load();
   } finally { saving = false; render(); }
 }
@@ -493,7 +391,7 @@ function onClick(e) {
   if (modifyBtn) { modify(modifyBtn.getAttribute('data-modify')); return; }
   const rejectBtn = e.target.closest('[data-reject]');
   if (rejectBtn) {
-    const { kind, id } = parseKey(rejectBtn.getAttribute('data-reject'));
+    const { kind, id } = parseRequestKey(rejectBtn.getAttribute('data-reject'));
     rejectTarget = requests.find((x) => x.kind === kind && String(x.id) === String(id));
     view = 'reject'; render(); return;
   }

@@ -284,7 +284,7 @@ export function normalizeBooking(booking) {
     id: booking.id,
     userId: booking.user_id,
     roomId: booking.room_id,
-    title: booking.guest_name ? facilityLabel : (booking.title || facilityLabel),
+    title: booking.guest_name || booking.title || facilityLabel,
     facilityLabel,
     buildingName: building,
     roomNumber,
