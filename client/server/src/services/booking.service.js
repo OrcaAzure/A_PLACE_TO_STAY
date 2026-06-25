@@ -2,7 +2,7 @@ import { pool } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import { calcNights, isEmpty } from '../utils/helpers.js';
 import { DEFAULT_BOOKING_GUEST_ROLE } from '../utils/constants.js';
-import { sendBookingConfirmationEmail } from './email.service.js';
+import { sendBookingConfirmationEmail, sendBookingModifiedEmail } from './email.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
 
 const ACTIVE_STATUSES = ['Pending', 'Approved'];
@@ -383,4 +383,31 @@ export function notifyBookingCreated(bookingRow) {
     { full_name: bookingRow.guest_name, email: bookingRow.guest_email },
     bookingRow
   );
+}
+
+export async function notifyBookingUpdated({ previous, current, modificationMessage, notifyModification }) {
+  const user = { full_name: current.guest_name, email: current.guest_email };
+  if (notifyModification && modificationMessage) {
+    let previousRoom = 'Previous room';
+    if (previous?.room_id) {
+      const [rows] = await pool.query(
+        `SELECT r.room_number, b.name AS building_name
+         FROM rooms r JOIN buildings b ON r.building_id = b.id WHERE r.id = ? LIMIT 1`,
+        [previous.room_id]
+      );
+      if (rows[0]) {
+        previousRoom = `${rows[0].building_name} Room ${rows[0].room_number}`;
+      }
+    }
+    await sendBookingModifiedEmail(user, current, {
+      message: modificationMessage,
+      previousRoom,
+      previousCheckIn: previous?.check_in,
+      previousCheckOut: previous?.check_out,
+    });
+    return;
+  }
+  if (String(current.status).toLowerCase() === 'approved') {
+    notifyBookingCreated(current);
+  }
 }

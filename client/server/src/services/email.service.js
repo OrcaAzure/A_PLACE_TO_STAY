@@ -90,6 +90,85 @@ export async function sendPaymentReceiptEmail(user, payment) {
   });
 }
 
+export async function sendBookingModifiedEmail(user, booking, { message, previousRoom, previousCheckIn, previousCheckOut }) {
+  const name = user.full_name || user.guest_name || 'Guest';
+  const room = booking.building_name
+    ? `${booking.building_name} — Room ${booking.room_number}`
+    : `Room ${booking.room_number || booking.room_id}`;
+  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
+
+  return sendMail({
+    to: user.email || user.guest_email,
+    subject: 'Your Reservation Was Updated — AptSpace',
+    html: `
+      <h2>Reservation Updated</h2>
+      <p>Hi ${name},</p>
+      <p>Your reservation request was reviewed and approved with the following update from our team:</p>
+      <blockquote style="margin:1rem 0;padding:0.75rem 1rem;background:#f8fafc;border-left:4px solid #1A365D;">${message}</blockquote>
+      <p><strong>Previous request:</strong></p>
+      <ul>
+        <li><strong>Room:</strong> ${previousRoom || '—'}</li>
+        <li><strong>Check-in:</strong> ${previousCheckIn || '—'}</li>
+        <li><strong>Check-out:</strong> ${previousCheckOut || '—'}</li>
+      </ul>
+      <p><strong>Confirmed reservation:</strong></p>
+      <ul>
+        <li><strong>Room:</strong> ${room}</li>
+        <li><strong>Check-in:</strong> ${booking.check_in}</li>
+        <li><strong>Check-out:</strong> ${booking.check_out}</li>
+        <li><strong>Total:</strong> ${price}</li>
+      </ul>
+      <p>Log in to AptSpace to view your reservation details.</p>
+    `,
+  });
+}
+
+export async function sendGroupConfirmationEmail(user, group) {
+  const name = user.full_name || group.contact_name || 'Guest';
+  const roomLines = (group.bookings || [])
+    .map((b) => `${b.building_name || ''} Room ${b.room_number || '?'}`)
+    .join(', ') || 'Assigned at check-in';
+
+  return sendMail({
+    to: user.email || group.contact_email,
+    subject: 'Group Reservation Confirmed — AptSpace',
+    html: `
+      <h2>Group Reservation Confirmed</h2>
+      <p>Hi ${name},</p>
+      <p>Your group reservation for <strong>${group.group_name}</strong> has been approved.</p>
+      <ul>
+        <li><strong>Check-in:</strong> ${group.check_in}</li>
+        <li><strong>Check-out:</strong> ${group.check_out}</li>
+        <li><strong>Guests:</strong> ${group.total_guests}</li>
+        <li><strong>Rooms:</strong> ${roomLines}</li>
+      </ul>
+      <p>Log in to AptSpace to view details.</p>
+    `,
+  });
+}
+
+export async function sendGroupModifiedEmail(user, group, { message, previousCheckIn, previousCheckOut, previousRoomsRequested }) {
+  const name = user.full_name || group.contact_name || 'Guest';
+  const roomLines = (group.bookings || [])
+    .map((b) => `${b.building_name || ''} Room ${b.room_number || '?'}`)
+    .join(', ') || 'To be assigned';
+
+  return sendMail({
+    to: user.email || group.contact_email,
+    subject: 'Your Group Reservation Was Updated — AptSpace',
+    html: `
+      <h2>Group Reservation Updated</h2>
+      <p>Hi ${name},</p>
+      <p>Your group reservation request for <strong>${group.group_name}</strong> was reviewed and approved with changes:</p>
+      <blockquote style="margin:1rem 0;padding:0.75rem 1rem;background:#f8fafc;border-left:4px solid #1A365D;">${message}</blockquote>
+      <p><strong>Previous request:</strong> ${previousCheckIn || '—'} to ${previousCheckOut || '—'} · ${previousRoomsRequested ?? '—'} room(s) requested</p>
+      <p><strong>Confirmed stay:</strong> ${group.check_in} to ${group.check_out} · ${group.total_guests} guest(s)</p>
+      <p><strong>Assigned rooms:</strong> ${roomLines}</p>
+      <p>Log in to AptSpace to view full details.</p>
+    `,
+  });
+}
+
 export async function sendPasswordResetEmail(user, resetLink) {
   const name = user.full_name || 'User';
   return sendMail({

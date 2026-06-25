@@ -15,6 +15,7 @@ import {
   getRoomById,
 } from './booking.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
+import { sendGroupModifiedEmail, sendGroupConfirmationEmail } from './email.service.js';
 
 const bookingSelect = `
   SELECT bk.*,
@@ -352,7 +353,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
     if (assignedGuests !== nextGuests) {
       throw new Error(`Guest count per room must add up to ${nextGuests} (currently ${assignedGuests}).`);
     }
-    return saveGroupBookings({
+    const updated = await saveGroupBookings({
       groupId,
       userId: resolvedUserId,
       checkIn: nextCheckIn,
@@ -365,13 +366,47 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       fees,
       bypassAdvanceLimit: isAdmin,
     });
+    if (body.notify_guest && isAdmin) {
+      const fresh = await getGroupById(groupId);
+      if (body.notify_modification && body.modification_message) {
+        await sendGroupModifiedEmail(
+          { full_name: fresh.contact_name, email: fresh.contact_email },
+          fresh,
+          {
+            message: body.modification_message,
+            previousCheckIn: group.check_in,
+            previousCheckOut: group.check_out,
+            previousRoomsRequested: group.rooms_requested,
+          }
+        );
+      } else if (nextStatus === 'Approved') {
+        await sendGroupConfirmationEmail(
+          { full_name: fresh.contact_name, email: fresh.contact_email },
+          fresh
+        );
+      }
+    }
+    return updated;
   }
 
   if (nextStatus === 'Rejected' || nextStatus === 'Cancelled') {
     await pool.query('DELETE FROM bookings WHERE group_id = ?', [groupId]);
   }
 
-  return getGroupById(groupId);
+  const result = await getGroupById(groupId);
+  if (body.notify_guest && isAdmin && body.notify_modification && body.modification_message) {
+    await sendGroupModifiedEmail(
+      { full_name: result.contact_name, email: result.contact_email },
+      result,
+      {
+        message: body.modification_message,
+        previousCheckIn: group.check_in,
+        previousCheckOut: group.check_out,
+        previousRoomsRequested: group.rooms_requested,
+      }
+    );
+  }
+  return result;
 }
 
 export async function deleteReservationGroup(groupId) {

@@ -13,6 +13,7 @@ import {
   getBookingFees,
   resolveGuestUser,
   notifyBookingCreated,
+  notifyBookingUpdated,
 } from '../services/booking.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
@@ -187,7 +188,8 @@ export const updateBooking = async (req, res) => {
     }
 
     const validated = await validateBookingUpdate(existing, req.body, true);
-    const { check_in, check_out, guest_count, status, notes, contact_phone, room_id, meals, fees, guest_name, email } = req.body;
+    const { check_in, check_out, guest_count, status, notes, contact_phone, room_id, meals, fees, guest_name, email,
+      notify_guest, notify_modification, modification_message } = req.body;
     const mealRates = await getMealRates();
     const grandTotal = meals != null || fees != null
       ? await computeGrandTotal({ roomTotal: validated.totalAmount, meals, fees, mealRates })
@@ -229,7 +231,18 @@ export const updateBooking = async (req, res) => {
     if (fees != null) await saveBookingFees(req.params.id, fees);
 
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
-    res.status(200).json({ message: 'Booking updated', booking: await enrichBooking(rows[0]) });
+    const booking = await enrichBooking(rows[0]);
+
+    if (notify_guest && isAdmin) {
+      await notifyBookingUpdated({
+        previous: existing,
+        current: rows[0],
+        modificationMessage: modification_message,
+        notifyModification: Boolean(notify_modification),
+      });
+    }
+
+    res.status(200).json({ message: 'Booking updated', booking });
   } catch (error) {
     const status = error.message.includes('already reserved') || error.message.includes('Maximum') || error.message.includes('Minimum') || error.message.includes('advance') || error.message.includes('past')
       ? 409 : 400;

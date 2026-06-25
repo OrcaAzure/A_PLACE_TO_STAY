@@ -9,7 +9,7 @@ import {
   WIZARD_STEPS, QUICK_FEES, escapeHtml, formatDateLong, formatMoney,
   emptyWizardState, mealsFromBooking, calcGrandTotal, calcMealsSubtotal, calcFeesSubtotal, availLabel, debounce,
   loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint,
-  recommendRooms, recommendationReason, servicesToQuickFees,
+  recommendRooms, recommendationReason, servicesToQuickFees, filterRoomsList,
 } from '/assets/js/features/reservation-shared.js';
 
 let initialized = false;
@@ -71,53 +71,97 @@ function renderStep2() {
     ${banner}`;
 }
 
-function renderRoomCard(room, { recommended = false } = {}) {
+function renderRoomRow(room, { recommended = false } = {}) {
   const ok = room.availability_status === 'available';
   const sel = String(room.id) === String(state.roomId);
   const av = availLabel(room.availability_status);
   const topPick = recommended && room.recommendation_rank === 1;
   return `
-    <button type="button" class="res-room-card${sel ? ' is-selected' : ''}${ok ? '' : ' is-disabled'}${recommended ? ' is-recommended' : ''}"
+    <button type="button" class="res-room-row${sel ? ' is-selected' : ''}${ok ? '' : ' is-disabled'}${recommended ? ' is-recommended' : ''}"
       data-room-id="${room.id}" ${ok ? '' : 'disabled tabindex="-1"'}>
-      ${topPick ? '<span class="res-rec-badge">Top pick</span>' : ''}
-      ${recommended && !topPick ? '<span class="res-rec-badge res-rec-badge--alt">Suggested</span>' : ''}
-      <div class="res-room-card-top">
-        <strong>Room ${escapeHtml(room.room_number)}</strong>
+      <div class="res-room-row-main">
+        <div class="res-room-row-id">
+          <span class="material-symbols-outlined res-room-icon">meeting_room</span>
+          <div>
+            <strong class="res-room-row-num">Room ${escapeHtml(room.room_number)}</strong>
+            <span class="res-room-meta">${escapeHtml(room.building_name)} · ${escapeHtml(room.room_type)}</span>
+            ${topPick ? '<span class="res-rec-badge">Top pick</span>' : ''}
+            ${recommended && !topPick ? '<span class="res-rec-badge res-rec-badge--alt">Suggested</span>' : ''}
+          </div>
+        </div>
         <span class="res-pill ${av.cls}">${av.text}</span>
+        <span class="res-room-row-cap">Fits ${room.capacity_min}–${room.capacity_max}</span>
+        ${ok && room.estimated_total != null ? `<span class="res-room-row-price">${formatMoney(room.estimated_total)}</span>` : ''}
       </div>
-      <p class="res-room-meta">${escapeHtml(room.building_name)} · ${escapeHtml(room.room_type)}</p>
-      <p class="res-room-cap"><span class="material-symbols-outlined text-[18px]">groups</span> Fits ${room.capacity_min}–${room.capacity_max} guests</p>
       ${recommended ? `<p class="res-rec-reason">${escapeHtml(recommendationReason(room, state.guestCount))}</p>` : ''}
-      ${ok && room.estimated_total != null ? `<p class="res-room-price">${formatMoney(room.estimated_total)} total stay</p>` : ''}
-      ${!ok && room.availability_status === 'too_small' ? `<p class="res-room-warn">This room cannot fit ${state.guestCount} guests.</p>` : ''}
-      ${!ok && room.availability_status === 'booked' ? `<p class="res-room-warn">Already booked on these dates.</p>` : ''}
+      ${!ok && room.availability_status === 'booked' ? '<p class="res-room-warn">Already booked on these dates.</p>' : ''}
     </button>`;
 }
 
-function renderStep3() {
-  const recommended = recommendRooms(state.availableRooms, state.guestCount, 3);
-  const recIds = new Set(recommended.map((r) => String(r.id)));
-  const others = state.availableRooms.filter(
-    (r) => r.availability_status === 'available' && !recIds.has(String(r.id))
-  );
+function getFilteredAvailableRooms() {
+  return filterRoomsList(state.availableRooms, {
+    search: state.roomSearch,
+    building: state.buildingFilter,
+    status: 'available',
+  });
+}
 
-  const recBlock = recommended.length ? `
-    <div class="res-rec-section">
-      <h3 class="res-rec-head"><span class="material-symbols-outlined">star</span> Suggested for ${state.guestCount} guest(s)</h3>
-      <p class="res-hint">We picked rooms that fit your group and dates. Tap one — you can still pick any room below.</p>
-      <div class="res-room-grid">${recommended.map((r) => renderRoomCard(r, { recommended: true })).join('')}</div>
+function renderStep3() {
+  const originalRoom = state.originalRoomId
+    ? state.availableRooms.find((r) => String(r.id) === String(state.originalRoomId))
+    : null;
+  const requestedUnavailable = originalRoom && originalRoom.availability_status === 'booked';
+  const recommended = recommendRooms(state.availableRooms, state.guestCount, 3);
+  const filtered = getFilteredAvailableRooms();
+  const buildings = [...new Set(state.availableRooms
+    .filter((r) => r.availability_status === 'available')
+    .map((r) => r.building_name).filter(Boolean))].sort();
+  const buildingOpts = buildings.map((b) =>
+    `<option value="${escapeHtml(b)}"${state.buildingFilter === b ? ' selected' : ''}>${escapeHtml(b)}</option>`
+  ).join('');
+
+  const conflictBanner = (requestedUnavailable || (state.modifyRequest && state.originalRoomLabel)) ? `
+    <div class="res-banner res-banner--warn">
+      ${requestedUnavailable
+    ? `<strong>Room conflict:</strong> The guest requested <strong>${escapeHtml(state.originalRoomLabel || 'this room')}</strong>, but it is already booked on these dates. Choose another room and explain the change on the last step.`
+    : state.modifyRequest
+      ? `Guest originally requested <strong>${escapeHtml(state.originalRoomLabel || 'a room')}</strong>. You can change the room, dates, or details before approving.`
+      : ''}
     </div>` : '';
 
-  const othersBlock = others.length ? `
-    <h3 class="res-subhead${recommended.length ? ' res-subhead--spaced' : ''}">All other available rooms</h3>
-    <div class="res-room-grid">${others.map((r) => renderRoomCard(r)).join('')}</div>` : '';
+  const recToggle = recommended.length ? `
+    <button type="button" id="wiz-toggle-rec" class="res-btn res-btn--secondary res-rec-toggle">
+      <span class="material-symbols-outlined">auto_awesome</span>
+      ${state.showRecommendations ? 'Hide suggested rooms' : `Show ${recommended.length} suggested room${recommended.length === 1 ? '' : 's'}`}
+    </button>` : '';
+
+  const recBlock = state.showRecommendations && recommended.length ? `
+    <div class="res-rec-section">
+      <h3 class="res-rec-head"><span class="material-symbols-outlined">star</span> Suggested for ${state.guestCount} guest(s)</h3>
+      <div class="res-room-list">${recommended.map((r) => renderRoomRow(r, { recommended: true })).join('')}</div>
+    </div>` : '';
+
+  const listBlock = filtered.length ? `
+    <h3 class="res-subhead res-subhead--spaced">Available rooms (${filtered.length})</h3>
+    <div class="res-room-list">${filtered.map((r) => renderRoomRow(r)).join('')}</div>`
+    : (!state.loadingRooms
+      ? '<div class="res-empty-box"><span class="material-symbols-outlined">search_off</span><p>No rooms match your search. Clear filters or change dates.</p></div>'
+      : '');
 
   return `
-    <p class="res-lead">Choose a room for the stay. Suggested options appear first when we find a good match.</p>
-    ${state.loadingRooms ? '<p>Loading rooms…</p>' : ''}
-    ${!state.loadingRooms && !recommended.length && !others.length
-      ? '<div class="res-empty-box"><span class="material-symbols-outlined">meeting_room</span><p>No matching rooms. Go back and change dates or guest count.</p></div>'
-      : `${recBlock}${othersBlock}`}`;
+    <p class="res-lead">Search and pick a room. Use <strong>Show suggested rooms</strong> if you want help finding a good fit.</p>
+    ${conflictBanner}
+    ${state.loadingRooms ? '<p class="res-hint">Loading rooms…</p>' : ''}
+    <div class="res-room-toolbar">
+      <input id="wiz-room-search" type="search" class="res-input" placeholder="Search building, room number, or type…" value="${escapeHtml(state.roomSearch)}" />
+      <select id="wiz-building-filter" class="res-input res-input--select">
+        <option value="">All buildings</option>
+        ${buildingOpts}
+      </select>
+      ${recToggle}
+    </div>
+    ${recBlock}
+    ${listBlock}`;
 }
 
 function renderMealRow(type, qty) {
@@ -170,8 +214,19 @@ function renderStep5() {
   const grand = calcGrandTotal(state.roomTotal, state.meals, state.fees, state.mealRates);
   const mealLines = ['Breakfast', 'Lunch', 'Dinner', 'Snack'].filter((t) => state.meals[t] > 0)
     .map((t) => `${t} × ${state.meals[t]} = ${formatMoney(state.meals[t] * state.mealRates[t])}`).join('<br>');
+  const modifyBlock = state.modifyRequest ? `
+    <div class="res-banner res-banner--warn">
+      You are approving this request with changes. The guest will receive an email explaining what changed.
+    </div>
+    <label class="res-label" for="wiz-guest-message">Message to guest (required)</label>
+    <textarea id="wiz-guest-message" class="res-input" rows="3" placeholder="e.g. Your requested room was already booked, so we assigned Room 102 in the same building instead.">${escapeHtml(state.guestMessage)}</textarea>
+  ` : (state.fromRequestId ? `
+    <div class="res-banner res-banner--ok">The guest will receive a confirmation email when you save.</div>
+  ` : '');
+
   return `
     <p class="res-lead">Please review everything before saving.</p>
+    ${modifyBlock}
     <div class="res-review"><h4>Guest</h4><p>${escapeHtml(state.guestName)} · ${escapeHtml(state.contactPhone || '—')} · ${escapeHtml(state.email || '—')}</p></div>
     <div class="res-review"><h4>Stay</h4><p>${formatDateLong(state.checkIn)} to ${formatDateLong(state.checkOut)} · ${state.guestCount} guest(s)</p></div>
     <div class="res-review"><h4>Room</h4><p>${r ? `Room ${escapeHtml(r.room_number)} (${escapeHtml(r.building_name)}) — ${formatMoney(state.roomTotal)}` : '—'}</p></div>
@@ -190,9 +245,11 @@ function renderBody() {
 
   $('reservation-wizard-title').textContent = state.mode === 'edit'
     ? 'Edit Reservation'
-    : state.fromRequestId
-      ? 'Approve Guest Request'
-      : 'Create Reservation';
+    : state.modifyRequest
+      ? 'Modify & Approve Request'
+      : state.fromRequestId
+        ? 'Approve Guest Request'
+        : 'Create Reservation';
   $('reservation-wizard-subtitle').textContent = WIZARD_STEPS[state.step - 1]?.short || '';
   $('reservation-wizard-back').classList.toggle('hidden', state.step <= 1);
   $('reservation-wizard-next').classList.toggle('hidden', state.step >= 5);
@@ -222,7 +279,10 @@ function readFields() {
     state.checkOut = $('wiz-check-out')?.value || '';
     state.guestCount = Math.max(1, Number($('wiz-guests')?.value) || 1);
   }
-  if (state.step === 5) state.notes = $('wiz-notes')?.value?.trim() || '';
+  if (state.step === 5) {
+    state.notes = $('wiz-notes')?.value?.trim() || '';
+    state.guestMessage = $('wiz-guest-message')?.value?.trim() || state.guestMessage;
+  }
 }
 
 async function fetchRooms() {
@@ -248,13 +308,6 @@ async function fetchRooms() {
         state.roomId = '';
         state.selectedRoom = null;
         state.roomTotal = 0;
-      }
-    } else if (state.step >= 3) {
-      const top = recommendRooms(state.availableRooms, state.guestCount, 1)[0];
-      if (top) {
-        state.roomId = String(top.id);
-        state.selectedRoom = top;
-        state.roomTotal = top.estimated_total || 0;
       }
     }
   } catch (err) {
@@ -287,6 +340,19 @@ function bindEvents() {
   $('wiz-check-out')?.addEventListener('change', onStayChange);
   $('wiz-guests')?.addEventListener('change', onStayChange);
   $('wiz-guests')?.addEventListener('input', debouncedStayChange);
+
+  $('wiz-room-search')?.addEventListener('input', (e) => {
+    state.roomSearch = e.target.value;
+    renderBody();
+  });
+  $('wiz-building-filter')?.addEventListener('change', (e) => {
+    state.buildingFilter = e.target.value;
+    renderBody();
+  });
+  $('wiz-toggle-rec')?.addEventListener('click', () => {
+    state.showRecommendations = !state.showRecommendations;
+    renderBody();
+  });
 
   $('reservation-wizard-body')?.querySelectorAll('[data-room-id]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -337,6 +403,10 @@ function validate() {
     if (state.checkOut <= state.checkIn) { state.error = 'Check-out must be after check-in.'; return false; }
   }
   if (state.step === 3 && !state.roomId) { state.error = 'Please select an available room.'; return false; }
+  if (state.step === 5 && state.modifyRequest && !state.guestMessage?.trim()) {
+    state.error = 'Please enter a message explaining the change for the guest.';
+    return false;
+  }
   return true;
 }
 
@@ -358,10 +428,21 @@ function goBack() {
 
 async function confirmSave() {
   readFields();
+  if (state.modifyRequest && !state.guestMessage?.trim()) {
+    state.error = 'Please enter a message explaining the change for the guest.';
+    renderBody();
+    return;
+  }
   if (!state.roomId) { state.error = 'Please select a room.'; renderBody(); return; }
   state.saving = true;
   state.error = null;
   renderBody();
+
+  const noteText = state.notes || '';
+  const modLine = state.modifyRequest && state.guestMessage?.trim()
+    ? `[Modified by admin] ${state.guestMessage.trim()}`
+    : '';
+  const combinedNotes = [noteText, modLine].filter(Boolean).join('\n') || undefined;
 
   const payload = {
     user_id: state.userId ? Number(state.userId) : undefined,
@@ -372,10 +453,13 @@ async function confirmSave() {
     check_out: state.checkOut,
     guest_count: state.guestCount,
     contact_phone: state.contactPhone || undefined,
-    notes: state.notes || undefined,
+    notes: combinedNotes,
     status: 'Approved',
     meals: state.meals,
     fees: state.fees,
+    notify_guest: Boolean(state.fromRequestId || state.modifyRequest),
+    notify_modification: Boolean(state.modifyRequest),
+    modification_message: state.modifyRequest ? state.guestMessage?.trim() : undefined,
   };
 
   try {
@@ -410,10 +494,18 @@ function hideModal() {
 export function isReservationWizardOpen() { return isOpen; }
 
 export async function openReservationWizard(options = {}) {
-  const { mode = 'create', bookingId = null, fromRequestId = null, prefill = null } = options;
+  const {
+    mode = 'create',
+    bookingId = null,
+    fromRequestId = null,
+    modifyRequest = false,
+    prefill = null,
+    originalRequest = null,
+  } = options;
   state = emptyWizardState();
   state.mode = mode;
   state.fromRequestId = fromRequestId;
+  state.modifyRequest = modifyRequest;
 
   try {
     const [usersResult, mealRatesResult, fiscalResult, catalogResult] = await Promise.all([
@@ -452,12 +544,25 @@ export async function openReservationWizard(options = {}) {
       userId: prefill.userId || prefill.user_id || state.userId,
       guestName: prefill.guestName || prefill.requester?.name || state.guestName,
       email: prefill.email || prefill.requester?.email || state.email,
+      contactPhone: prefill.contactPhone || prefill.contact_phone || state.contactPhone,
       checkIn: prefill.checkIn || prefill.schedule?.checkIn || state.checkIn,
       checkOut: prefill.checkOut || prefill.schedule?.checkOut || state.checkOut,
       guestCount: prefill.guestCount || prefill.guest_count || state.guestCount,
       roomId: prefill.roomId || prefill.room_id || state.roomId,
       notes: prefill.notes || state.notes,
     });
+  }
+
+  if (originalRequest) {
+    state.originalRoomId = originalRequest.roomId || originalRequest.room_id || state.roomId || '';
+    state.originalCheckIn = originalRequest.checkIn || originalRequest.check_in || state.checkIn;
+    state.originalCheckOut = originalRequest.checkOut || originalRequest.check_out || state.checkOut;
+    state.originalRoomLabel = originalRequest.roomLabel
+      || [originalRequest.building, originalRequest.roomNumber].filter(Boolean).join(' ')
+      || '';
+  } else if (state.roomId && prefill?.facility) {
+    state.originalRoomId = state.roomId;
+    state.originalRoomLabel = [prefill.facility?.building, prefill.facility?.roomNumber].filter(Boolean).join(' ');
   }
 
   isOpen = true;

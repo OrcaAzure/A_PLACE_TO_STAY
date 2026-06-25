@@ -44,6 +44,25 @@ export function formatMoney(amount) {
 
 export function normStatus(s) { return String(s || 'pending').toLowerCase(); }
 
+export function stayNights(checkIn, checkOut) {
+  if (!checkIn || !checkOut) return null;
+  const start = new Date(`${String(checkIn).slice(0, 10)}T00:00:00`);
+  const end = new Date(`${String(checkOut).slice(0, 10)}T00:00:00`);
+  const nights = Math.round((end - start) / 86400000);
+  return nights > 0 ? nights : null;
+}
+
+export function formatSubmittedAt(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export function statusBadge(status) {
   const key = normStatus(status);
   const labels = { pending: 'Pending', approved: 'Approved', rejected: 'Rejected', cancelled: 'Cancelled' };
@@ -108,15 +127,29 @@ export function getReservationCategory(booking) {
 
 export function emptyWizardState() {
   return {
-    step: 1, mode: 'create', bookingId: null, fromRequestId: null,
+    step: 1, mode: 'create', bookingId: null, fromRequestId: null, modifyRequest: false,
     guestName: '', contactPhone: '', email: '', userId: '',
     checkIn: '', checkOut: '', guestCount: 2, roomId: '', selectedRoom: null,
+    originalRoomId: '', originalCheckIn: '', originalCheckOut: '',
+    originalRoomLabel: '', guestMessage: '',
+    roomSearch: '', buildingFilter: '', showRecommendations: false,
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     fees: [], notes: '',
     availableRooms: [], availableCount: 0,
     mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 },
     roomTotal: 0, loadingRooms: false, saving: false, error: null,
   };
+}
+
+export function filterRoomsList(rooms, { search = '', building = '', status = 'available' } = {}) {
+  const q = String(search || '').trim().toLowerCase();
+  return (rooms || []).filter((room) => {
+    if (status && room.availability_status !== status) return false;
+    if (building && room.building_name !== building) return false;
+    if (!q) return true;
+    const hay = [room.building_name, room.room_number, room.room_type, String(room.id)].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
 }
 
 export function mealsFromBooking(mealsArr = []) {
@@ -147,9 +180,10 @@ export const GROUP_WIZARD_STEPS = [
 
 export function emptyGroupWizardState() {
   return {
-    step: 1, mode: 'create', groupId: null, fromRequestId: null,
+    step: 1, mode: 'create', groupId: null, fromRequestId: null, modifyRequest: false,
     groupName: '', contactName: '', contactPhone: '', email: '', userId: '',
     checkIn: '', checkOut: '', totalGuests: 10, roomsRequested: null,
+    guestMessage: '',
     selectedRooms: [], availableRooms: [], availableCount: 0,
     roomSearch: '', buildingFilter: '',
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },

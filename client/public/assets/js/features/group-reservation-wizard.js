@@ -222,8 +222,15 @@ function renderStep5() {
     return room ? `Room ${escapeHtml(room.room_number)} (${sel.guest_count} guest(s))` : '';
   }).filter(Boolean).join('<br>');
   const grand = calcGroupGrandTotal(state);
+  const modifyBlock = state.modifyRequest ? `
+    <div class="res-banner res-banner--warn">You are approving this group request with changes. The guest will receive an email with your message.</div>
+    <label class="res-label" for="gw-guest-message">Message to guest (required)</label>
+    <textarea id="gw-guest-message" class="res-input" rows="3" placeholder="e.g. We could not assign all requested rooms, so we placed your group in nearby rooms instead.">${escapeHtml(state.guestMessage)}</textarea>
+  ` : (state.fromRequestId ? `<div class="res-banner res-banner--ok">The contact person will receive a confirmation email when you save.</div>` : '');
+
   return `
     <p class="res-lead">Review the group reservation before saving.</p>
+    ${modifyBlock}
     <div class="res-review"><h4>Group</h4><p><strong>${escapeHtml(state.groupName)}</strong><br>${escapeHtml(state.contactName)} · ${escapeHtml(state.contactPhone || '—')}</p></div>
     <div class="res-review"><h4>Stay</h4><p>${formatDateLong(state.checkIn)} to ${formatDateLong(state.checkOut)} · ${state.totalGuests} guest(s) · ${state.selectedRooms.length} room(s)</p></div>
     <div class="res-review"><h4>Rooms</h4><p>${roomLines || '—'}</p></div>
@@ -240,9 +247,11 @@ function renderBody() {
 
   $('group-wizard-title').textContent = state.mode === 'edit'
     ? 'Edit Group Reservation'
-    : state.fromRequestId
-      ? 'Approve Group Request'
-      : 'Create Group Reservation';
+    : state.modifyRequest
+      ? 'Modify & Approve Group Request'
+      : state.fromRequestId
+        ? 'Approve Group Request'
+        : 'Create Group Reservation';
   $('group-wizard-subtitle').textContent = GROUP_WIZARD_STEPS[state.step - 1]?.short || '';
   $('group-wizard-back').classList.toggle('hidden', state.step <= 1);
   $('group-wizard-next').classList.toggle('hidden', state.step >= 5);
@@ -276,6 +285,7 @@ function readAllFields() {
   const rr = $('gw-rooms-req')?.value;
   if ($('gw-rooms-req')) state.roomsRequested = rr ? Math.max(1, Number(rr)) : null;
   state.notes = $('gw-notes')?.value?.trim() ?? state.notes;
+  state.guestMessage = $('gw-guest-message')?.value?.trim() ?? state.guestMessage;
   if ($('gw-room-search')) state.roomSearch = $('gw-room-search').value;
   if ($('gw-building-filter')) state.buildingFilter = $('gw-building-filter').value;
 }
@@ -295,7 +305,10 @@ function readStepFields() {
     const rr = $('gw-rooms-req')?.value;
     state.roomsRequested = rr ? Math.max(1, Number(rr)) : null;
   }
-  if (state.step === 5) state.notes = $('gw-notes')?.value?.trim() || '';
+  if (state.step === 5) {
+    state.notes = $('gw-notes')?.value?.trim() || '';
+    state.guestMessage = $('gw-guest-message')?.value?.trim() || state.guestMessage;
+  }
 }
 
 async function fetchRooms() {
@@ -445,6 +458,10 @@ function validate() {
       return false;
     }
   }
+  if (state.step === 5 && state.modifyRequest && !state.guestMessage?.trim()) {
+    state.error = 'Please enter a message explaining the change for the guest.';
+    return false;
+  }
   return true;
 }
 
@@ -477,8 +494,18 @@ async function confirmSave() {
     renderBody();
     return;
   }
+  if (state.modifyRequest && !state.guestMessage?.trim()) {
+    state.error = 'Please enter a message explaining the change for the guest.';
+    renderBody();
+    return;
+  }
   state.saving = true;
   renderBody();
+
+  const modLine = state.modifyRequest && state.guestMessage?.trim()
+    ? `[Modified by admin] ${state.guestMessage.trim()}`
+    : '';
+  const combinedNotes = [state.notes, modLine].filter(Boolean).join('\n') || undefined;
 
   const payload = {
     group_name: state.groupName,
@@ -490,11 +517,14 @@ async function confirmSave() {
     check_out: state.checkOut,
     total_guests: state.totalGuests,
     rooms_requested: state.roomsRequested || undefined,
-    notes: state.notes || undefined,
+    notes: combinedNotes,
     status: 'Approved',
     rooms: state.selectedRooms,
     meals: state.meals,
     fees: state.fees,
+    notify_guest: Boolean(state.fromRequestId || state.modifyRequest),
+    notify_modification: Boolean(state.modifyRequest),
+    modification_message: state.modifyRequest ? state.guestMessage?.trim() : undefined,
   };
 
   try {
@@ -529,10 +559,17 @@ function hideModal() {
 export function isGroupWizardOpen() { return isOpen; }
 
 export async function openGroupWizard(options = {}) {
-  const { mode = 'create', groupId = null, fromRequestId = null, prefill = null } = options;
+  const {
+    mode = 'create',
+    groupId = null,
+    fromRequestId = null,
+    modifyRequest = false,
+    prefill = null,
+  } = options;
   state = emptyGroupWizardState();
   state.mode = mode;
   state.fromRequestId = fromRequestId;
+  state.modifyRequest = modifyRequest;
   state.groupId = groupId;
 
   try {

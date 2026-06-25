@@ -233,6 +233,18 @@ export function normalizeManageGroupRequest(group) {
     },
     userId: group.user_id,
     contactPhone: group.contact_phone,
+    contactEmail: group.contact_email || group.requester_email || '',
+    submittedAt: group.created_at,
+    updatedAt: group.updated_at,
+    grandTotal: group.grand_total != null ? Number(group.grand_total) : null,
+    assignedBookings: (group.bookings || []).map((b) => ({
+      id: b.id,
+      building: b.building_name,
+      roomNumber: b.room_number,
+      roomType: b.room_type,
+      guestCount: b.guest_count,
+      totalAmount: b.total_amount != null ? Number(b.total_amount) : null,
+    })),
   };
 }
 
@@ -312,6 +324,9 @@ export function normalizeManageRequest(booking) {
     notes: booking.notes,
     season: booking.season,
     occupancyItem: booking.occupancy_item,
+    contactPhone: booking.contact_phone || null,
+    meals: booking.meals || [],
+    fees: booking.fees || [],
     requester: {
       name: booking.guest_name || 'Unknown',
       email: booking.guest_email || '',
