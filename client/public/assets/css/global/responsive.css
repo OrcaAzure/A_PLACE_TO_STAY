@@ -7,7 +7,10 @@
     width: 280px;
     transform: translateX(-100%);
     z-index: 50;
-    transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html.sidebar-user-toggle #app-sidebar {
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   #app-sidebar.sidebar-open {
@@ -22,7 +25,10 @@
     background: rgba(0, 0, 0, 0.4);
     z-index: 45;
     opacity: 0;
-    transition: opacity 0.28s ease;
+  }
+
+  html.sidebar-user-toggle #sidebar-overlay {
+    transition: opacity 0.24s ease;
   }
 
   #sidebar-overlay.visible {

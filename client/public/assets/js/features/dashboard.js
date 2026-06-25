@@ -3,6 +3,7 @@
  */
 
 import { getAdminSummary, getBookings, updateBooking, normalizeBooking } from '/assets/js/services/api.js';
+import { animateStatCards, animateChartBars, animateTableRows, staggerReveal, animateCountUp } from '/assets/js/layout/animations.js';
 
 function setText(id, value) {
   const el = document.getElementById(id);
@@ -66,13 +67,15 @@ export async function loadDashboard() {
   setText('kpi-maintenance-label', `${kpis.maintenanceRooms} in maint.`);
   setText('kpi-approval-rate', `${kpis.approvalRate}% Rate`);
 
+  await animateStatCards();
+
   await Promise.all([
-    (async () => { document.getElementById('kpi-upcoming') && (document.getElementById('kpi-upcoming').textContent = String(kpis.upcoming)); })(),
-    (async () => { document.getElementById('kpi-pending-count') && (document.getElementById('kpi-pending-count').textContent = String(kpis.pending)); })(),
-    (async () => { document.getElementById('kpi-approved') && (document.getElementById('kpi-approved').textContent = String(kpis.approved)); })(),
-    (async () => { document.getElementById('kpi-total-rooms') && (document.getElementById('kpi-total-rooms').textContent = String(kpis.totalRooms)); })(),
-    (async () => { document.getElementById('kpi-occupancy') && (document.getElementById('kpi-occupancy').textContent = `${kpis.occupancyPct}%`); })(),
-    (async () => { document.getElementById('kpi-revenue') && (document.getElementById('kpi-revenue').textContent = formatPHP(kpis.paidRevenue)); })(),
+    animateCountUp(document.getElementById('kpi-upcoming'), String(kpis.upcoming)),
+    animateCountUp(document.getElementById('kpi-pending-count'), String(kpis.pending)),
+    animateCountUp(document.getElementById('kpi-approved'), String(kpis.approved)),
+    animateCountUp(document.getElementById('kpi-total-rooms'), String(kpis.totalRooms)),
+    animateCountUp(document.getElementById('kpi-occupancy'), `${kpis.occupancyPct}%`),
+    animateCountUp(document.getElementById('kpi-revenue'), formatPHP(kpis.paidRevenue)),
   ]);
 
   await renderBuildingChart(buildingUsage);
@@ -100,12 +103,14 @@ async function renderBuildingChart(buildingUsage) {
     return `
       <div class="flex-1 flex flex-col items-center gap-2 group relative z-10 min-w-0">
         <div class="w-full bg-surface-container rounded-t-lg relative overflow-hidden h-[180px]">
-          <div class="chart-bar absolute bottom-0 w-full ${color} rounded-t-lg" style="height: ${height}px;" title="${row.booking_count} approved (30d)"></div>
+          <div class="chart-bar absolute bottom-0 w-full ${color} rounded-t-lg" style="height: 0px;" data-height="${height}px" title="${row.booking_count} approved (30d)"></div>
         </div>
         <span class="text-body-sm font-semibold text-on-surface-variant truncate max-w-full px-1">${row.building_name}</span>
         <span class="text-body-sm text-on-surface-variant">${row.booking_count}</span>
       </div>`;
   }).join('');
+
+  await animateChartBars('.chart-bar', mount);
 }
 
 function renderRecentActivity(bookingsRaw) {
@@ -141,6 +146,8 @@ function renderRecentActivity(bookingsRaw) {
         </div>
       </div>`;
   }).join('');
+
+  staggerReveal('#recent-activity-mount > div', document).catch(() => {});
 }
 
 async function renderQueue() {
@@ -194,6 +201,8 @@ async function renderQueue() {
   tbody.querySelectorAll('.queue-reject').forEach((btn) => {
     btn.addEventListener('click', () => handleQueueAction(btn.dataset.id, 'Rejected'));
   });
+
+  await animateTableRows('#queue-tbody', document);
 }
 
 async function handleQueueAction(id, status) {

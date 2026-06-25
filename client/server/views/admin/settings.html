@@ -13,15 +13,16 @@
   <link rel="stylesheet" href="/assets/css/components/components.css" />
   <link rel="stylesheet" href="/assets/css/global/responsive.css" />
   <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
+  <link rel="stylesheet" href="/assets/css/global/tabs-layout.css" />
   <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
 </head>
 <body>
   <div id="page-content">
-    <section class="timeline-workspace min-h-[500px] bg-white rounded-xl border border-slate-100 shadow-sm app-tab-workspace">
-      <div class="timeline-workspace-header border-b border-slate-100 p-6 shrink-0">
-        <div class="flex items-center gap-4 mb-4">
+    <section class="admin-panel settings-workspace app-tab-workspace">
+      <div class="admin-panel-header flex-col items-stretch gap-4">
+        <div class="flex items-center gap-4">
           <div class="w-1.5 h-8 bg-primary rounded-full shrink-0"></div>
-          <h3 class="font-headline-sm text-on-surface">System Settings</h3>
+          <h3 class="font-headline-sm text-on-surface m-0">System Settings</h3>
         </div>
         <div class="app-tabs w-full" role="tablist" aria-label="Settings sections">
           <button type="button" role="tab" data-settings-tab="account" class="app-tab-btn app-tab-active" aria-selected="true">Account</button>
@@ -48,7 +49,7 @@
           <button type="button" id="settings-save-btn" class="btn-primary">Save Changes</button>
         </div>
 
-        <div data-settings-panel="roles" class="app-tab-panel is-tab-hidden hidden" role="tabpanel">
+        <div data-settings-panel="roles" class="app-tab-panel is-tab-hidden space-y-4" role="tabpanel">
           <table class="data-table w-full">
             <thead><tr><th>Role</th><th>Description</th><th>Users</th></tr></thead>
             <tbody id="settings-roles-tbody">
@@ -57,7 +58,7 @@
           </table>
         </div>
 
-        <div data-settings-panel="system" class="app-tab-panel is-tab-hidden hidden space-y-4" role="tabpanel">
+        <div data-settings-panel="system" class="app-tab-panel is-tab-hidden space-y-4" role="tabpanel">
           <div class="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-3">
             <div class="flex items-center gap-2">
               <span class="material-symbols-outlined text-primary">calendar_month</span>
@@ -107,6 +108,7 @@
   <script type="module">
     import { requireAuth } from '/assets/js/services/auth.js';
     import { initAppLayout } from '/assets/js/layout/ui.js';
+    import { initAdminEnhancements } from '/assets/js/layout/animations.js';
     import { loadAdminSettings } from '/assets/js/features/settings.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
@@ -116,12 +118,16 @@
       activePage: 'settings',
       title: 'Settings',
       subtitle: 'Mission Control',
+      deferEnhancements: true,
     });
 
     try {
       await loadAdminSettings();
+      await initAdminEnhancements();
     } catch (err) {
       console.error(err);
+      const { releaseChromeBoot } = await import('/assets/js/layout/animations.js');
+      releaseChromeBoot();
     }
   </script>
 </body>

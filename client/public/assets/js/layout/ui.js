@@ -4,7 +4,7 @@ import { initManageFacilitiesModal, isManageFacilitiesModalOpen, closeManageFaci
 import { initReservationWizard, isReservationWizardOpen, closeReservationWizard } from '/assets/js/features/reservation-wizard.js';
 import { initGroupWizard, isGroupWizardOpen, closeGroupWizard } from '/assets/js/features/group-reservation-wizard.js';
 import { initTabGroup, switchTabPanel } from '/assets/js/layout/tabs.js';
-import { initAdminEnhancements, animateDrawerOpen, animateModalOpen, animateNotificationsPanel } from '/assets/js/layout/animations.js';
+import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDrawerOpen, animateModalOpen, animateNotificationsPanel } from '/assets/js/layout/animations.js';
 import { initAdminPageNavTransitions } from '/assets/js/layout/page-transitions.js';
 
 export const ADMIN_NAV = [
@@ -22,8 +22,148 @@ export async function loadComponent(url) {
   return res.text();
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v2';
+
+/** @type {Promise<Record<string, string>> | null} */
+let templatesPromise = null;
+
+function readTemplateCache() {
+  try {
+    const raw = sessionStorage.getItem(TEMPLATE_CACHE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeTemplateCache(templates) {
+  try {
+    sessionStorage.setItem(TEMPLATE_CACHE_KEY, JSON.stringify(templates));
+  } catch {
+    /* quota or private mode */
+  }
+}
+
+async function loadAdminTemplates() {
+  const cached = readTemplateCache();
+  if (cached?.sidebar) return cached;
+
+  if (!templatesPromise) {
+    templatesPromise = Promise.all([
+      loadComponent('/components/sidebar.html'),
+      loadComponent('/components/header.html'),
+      loadComponent('/components/drawer.html'),
+      loadComponent('/components/modal.html'),
+      loadComponent('/components/manage-requests-modal.html'),
+      loadComponent('/components/manage-reservations-modal.html'),
+      loadComponent('/components/manage-facilities-modal.html'),
+      loadComponent('/components/reservation-wizard-modal.html'),
+      loadComponent('/components/group-wizard-modal.html'),
+      loadComponent('/components/notifications.html'),
+    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, reservationWizard, groupWizard, notifications]) => {
+      const bundle = {
+        sidebar,
+        header,
+        drawer,
+        modal,
+        manageRequests,
+        manageReservations,
+        manageFacilities,
+        reservationWizard,
+        groupWizard,
+        notifications,
+      };
+      writeTemplateCache(bundle);
+      return bundle;
+    });
+  }
+
+  return templatesPromise;
+}
+
+if (typeof window !== 'undefined' && window.location.pathname.includes('/admin/')) {
+  loadAdminTemplates().catch(() => {});
+}
+
+function isDesktopSidebar() {
+  return window.matchMedia('(min-width: 1024px)').matches;
+}
+
+function isSidebarCollapsedPreferred() {
+  return isDesktopSidebar() && localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+}
+
+function buildAdminShell({
+  templates,
+  pageContent,
+  activePage,
+  title,
+  subtitle,
+  portalLabel,
+  userName,
+  userRole,
+  userInitial,
+  collapsed,
+}) {
+  const sidebar = templates.sidebar
+    .replace('{{NAV_ITEMS}}', renderSidebarNav(ADMIN_NAV, activePage))
+    .replace('{{PORTAL_LABEL}}', portalLabel)
+    .replace('{{PROPERTY_LINK}}', '/guest/dashboard.html')
+    .replace('{{PROPERTY_LABEL}}', 'Guest Portal');
+
+  const header = templates.header
+    .replace('{{TITLE}}', title)
+    .replace('{{SUBTITLE}}', subtitle)
+    .replace('{{USER_NAME}}', userName)
+    .replace('{{USER_ROLE}}', userRole)
+    .replace('{{USER_INITIAL}}', userInitial);
+
+  return `
+    ${sidebar}
+    <main class="flex-1 flex flex-col overflow-hidden h-full">
+      ${header}
+      <div id="page-content" class="flex-1 overflow-y-auto min-h-0">${pageContent}</div>
+    </main>
+    ${templates.drawer}
+    ${templates.modal}
+    ${templates.manageRequests}
+    ${templates.manageReservations}
+    ${templates.manageFacilities}
+    ${templates.reservationWizard}
+    ${templates.groupWizard}
+    ${templates.notifications}
+    <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[45]"></div>
+  `;
+}
+
+function updateActiveNav(activePage) {
+  document.querySelectorAll('#app-sidebar nav a').forEach((link) => {
+    const href = link.getAttribute('href') || '';
+    const page = href.split('/').pop() || '';
+    const id = ADMIN_NAV.find((item) => item.href.endsWith(page))?.id;
+    const active = id === activePage;
+    link.className = navLinkClass(active, id || '');
+    link.setAttribute('aria-current', active ? 'page' : 'false');
+  });
+}
+
+function updateAdminHeader({ title, subtitle, userName, userRole, userInitial }) {
+  const titleEl = document.querySelector('.admin-page-title');
+  const subtitleEl = document.querySelector('.admin-page-subtitle');
+  const nameEl = document.querySelector('.admin-user-chip__name');
+  const roleEl = document.querySelector('.admin-user-chip__role');
+  const initialEl = document.querySelector('.admin-user-chip__avatar');
+
+  if (titleEl) titleEl.textContent = title;
+  if (subtitleEl) subtitleEl.textContent = subtitle;
+  if (nameEl) nameEl.textContent = userName;
+  if (roleEl) roleEl.textContent = userRole;
+  if (initialEl) initialEl.textContent = userInitial;
+}
+
 function navLinkClass(active, id) {
-  const base = 'flex items-center gap-md px-md py-md transition-colors duration-200 rounded-lg text-body-md';
+  const base = 'flex items-center gap-md px-md py-md rounded-lg text-body-md';
   return active === id
     ? `${base} admin-nav-active text-primary font-bold`
     : `${base} hover:bg-surface-variant/50 text-on-surface-variant`;
@@ -45,59 +185,44 @@ export async function initAppLayout(config = {}) {
     title = 'Mission Control',
     subtitle = 'Operations Center',
     portalLabel = portal === 'admin' ? 'Seminary Admin' : 'Guest Portal',
+    deferEnhancements = false,
   } = config;
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userName = user.full_name || user.name || 'Admin User';
   const userRole = user.role || 'Ops Commander';
   const userInitial = userName.charAt(0).toUpperCase();
+  const collapsed = isSidebarCollapsedPreferred();
 
-  const [sidebarTpl, headerTpl, drawerTpl, modalTpl, manageRequestsTpl, manageReservationsTpl, manageFacilitiesTpl, reservationWizardTpl, groupWizardTpl, notifTpl] = await Promise.all([
-    loadComponent('/components/sidebar.html'),
-    loadComponent('/components/header.html'),
-    loadComponent('/components/drawer.html'),
-    loadComponent('/components/modal.html'),
-    loadComponent('/components/manage-requests-modal.html'),
-    loadComponent('/components/manage-reservations-modal.html'),
-    loadComponent('/components/manage-facilities-modal.html'),
-    loadComponent('/components/reservation-wizard-modal.html'),
-    loadComponent('/components/group-wizard-modal.html'),
-    loadComponent('/components/notifications.html'),
-  ]);
-
-  document.body.className = 'admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative';
-
-  const sidebar = sidebarTpl
-    .replace('{{NAV_ITEMS}}', renderSidebarNav(ADMIN_NAV, activePage))
-    .replace('{{PORTAL_LABEL}}', portalLabel)
-    .replace('{{PROPERTY_LINK}}', '/guest/dashboard.html')
-    .replace('{{PROPERTY_LABEL}}', 'Guest Portal');
-
-  const header = headerTpl
-    .replace('{{TITLE}}', title)
-    .replace('{{SUBTITLE}}', subtitle)
-    .replace('{{USER_NAME}}', userName)
-    .replace('{{USER_ROLE}}', userRole)
-    .replace('{{USER_INITIAL}}', userInitial);
+  document.documentElement.classList.add('admin-chrome-boot');
 
   const savedContent = document.getElementById('page-content')?.innerHTML || '';
+  const existingSidebar = document.getElementById('app-sidebar');
 
-  document.body.innerHTML = `
-    ${sidebar}
-    <main class="flex-1 flex flex-col overflow-hidden h-full">
-      ${header}
-      <div id="page-content" class="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6 lg:space-y-8">${savedContent}</div>
-    </main>
-    ${drawerTpl}
-    ${modalTpl}
-    ${manageRequestsTpl}
-    ${manageReservationsTpl}
-    ${manageFacilitiesTpl}
-    ${reservationWizardTpl}
-    ${groupWizardTpl}
-    ${notifTpl}
-    <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[45]"></div>
-  `;
+  if (existingSidebar) {
+    document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
+    updateActiveNav(activePage);
+    updateAdminHeader({ title, subtitle, userName, userRole, userInitial });
+    lockStaticChrome();
+    if (!deferEnhancements) initAdminEnhancements().catch(() => releaseChromeBoot());
+    return;
+  }
+
+  const templates = await loadAdminTemplates();
+
+  document.body.innerHTML = buildAdminShell({
+    templates,
+    pageContent: savedContent,
+    activePage,
+    title,
+    subtitle,
+    portalLabel,
+    userName,
+    userRole,
+    userInitial,
+    collapsed,
+  });
+  document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
 
   bindLayoutEvents();
   initSidebarCollapse();
@@ -108,7 +233,8 @@ export async function initAppLayout(config = {}) {
   initGroupWizard();
   initDrawerTabs();
   initAdminPageNavTransitions();
-  initAdminEnhancements().catch(() => {});
+  lockStaticChrome();
+  if (!deferEnhancements) initAdminEnhancements().catch(() => releaseChromeBoot());
 }
 
 let drawerTabGroup = null;
@@ -124,16 +250,10 @@ function initDrawerTabs() {
   });
 }
 
-const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-
 function initSidebarCollapse() {
-  const shell = document.body;
-  const openBtn = document.getElementById('sidebar-open-btn');
   const collapseBtn = document.getElementById('sidebar-collapse-btn');
+  const openBtn = document.getElementById('sidebar-open-btn');
 
-  if (window.matchMedia('(min-width: 1024px)').matches && localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1') {
-    shell.classList.add('sidebar-collapsed');
-  }
   syncSidebarToggleUi();
 
   collapseBtn?.addEventListener('click', () => setSidebarCollapsed(true));
@@ -155,18 +275,18 @@ function initSidebarCollapse() {
   });
 }
 
-function isDesktopSidebar() {
-  return window.matchMedia('(min-width: 1024px)').matches;
-}
-
 function setSidebarCollapsed(collapsed) {
   const shell = document.body;
+  document.documentElement.classList.add('sidebar-user-toggle');
   shell.classList.toggle('sidebar-collapsed', collapsed);
   if (isDesktopSidebar()) {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
   }
   if (collapsed) closeSidebar();
   syncSidebarToggleUi();
+  requestAnimationFrame(() => {
+    document.documentElement.classList.remove('sidebar-user-toggle');
+  });
 }
 
 function syncSidebarToggleUi() {
@@ -186,6 +306,7 @@ function syncSidebarToggleUi() {
 }
 
 function openMobileSidebar() {
+  document.documentElement.classList.add('sidebar-user-toggle');
   document.getElementById('app-sidebar')?.classList.add('sidebar-open');
   document.getElementById('sidebar-overlay')?.classList.remove('hidden');
   document.getElementById('sidebar-overlay')?.classList.add('visible');
@@ -296,10 +417,14 @@ function updateBodyScrollLock() {
 }
 
 function closeSidebar() {
+  document.documentElement.classList.add('sidebar-user-toggle');
   document.getElementById('app-sidebar')?.classList.remove('sidebar-open');
   document.getElementById('sidebar-overlay')?.classList.add('hidden');
   document.getElementById('sidebar-overlay')?.classList.remove('visible');
   syncSidebarToggleUi();
+  requestAnimationFrame(() => {
+    document.documentElement.classList.remove('sidebar-user-toggle');
+  });
 }
 
 export function openDrawer(id, title, bodyHtml = '') {

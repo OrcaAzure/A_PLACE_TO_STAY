@@ -9,6 +9,15 @@
   --admin-gutter-x: 1.5rem;
 }
 
+/* Hide raw page HTML until the admin shell is mounted (prevents sidebar flash). */
+body:not(.admin-shell) {
+  visibility: hidden;
+}
+
+body.admin-shell {
+  visibility: visible;
+}
+
 @media (min-width: 1024px) {
   .admin-shell {
     --admin-gutter-x: 1.75rem;
@@ -20,18 +29,25 @@ main > header.anim-static {
   opacity: 1;
 }
 
-/* ── Sidebar — collapsible with slide animation (ChatGPT-style) ── */
+/* ── Sidebar — static on page load; animate only when user toggles ── */
+html.admin-chrome-boot .admin-shell #app-sidebar,
+html.admin-chrome-boot .admin-shell #app-sidebar *,
+html.admin-chrome-boot .admin-shell main > header,
+html.admin-chrome-boot .admin-shell main > header * {
+  transition: none !important;
+  animation: none !important;
+}
+
+html.admin-chrome-boot .app-tab-panel,
+html.admin-chrome-boot .app-tab-panels {
+  transition: none !important;
+  animation: none !important;
+}
+
 .admin-shell #app-sidebar {
   width: 280px;
   overflow: hidden;
   flex-shrink: 0;
-  transition:
-    transform 0.32s cubic-bezier(0.4, 0, 0.2, 1),
-    width 0.32s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.24s ease,
-    padding 0.32s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.24s ease;
-  will-change: transform, width;
 }
 
 .admin-sidebar-collapse-btn {
@@ -47,7 +63,7 @@ main > header.anim-static {
   color: var(--color-neutral, #4A5568);
   cursor: pointer;
   flex-shrink: 0;
-  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .admin-sidebar-collapse-btn:hover {
@@ -83,8 +99,22 @@ main > header.anim-static {
     padding-right: 0;
     border-right-color: transparent;
     opacity: 0;
-    transform: translateX(-1rem);
     pointer-events: none;
+    overflow: hidden;
+  }
+
+  html.sidebar-user-toggle .admin-shell.sidebar-collapsed #app-sidebar {
+    transition:
+      width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.2s ease,
+      padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html.sidebar-user-toggle .admin-shell:not(.sidebar-collapsed) #app-sidebar {
+    transition:
+      width 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+      opacity 0.2s ease,
+      padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .admin-shell.sidebar-collapsed #app-sidebar .admin-brand-text,
@@ -138,7 +168,6 @@ main > header.anim-static {
     max-width: 14rem;
     overflow: hidden;
     white-space: nowrap;
-    transition: opacity 0.22s ease;
   }
 
   .admin-shell #app-sidebar nav a {
@@ -420,15 +449,33 @@ main > header.anim-static {
 .admin-shell main {
   min-width: 0;
   flex: 1 1 auto;
-  transition: margin 0.32s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .admin-shell #page-content {
+  display: flex;
+  flex-direction: column;
   padding: 1.75rem var(--admin-gutter-x);
   gap: 1.75rem;
   max-width: 100%;
   min-width: 0;
   box-sizing: border-box;
+}
+
+/* Settings tab workspace — natural height, no flex jump */
+.admin-shell #page-content > .settings-workspace {
+  min-height: 0;
+  flex: 0 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-shell #page-content > .settings-workspace .admin-panel-header {
+  flex-shrink: 0;
+}
+
+.admin-shell #page-content > .settings-workspace .app-tab-panels {
+  flex: 1;
+  min-height: 0;
 }
 
 /* ── Shared admin panels (replaces mixed slate / token markup) ── */
@@ -585,8 +632,10 @@ main > header.anim-static {
   }
 }
 
-/* Page navigation — static (no fade/slide on route change) */
-.admin-shell #page-content,
+/* Page navigation — sidebar/header static; content may animate via GSAP */
+.admin-shell #app-sidebar,
+.admin-shell #app-sidebar.anim-static,
+.admin-shell main > header,
 .admin-shell main > header.admin-app-header,
 .admin-shell main > header.anim-static {
   opacity: 1;

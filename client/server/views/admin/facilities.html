@@ -295,6 +295,7 @@
       activePage: 'facilities',
       title:      'Facilities',
       subtitle:   'Rooms, venues, meals & extras',
+      deferEnhancements: true,
     });
 
     let allRooms = [];
@@ -491,9 +492,14 @@
         }));
       });
 
+      const { initAdminEnhancements } = await import('/assets/js/layout/animations.js');
+      await initAdminEnhancements();
+
     } catch (err) {
       document.getElementById('key-tags-grid-mount').innerHTML = `
         <div class="col-span-full text-center text-rose-600 font-medium py-8">${err.message}</div>`;
+      const { releaseChromeBoot } = await import('/assets/js/layout/animations.js');
+      releaseChromeBoot();
     }
   </script>
 </body>

@@ -1,20 +1,12 @@
 /**
- * Smooth, responsive tab switching for guest & admin surfaces.
+ * Tab switching for guest & admin surfaces (instant panel swap).
  */
-
-import { prefersReducedMotion } from '/assets/js/layout/animations.js';
 
 const TAB_BTN_ACTIVE = 'app-tab-active';
 const PANEL_HIDDEN = 'is-tab-hidden';
 const PANEL_LEAVING = 'is-tab-leaving';
 const PANEL_ENTERING = 'is-tab-entering';
 const PANELS_SWITCHING = 'is-tab-switching';
-
-const DURATION_MS = 320;
-
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 function getVisiblePanel(panels) {
   return [...panels].find((p) => !p.classList.contains(PANEL_HIDDEN));
@@ -145,57 +137,12 @@ export async function switchTabPanel({
   const container = panelsContainer || next.parentElement;
   if (!container) return;
 
-  if (prefersReducedMotion()) {
-    panels.forEach((p) => {
-      const show = p.getAttribute(panelAttr) === activeId;
-      clearPanelMotionClasses(p);
-      p.classList.toggle(PANEL_HIDDEN, !show);
-      if (useHiddenClass) p.classList.toggle('hidden', !show);
-    });
-    container.classList.remove(PANELS_SWITCHING);
-    container.style.minHeight = '';
-    return;
-  }
-
-  container.classList.add(PANELS_SWITCHING);
-  const fromHeight = container.offsetHeight;
-  container.style.minHeight = `${fromHeight}px`;
-
-  if (current) {
-    clearPanelMotionClasses(current);
-    current.classList.add(PANEL_LEAVING);
-  }
-
-  clearPanelMotionClasses(next);
-  next.classList.remove(PANEL_HIDDEN);
-  if (useHiddenClass) next.classList.remove('hidden');
-  next.classList.add(PANEL_ENTERING);
-
-  await sleep(16);
-  next.classList.remove(PANEL_ENTERING);
-
-  const toHeight = next.offsetHeight;
-  container.style.minHeight = `${Math.max(fromHeight, toHeight)}px`;
-
-  await sleep(DURATION_MS);
-
-  if (current) {
-    current.classList.add(PANEL_HIDDEN);
-    current.classList.remove(PANEL_LEAVING);
-    if (useHiddenClass) current.classList.add('hidden');
-  }
-
-  container.style.minHeight = `${toHeight}px`;
-  await sleep(DURATION_MS);
-
-  container.style.minHeight = '';
-  container.classList.remove(PANELS_SWITCHING);
-
   panels.forEach((p) => {
-    if (p.getAttribute(panelAttr) !== activeId) {
-      clearPanelMotionClasses(p);
-      p.classList.add(PANEL_HIDDEN);
-      if (useHiddenClass) p.classList.add('hidden');
-    }
+    const show = p.getAttribute(panelAttr) === activeId;
+    clearPanelMotionClasses(p);
+    p.classList.toggle(PANEL_HIDDEN, !show);
+    if (useHiddenClass) p.classList.toggle('hidden', !show);
   });
+  container.classList.remove(PANELS_SWITCHING);
+  container.style.minHeight = '';
 }

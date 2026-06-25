@@ -73,6 +73,7 @@
       activePage: 'reservations',
       title:      'Reservation Operations Center',
       subtitle:   'Mission Control',
+      deferEnhancements: true,
     });
 
     // 3. Render scheduling table entries natively from backend arrays
@@ -81,6 +82,9 @@
       title:   'Reservation Master Timeline',
       onData:  () => { syncPendingBadge(); },
     });
+
+    const { initAdminEnhancements } = await import('/assets/js/layout/animations.js');
+    await initAdminEnhancements();
 
     window.addEventListener('booking:updated', syncPendingBadge);
     syncPendingBadge();

@@ -70,7 +70,6 @@
   position: relative;
   width: 100%;
   min-height: 12rem;
-  transition: min-height var(--app-tab-duration) var(--app-tab-ease);
 }
 
 .app-tab-panels.is-tab-switching {
@@ -80,13 +79,8 @@
 .app-tab-panel {
   width: 100%;
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
   visibility: visible;
-  transition:
-    opacity var(--app-tab-duration) var(--app-tab-ease),
-    transform var(--app-tab-duration) var(--app-tab-ease),
-    visibility var(--app-tab-duration) var(--app-tab-ease);
-  will-change: opacity, transform;
 }
 
 .app-tab-panel.is-tab-hidden {
@@ -96,7 +90,7 @@
   right: 0;
   opacity: 0;
   visibility: hidden;
-  transform: translateY(10px);
+  transform: none;
   pointer-events: none;
   z-index: 0;
 }
@@ -106,21 +100,10 @@
   z-index: 1;
 }
 
-.app-tab-panel.is-tab-leaving {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  opacity: 0;
-  visibility: hidden;
-  transform: translateY(-6px);
-  pointer-events: none;
-  z-index: 0;
-}
-
+.app-tab-panel.is-tab-leaving,
 .app-tab-panel.is-tab-entering {
-  opacity: 0;
-  transform: translateY(10px);
+  transition: none !important;
+  transform: none !important;
 }
 
 .app-tab-panel.is-tab-hidden.hidden {
@@ -135,6 +118,10 @@
   min-height: 0;
   min-width: 0;
   width: 100%;
+}
+
+.app-tab-workspace.settings-workspace {
+  flex: 0 1 auto;
 }
 
 .app-tab-workspace .app-tab-panels {

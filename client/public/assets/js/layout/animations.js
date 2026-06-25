@@ -49,6 +49,43 @@ function revealInstant(root, selector) {
   });
 }
 
+/** End boot phase — sidebar/tab transitions stay disabled until content is ready. */
+export function releaseChromeBoot() {
+  requestAnimationFrame(() => {
+    document.documentElement.classList.remove('admin-chrome-boot');
+  });
+}
+
+/** Collect visible page sections for enter animation (supports mount containers). */
+export function collectAnimatableBlocks(root = document) {
+  const page = root.querySelector('#page-content');
+  if (!page) return [];
+
+  const blocks = [];
+  const mountIds = new Set(['action-cards-mount', 'timeline-mount']);
+
+  for (const child of page.children) {
+    if (child.classList.contains('hidden')) continue;
+
+    if (child.classList.contains('settings-workspace')) {
+      const visiblePanel = child.querySelector('.app-tab-panel:not(.is-tab-hidden)');
+      blocks.push(visiblePanel || child);
+      continue;
+    }
+
+    if (mountIds.has(child.id)) {
+      child.querySelectorAll(':scope > *').forEach((inner) => blocks.push(inner));
+      continue;
+    }
+
+    if (child.id?.endsWith('-mount') && !child.children.length) continue;
+
+    blocks.push(child);
+  }
+
+  return blocks;
+}
+
 /** Lock sidebar + header — no motion on navigation chrome. */
 export function lockStaticChrome(root = document) {
   root.querySelectorAll(STATIC_SELECTORS).forEach((el) => {
@@ -66,12 +103,14 @@ export function lockStaticChrome(root = document) {
 export async function initAdminPageAnimations(root = document) {
   lockStaticChrome(root);
 
-  const contentBlocks = root.querySelectorAll(
-    '#page-content > .grid, #page-content > .admin-panel, #page-content > .timeline-workspace, #page-content > .action-card'
-  );
+  const contentBlocks = collectAnimatableBlocks(root);
 
   if (prefersReducedMotion()) {
     revealInstant(root, '#page-content > *');
+    root.querySelectorAll('#action-cards-mount > *, #timeline-mount > *').forEach((el) => {
+      el.style.opacity = '1';
+      el.style.transform = 'none';
+    });
     return;
   }
 
@@ -296,7 +335,10 @@ export async function animateDrawerTabSwitch(panelEl) {
 }
 
 /** Admin panel inner sections (tables, forms). */
-export async function animatePanelContent(selector = '.admin-panel-body, .timeline-workspace .overflow-x-auto', root = document) {
+export async function animatePanelContent(
+  selector = '.admin-panel-body, .timeline-workspace .overflow-x-auto, .res-action-card',
+  root = document
+) {
   const panels = root.querySelectorAll(selector);
   if (!panels.length || prefersReducedMotion()) return;
 
@@ -308,11 +350,11 @@ export async function animatePanelContent(selector = '.admin-panel-body, .timeli
   );
 }
 
-/** Run passive page enhancements — chrome only, no content motion. */
+/** Run page content animations — sidebar/header stay locked via lockStaticChrome. */
 export async function initAdminEnhancements(root = document) {
   lockStaticChrome(root);
-  root.querySelectorAll('#page-content > *').forEach((el) => {
-    el.style.opacity = '1';
-    el.style.transform = 'none';
-  });
+  await initAdminPageAnimations(root);
+  await initActionCardHovers(root);
+  await animatePanelContent(undefined, root);
+  releaseChromeBoot();
 }
