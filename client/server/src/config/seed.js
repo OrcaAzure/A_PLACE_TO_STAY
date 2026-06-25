@@ -124,6 +124,15 @@ export async function seedDemoData() {
 export async function runSchemaPatches() {
   try {
     await pool.execute(
+      `ALTER TABLE rooms
+       MODIFY status ENUM('Available', 'Occupied', 'Dirty', 'Maintenance') NOT NULL DEFAULT 'Available'`
+    );
+  } catch {
+    /* enum may already include Dirty */
+  }
+
+  try {
+    await pool.execute(
       `CREATE TABLE IF NOT EXISTS payments (
          id         INT AUTO_INCREMENT PRIMARY KEY,
          booking_id INT NOT NULL,

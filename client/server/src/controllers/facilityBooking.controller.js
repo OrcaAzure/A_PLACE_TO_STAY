@@ -130,9 +130,116 @@ export const updateFacilityBooking = async (req, res) => {
 export const deleteFacilityBooking = async (req, res) => {
   try {
     const [existing] = await pool.query('SELECT id FROM facility_bookings WHERE id = ? LIMIT 1', [req.params.id]);
-    if (!existing.length) return res.status(404).json({ message: 'Booking not found' });
+    if (!existing.length) return res.status(404).json({ message: 'Venue booking not found' });
     await pool.query('DELETE FROM facility_bookings WHERE id = ?', [req.params.id]);
     res.status(200).json({ message: 'Venue booking deleted' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const NON_VENUE_CATEGORIES = [
+  'Food Service',
+  'Laundry',
+  'Laundry-Iron',
+  'Corkage Fee',
+  'Maid Service',
+  'Accommodation Extras',
+];
+
+const VENUE_CATEGORY_ICONS = {
+  Garden: 'park',
+  'GMC Chapel': 'church',
+  'Burdine Commons': 'groups',
+  GMC: 'school',
+  'Prayer Mountain': 'landscape',
+  'Prayer Tower': 'water_lux',
+  'Basketball Court': 'sports_basketball',
+  'Childrens Playground': 'child_care',
+  'Rec Center': 'fitness_center',
+};
+
+function formatTime(t) {
+  if (!t) return '';
+  const raw = String(t);
+  const [h, m] = raw.slice(0, 5).split(':').map(Number);
+  const d = new Date(2000, 0, 1, h, m);
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+}
+
+/** Admin venue schedule — grouped bookable spaces with bookings for one date. */
+export const getVenueScheduleOverview = async (req, res) => {
+  try {
+    const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const placeholders = NON_VENUE_CATEGORIES.map(() => '?').join(',');
+
+    const [facilityRows] = await pool.query(
+      `SELECT id, category, item, season, rate
+       FROM facilities
+       WHERE category NOT IN (${placeholders})
+       ORDER BY category ASC, item ASC, season ASC`,
+      NON_VENUE_CATEGORIES
+    );
+
+    const [bookingRows] = await pool.query(
+      `${bookingSelect}
+       WHERE fb.event_date = ? AND fb.status IN ('Pending', 'Approved')
+       ORDER BY fb.start_time ASC`,
+      [date]
+    );
+
+    const bookingsByFacility = new Map();
+    for (const row of bookingRows) {
+      if (!bookingsByFacility.has(row.facility_id)) bookingsByFacility.set(row.facility_id, []);
+      bookingsByFacility.get(row.facility_id).push({
+        id: row.id,
+        status: row.status,
+        start_time: row.start_time,
+        end_time: row.end_time,
+        start_label: formatTime(row.start_time),
+        end_label: formatTime(row.end_time),
+        guest_name: row.guest_name,
+        guest_count: row.guest_count,
+        notes: row.notes,
+      });
+    }
+
+    const byCategory = new Map();
+    for (const f of facilityRows) {
+      if (!byCategory.has(f.category)) {
+        byCategory.set(f.category, {
+          category: f.category,
+          icon: VENUE_CATEGORY_ICONS[f.category] || 'place',
+          facilities: [],
+        });
+      }
+      const bookings = bookingsByFacility.get(f.id) || [];
+      byCategory.get(f.category).facilities.push({
+        id: f.id,
+        item: f.item,
+        season: f.season,
+        rate: Number(f.rate),
+        bookings,
+        is_free: bookings.length === 0,
+        has_pending: bookings.some((b) => b.status === 'Pending'),
+      });
+    }
+
+    const venues = [...byCategory.values()];
+    const pendingCount = bookingRows.filter((b) => b.status === 'Pending').length;
+    const bookedCount = bookingRows.filter((b) => b.status === 'Approved').length;
+    const freeCount = facilityRows.filter((f) => !(bookingsByFacility.get(f.id)?.length)).length;
+
+    res.status(200).json({
+      date,
+      summary: {
+        totalSpaces: facilityRows.length,
+        freeToday: freeCount,
+        bookedToday: bookedCount,
+        pendingRequests: pendingCount,
+      },
+      venues,
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

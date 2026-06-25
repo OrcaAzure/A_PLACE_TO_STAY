@@ -130,7 +130,9 @@ async function validateRoomAssignments({ checkIn, checkOut, rooms, excludeGroupI
     if (!room) throw new Error(`Room #${roomId} not found.`);
     const capErr = validateGuestCapacity(room, guestCount);
     if (capErr) throw new Error(`Room ${room.room_number}: ${capErr}`);
-    if (room.status === 'Maintenance') throw new Error(`Room ${room.room_number} is under maintenance.`);
+    if (room.status === 'Maintenance') throw new Error(`Room ${room.room_number} is out of order.`);
+    if (room.status === 'Dirty') throw new Error(`Room ${room.room_number} is check-out / dirty and not ready yet.`);
+    if (room.status === 'Occupied') throw new Error(`Room ${room.room_number} is currently occupied.`);
 
     const overlap = await hasOverlappingBooking(roomId, checkIn, checkOut, null, excludeGroupId);
     if (overlap) throw new Error(`Room ${room.room_number} is already booked on these dates.`);

@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     status        ENUM(
                     'Available',
                     'Occupied',
+                    'Dirty',
                     'Maintenance'
                   ) NOT NULL DEFAULT 'Available',
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

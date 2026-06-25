@@ -335,6 +335,8 @@ export async function getAvailableRooms({
     let availabilityStatus = 'available';
 
     if (room.status === 'Maintenance') availabilityStatus = 'maintenance';
+    else if (room.status === 'Occupied') availabilityStatus = 'occupied';
+    else if (room.status === 'Dirty') availabilityStatus = 'dirty';
     else if (!groupPicker && !fitsCapacity) availabilityStatus = 'too_small';
     else if (groupPicker && count > room.capacity_max) availabilityStatus = 'too_small';
     else if (await hasOverlappingBooking(room.id, checkIn, checkOut, excludeBookingId, excludeGroupId)) {
@@ -346,7 +348,8 @@ export async function getAvailableRooms({
     let estimatedTotal = null;
     const pricingGuests = groupPicker ? Math.max(room.capacity_min, Math.min(count, room.capacity_max)) : count;
 
-    if (availabilityStatus !== 'maintenance' && availabilityStatus !== 'booked') {
+    if (availabilityStatus !== 'maintenance' && availabilityStatus !== 'booked'
+      && availabilityStatus !== 'occupied' && availabilityStatus !== 'dirty') {
       pricePerNight = await getRate(room.room_type, occupancyItem, season);
       if (pricePerNight != null) {
         estimatedTotal = await calculateTotalAmount({

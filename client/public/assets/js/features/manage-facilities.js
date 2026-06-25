@@ -11,6 +11,7 @@ import {
   deleteRoom,
 } from '/assets/js/services/api.js';
 import { animateModalOpen } from '/assets/js/layout/animations.js';
+import { roomStatusLabel, roomStatusOptions, roomStatusMeta } from '/assets/js/features/room-status.js';
 
 const ROOM_TYPE_OPTIONS = [
   {
@@ -80,11 +81,12 @@ const QUICK_SETUPS = [
   },
 ];
 
-const ROOM_STATUSES = [
-  { value: 'Available', label: 'Ready', icon: 'check_circle', tone: 'available' },
-  { value: 'Occupied', label: 'In use', icon: 'hotel', tone: 'occupied' },
-  { value: 'Maintenance', label: 'Under repair', icon: 'build', tone: 'maintenance' },
-];
+const ROOM_STATUSES = roomStatusOptions().map((opt) => ({
+  value: opt.value,
+  label: opt.label,
+  icon: opt.icon,
+  tone: opt.tone,
+}));
 
 const FLEX_SPACE_PATTERN = /^(commons|chapel|conf(erence)?)/i;
 
@@ -126,14 +128,9 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-function roomStatusLabel(status) {
-  const map = { Available: 'Ready', Occupied: 'In use', Maintenance: 'Repair' };
-  return map[status] || status || 'Ready';
-}
-
 function roomStatusBadge(status) {
-  const key = String(status || 'available').toLowerCase();
-  return `admin-crud-badge admin-crud-badge--${key}`;
+  const tone = roomStatusMeta(status).tone;
+  return `admin-crud-badge admin-crud-badge--${tone}`;
 }
 
 function getTypeOption(value) {
@@ -737,7 +734,31 @@ export function isManageFacilitiesModalOpen() {
 export async function openManageFacilitiesModal(options = {}) {
   const roomId = options.roomId != null ? Number(options.roomId) : null;
 
+  if (options.create) {
+    state.mode = 'create';
+    state.selectedId = null;
+    state.form = emptyForm();
+    state.mobileForm = true;
+    state.error = null;
+    state.message = null;
+    state.activeQuickSetup = null;
+  }
+
   if (state.isOpen) {
+    if (options.create) {
+      state.mode = 'create';
+      state.selectedId = null;
+      state.form = emptyForm();
+      state.mobileForm = true;
+      state.error = null;
+      state.message = null;
+      state.activeQuickSetup = null;
+      if (state.buildings.length) {
+        state.form.building_id = options.buildingId ?? state.buildings[0].id;
+      }
+      render();
+      return;
+    }
     if (roomId) {
       const match = state.rooms.find((r) => Number(r.id) === roomId);
       if (match) {
@@ -779,7 +800,10 @@ export async function openManageFacilitiesModal(options = {}) {
     }
   }
 
-  if (state.buildings.length && state.mode === 'create') {
+  if (options.create && state.buildings.length) {
+    state.form.building_id = options.buildingId ?? state.buildings[0].id;
+    render();
+  } else if (state.buildings.length && state.mode === 'create') {
     state.form.building_id = state.buildings[0].id;
   }
   window.dispatchEvent(new CustomEvent('manage-facilities:opened'));
@@ -1033,7 +1057,12 @@ export function initManageFacilitiesModal() {
   });
 
   window.addEventListener('manage-facilities:open', (e) => {
-    const { roomId, edit } = e.detail || {};
-    openManageFacilitiesModal({ roomId, edit: edit !== false });
+    const { roomId, edit, create, buildingId } = e.detail || {};
+    openManageFacilitiesModal({
+      roomId,
+      edit: edit !== false,
+      create: !!create,
+      buildingId,
+    });
   });
 }

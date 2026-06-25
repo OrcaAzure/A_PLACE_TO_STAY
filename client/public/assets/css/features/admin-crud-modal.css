@@ -102,8 +102,11 @@
 .admin-crud-badge--approved { background: #ecfdf5; color: #065f46; }
 .admin-crud-badge--rejected { background: #fef2f2; color: #991b1b; }
 .admin-crud-badge--cancelled { background: #f1f5f9; color: #475569; }
-.admin-crud-badge--available { background: #ecfdf5; color: #065f46; }
+.admin-crud-badge--vacant { background: #ecfdf5; color: #065f46; }
 .admin-crud-badge--occupied { background: #fffbeb; color: #92400e; }
+.admin-crud-badge--dirty { background: #fef3c7; color: #92400e; }
+.admin-crud-badge--out-of-order { background: #fef2f2; color: #991b1b; }
+.admin-crud-badge--available { background: #ecfdf5; color: #065f46; }
 .admin-crud-badge--maintenance { background: #fef2f2; color: #991b1b; }
 
 .admin-crud-btn-primary {
@@ -308,10 +311,19 @@
   cursor: pointer;
 }
 
+.mf-status-pill--vacant,
 .mf-status-pill--available { color: #065f46; }
 .mf-status-pill--occupied { color: #92400e; }
+.mf-status-pill--dirty { color: #c2410c; }
+.mf-status-pill--out-of-order,
 .mf-status-pill--maintenance { color: #991b1b; }
 
+.mf-status-pill.is-selected.mf-status-pill--dirty {
+  border-color: #f97316;
+  background: #fff7ed;
+}
+
+.mf-status-pill.is-selected.mf-status-pill--vacant,
 .mf-status-pill.is-selected.mf-status-pill--available {
   border-color: #10b981;
   background: #ecfdf5;
@@ -322,6 +334,7 @@
   background: #fffbeb;
 }
 
+.mf-status-pill.is-selected.mf-status-pill--out-of-order,
 .mf-status-pill.is-selected.mf-status-pill--maintenance {
   border-color: #ef4444;
   background: #fef2f2;
