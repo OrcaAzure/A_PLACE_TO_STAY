@@ -9,6 +9,7 @@ import {
 import { updateFacilityBooking } from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDate, formatDateLong, formatMoney, normStatus, stayNights,
+  toLocalDateString,
 } from '/assets/js/features/reservation-shared.js';
 
 export const DAY_WIDTH = 80;
@@ -52,8 +53,7 @@ function formatRangeLabel(rangeStart, rangeEnd) {
 }
 
 function dateOnly(value) {
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  return String(value).slice(0, 10);
+  return toLocalDateString(value);
 }
 
 export function dateToCol(dateValue, rangeStart) {
@@ -71,9 +71,9 @@ function overlapsRange(startDate, endDate, rangeStart, rangeEnd) {
 }
 
 export function renderDayHeaders(dates, today = new Date()) {
-  const todayStr = today.toISOString().slice(0, 10);
+  const todayStr = toLocalDateString(today);
   return dates.map((d) => {
-    const iso = d.toISOString().slice(0, 10);
+    const iso = toLocalDateString(d);
     const isToday = iso === todayStr;
     const isWeekend = d.getDay() === 0 || d.getDay() === 6;
     const cls = isToday
@@ -431,9 +431,9 @@ function filterBookings(bookings, { statusFilter, search, rangeStart, rangeEnd }
 
 export function renderTimeline({ rooms, items, rangeStart, dates, barRenderer, onBarClick, filters = {} }) {
   const totalDays = dates.length;
-  const rangeEnd = dates[dates.length - 1].toISOString().slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
-  const todayCol = dates.findIndex((d) => d.toISOString().slice(0, 10) === today) + 1;
+  const rangeEnd = toLocalDateString(dates[dates.length - 1]);
+  const today = toLocalDateString(new Date());
+  const todayCol = dates.findIndex((d) => toLocalDateString(d) === today) + 1;
 
   const headerEl = document.getElementById('timeline-day-headers');
   if (headerEl) {
@@ -790,7 +790,7 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
   if (!mountEl) return;
 
   const now = new Date();
-  const todayStr = now.toISOString().slice(0, 10);
+  const todayStr = toLocalDateString(now);
   let viewYear = now.getFullYear();
   let viewMonth = now.getMonth();
 

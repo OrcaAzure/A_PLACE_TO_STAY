@@ -24,6 +24,18 @@ export function escapeHtml(str) {
 
 export function formatDisplayId(id) { return `#APT-${id}`; }
 
+/** Calendar date as YYYY-MM-DD in the user's local timezone. */
+export function toLocalDateString(value) {
+  if (value == null || value === '') return '';
+  if (typeof value === 'string') return value.slice(0, 10);
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function formatDate(d) {
   if (!d) return '—';
   const raw = String(d).slice(0, 10);
