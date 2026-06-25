@@ -104,6 +104,11 @@ export async function getRoomById(id) {
   return data.room;
 }
 
+export async function getVenueRateQuote(category, item, date) {
+  const params = new URLSearchParams({ category, item, date });
+  return apiRequest(`/facilities/venue-rate?${params}`);
+}
+
 export async function getVenueFacilities() {
   const data = await apiRequest('/facilities');
   return data.venues || [];
@@ -365,9 +370,11 @@ export function normalizeUser(user) {
   };
 }
 
-export async function getVenueScheduleOverview(date) {
-  const d = date || new Date().toISOString().slice(0, 10);
-  return apiRequest(`/facility-bookings/overview?date=${encodeURIComponent(d)}`);
+export async function getVenueScheduleOverview(date, { startTime, endTime } = {}) {
+  const params = new URLSearchParams({ date: date || new Date().toISOString().slice(0, 10) });
+  if (startTime) params.set('start_time', startTime);
+  if (endTime) params.set('end_time', endTime);
+  return apiRequest(`/facility-bookings/overview?${params}`);
 }
 
 export async function getFacilityBookings() {

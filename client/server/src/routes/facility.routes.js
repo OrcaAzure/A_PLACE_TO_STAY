@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
   getFacilitiesOverview,
   getVenueFacilities,
+  getVenueRateQuote,
   getAllFacilities,
   getFacilityById,
   createFacility,
@@ -15,6 +16,7 @@ const router = Router();
 const adminOnly = requireRole('Super Admin', 'Admin');
 
 router.get('/overview', requireAuth, getFacilitiesOverview);
+router.get('/venue-rate', requireAuth, getVenueRateQuote);
 router.get('/list', requireAuth, getAllFacilities);
 router.get('/', requireAuth, getVenueFacilities);
 router.post('/', requireAuth, adminOnly, createFacility);

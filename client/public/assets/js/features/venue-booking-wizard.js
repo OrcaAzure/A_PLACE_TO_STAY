@@ -3,7 +3,7 @@
  */
 
 import {
-  createFacilityBooking, getFacilitiesOverview, getUsers,
+  createFacilityBooking, getFacilitiesOverview, getUsers, getVenueRateQuote,
 } from '/assets/js/services/api.js';
 import { escapeHtml, formatDateLong, formatMoney } from '/assets/js/features/reservation-shared.js';
 import { refreshVenueScheduleBoard } from '/assets/js/features/admin-venue-board.js';
@@ -28,39 +28,42 @@ function emptyState() {
     userId: '',
     guestName: '',
     email: '',
-    facilityId: '',
+    spaceKey: '',
+    category: '',
+    item: '',
     eventDate: '',
     startTime: '09:00',
     endTime: '12:00',
     guestCount: 1,
     notes: '',
+    rateQuote: null,
     saving: false,
   };
 }
 
-function flattenVenues(catalog) {
+function buildVenueSpaces(catalog) {
   const rows = [];
-  for (const group of catalog?.venues || catalog || []) {
-    if (!group?.items) continue;
-    for (const item of group.items) {
-      for (const rate of item.rates || []) {
-        if (!rate?.id) continue;
-        rows.push({
-          id: rate.id,
-          category: group.category,
-          item: item.item,
-          season: rate.season,
-          rate: rate.rate,
-          label: `${group.category} — ${item.item} (${rate.season})`,
-        });
-      }
+  for (const group of catalog?.venues || []) {
+    for (const item of group.items || []) {
+      rows.push({
+        spaceKey: `${group.category}\x1f${item.item}`,
+        category: group.category,
+        item: item.item,
+        label: `${group.category} — ${item.item}`,
+        rates: item.rates || [],
+      });
     }
   }
   return rows.sort((a, b) => a.label.localeCompare(b.label));
 }
 
+function findSpaceByFacilityId(facilityId) {
+  if (!facilityId) return null;
+  return venues.find((v) => v.rates?.some((r) => String(r.id) === String(facilityId))) || null;
+}
+
 function selectedVenue() {
-  return venues.find((v) => String(v.id) === String(state.facilityId));
+  return venues.find((v) => v.spaceKey === state.spaceKey);
 }
 
 function normalizeTime(value) {
@@ -68,6 +71,17 @@ function normalizeTime(value) {
   const raw = String(value).trim();
   if (/^\d{1,2}:\d{2}:\d{2}$/.test(raw)) return raw.slice(0, 5);
   return raw.slice(0, 5);
+}
+
+function rateHintHtml() {
+  if (!state.eventDate || !state.spaceKey) {
+    return '<p id="vbw-rate-hint" class="text-sm text-slate-500 mt-1">Rate is based on the event date (Regular or Peak).</p>';
+  }
+  if (!state.rateQuote) {
+    return '<p id="vbw-rate-hint" class="text-sm text-slate-500 mt-1">Checking rate for this date…</p>';
+  }
+  const label = state.rateQuote.calendar_season || state.rateQuote.season;
+  return `<p id="vbw-rate-hint" class="text-sm text-slate-600 mt-1"><strong>${escapeHtml(label)}</strong> rate: ${formatMoney(state.rateQuote.rate)}/hr</p>`;
 }
 
 function renderSteps() {
@@ -104,19 +118,20 @@ function renderStep2() {
     return `
       <p class="res-lead">No venue spaces are configured yet.</p>
       <div class="res-banner res-banner--warn">
-        Add venue prices under <strong>Facilities → Venue spaces → Venue prices</strong>, then try again.
+        Add venue rates in system settings, then try again.
       </div>`;
   }
   const venueOpts = venues.map((v) =>
-    `<option value="${v.id}"${String(v.id) === String(state.facilityId) ? ' selected' : ''}>${escapeHtml(v.label)} — ${formatMoney(v.rate)}/hr</option>`
+    `<option value="${escapeHtml(v.spaceKey)}"${v.spaceKey === state.spaceKey ? ' selected' : ''}>${escapeHtml(v.label)}</option>`
   ).join('');
   const today = new Date().toISOString().slice(0, 10);
   return `
     <p class="res-lead">Choose the venue space, event date, and time block.</p>
     <label class="res-label">Venue space</label>
-    <select id="vbw-facility" class="res-input" required>${venueOpts}</select>
+    <select id="vbw-space" class="res-input" required>${venueOpts}</select>
     <label class="res-label">Event date</label>
     <input id="vbw-date" class="res-input" type="date" min="${today}" value="${escapeHtml(state.eventDate)}" required />
+    ${rateHintHtml()}
     <div class="res-row">
       <div>
         <label class="res-label">Start time</label>
@@ -135,6 +150,9 @@ function renderStep2() {
 
 function renderStep3() {
   const v = selectedVenue();
+  const rateLine = state.rateQuote
+    ? `${state.rateQuote.calendar_season || state.rateQuote.season} rate · ${formatMoney(state.rateQuote.rate)}/hr`
+    : '';
   return `
     <p class="res-lead">Review everything before saving. The booking will be confirmed immediately.</p>
     <div class="res-review">
@@ -143,7 +161,7 @@ function renderStep3() {
     </div>
     <div class="res-review">
       <h4>Venue</h4>
-      <p><strong>${escapeHtml(v?.label || '—')}</strong></p>
+      <p><strong>${escapeHtml(v?.label || '—')}</strong>${rateLine ? `<br>${escapeHtml(rateLine)}` : ''}</p>
     </div>
     <div class="res-review">
       <h4>Schedule</h4>
@@ -151,6 +169,14 @@ function renderStep3() {
       ${escapeHtml(state.startTime)} – ${escapeHtml(state.endTime)} · ${state.guestCount} guest${state.guestCount === 1 ? '' : 's'}</p>
     </div>
     ${state.notes ? `<div class="res-review"><h4>Notes</h4><p>${escapeHtml(state.notes)}</p></div>` : ''}`;
+}
+
+function syncSpaceFromKey() {
+  const v = selectedVenue();
+  if (v) {
+    state.category = v.category;
+    state.item = v.item;
+  }
 }
 
 /** Only update fields that exist in the DOM (avoids wiping state on review step). */
@@ -164,8 +190,11 @@ function readForm() {
   const emailEl = $('vbw-email');
   if (emailEl) state.email = emailEl.value.trim();
 
-  const facilityEl = $('vbw-facility');
-  if (facilityEl) state.facilityId = facilityEl.value || '';
+  const spaceEl = $('vbw-space');
+  if (spaceEl) {
+    state.spaceKey = spaceEl.value || '';
+    syncSpaceFromKey();
+  }
 
   const dateEl = $('vbw-date');
   if (dateEl) state.eventDate = dateEl.value || '';
@@ -183,6 +212,26 @@ function readForm() {
   if (notesEl) state.notes = notesEl.value.trim();
 }
 
+async function refreshRateQuote() {
+  const hint = $('vbw-rate-hint');
+  if (!state.category || !state.item || !state.eventDate) {
+    state.rateQuote = null;
+    if (hint) hint.textContent = 'Rate is based on the event date (Regular or Peak).';
+    return;
+  }
+  if (hint) hint.textContent = 'Checking rate for this date…';
+  try {
+    state.rateQuote = await getVenueRateQuote(state.category, state.item, state.eventDate);
+    if (hint) {
+      const label = state.rateQuote.calendar_season || state.rateQuote.season;
+      hint.innerHTML = `<strong>${escapeHtml(label)}</strong> rate: ${formatMoney(state.rateQuote.rate)}/hr`;
+    }
+  } catch {
+    state.rateQuote = null;
+    if (hint) hint.textContent = 'Could not load rate for this date.';
+  }
+}
+
 function bindStep1() {
   $('vbw-user')?.addEventListener('change', () => {
     const sel = $('vbw-user');
@@ -193,6 +242,17 @@ function bindStep1() {
     state.email = opt.getAttribute('data-email') || '';
     if ($('vbw-name')) $('vbw-name').value = state.guestName;
     if ($('vbw-email')) $('vbw-email').value = state.email;
+  });
+}
+
+function bindStep2() {
+  $('vbw-space')?.addEventListener('change', async () => {
+    readForm();
+    await refreshRateQuote();
+  });
+  $('vbw-date')?.addEventListener('change', async () => {
+    readForm();
+    await refreshRateQuote();
   });
 }
 
@@ -220,6 +280,10 @@ function renderBody() {
   showError('');
 
   if (state.step === 1) bindStep1();
+  if (state.step === 2) {
+    bindStep2();
+    refreshRateQuote().catch(() => {});
+  }
 }
 
 function validateStep1() {
@@ -229,7 +293,7 @@ function validateStep1() {
 
 function validateStep2() {
   if (!venues.length) return 'No venue spaces configured.';
-  if (!state.facilityId) return 'Please select a venue space.';
+  if (!state.spaceKey) return 'Please select a venue space.';
   if (!state.eventDate) return 'Please pick an event date.';
   if (!state.startTime || !state.endTime) return 'Please set start and end times.';
   if (state.endTime <= state.startTime) return 'End time must be after start time.';
@@ -277,7 +341,8 @@ async function confirmSave() {
 
   try {
     const result = await createFacilityBooking({
-      facility_id: Number(state.facilityId),
+      category: state.category,
+      item: state.item,
       event_date: state.eventDate,
       start_time: state.startTime,
       end_time: state.endTime,
@@ -327,7 +392,9 @@ export async function openVenueBookingWizard(detail = {}) {
   isOpen = true;
   state = {
     ...emptyState(),
-    facilityId: detail.facilityId ? String(detail.facilityId) : '',
+    spaceKey: detail.spaceKey || '',
+    category: detail.category || '',
+    item: detail.item || '',
     eventDate: detail.eventDate || '',
     startTime: normalizeTime(detail.startTime || '09:00'),
     endTime: normalizeTime(detail.endTime || '12:00'),
@@ -343,9 +410,25 @@ export async function openVenueBookingWizard(detail = {}) {
       getFacilitiesOverview(),
     ]);
     users = userRows || [];
-    venues = flattenVenues(catalog);
-    if (!state.facilityId && venues.length === 1) {
-      state.facilityId = String(venues[0].id);
+    venues = buildVenueSpaces(catalog);
+
+    if (detail.category && detail.item) {
+      state.spaceKey = `${detail.category}\x1f${detail.item}`;
+      state.category = detail.category;
+      state.item = detail.item;
+    } else if (detail.facilityId) {
+      const match = findSpaceByFacilityId(detail.facilityId);
+      if (match) {
+        state.spaceKey = match.spaceKey;
+        state.category = match.category;
+        state.item = match.item;
+      }
+    }
+
+    if (!state.spaceKey && venues.length === 1) {
+      state.spaceKey = venues[0].spaceKey;
+      state.category = venues[0].category;
+      state.item = venues[0].item;
     }
   } catch (err) {
     users = [];

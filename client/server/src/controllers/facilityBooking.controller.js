@@ -1,6 +1,15 @@
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
 import { resolveSeason, resolveGuestUser } from '../services/booking.service.js';
+import {
+  NON_VENUE_CATEGORIES,
+  bookingOverlapsSlot,
+  findVenueBookingOverlap,
+  groupVenueSpacesFromRows,
+  normalizeTimeValue,
+  resolveFacilityIdentity,
+  resolveVenueFacilityRow,
+} from '../services/facility.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -61,12 +70,15 @@ export const createFacilityBooking = async (req, res) => {
   try {
     const { id: userId, role } = req.user;
     const {
-      facility_id, event_date, start_time, end_time, guest_count, notes,
+      facility_id, category, item, event_date, start_time, end_time, guest_count, notes,
       user_id, guest_name, email, status,
     } = req.body;
 
-    if (isEmpty(facility_id) || isEmpty(event_date) || isEmpty(start_time) || isEmpty(end_time)) {
-      return res.status(400).json({ message: 'facility_id, event_date, start_time, and end_time are required' });
+    if (isEmpty(event_date) || isEmpty(start_time) || isEmpty(end_time)) {
+      return res.status(400).json({ message: 'event_date, start_time, and end_time are required' });
+    }
+    if (isEmpty(facility_id) && (isEmpty(category) || isEmpty(item))) {
+      return res.status(400).json({ message: 'Provide facility_id or both category and item' });
     }
 
     const isAdmin = ADMIN_ROLES.includes(role);
@@ -77,27 +89,32 @@ export const createFacilityBooking = async (req, res) => {
     const startTime = normalizeTime(start_time);
     const endTime = normalizeTime(end_time);
 
-    const [overlap] = await pool.query(
-      `SELECT id FROM facility_bookings
-       WHERE facility_id = ? AND event_date = ?
-         AND status IN ('Pending', 'Approved')
-         AND start_time < ? AND end_time > ?
-       LIMIT 1`,
-      [facility_id, event_date, endTime, startTime]
-    );
-    if (overlap.length) {
+    const identity = await resolveFacilityIdentity({
+      facility_id, category, item, event_date,
+    });
+    if (!identity) {
+      return res.status(404).json({ message: 'Venue space not found' });
+    }
+
+    const { row: facilityRow } = identity;
+    const facilityId = facilityRow.id;
+
+    const overlap = await findVenueBookingOverlap({
+      category: identity.category,
+      item: identity.item,
+      eventDate: event_date,
+      startTime,
+      endTime,
+    });
+    if (overlap) {
       return res.status(409).json({ message: 'This venue is already booked for the selected time slot.' });
     }
 
-    const season   = await resolveSeason(event_date);
-    const [fRows]  = await pool.query(
-      `SELECT rate FROM facilities WHERE id = ? LIMIT 1`,
-      [facility_id]
-    );
-    const rate         = fRows.length ? Number(fRows[0].rate) : 0;
-    const [sh, sm]     = startTime.split(':').map(Number);
-    const [eh, em]     = endTime.split(':').map(Number);
-    const hours        = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+    const season = await resolveSeason(event_date);
+    const rate = facilityRow.rate;
+    const [sh, sm] = startTime.split(':').map(Number);
+    const [eh, em] = endTime.split(':').map(Number);
+    const hours = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
     const total_amount = Math.round(rate * Math.max(hours, 1) * 100) / 100;
 
     const bookingStatus = isAdmin ? (status || 'Approved') : 'Pending';
@@ -106,7 +123,7 @@ export const createFacilityBooking = async (req, res) => {
       `INSERT INTO facility_bookings
          (user_id, facility_id, event_date, start_time, end_time, guest_count, season, total_amount, status, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [effectiveUserId, facility_id, event_date, startTime, endTime, guest_count || 1,
+      [effectiveUserId, facilityId, event_date, startTime, endTime, guest_count || 1,
        season, total_amount, bookingStatus, notes || null]
     );
 
@@ -158,15 +175,6 @@ export const deleteFacilityBooking = async (req, res) => {
   }
 };
 
-const NON_VENUE_CATEGORIES = [
-  'Food Service',
-  'Laundry',
-  'Laundry-Iron',
-  'Corkage Fee',
-  'Maid Service',
-  'Accommodation Extras',
-];
-
 const VENUE_CATEGORY_ICONS = {
   Garden: 'park',
   'GMC Chapel': 'church',
@@ -187,10 +195,16 @@ function formatTime(t) {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
-/** Admin venue schedule — grouped bookable spaces with bookings for one date. */
+/** Admin venue schedule — grouped bookable spaces with bookings for one date (optional time slot). */
 export const getVenueScheduleOverview = async (req, res) => {
   try {
     const date = req.query.date || new Date().toISOString().slice(0, 10);
+    const rawStart = req.query.start_time;
+    const rawEnd = req.query.end_time;
+    const hasSlot = rawStart && rawEnd;
+    const checkStart = hasSlot ? normalizeTimeValue(rawStart) : null;
+    const checkEnd = hasSlot ? normalizeTimeValue(rawEnd) : null;
+    const slotValid = hasSlot && checkStart && checkEnd && checkEnd > checkStart;
     const placeholders = NON_VENUE_CATEGORIES.map(() => '?').join(',');
 
     const [facilityRows] = await pool.query(
@@ -224,23 +238,51 @@ export const getVenueScheduleOverview = async (req, res) => {
       });
     }
 
+    const spacesByKey = groupVenueSpacesFromRows(facilityRows);
     const byCategory = new Map();
-    for (const f of facilityRows) {
-      if (!byCategory.has(f.category)) {
-        byCategory.set(f.category, {
-          category: f.category,
-          icon: VENUE_CATEGORY_ICONS[f.category] || 'place',
+    let noBookingsCount = 0;
+    let freeForSlotCount = 0;
+
+    for (const space of spacesByKey.values()) {
+      const resolved = await resolveVenueFacilityRow(space.category, space.item, date);
+      if (!resolved) continue;
+
+      const bookings = [];
+      for (const fid of space.facility_ids) {
+        bookings.push(...(bookingsByFacility.get(fid) || []));
+      }
+      bookings.sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)));
+
+      const is_free = bookings.length === 0;
+      if (is_free) noBookingsCount += 1;
+
+      let is_free_for_slot = null;
+      if (slotValid) {
+        is_free_for_slot = !bookings.some((b) => bookingOverlapsSlot(b, checkStart, checkEnd));
+        if (is_free_for_slot) freeForSlotCount += 1;
+      }
+
+      if (!byCategory.has(space.category)) {
+        byCategory.set(space.category, {
+          category: space.category,
+          icon: VENUE_CATEGORY_ICONS[space.category] || 'place',
           facilities: [],
         });
       }
-      const bookings = bookingsByFacility.get(f.id) || [];
-      byCategory.get(f.category).facilities.push({
-        id: f.id,
-        item: f.item,
-        season: f.season,
-        rate: Number(f.rate),
-        bookings,
-        is_free: bookings.length === 0,
+
+      byCategory.get(space.category).facilities.push({
+        id: resolved.id,
+        category: space.category,
+        item: space.item,
+        season: resolved.season,
+        calendar_season: resolved.calendar_season,
+        rate: resolved.rate,
+        bookings: bookings.map((b) => ({
+          ...b,
+          conflicts_slot: slotValid ? bookingOverlapsSlot(b, checkStart, checkEnd) : false,
+        })),
+        is_free,
+        is_free_for_slot,
         has_pending: bookings.some((b) => b.status === 'Pending'),
       });
     }
@@ -248,13 +290,15 @@ export const getVenueScheduleOverview = async (req, res) => {
     const venues = [...byCategory.values()];
     const pendingCount = bookingRows.filter((b) => b.status === 'Pending').length;
     const bookedCount = bookingRows.filter((b) => b.status === 'Approved').length;
-    const freeCount = facilityRows.filter((f) => !(bookingsByFacility.get(f.id)?.length)).length;
 
     res.status(200).json({
       date,
+      check_start: slotValid ? checkStart.slice(0, 5) : null,
+      check_end: slotValid ? checkEnd.slice(0, 5) : null,
       summary: {
-        totalSpaces: facilityRows.length,
-        freeToday: freeCount,
+        totalSpaces: spacesByKey.size,
+        noBookingsToday: noBookingsCount,
+        freeForSlot: slotValid ? freeForSlotCount : null,
         bookedToday: bookedCount,
         pendingRequests: pendingCount,
       },

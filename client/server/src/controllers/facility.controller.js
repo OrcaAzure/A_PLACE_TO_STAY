@@ -1,6 +1,7 @@
 import { pool } from '../config/db.js';
 import Facility from '../models/Facility.js';
 import { isEmpty } from '../utils/helpers.js';
+import { resolveVenueFacilityRow } from '../services/facility.service.js';
 
 const VALID_SEASONS = ['Regular', 'Peak', 'N/A'];
 
@@ -160,6 +161,30 @@ export const getVenueFacilities = async (req, res) => {
          FIELD(season, 'Regular', 'Peak', 'N/A') ASC`
     );
     res.status(200).json({ venues: groupVenueRows(rows) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/** Resolved venue rate for a physical space on a specific date. */
+export const getVenueRateQuote = async (req, res) => {
+  try {
+    const { category, item, date } = req.query;
+    if (isEmpty(category) || isEmpty(item) || isEmpty(date)) {
+      return res.status(400).json({ message: 'category, item, and date are required' });
+    }
+    const row = await resolveVenueFacilityRow(category, item, date);
+    if (!row) {
+      return res.status(404).json({ message: 'Venue space not found' });
+    }
+    res.status(200).json({
+      facility_id: row.id,
+      category: row.category,
+      item: row.item,
+      rate: row.rate,
+      season: row.season,
+      calendar_season: row.calendar_season,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

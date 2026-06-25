@@ -257,9 +257,24 @@
 
 .fac-panel .rooms-board-search--date {
   padding-left: 0.625rem;
+  padding-right: 0.625rem;
   width: auto;
-  max-width: 9.5rem;
+  min-width: 10.5rem;
+  max-width: none;
   flex: 0 0 auto;
+}
+
+.fac-panel .rooms-board-search--time {
+  padding: 0.4375rem 0.625rem;
+  width: auto;
+  min-width: 9.5rem;
+  max-width: none;
+  flex: 0 0 auto;
+}
+
+.fac-panel .rooms-date-bar {
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
 }
 
 .fac-panel .rooms-board-message { padding: 2.5rem 1.5rem; font-size: 1rem; }

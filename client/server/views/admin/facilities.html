@@ -33,10 +33,6 @@
       </nav>
 
       <div class="fac-actions" id="fac-toolbar">
-        <button type="button" data-open-venue-booking-wizard class="admin-crud-btn-primary shadow-sm hidden" data-venue-schedule-action>
-          <span class="material-symbols-outlined text-[20px]">add</span>
-          Book a venue
-        </button>
         <button type="button" data-catalog-edit-toggle class="admin-crud-btn-ghost shadow-sm hidden" aria-pressed="false">
           <span class="material-symbols-outlined text-[20px]">edit</span>
           Edit prices
@@ -135,59 +131,44 @@
 
       <header class="fac-panel-head">
         <div class="fac-panel-head__text">
-          <h2>Venue spaces</h2>
-          <p>Chapels, Prayer Mountain, Burdine Commons, and other bookable event areas — not overnight rooms.</p>
+          <h2>Venue schedule</h2>
+          <p>See bookings by date and time — venues are rented in time blocks, not always for the whole day. Pick a date and time range below to check what is free for that slot.</p>
         </div>
       </header>
 
-      <div class="admin-notice" role="note">
-        <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">event</span>
-        <div class="admin-notice__body">
-          <p>Guests book by <strong>date and time</strong>. Use the schedule to see what is open, or tap <strong>Book a venue</strong> to add a reservation for someone.</p>
+      <div id="venue-board-stats" class="rooms-board-stats">
+        <article class="rooms-stat"><span class="rooms-stat__value">…</span><span class="rooms-stat__label">Loading</span></article>
+      </div>
+
+      <div class="rooms-board-toolbar">
+        <div class="rooms-toolbar-head">
+          <div class="rooms-date-bar">
+            <input id="venue-schedule-date" type="date" class="rooms-board-search rooms-board-search--date" aria-label="View date" />
+            <input id="venue-schedule-start" type="time" class="rooms-board-search rooms-board-search--time" aria-label="Start time" value="09:00" />
+            <span class="rooms-date-sep" aria-hidden="true">→</span>
+            <input id="venue-schedule-end" type="time" class="rooms-board-search rooms-board-search--time" aria-label="End time" value="12:00" />
+            <button type="button" id="venue-schedule-go" class="rooms-toolbar-go">Go</button>
+            <button type="button" id="venue-schedule-today" class="rooms-toolbar-text-btn">Today</button>
+          </div>
+          <div class="rooms-board-search-wrap">
+            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+            <input id="venue-board-search" type="search" class="rooms-board-search" placeholder="Search space or category…" autocomplete="off" enterkeyhint="search" />
+          </div>
+        </div>
+        <div class="rooms-toolbar-filters">
+          <div class="rooms-filter-group" role="group" aria-label="Filter venue spaces">
+            <span class="rooms-filter-label">Show</span>
+            <button type="button" class="rooms-filter-chip is-active" data-venue-show="all" aria-pressed="true">All</button>
+            <button type="button" class="rooms-filter-chip" data-venue-show="open" aria-pressed="false">Free for slot</button>
+          </div>
+        </div>
+        <div class="rooms-board-meta">
+          <span id="venue-schedule-summary">Loading venue schedule…</span>
         </div>
       </div>
 
-      <div class="venue-spaces-subtabs" role="tablist" aria-label="Venue spaces views">
-        <button type="button" class="venue-spaces-subtab is-active" data-venue-subtab="schedule" role="tab" aria-selected="true">Schedule &amp; availability</button>
-        <button type="button" class="venue-spaces-subtab" data-venue-subtab="prices" role="tab" aria-selected="false">Venue prices</button>
-      </div>
-
-      <div id="venue-schedule-panel" data-venue-subpanel="schedule" class="space-y-4">
-        <div class="rooms-board-toolbar">
-          <div class="rooms-board-toolbar__row">
-            <label class="rooms-filter-label" for="venue-schedule-date">View date</label>
-            <input id="venue-schedule-date" type="date" class="rooms-board-search" style="max-width: 14rem; padding-left: 0.875rem;" />
-            <button type="button" class="rooms-filter-chip" data-venue-day="0">Today</button>
-            <button type="button" class="rooms-filter-chip" data-venue-day="1">Tomorrow</button>
-            <button type="button" class="rooms-filter-chip" data-venue-day="7">+7 days</button>
-            <button type="button" class="rooms-filter-chip" data-venue-show="all" aria-pressed="true">All spaces</button>
-            <button type="button" class="rooms-filter-chip" data-venue-show="open" aria-pressed="false">Open only</button>
-          </div>
-          <div class="rooms-board-meta">
-            <span id="venue-schedule-summary">Loading venue schedule…</span>
-          </div>
-        </div>
-        <div id="venue-schedule-mount">
-          <p class="rooms-board-message">Loading venue schedule…</p>
-        </div>
-      </div>
-
-      <div id="venue-prices-panel" data-venue-subpanel="prices" class="hidden">
-      <section class="fac-catalog-section">
-        <div class="fac-catalog-section__head">
-          <h3>Venue price list</h3>
-          <p>Rates for each space and package. Turn on <strong>Edit prices</strong> above to change a rate.</p>
-        </div>
-        <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="venues" role="note">
-          <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
-          <div class="admin-notice__body">
-            <p>Editing mode — tap <strong>Edit</strong> on any row, or <strong>Remove</strong> inside the popup to delete.</p>
-          </div>
-        </div>
-        <div id="venues-grid-mount" class="fac-catalog-section__body grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[120px]">
-          <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading venues…</p>
-        </div>
-      </section>
+      <div id="venue-schedule-mount">
+        <p class="rooms-board-message">Loading venue schedule…</p>
       </div>
 
     </div>
@@ -242,7 +223,6 @@
     import { bootstrapVenueScheduleBoard } from '/assets/js/features/admin-venue-board.js';
     import {
       initFacilityCatalog,
-      renderVenuesCatalog,
       renderMealsCatalog,
       renderExtrasCatalog,
       setCatalogToolbarTab,
@@ -258,42 +238,16 @@
       deferEnhancements: true,
     });
 
-    let allVenues = [];
     let allMeals = [];
     let allExtras = [];
     let activeFacTab = 'rooms';
-    let activeVenueSubTab = 'schedule';
-
-    function switchVenueSubTab(sub) {
-      activeVenueSubTab = sub;
-      document.querySelectorAll('[data-venue-subtab]').forEach((btn) => {
-        const on = btn.getAttribute('data-venue-subtab') === sub;
-        btn.classList.toggle('is-active', on);
-        btn.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
-      document.getElementById('venue-schedule-panel')?.classList.toggle('hidden', sub !== 'schedule');
-      document.getElementById('venue-prices-panel')?.classList.toggle('hidden', sub !== 'prices');
-      if (activeFacTab === 'venue-spaces') {
-        setCatalogToolbarTab(sub === 'prices' ? 'venues' : 'venue-spaces');
-        updateRoomsToolbar('venue-spaces');
-      }
-    }
 
     async function reloadCatalog() {
       const catalog = await getFacilitiesOverview();
-      allVenues = catalog.venues || [];
       allMeals = catalog.meals || [];
       allExtras = catalog.services || [];
-      renderVenuesCatalog(allVenues);
       renderMealsCatalog(allMeals);
       renderExtrasCatalog(allExtras);
-    }
-
-    function updateRoomsToolbar(tab) {
-      document.querySelectorAll('[data-venue-schedule-action]').forEach((el) => {
-        el.classList.toggle('hidden', tab !== 'venue-spaces' || activeVenueSubTab !== 'schedule');
-      });
-      syncFacToolbar();
     }
 
     function syncFacToolbar() {
@@ -314,35 +268,29 @@
       document.getElementById('fac-panel-meals')?.classList.toggle('hidden', tab !== 'meals');
       document.getElementById('fac-panel-extras')?.classList.toggle('hidden', tab !== 'extras');
       if (activeFacTab === 'venue-spaces') {
-        setCatalogToolbarTab(activeVenueSubTab === 'prices' ? 'venues' : 'venue-spaces');
+        setCatalogToolbarTab('venue-spaces');
       } else {
         setCatalogToolbarTab(tab);
       }
-      updateRoomsToolbar(tab);
+      syncFacToolbar();
     }
 
     initFacilityCatalog({ refresh: reloadCatalog });
 
     try {
       const catalog = await getFacilitiesOverview();
-      allVenues = catalog.venues || [];
       allMeals = catalog.meals || [];
       allExtras = catalog.services || [];
-      renderVenuesCatalog(allVenues);
       renderMealsCatalog(allMeals);
       renderExtrasCatalog(allExtras);
       setCatalogToolbarTab(activeFacTab);
-      updateRoomsToolbar(activeFacTab);
+      syncFacToolbar();
 
       await bootstrapRoomsBoard();
       await bootstrapVenueScheduleBoard();
 
       document.querySelectorAll('[data-fac-tab]').forEach((btn) => {
         btn.addEventListener('click', () => switchFacTab(btn.getAttribute('data-fac-tab')));
-      });
-
-      document.querySelectorAll('[data-venue-subtab]').forEach((btn) => {
-        btn.addEventListener('click', () => switchVenueSubTab(btn.getAttribute('data-venue-subtab')));
       });
 
       const { initAdminEnhancements } = await import('/assets/js/layout/animations.js');

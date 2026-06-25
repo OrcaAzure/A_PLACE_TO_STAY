@@ -126,6 +126,15 @@
   background: #fffbeb;
 }
 
+.venue-slot--conflict {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.venue-slot--conflict .venue-slot__times {
+  color: #b91c1c;
+}
+
 .venue-slot--free {
   display: flex;
   align-items: center;
@@ -135,6 +144,23 @@
   font-weight: 600;
   border-style: dashed;
   background: transparent;
+}
+
+.venue-space-row.is-busy {
+  border-left: 4px solid #ef4444;
+  background: #fff;
+}
+
+.fac-panel .rooms-board-search--time {
+  padding: 0.4375rem 0.625rem;
+  min-width: 9.5rem;
+  max-width: none;
+  flex: 0 0 auto;
+}
+
+/* WebKit truncates time unless the control has enough inline size */
+.fac-panel input[type="time"].rooms-board-search--time {
+  min-inline-size: 9.5rem;
 }
 
 .venue-slot__times {
@@ -167,12 +193,6 @@
   min-height: 2.25rem;
   padding: 0.375rem 0.75rem;
   font-size: 0.8125rem;
-}
-
-.venue-space-row__foot {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px dashed #e2e8f0;
 }
 
 .venue-space-row__foot .venue-book-btn {

@@ -1,10 +1,17 @@
 /**
- * Admin venue schedule — availability by date for chapels, Prayer Mountain, etc.
+ * Admin venue schedule — availability by date and time slot.
  */
 
 import { getVenueScheduleOverview, updateFacilityBooking } from '/assets/js/services/api.js';
 
-const state = { date: '', data: null, showOpenOnly: false };
+const state = {
+  date: '',
+  startTime: '09:00',
+  endTime: '12:00',
+  data: null,
+  showOpenOnly: false,
+  search: '',
+};
 
 function escapeHtml(str) {
   if (str == null) return '';
@@ -15,14 +22,23 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function debounce(fn, ms = 280) {
+  let t;
+  return (...args) => {
+    clearTimeout(t);
+    t = setTimeout(() => fn(...args), ms);
+  };
+}
+
 function dateOnly(d = new Date()) {
   return d.toISOString().slice(0, 10);
 }
 
-function addDays(base, days) {
-  const d = new Date(`${base}T12:00:00`);
-  d.setDate(d.getDate() + days);
-  return d.toISOString().slice(0, 10);
+function normalizeTime(value) {
+  if (!value) return '';
+  const raw = String(value).trim();
+  if (/^\d{1,2}:\d{2}:\d{2}$/.test(raw)) return raw.slice(0, 5);
+  return raw.slice(0, 5);
 }
 
 function formatDisplayDate(iso) {
@@ -34,15 +50,82 @@ function formatDisplayDate(iso) {
   });
 }
 
+function formatTimeRange(start, end) {
+  if (!start || !end) return '';
+  const fmt = (t) => {
+    const [h, m] = t.split(':').map(Number);
+    return new Date(2000, 0, 1, h, m).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
+function hasSlotCheck() {
+  return Boolean(state.data?.check_start && state.data?.check_end);
+}
+
+function renderStats(summary) {
+  const mount = document.getElementById('venue-board-stats');
+  if (!mount || !summary) return;
+
+  const slotOpen = summary.freeForSlot;
+  mount.innerHTML = `
+    <article class="rooms-stat">
+      <span class="rooms-stat__value">${summary.totalSpaces}</span>
+      <span class="rooms-stat__label">All spaces</span>
+    </article>
+    <article class="rooms-stat rooms-stat--vacant">
+      <span class="rooms-stat__value">${slotOpen != null ? slotOpen : summary.noBookingsToday ?? 0}</span>
+      <span class="rooms-stat__label">${slotOpen != null ? 'Free for slot' : 'No bookings'}</span>
+    </article>
+    <article class="rooms-stat rooms-stat--busy">
+      <span class="rooms-stat__value">${summary.bookedToday}</span>
+      <span class="rooms-stat__label">Booked slots</span>
+    </article>
+    <article class="rooms-stat rooms-stat--dirty">
+      <span class="rooms-stat__value">${summary.pendingRequests}</span>
+      <span class="rooms-stat__label">Pending</span>
+    </article>`;
+}
+
+function formatRateLine(f) {
+  const label = f.calendar_season || f.season || 'Regular';
+  return `${label} · ₱${Number(f.rate).toLocaleString('en-PH')}/hr`;
+}
+
+function spaceBadge(f) {
+  if (hasSlotCheck()) {
+    if (f.is_free_for_slot) {
+      return { text: 'Free for your slot', cls: 'venue-space-row__badge--free' };
+    }
+    return { text: 'Booked during slot', cls: 'venue-space-row__badge--booked' };
+  }
+  if (f.is_free) {
+    return { text: 'No bookings', cls: 'venue-space-row__badge--free' };
+  }
+  return {
+    text: `${f.bookings.length} booking${f.bookings.length === 1 ? '' : 's'}`,
+    cls: 'venue-space-row__badge--booked',
+  };
+}
+
+function emptyDayMessage() {
+  if (hasSlotCheck()) {
+    return '<li class="venue-slot venue-slot--free"><span class="material-symbols-outlined" aria-hidden="true">event_available</span> No bookings this day — free for your time slot</li>';
+  }
+  return '<li class="venue-slot venue-slot--free"><span class="material-symbols-outlined" aria-hidden="true">event_available</span> No bookings this day</li>';
+}
+
 function renderFacilityRow(f) {
+  const badge = spaceBadge(f);
   const bookingsHtml = f.bookings?.length
     ? f.bookings.map((b) => {
       const pending = b.status === 'Pending';
+      const conflict = b.conflicts_slot;
       return `
-        <li class="venue-slot${pending ? ' venue-slot--pending' : ''}">
+        <li class="venue-slot${pending ? ' venue-slot--pending' : ''}${conflict ? ' venue-slot--conflict' : ''}">
           <div class="venue-slot__times">${escapeHtml(b.start_label)} – ${escapeHtml(b.end_label)}</div>
           <div class="venue-slot__guest">${escapeHtml(b.guest_name)} · ${b.guest_count} guest${b.guest_count === 1 ? '' : 's'}</div>
-          <div class="venue-slot__status">${pending ? 'Awaiting approval' : 'Confirmed'}</div>
+          <div class="venue-slot__status">${conflict ? 'Overlaps your slot' : pending ? 'Awaiting approval' : 'Confirmed'}</div>
           ${pending ? `
             <div class="venue-slot__actions">
               <button type="button" class="dashboard-queue-btn dashboard-queue-btn--approve venue-approve" data-booking-id="${b.id}">Approve</button>
@@ -50,31 +133,59 @@ function renderFacilityRow(f) {
             </div>` : ''}
         </li>`;
     }).join('')
-    : '<li class="venue-slot venue-slot--free"><span class="material-symbols-outlined" aria-hidden="true">event_available</span> Open all day — no bookings yet</li>';
+    : emptyDayMessage();
+
+  const rowClass = hasSlotCheck()
+    ? (f.is_free_for_slot ? ' is-free' : ' is-busy')
+    : (f.is_free ? ' is-free' : '');
 
   return `
-    <article class="venue-space-row${f.is_free ? ' is-free' : ''}${f.has_pending ? ' has-pending' : ''}">
+    <article class="venue-space-row${rowClass}${f.has_pending ? ' has-pending' : ''}">
       <div class="venue-space-row__head">
         <div>
           <h4 class="venue-space-row__name">${escapeHtml(f.item)}</h4>
-          <p class="venue-space-row__rate">${escapeHtml(f.season)} · ₱${Number(f.rate).toLocaleString('en-PH')}</p>
+          <p class="venue-space-row__rate">${escapeHtml(formatRateLine(f))}</p>
         </div>
-        <span class="venue-space-row__badge${f.is_free ? ' venue-space-row__badge--free' : ' venue-space-row__badge--booked'}">
-          ${f.is_free ? 'Available' : `${f.bookings.length} booking${f.bookings.length === 1 ? '' : 's'}`}
-        </span>
+        <span class="venue-space-row__badge ${badge.cls}">${badge.text}</span>
       </div>
       <ul class="venue-slot-list">${bookingsHtml}</ul>
-      <div class="venue-space-row__foot">
-        <button type="button" class="admin-crud-btn-ghost venue-book-btn" data-venue-book-id="${f.id}">
-          <span class="material-symbols-outlined text-[18px]">add</span> Book this space
-        </button>
-      </div>
     </article>`;
 }
 
-function filterFacilities(facilities) {
-  if (!state.showOpenOnly) return facilities;
-  return facilities.filter((f) => f.is_free);
+function matchesSearch(f, category) {
+  const q = state.search.trim().toLowerCase();
+  if (!q) return true;
+  const hay = [f.item, f.category, f.calendar_season, f.season].join(' ').toLowerCase();
+  return hay.includes(q);
+}
+
+function matchesOpenFilter(f) {
+  if (!state.showOpenOnly) return true;
+  if (hasSlotCheck()) return f.is_free_for_slot;
+  return f.is_free;
+}
+
+function filterFacilities(facilities, category) {
+  let list = facilities;
+  if (state.showOpenOnly) list = list.filter((f) => matchesOpenFilter(f));
+  if (state.search.trim()) list = list.filter((f) => matchesSearch(f, category));
+  return list;
+}
+
+function countVisibleSpaces() {
+  if (!state.data?.venues) return 0;
+  return state.data.venues.reduce((n, group) => {
+    return n + filterFacilities(group.facilities, group.category).length;
+  }, 0);
+}
+
+function readSlotInputs() {
+  const dateInput = document.getElementById('venue-schedule-date');
+  const startInput = document.getElementById('venue-schedule-start');
+  const endInput = document.getElementById('venue-schedule-end');
+  state.date = dateInput?.value || state.date;
+  state.startTime = normalizeTime(startInput?.value || state.startTime);
+  state.endTime = normalizeTime(endInput?.value || state.endTime);
 }
 
 function renderSchedule() {
@@ -88,19 +199,25 @@ function renderSchedule() {
     return;
   }
 
-  if (summaryEl && data.summary) {
-    const s = data.summary;
-    const openLabel = state.showOpenOnly ? ' · showing open only' : '';
-    summaryEl.textContent = `${formatDisplayDate(data.date)} — ${s.freeToday} open · ${s.bookedToday} booked · ${s.pendingRequests} pending request${s.pendingRequests === 1 ? '' : 's'}${openLabel}`;
+  renderStats(data.summary);
+
+  const visible = countVisibleSpaces();
+  if (summaryEl) {
+    const openNote = state.showOpenOnly ? ' · free for slot only' : '';
+    const searchNote = state.search.trim() ? ` · matching “${state.search.trim()}”` : '';
+    const slotNote = hasSlotCheck()
+      ? ` · checking ${formatTimeRange(data.check_start, data.check_end)}`
+      : '';
+    summaryEl.textContent = `${formatDisplayDate(data.date)}${slotNote} · ${visible} space${visible === 1 ? '' : 's'} shown${openNote}${searchNote}`;
   }
 
   if (!data.venues?.length) {
-    mount.innerHTML = '<p class="rooms-board-message">No venue spaces configured yet. Add them under Venue prices.</p>';
+    mount.innerHTML = '<p class="rooms-board-message">No venue spaces configured yet.</p>';
     return;
   }
 
   const sections = data.venues.map((group) => {
-    const facilities = filterFacilities(group.facilities);
+    const facilities = filterFacilities(group.facilities, group.category);
     if (!facilities.length) return '';
     return `
     <section class="venue-category-block">
@@ -118,9 +235,9 @@ function renderSchedule() {
   if (!sections.length) {
     mount.innerHTML = `
       <div class="rooms-board-empty">
-        <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
-        <p class="rooms-board-empty__title">No open venue spaces</p>
-        <p class="rooms-board-empty__text">Everything is booked on this date. Try another day or turn off "Open only".</p>
+        <span class="material-symbols-outlined" aria-hidden="true">search_off</span>
+        <p class="rooms-board-empty__title">No spaces match</p>
+        <p class="rooms-board-empty__text">Try another date or time, turn off “Free for slot”, or clear your search.</p>
       </div>`;
     return;
   }
@@ -139,21 +256,49 @@ function setShowFilter(mode) {
 }
 
 async function loadSchedule(date) {
+  readSlotInputs();
   state.date = date || state.date || dateOnly();
-  const input = document.getElementById('venue-schedule-date');
-  if (input) input.value = state.date;
+
+  const dateInput = document.getElementById('venue-schedule-date');
+  const startInput = document.getElementById('venue-schedule-start');
+  const endInput = document.getElementById('venue-schedule-end');
+  if (dateInput) dateInput.value = state.date;
+  if (startInput) startInput.value = state.startTime;
+  if (endInput) endInput.value = state.endTime;
+
+  if (state.endTime <= state.startTime) {
+    const mount = document.getElementById('venue-schedule-mount');
+    if (mount) {
+      mount.innerHTML = '<p class="rooms-board-message rooms-board-message--error">End time must be after start time.</p>';
+    }
+    return;
+  }
 
   const mount = document.getElementById('venue-schedule-mount');
+  const goBtn = document.getElementById('venue-schedule-go');
   if (mount) mount.innerHTML = '<p class="rooms-board-message">Loading venue schedule…</p>';
+  if (goBtn) { goBtn.disabled = true; goBtn.textContent = '…'; }
 
   try {
-    state.data = await getVenueScheduleOverview(state.date);
+    state.data = await getVenueScheduleOverview(state.date, {
+      startTime: state.startTime,
+      endTime: state.endTime,
+    });
     renderSchedule();
   } catch (err) {
     if (mount) {
       mount.innerHTML = `<p class="rooms-board-message rooms-board-message--error">${escapeHtml(err.message || 'Could not load schedule.')}</p>`;
     }
+  } finally {
+    if (goBtn) { goBtn.disabled = false; goBtn.textContent = 'Go'; }
   }
+}
+
+function loadToday() {
+  const today = dateOnly();
+  const input = document.getElementById('venue-schedule-date');
+  if (input) input.value = today;
+  loadSchedule(today);
 }
 
 async function handleApprove(id) {
@@ -179,13 +324,49 @@ async function handleReject(id) {
 
 export function initVenueScheduleBoard() {
   const dateInput = document.getElementById('venue-schedule-date');
-  dateInput?.addEventListener('change', () => loadSchedule(dateInput.value));
+  const startInput = document.getElementById('venue-schedule-start');
+  const endInput = document.getElementById('venue-schedule-end');
+  const today = dateOnly();
+  if (dateInput) {
+    dateInput.min = today;
+    dateInput.value = today;
+  }
+  if (startInput && !startInput.value) startInput.value = '09:00';
+  if (endInput && !endInput.value) endInput.value = '12:00';
 
-  document.querySelectorAll('[data-venue-day]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const offset = Number(btn.getAttribute('data-venue-day') || 0);
-      loadSchedule(addDays(dateOnly(), offset));
-    });
+  document.getElementById('venue-schedule-go')?.addEventListener('click', () => {
+    loadSchedule(dateInput?.value || state.date);
+  });
+
+  document.getElementById('venue-schedule-today')?.addEventListener('click', loadToday);
+
+  dateInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      loadSchedule(dateInput.value);
+    }
+  });
+
+  startInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); loadSchedule(state.date); }
+  });
+  endInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); loadSchedule(state.date); }
+  });
+
+  const debouncedSearch = debounce((value) => {
+    state.search = value;
+    renderSchedule();
+  });
+
+  const searchInput = document.getElementById('venue-board-search');
+  searchInput?.addEventListener('input', (e) => debouncedSearch(e.target.value));
+  searchInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      state.search = searchInput.value || '';
+      renderSchedule();
+    }
   });
 
   document.querySelectorAll('[data-venue-show]').forEach((btn) => {
@@ -195,16 +376,6 @@ export function initVenueScheduleBoard() {
   });
 
   document.getElementById('venue-schedule-mount')?.addEventListener('click', (e) => {
-    const book = e.target.closest('.venue-book-btn');
-    if (book) {
-      window.dispatchEvent(new CustomEvent('venue-booking-wizard:open', {
-        detail: {
-          facilityId: Number(book.dataset.venueBookId),
-          eventDate: state.date,
-        },
-      }));
-      return;
-    }
     const approve = e.target.closest('.venue-approve');
     if (approve) {
       handleApprove(Number(approve.dataset.bookingId));
