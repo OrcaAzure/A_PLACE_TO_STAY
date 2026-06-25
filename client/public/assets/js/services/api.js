@@ -80,9 +80,23 @@ export async function getUserById(id) {
   return data.user;
 }
 
-export async function getRooms() {
-  const data = await apiRequest('/rooms');
+export async function getRooms(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.status && params.status !== 'all') qs.set('status', params.status);
+  if (params.building_id) qs.set('building_id', String(params.building_id));
+  if (params.search) qs.set('search', params.search);
+  const query = qs.toString();
+  const data = await apiRequest(`/rooms${query ? `?${query}` : ''}`);
   return data.rooms || [];
+}
+
+export async function getRoomsOverview(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.status && params.status !== 'all') qs.set('status', params.status);
+  if (params.building_id) qs.set('building_id', String(params.building_id));
+  if (params.search) qs.set('search', params.search);
+  const query = qs.toString();
+  return apiRequest(`/rooms/overview${query ? `?${query}` : ''}`);
 }
 
 export async function getRoomById(id) {

@@ -737,7 +737,31 @@ export function isManageFacilitiesModalOpen() {
 export async function openManageFacilitiesModal(options = {}) {
   const roomId = options.roomId != null ? Number(options.roomId) : null;
 
+  if (options.create) {
+    state.mode = 'create';
+    state.selectedId = null;
+    state.form = emptyForm();
+    state.mobileForm = true;
+    state.error = null;
+    state.message = null;
+    state.activeQuickSetup = null;
+  }
+
   if (state.isOpen) {
+    if (options.create) {
+      state.mode = 'create';
+      state.selectedId = null;
+      state.form = emptyForm();
+      state.mobileForm = true;
+      state.error = null;
+      state.message = null;
+      state.activeQuickSetup = null;
+      if (state.buildings.length) {
+        state.form.building_id = options.buildingId ?? state.buildings[0].id;
+      }
+      render();
+      return;
+    }
     if (roomId) {
       const match = state.rooms.find((r) => Number(r.id) === roomId);
       if (match) {
@@ -779,7 +803,10 @@ export async function openManageFacilitiesModal(options = {}) {
     }
   }
 
-  if (state.buildings.length && state.mode === 'create') {
+  if (options.create && state.buildings.length) {
+    state.form.building_id = options.buildingId ?? state.buildings[0].id;
+    render();
+  } else if (state.buildings.length && state.mode === 'create') {
     state.form.building_id = state.buildings[0].id;
   }
   window.dispatchEvent(new CustomEvent('manage-facilities:opened'));
@@ -1033,7 +1060,12 @@ export function initManageFacilitiesModal() {
   });
 
   window.addEventListener('manage-facilities:open', (e) => {
-    const { roomId, edit } = e.detail || {};
-    openManageFacilitiesModal({ roomId, edit: edit !== false });
+    const { roomId, edit, create, buildingId } = e.detail || {};
+    openManageFacilitiesModal({
+      roomId,
+      edit: edit !== false,
+      create: !!create,
+      buildingId,
+    });
   });
 }
