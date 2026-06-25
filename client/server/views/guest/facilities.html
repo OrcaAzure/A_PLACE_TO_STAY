@@ -205,14 +205,16 @@
         available: { label: 'Available', cls: 'bg-emerald-500 text-white', bookable: true },
         booked: { label: 'Booked', cls: 'bg-slate-600 text-white', bookable: false },
         too_small: { label: 'Too Small', cls: 'bg-amber-500 text-white', bookable: false },
-        maintenance: { label: 'Maintenance', cls: 'bg-red-500 text-white', bookable: false },
+        dirty: { label: 'Being cleaned', cls: 'bg-orange-500 text-white', bookable: false },
+        maintenance: { label: 'Out of order', cls: 'bg-red-500 text-white', bookable: false },
       };
       return map[a?.availability_status] || map.booked;
     }
     const map = {
       Available: { label: 'Available', cls: 'bg-emerald-500 text-white', bookable: true },
       Occupied: { label: 'Occupied', cls: 'bg-slate-600 text-white', bookable: false },
-      Maintenance: { label: 'Maintenance', cls: 'bg-red-500 text-white', bookable: false },
+      Dirty: { label: 'Being cleaned', cls: 'bg-orange-500 text-white', bookable: false },
+      Maintenance: { label: 'Out of order', cls: 'bg-red-500 text-white', bookable: false },
     };
     return map[room.status] || map.Occupied;
   }

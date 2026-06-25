@@ -6,9 +6,15 @@
   gap: 0.75rem;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 640px) {
   .rooms-board-stats {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .rooms-board-stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
   }
 }
 
@@ -38,9 +44,11 @@
   letter-spacing: 0.04em;
 }
 
-.rooms-stat--ready { border-left: 4px solid #10b981; }
+.rooms-stat--vacant { border-left: 4px solid #10b981; }
 .rooms-stat--busy { border-left: 4px solid #f59e0b; }
+.rooms-stat--dirty { border-left: 4px solid #f97316; }
 .rooms-stat--repair { border-left: 4px solid #ef4444; }
+.rooms-stat--ready { border-left: 4px solid #10b981; }
 
 .rooms-board-toolbar {
   background: #fff;
@@ -299,8 +307,10 @@
   border-radius: 9999px;
 }
 
+.rooms-building__count--vacant { background: #ecfdf5; color: #065f46; }
 .rooms-building__count--ready { background: #ecfdf5; color: #065f46; }
 .rooms-building__count--busy { background: #fffbeb; color: #92400e; }
+.rooms-building__count--dirty { background: #fff7ed; color: #c2410c; }
 .rooms-building__count--repair { background: #fef2f2; color: #991b1b; }
 
 .rooms-building__total {
@@ -402,19 +412,27 @@
   white-space: nowrap;
 }
 
+.rooms-status--vacant,
 .rooms-status--ready { background: #ecfdf5; color: #065f46; }
+.rooms-status--occupied,
 .rooms-status--busy { background: #fffbeb; color: #92400e; }
+.rooms-status--dirty { background: #fff7ed; color: #c2410c; }
+.rooms-status--out-of-order,
 .rooms-status--repair { background: #fef2f2; color: #991b1b; }
+
+.rooms-status-dot--vacant,
+.rooms-status-dot--ready { background: #10b981; }
+.rooms-status-dot--occupied,
+.rooms-status-dot--busy { background: #f59e0b; }
+.rooms-status-dot--dirty { background: #f97316; }
+.rooms-status-dot--out-of-order,
+.rooms-status-dot--repair { background: #ef4444; }
 
 .rooms-status-dot {
   width: 0.375rem;
   height: 0.375rem;
   border-radius: 9999px;
 }
-
-.rooms-status-dot--ready { background: #10b981; }
-.rooms-status-dot--busy { background: #f59e0b; }
-.rooms-status-dot--repair { background: #ef4444; }
 
 .rooms-card__setup {
   display: flex;

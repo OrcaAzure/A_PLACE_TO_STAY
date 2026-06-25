@@ -20,7 +20,7 @@ const EXTRA_CATEGORIES = [
 
 const SEASONS = ['Regular', 'Peak', 'N/A'];
 
-const TAB_PANEL = { venues: 'fac-panel-venues', meals: 'fac-panel-meals', extras: 'fac-panel-extras' };
+const TAB_PANEL = { venues: 'venue-prices-panel', meals: 'fac-panel-meals', extras: 'fac-panel-extras' };
 
 function peso(n) {
   return `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
@@ -376,6 +376,9 @@ function updateCatalogToolbar(tab) {
 
   const isCatalog = ['venues', 'meals', 'extras'].includes(tab);
   roomsBtn?.classList.toggle('hidden', tab !== 'rooms');
+  document.querySelectorAll('[data-rooms-tab-action]').forEach((el) => {
+    el.classList.toggle('hidden', tab !== 'rooms');
+  });
 
   editToggle?.classList.toggle('hidden', !isCatalog);
   if (editToggle && isCatalog) {
@@ -393,7 +396,9 @@ function updateCatalogToolbar(tab) {
   addExtra?.classList.toggle('hidden', tab !== 'extras');
 
   document.querySelectorAll('[data-catalog-edit-hint]').forEach((el) => {
-    const panelTab = el.closest('[id^="fac-panel-"]')?.id?.replace('fac-panel-', '');
+    const panelTab = el.getAttribute('data-catalog-panel')
+      || el.closest('[id^="fac-panel-"]')?.id?.replace('fac-panel-', '')
+      || el.closest('[data-catalog-panel]')?.getAttribute('data-catalog-panel');
     if (!panelTab || panelTab === 'rooms') return;
     el.classList.toggle('hidden', !catalogEditMode[panelTab]);
   });

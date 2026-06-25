@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
   <link rel="stylesheet" href="/assets/css/features/admin-crud-modal.css" />
   <link rel="stylesheet" href="/assets/css/features/admin-rooms-board.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-venue-board.css" />
   <style>
     #page-content .scrollbar-none::-webkit-scrollbar {
       display: none;
@@ -61,6 +62,34 @@
       padding: 1.25rem;
       text-align: center;
     }
+
+    .venue-spaces-subtabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      padding: 0.25rem;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 0.75rem;
+    }
+
+    .venue-spaces-subtab {
+      flex: 1 1 auto;
+      min-height: 2.75rem;
+      padding: 0.625rem 1rem;
+      border-radius: 0.5rem;
+      font-size: 0.9375rem;
+      font-weight: 600;
+      color: #64748b;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+
+    .venue-spaces-subtab.is-active {
+      background: #1a365d;
+      color: #fff;
+    }
   </style>
 </head>
 <body class="h-full bg-slate-50/50">
@@ -70,9 +99,9 @@
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div class="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-100 shadow-sm">
         <button type="button" data-fac-tab="rooms" class="fac-tab is-active">Rooms</button>
-        <button type="button" data-fac-tab="venues" class="fac-tab">Venues</button>
-        <button type="button" data-fac-tab="meals" class="fac-tab">Meals</button>
-        <button type="button" data-fac-tab="extras" class="fac-tab">Extras</button>
+        <button type="button" data-fac-tab="venue-spaces" class="fac-tab">Venue spaces</button>
+        <button type="button" data-fac-tab="meals" class="fac-tab">Meal prices</button>
+        <button type="button" data-fac-tab="extras" class="fac-tab">Extra fees</button>
       </div>
       <div class="flex flex-wrap items-center gap-2">
         <button type="button" id="rooms-board-add" class="admin-crud-btn-primary shadow-sm hidden" data-rooms-tab-action>
@@ -106,7 +135,7 @@
 
       <p class="rooms-board-hint">
         <span class="material-symbols-outlined" aria-hidden="true">info</span>
-        Rooms are grouped by building. Tap any room to change its setup (guest beds, group sleep, meeting space) or status. Use <strong>Add room</strong> for new units.
+        Rooms are grouped by building. Tap a room to change setup or status — <strong>Vacant</strong>, <strong>Occupied</strong>, <strong>Check-out / dirty</strong>, or <strong>Out of order</strong>.
       </p>
 
       <div id="rooms-board-stats" class="rooms-board-stats">
@@ -135,15 +164,19 @@
             </button>
             <button type="button" class="rooms-filter-chip" data-rooms-status="Available" aria-pressed="false">
               <span class="material-symbols-outlined text-emerald-600" aria-hidden="true">check_circle</span>
-              Ready
+              Vacant
             </button>
             <button type="button" class="rooms-filter-chip" data-rooms-status="Occupied" aria-pressed="false">
               <span class="material-symbols-outlined text-amber-500" aria-hidden="true">hotel</span>
-              In use
+              Occupied
+            </button>
+            <button type="button" class="rooms-filter-chip" data-rooms-status="Dirty" aria-pressed="false">
+              <span class="material-symbols-outlined text-orange-500" aria-hidden="true">cleaning_services</span>
+              Check-out / dirty
             </button>
             <button type="button" class="rooms-filter-chip" data-rooms-status="Maintenance" aria-pressed="false">
-              <span class="material-symbols-outlined text-rose-500" aria-hidden="true">build</span>
-              Repair
+              <span class="material-symbols-outlined text-rose-500" aria-hidden="true">block</span>
+              Out of order
             </button>
           </div>
           <div class="rooms-filter-group" role="group" aria-label="Filter by setup">
@@ -169,13 +202,42 @@
 
     </div>
 
-    <div id="fac-panel-venues" class="hidden space-y-4">
+    <div id="fac-panel-venue-spaces" class="hidden space-y-4">
+      <p class="rooms-board-hint">
+        <span class="material-symbols-outlined" aria-hidden="true">info</span>
+        <strong>Overnight rooms</strong> and <strong>bookable venue spaces</strong> (chapels, Prayer Mountain, Burdine Commons, etc.) are managed separately. Guests book venues by date &amp; time — use the schedule below to see what is free or already reserved.
+      </p>
+
+      <div class="venue-spaces-subtabs" role="tablist" aria-label="Venue spaces views">
+        <button type="button" class="venue-spaces-subtab is-active" data-venue-subtab="schedule" role="tab" aria-selected="true">Schedule &amp; availability</button>
+        <button type="button" class="venue-spaces-subtab" data-venue-subtab="prices" role="tab" aria-selected="false">Venue prices</button>
+      </div>
+
+      <div id="venue-schedule-panel" data-venue-subpanel="schedule" class="space-y-4">
+        <div class="rooms-board-toolbar">
+          <div class="rooms-board-toolbar__row">
+            <label class="rooms-filter-label" for="venue-schedule-date">View date</label>
+            <input id="venue-schedule-date" type="date" class="rooms-board-search" style="max-width: 14rem; padding-left: 0.875rem;" />
+            <button type="button" class="rooms-filter-chip" data-venue-day="0">Today</button>
+            <button type="button" class="rooms-filter-chip" data-venue-day="1">Tomorrow</button>
+            <button type="button" class="rooms-filter-chip" data-venue-day="7">+7 days</button>
+          </div>
+          <div class="rooms-board-meta">
+            <span id="venue-schedule-summary">Loading venue schedule…</span>
+          </div>
+        </div>
+        <div id="venue-schedule-mount">
+          <p class="rooms-board-message">Loading venue schedule…</p>
+        </div>
+      </div>
+
+      <div id="venue-prices-panel" data-venue-subpanel="prices" class="hidden space-y-4">
       <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100">
-          <h3 class="text-base font-semibold text-slate-800">Campus Venues</h3>
-          <p class="text-sm text-slate-500 mt-0.5">Browse venue packages and prices. Use <strong>Edit prices</strong> to change a rate, or <strong>Add venue</strong> for a new one.</p>
+          <h3 class="text-base font-semibold text-slate-800">Venue price list</h3>
+          <p class="text-sm text-slate-500 mt-0.5">Rates for chapels, Prayer Mountain, Burdine Commons, and other event spaces. Use <strong>Edit prices</strong> to change a rate.</p>
         </div>
-        <p class="catalog-edit-hint hidden" data-catalog-edit-hint>
+        <p class="catalog-edit-hint hidden" data-catalog-edit-hint data-catalog-panel="venues">
           <span class="material-symbols-outlined">info</span>
           Editing mode — tap <strong>Edit</strong> on any row to open the form, or use <strong>Remove</strong> inside the popup to delete.
         </p>
@@ -183,6 +245,8 @@
           <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading venues…</p>
         </div>
       </section>
+      </div>
+
     </div>
 
     <div id="fac-panel-meals" class="hidden space-y-4">
@@ -224,6 +288,7 @@
     import { initAppLayout } from '/assets/js/layout/ui.js';
     import { getFacilitiesOverview } from '/assets/js/services/api.js';
     import { bootstrapRoomsBoard } from '/assets/js/features/admin-rooms-board.js';
+    import { bootstrapVenueScheduleBoard } from '/assets/js/features/admin-venue-board.js';
     import {
       initFacilityCatalog,
       renderVenuesCatalog,
@@ -246,6 +311,21 @@
     let allMeals = [];
     let allExtras = [];
     let activeFacTab = 'rooms';
+    let activeVenueSubTab = 'schedule';
+
+    function switchVenueSubTab(sub) {
+      activeVenueSubTab = sub;
+      document.querySelectorAll('[data-venue-subtab]').forEach((btn) => {
+        const on = btn.getAttribute('data-venue-subtab') === sub;
+        btn.classList.toggle('is-active', on);
+        btn.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      document.getElementById('venue-schedule-panel')?.classList.toggle('hidden', sub !== 'schedule');
+      document.getElementById('venue-prices-panel')?.classList.toggle('hidden', sub !== 'prices');
+      if (activeFacTab === 'venue-spaces') {
+        setCatalogToolbarTab(sub === 'prices' ? 'venues' : 'venue-spaces');
+      }
+    }
 
     async function reloadCatalog() {
       const catalog = await getFacilitiesOverview();
@@ -269,10 +349,14 @@
         btn.classList.toggle('is-active', btn.getAttribute('data-fac-tab') === tab);
       });
       document.getElementById('fac-panel-rooms')?.classList.toggle('hidden', tab !== 'rooms');
-      document.getElementById('fac-panel-venues')?.classList.toggle('hidden', tab !== 'venues');
+      document.getElementById('fac-panel-venue-spaces')?.classList.toggle('hidden', tab !== 'venue-spaces');
       document.getElementById('fac-panel-meals')?.classList.toggle('hidden', tab !== 'meals');
       document.getElementById('fac-panel-extras')?.classList.toggle('hidden', tab !== 'extras');
-      setCatalogToolbarTab(tab);
+      if (tab === 'venue-spaces') {
+        setCatalogToolbarTab(activeVenueSubTab === 'prices' ? 'venues' : 'venue-spaces');
+      } else {
+        setCatalogToolbarTab(tab);
+      }
       updateRoomsToolbar(tab);
     }
 
@@ -294,9 +378,14 @@
       updateRoomsToolbar(activeFacTab);
 
       await bootstrapRoomsBoard();
+      await bootstrapVenueScheduleBoard();
 
       document.querySelectorAll('[data-fac-tab]').forEach((btn) => {
         btn.addEventListener('click', () => switchFacTab(btn.getAttribute('data-fac-tab')));
+      });
+
+      document.querySelectorAll('[data-venue-subtab]').forEach((btn) => {
+        btn.addEventListener('click', () => switchVenueSubTab(btn.getAttribute('data-venue-subtab')));
       });
 
       const { initAdminEnhancements } = await import('/assets/js/layout/animations.js');

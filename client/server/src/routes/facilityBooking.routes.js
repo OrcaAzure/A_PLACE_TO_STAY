@@ -5,12 +5,14 @@ import {
   createFacilityBooking,
   updateFacilityBooking,
   deleteFacilityBooking,
+  getVenueScheduleOverview,
 } from '../controllers/facilityBooking.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { requireRole, blockReadOnly } from '../middleware/role.middleware.js';
 
 const router = Router();
 
+router.get('/overview', requireAuth, getVenueScheduleOverview);
 router.get('/',      requireAuth,                                       getAllFacilityBookings);
 router.get('/:id',   requireAuth,                                       getFacilityBookingById);
 router.post('/',     requireAuth, blockReadOnly,                        createFacilityBooking);

@@ -365,6 +365,11 @@ export function normalizeUser(user) {
   };
 }
 
+export async function getVenueScheduleOverview(date) {
+  const d = date || new Date().toISOString().slice(0, 10);
+  return apiRequest(`/facility-bookings/overview?date=${encodeURIComponent(d)}`);
+}
+
 export async function getFacilityBookings() {
   const data = await apiRequest('/facility-bookings');
   return data.bookings || [];

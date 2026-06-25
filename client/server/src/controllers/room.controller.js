@@ -89,6 +89,7 @@ export const getRoomsOverview = async (req, res) => {
         COUNT(*) AS total,
         SUM(status = 'Available') AS available,
         SUM(status = 'Occupied') AS occupied,
+        SUM(status = 'Dirty') AS dirty,
         SUM(status = 'Maintenance') AS maintenance
       FROM rooms
     `);
@@ -113,6 +114,7 @@ export const getRoomsOverview = async (req, res) => {
           total: bRooms.length,
           available: bRooms.filter((r) => r.status === 'Available').length,
           occupied: bRooms.filter((r) => r.status === 'Occupied').length,
+          dirty: bRooms.filter((r) => r.status === 'Dirty').length,
           maintenance: bRooms.filter((r) => r.status === 'Maintenance').length,
         },
         rooms: bRooms,
@@ -140,6 +142,7 @@ export const getRoomsOverview = async (req, res) => {
         total: Number(summary.total || 0),
         available: Number(summary.available || 0),
         occupied: Number(summary.occupied || 0),
+        dirty: Number(summary.dirty || 0),
         maintenance: Number(summary.maintenance || 0),
       },
       buildings: buildings.filter((b) => b.summary.total > 0 || !where),

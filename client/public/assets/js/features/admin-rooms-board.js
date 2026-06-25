@@ -4,12 +4,7 @@
 
 import { getRoomsOverview } from '/assets/js/services/api.js';
 import { getRoomSetupMeta } from '/assets/js/features/manage-facilities.js';
-
-const STATUS_LABELS = {
-  Available: 'Ready',
-  Occupied: 'In use',
-  Maintenance: 'Repair',
-};
+import { roomStatusLabel, roomStatusMeta, ROOM_STATUS_VALUES } from '/assets/js/features/room-status.js';
 
 const state = {
   overview: null,
@@ -36,13 +31,11 @@ function escapeHtml(str) {
 }
 
 function statusTokens(status) {
-  if (status === 'Available') {
-    return { pill: 'rooms-status rooms-status--ready', dot: 'rooms-status-dot rooms-status-dot--ready' };
-  }
-  if (status === 'Occupied') {
-    return { pill: 'rooms-status rooms-status--busy', dot: 'rooms-status-dot rooms-status-dot--busy' };
-  }
-  return { pill: 'rooms-status rooms-status--repair', dot: 'rooms-status-dot rooms-status-dot--repair' };
+  const tone = roomStatusMeta(status).tone;
+  return {
+    pill: `rooms-status rooms-status--${tone}`,
+    dot: `rooms-status-dot rooms-status-dot--${tone}`,
+  };
 }
 
 function matchesSetupFilter(room, setupId) {
@@ -64,7 +57,7 @@ function filterRoomsClient(rooms) {
       room.building_name,
       room.room_type,
       getRoomSetupMeta(room).label,
-      STATUS_LABELS[room.status],
+      roomStatusLabel(room.status),
     ].join(' ').toLowerCase();
     return hay.includes(q);
   });
@@ -77,35 +70,38 @@ function renderStats(summary) {
   mount.innerHTML = `
     <article class="rooms-stat">
       <span class="rooms-stat__value">${summary.total}</span>
-      <span class="rooms-stat__label">Total rooms</span>
+      <span class="rooms-stat__label">All rooms</span>
     </article>
-    <article class="rooms-stat rooms-stat--ready">
+    <article class="rooms-stat rooms-stat--vacant">
       <span class="rooms-stat__value">${summary.available}</span>
-      <span class="rooms-stat__label">Ready now</span>
+      <span class="rooms-stat__label">Vacant</span>
     </article>
     <article class="rooms-stat rooms-stat--busy">
       <span class="rooms-stat__value">${summary.occupied}</span>
-      <span class="rooms-stat__label">In use</span>
+      <span class="rooms-stat__label">Occupied</span>
+    </article>
+    <article class="rooms-stat rooms-stat--dirty">
+      <span class="rooms-stat__value">${summary.dirty || 0}</span>
+      <span class="rooms-stat__label">Check-out / dirty</span>
     </article>
     <article class="rooms-stat rooms-stat--repair">
       <span class="rooms-stat__value">${summary.maintenance}</span>
-      <span class="rooms-stat__label">Under repair</span>
+      <span class="rooms-stat__label">Out of order</span>
     </article>`;
 }
 
 function renderRoomCard(room) {
   const setup = getRoomSetupMeta(room);
   const tokens = statusTokens(room.status);
-  const statusLabel = STATUS_LABELS[room.status] || room.status;
-  const building = room.building_name || 'Building';
+  const label = roomStatusLabel(room.status);
 
   return `
-    <button type="button" class="rooms-card" data-room-id="${room.id}" aria-label="Open ${escapeHtml(room.room_number)} in ${escapeHtml(building)}">
+    <button type="button" class="rooms-card" data-room-id="${room.id}" aria-label="Open room ${escapeHtml(room.room_number)}">
       <div class="rooms-card__top">
         <span class="rooms-card__number">${escapeHtml(room.room_number)}</span>
         <span class="${tokens.pill}">
           <span class="${tokens.dot}" aria-hidden="true"></span>
-          ${escapeHtml(statusLabel)}
+          ${escapeHtml(label)}
         </span>
       </div>
       <p class="rooms-card__setup">
@@ -135,9 +131,10 @@ function renderBuildingSection(building) {
           </div>
         </div>
         <div class="rooms-building__counts">
-          <span class="rooms-building__count rooms-building__count--ready" title="Ready">${s.available ?? 0} ready</span>
-          <span class="rooms-building__count rooms-building__count--busy" title="In use">${s.occupied ?? 0} in use</span>
-          ${s.maintenance ? `<span class="rooms-building__count rooms-building__count--repair" title="Repair">${s.maintenance} repair</span>` : ''}
+          <span class="rooms-building__count rooms-building__count--vacant">${s.available ?? 0} vacant</span>
+          <span class="rooms-building__count rooms-building__count--busy">${s.occupied ?? 0} occupied</span>
+          ${s.dirty ? `<span class="rooms-building__count rooms-building__count--dirty">${s.dirty} dirty</span>` : ''}
+          ${s.maintenance ? `<span class="rooms-building__count rooms-building__count--repair">${s.maintenance} out of order</span>` : ''}
           <span class="rooms-building__total">${rooms.length} shown</span>
           <span class="material-symbols-outlined rooms-building__chevron" aria-hidden="true">expand_more</span>
         </div>
@@ -287,7 +284,6 @@ export function initRoomsBoard() {
 
   document.getElementById('rooms-board-expand-all')?.addEventListener('click', expandAll);
   document.getElementById('rooms-board-collapse-all')?.addEventListener('click', collapseAll);
-
   document.getElementById('rooms-board-add')?.addEventListener('click', () => openAddRoom());
 
   document.getElementById('rooms-board-mount')?.addEventListener('click', (e) => {
@@ -314,6 +310,4 @@ export async function bootstrapRoomsBoard() {
   await loadBoard();
 }
 
-export function refreshRoomsBoard() {
-  return loadBoard();
-}
+export { ROOM_STATUS_VALUES };
