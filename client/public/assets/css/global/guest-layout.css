@@ -1,401 +1,142 @@
 /**
- * Guest portal — grid shell so sidebar never overlaps main content.
+ * Guest portal — mobile bottom nav + safe-area polish (admin shell markup).
  */
 
 :root {
-  --guest-sidebar-width: 260px;
-  --guest-header-height: 4rem;
-  --guest-bottom-nav-height: 5.75rem;
+  --guest-bottom-nav-height: 4.75rem;
   --guest-safe-top: env(safe-area-inset-top, 0px);
   --guest-safe-bottom: env(safe-area-inset-bottom, 0px);
   --guest-safe-left: env(safe-area-inset-left, 0px);
   --guest-safe-right: env(safe-area-inset-right, 0px);
 }
 
-.guest-shell {
-  min-height: 100dvh;
-  min-height: 100vh;
-  overflow-x: hidden;
-  background-color: #F8FAFC;
-  --guest-gutter-x: max(1rem, var(--guest-safe-left));
-  padding-left: var(--guest-safe-left);
-  padding-right: var(--guest-safe-right);
+/* ── Guest portal overrides on shared admin chrome ── */
+.admin-shell.guest-portal .admin-status-badge {
+  display: none !important;
 }
 
-@media (min-width: 768px) {
-  .guest-shell {
-    --guest-gutter-x: 1.5rem;
-  }
-}
-
-/* ── Sidebar — collapsible with slide animation ── */
-.guest-shell > aside.guest-sidebar {
-  width: var(--guest-sidebar-width);
-  overflow: hidden;
-  flex-shrink: 0;
-  transition:
-    transform 0.32s cubic-bezier(0.4, 0, 0.2, 1),
-    width 0.32s cubic-bezier(0.4, 0, 0.2, 1),
-    opacity 0.24s ease,
-    padding 0.32s cubic-bezier(0.4, 0, 0.2, 1),
-    border-color 0.24s ease;
-}
-
-.guest-brand-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 1.5rem;
-  padding-left: 0.25rem;
-  padding-right: 0.25rem;
-}
-
-.guest-sidebar-collapse-btn,
-.guest-sidebar-open-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 2.5rem;
-  min-height: 2.5rem;
-  padding: 0.375rem;
-  border: none;
-  border-radius: 0.5rem;
-  background: transparent;
-  color: #4A5568;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.guest-sidebar-collapse-btn:hover,
-.guest-sidebar-open-btn:hover {
-  background: rgba(26, 54, 93, 0.08);
-  color: #1A365D;
-}
-
-.guest-sidebar-collapse-btn .material-symbols-outlined,
-.guest-sidebar-open-btn .material-symbols-outlined {
-  font-size: 1.375rem !important;
-}
-
-.guest-sidebar-open-btn {
-  display: none;
-  flex-shrink: 0;
-}
-
-.guest-shell > aside.guest-sidebar .guest-brand-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  flex-shrink: 0;
-  border-radius: 0.625rem;
-  background: linear-gradient(145deg, #1A365D 0%, #2C5282 100%);
-  color: #fff;
-  font-size: 1.125rem;
-  font-weight: 800;
-  box-shadow: 0 2px 8px rgba(26, 54, 93, 0.2);
-}
-
-.guest-shell > aside.guest-sidebar .guest-brand-block {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-width: 0;
-  flex: 1;
-  margin-bottom: 0;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.guest-shell > aside.guest-sidebar .guest-brand-text {
-  min-width: 0;
-}
-
-.guest-shell > aside.guest-sidebar nav a:hover {
-  background: rgba(26, 54, 93, 0.08);
-}
-
-/* ── Header ── */
-.guest-header {
-  height: var(--guest-header-height);
-  z-index: 30;
-  background: rgba(255, 255, 255, 0.92);
+.admin-shell.guest-portal .admin-app-header {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 
-.guest-header .guest-header-inner {
-  position: relative;
-  min-width: 0;
-  width: 100%;
-  gap: 0.5rem;
-  padding-left: var(--guest-gutter-x) !important;
-  padding-right: var(--guest-gutter-x) !important;
+@media (max-width: 639px) {
+  .admin-shell.guest-portal .admin-page-subtitle {
+    display: none;
+  }
+
+  .admin-shell.guest-portal .admin-page-title {
+    font-size: 1.0625rem;
+    max-width: 9.5rem;
+  }
+
+  .admin-shell.guest-portal .admin-user-chip__text {
+    display: none !important;
+  }
+
+  .admin-shell.guest-portal #page-content {
+    padding: 1rem max(1rem, var(--guest-safe-left)) calc(var(--guest-bottom-nav-height) + var(--guest-safe-bottom) + 0.75rem) max(1rem, var(--guest-safe-right));
+    gap: 1.25rem;
+  }
+
+  .admin-shell.guest-portal #page-content .bg-white.p-6,
+  .admin-shell.guest-portal #page-content section.p-6 {
+    padding: 1rem;
+  }
+
+  .admin-shell.guest-portal #page-content > .max-w-container-max {
+    padding-left: 0;
+    padding-right: 0;
+  }
 }
 
-.guest-header .guest-header-title {
-  min-width: 0;
-  flex: 1 1 auto;
-  gap: 0.75rem !important;
+@media (min-width: 640px) and (max-width: 1023px) {
+  .admin-shell.guest-portal #page-content {
+    padding-bottom: calc(var(--guest-bottom-nav-height) + var(--guest-safe-bottom) + 1rem);
+  }
 }
 
-.guest-shell.sidebar-collapsed .guest-header .guest-sidebar-open-btn {
-  flex-shrink: 0;
-}
-
-.guest-header .guest-header-title h2 {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.guest-header .guest-header-actions {
-  flex-shrink: 0;
-  min-width: 0;
-  gap: 0.5rem;
-}
-
-.guest-header .guest-user-block {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.guest-header .js-role-badge {
-  max-width: 7.5rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ── Main ── */
-.guest-main {
-  min-width: 0;
-  width: 100%;
-  max-width: 100%;
-  box-sizing: border-box;
-  padding-top: calc(var(--guest-header-height) + var(--guest-safe-top) + 0.75rem);
-  padding-bottom: calc(var(--guest-bottom-nav-height) + var(--guest-safe-bottom));
-}
-
-.guest-footer {
-  width: 100%;
-  min-width: 0;
-}
-
-/* ── Mobile: fixed chrome + Safari-safe layout ── */
 @media (max-width: 1023px) {
-  .guest-header {
+  .admin-shell.guest-portal .admin-app-header {
+    padding-top: var(--guest-safe-top);
+  }
+
+  .admin-shell.guest-portal .admin-app-header__inner {
+    padding-left: max(1rem, var(--guest-safe-left));
+    padding-right: max(1rem, var(--guest-safe-right));
+  }
+}
+
+/* ── Mobile bottom navigation ── */
+.guest-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .guest-bottom-nav {
     position: fixed;
-    top: 0;
+    bottom: 0;
     left: 0;
     right: 0;
-    padding-top: var(--guest-safe-top);
-    height: calc(var(--guest-header-height) + var(--guest-safe-top));
-  }
-
-  .guest-header .guest-header-inner {
-    min-height: var(--guest-header-height);
-    flex-wrap: nowrap;
-    overflow: visible;
-  }
-
-  .guest-header .guest-header-title h2 {
-    max-width: 42vw;
-  }
-
-  .guest-header .guest-header-actions {
+    z-index: 35;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
     gap: 0.25rem;
+    padding: 0.375rem max(0.5rem, var(--guest-safe-left)) calc(0.375rem + var(--guest-safe-bottom)) max(0.5rem, var(--guest-safe-right));
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid rgba(203, 213, 224, 0.85);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 -4px 24px rgba(26, 54, 93, 0.06);
   }
 
-  .guest-header .guest-header-actions button {
-    min-width: 2.75rem;
-    min-height: 2.75rem;
-    flex-shrink: 0;
+  .guest-bottom-nav-link {
+    border-radius: 0.75rem;
+    min-width: 0;
   }
 
-  .guest-header .guest-user-block {
-    max-width: 50%;
+  .guest-bottom-nav-link .material-symbols-outlined {
+    font-size: 1.35rem !important;
   }
 
-  .guest-header .guest-user-block .text-right {
-    max-width: 6.5rem;
-  }
-
-  .guest-header .guest-user-block .text-right p {
+  .guest-bottom-nav-label {
+    line-height: 1.1;
+    text-align: center;
+    max-width: 4.5rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .guest-header .js-user-avatar {
-    width: 2.25rem;
-    height: 2.25rem;
-    flex-shrink: 0;
+  .guest-bottom-nav-link.is-active {
+    background: rgba(26, 54, 93, 0.08);
+    color: var(--color-primary, #1A365D);
   }
 
-  .guest-bottom-nav {
-    padding-bottom: calc(0.75rem + var(--guest-safe-bottom));
-    padding-left: var(--guest-safe-left);
-    padding-right: var(--guest-safe-right);
+  .guest-bottom-nav-link.is-active .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
   }
 
-  .guest-bottom-nav a {
-    min-height: 2.75rem;
-    min-width: 3.5rem;
+  .guest-bottom-nav-link:not(.is-active):hover,
+  .guest-bottom-nav-link:not(.is-active):focus-visible {
+    background: rgba(26, 54, 93, 0.04);
+    color: var(--color-primary, #1A365D);
   }
 }
 
-/* ── Desktop: CSS grid — sidebar always full width ── */
 @media (min-width: 1024px) {
-  .guest-shell {
-    display: grid;
-    grid-template-columns: var(--guest-sidebar-width) minmax(0, 1fr);
-    grid-template-rows: auto 1fr auto;
-    min-height: 100vh;
-    transition: grid-template-columns 0.32s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .guest-shell.sidebar-collapsed {
-    grid-template-columns: 0 minmax(0, 1fr);
-  }
-
-  .guest-sidebar-collapse-btn {
-    display: flex;
-  }
-
-  .guest-shell.sidebar-collapsed .guest-sidebar-open-btn {
-    display: flex;
-  }
-
-  .guest-shell.sidebar-collapsed > aside.guest-sidebar {
-    width: 0;
-    min-width: 0;
-    padding-left: 0;
-    padding-right: 0;
-    border-right-color: transparent;
-    opacity: 0;
-    transform: translateX(-1rem);
-    pointer-events: none;
-    overflow: hidden;
-  }
-
-  .guest-shell.sidebar-collapsed > aside.guest-sidebar .guest-brand-text,
-  .guest-shell.sidebar-collapsed > aside.guest-sidebar .guest-nav-label,
-  .guest-shell.sidebar-collapsed > aside.guest-sidebar .js-portal-label,
-  .guest-shell.sidebar-collapsed > aside.guest-sidebar .guest-sidebar-footer {
-    opacity: 0;
-  }
-
-  .guest-shell > aside.guest-sidebar {
-    grid-column: 1;
-    grid-row: 1 / -1;
-    position: relative !important;
-    top: auto !important;
-    left: auto !important;
-    height: auto !important;
-    min-height: 100vh;
-    width: var(--guest-sidebar-width);
-    padding-left: 1.25rem;
-    padding-right: 0.875rem;
-  }
-
-  .guest-shell > aside.guest-sidebar .guest-brand-text,
-  .guest-shell > aside.guest-sidebar .guest-nav-label,
-  .guest-shell > aside.guest-sidebar .js-portal-label {
-    opacity: 1;
-    max-width: 12rem;
-    overflow: hidden;
-    white-space: nowrap;
-    pointer-events: auto;
-    transition: opacity 0.22s ease;
-  }
-
-  .guest-shell > aside.guest-sidebar .guest-sidebar-footer {
-    opacity: 1;
-    max-height: none;
-    padding-top: 1rem !important;
-    overflow: visible;
-    pointer-events: auto;
-  }
-
-  .guest-shell > aside.guest-sidebar nav a {
-    justify-content: flex-start;
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
-  .guest-header {
-    grid-column: 2;
-    grid-row: 1;
-    position: sticky !important;
-    top: 0;
-    left: auto !important;
-    right: auto !important;
-    border-bottom: 1px solid var(--color-outline-variant, #CBD5E0);
-    box-shadow: 0 1px 0 rgba(26, 54, 93, 0.04);
-  }
-
-  /* Horizontal padding comes from px-margin-mobile / md:px-gutter on guest-header-inner — same as guest-main */
-
-  .guest-main {
-    grid-column: 2;
-    grid-row: 2;
-    margin-left: 0 !important;
-    width: 100% !important;
-    max-width: none !important;
-    padding-top: 1.5rem;
-    padding-bottom: 1.5rem;
-    min-height: 0;
-  }
-
-  .guest-footer {
-    grid-column: 2;
-    grid-row: 3;
-    margin-left: 0 !important;
-  }
-}
-
-@media (max-width: 1023px) {
-  .guest-sidebar-collapse-btn,
-  .guest-sidebar-open-btn {
+  .guest-bottom-nav {
     display: none !important;
-  }
-}
-
-@media (max-width: 640px) {
-  .guest-header .js-role-badge {
-    display: none !important;
-  }
-}
-
-/* Bottom nav */
-.guest-bottom-nav a:hover {
-  background: rgba(26, 54, 93, 0.06);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .guest-shell,
-  .guest-shell > aside.guest-sidebar,
-  .guest-header,
-  .guest-main,
-  .guest-footer,
-  .guest-shell > aside.guest-sidebar nav a,
-  .guest-bottom-nav a {
-    transition: none !important;
   }
 }
 
 /* ── Page navigation — static (no fade/slide) ── */
 .guest-main,
 .guest-header,
-.admin-shell #page-content,
-.admin-shell main > header.admin-app-header,
-.admin-shell main > header.anim-static {
+.admin-shell.guest-portal #page-content,
+.admin-shell.guest-portal main > header.admin-app-header,
+.admin-shell.guest-portal main > header.anim-static {
   opacity: 1;
   transform: none;
 }
@@ -403,8 +144,9 @@
 @media (prefers-reduced-motion: reduce) {
   .guest-main,
   .guest-header,
-  .admin-shell #page-content,
-  .admin-shell main > header {
+  .admin-shell.guest-portal #page-content,
+  .admin-shell.guest-portal main > header,
+  .guest-bottom-nav a {
     transition: none !important;
     transform: none !important;
   }

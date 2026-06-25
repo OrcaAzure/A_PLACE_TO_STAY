@@ -5,7 +5,7 @@ import { initReservationWizard, isReservationWizardOpen, closeReservationWizard 
 import { initGroupWizard, isGroupWizardOpen, closeGroupWizard } from '/assets/js/features/group-reservation-wizard.js';
 import { initTabGroup, switchTabPanel } from '/assets/js/layout/tabs.js';
 import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDrawerOpen, animateModalOpen, animateNotificationsPanel } from '/assets/js/layout/animations.js';
-import { initAdminPageNavTransitions } from '/assets/js/layout/page-transitions.js';
+import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
 
 export const ADMIN_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard.html' },
@@ -178,8 +178,27 @@ function buildAdminShell({
   `;
 }
 
+function guestBottomNavLinkClass(active, id) {
+  const base = 'guest-bottom-nav-link flex flex-col items-center justify-center gap-0.5 flex-1 min-h-[3rem] px-1 py-2 text-[0.6875rem] font-medium no-underline transition-colors';
+  return active === id
+    ? `${base} is-active text-primary`
+    : `${base} text-on-surface-variant`;
+}
+
+function renderGuestBottomNav(items, active) {
+  return `
+    <nav class="guest-bottom-nav lg:hidden" aria-label="Mobile navigation">
+      ${items.map((item) => `
+        <a class="${guestBottomNavLinkClass(active, item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}">
+          <span class="material-symbols-outlined text-[1.35rem] leading-none">${item.icon}</span>
+          <span class="guest-bottom-nav-label">${item.label}</span>
+        </a>
+      `).join('')}
+    </nav>`;
+}
+
 function buildGuestShell(options) {
-  return buildAdminShell({
+  const shell = buildAdminShell({
     ...options,
     navItems: GUEST_NAV,
     brandHref: '/guest/dashboard.html',
@@ -190,15 +209,20 @@ function buildGuestShell(options) {
       notifications: options.templates.notifications,
     },
   });
+  return `${shell}${renderGuestBottomNav(GUEST_NAV, options.activePage)}`;
 }
 
 function updateActiveNav(activePage, navItems = ADMIN_NAV) {
-  document.querySelectorAll('#app-sidebar nav a').forEach((link) => {
+  document.querySelectorAll('#app-sidebar nav a, .guest-bottom-nav a').forEach((link) => {
     const href = link.getAttribute('href') || '';
     const page = href.split('/').pop() || '';
     const id = navItems.find((item) => item.href.endsWith(page))?.id;
     const active = id === activePage;
-    link.className = navLinkClass(active, id || '');
+    if (link.closest('.guest-bottom-nav')) {
+      link.className = guestBottomNavLinkClass(active, id || '');
+    } else {
+      link.className = navLinkClass(active, id || '');
+    }
     link.setAttribute('aria-current', active ? 'page' : 'false');
   });
 }
@@ -267,7 +291,7 @@ export async function initAppLayout(config = {}) {
   const existingSidebar = document.getElementById('app-sidebar');
 
   if (existingSidebar) {
-    document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
+    document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${isGuest ? ' guest-portal' : ''}${collapsed ? ' sidebar-collapsed' : ''}`;
     updateActiveNav(activePage, navItems);
     updateAdminHeader({ title, subtitle, userName, userRole, userInitial });
     lockStaticChrome();
@@ -308,7 +332,7 @@ export async function initAppLayout(config = {}) {
   if (preservedNodes.childNodes.length) {
     document.body.appendChild(preservedNodes);
   }
-  document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
+  document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${isGuest ? ' guest-portal' : ''}${collapsed ? ' sidebar-collapsed' : ''}`;
 
   bindLayoutEvents({ isGuest });
   initSidebarCollapse();
@@ -323,6 +347,7 @@ export async function initAppLayout(config = {}) {
     lockStaticChrome();
     if (!deferEnhancements) initAdminEnhancements().catch(() => releaseChromeBoot());
   } else {
+    initGuestPageNavTransitions();
     releaseChromeBoot();
   }
 }

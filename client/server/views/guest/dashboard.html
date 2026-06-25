@@ -2,7 +2,7 @@
 <html class="h-full" lang="en">
 <head>
     <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Dashboard | AptSpace Guest</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="/assets/js/config/tailwind-theme-base.js"></script>
@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="/assets/css/components/components.css" />
     <link rel="stylesheet" href="/assets/css/global/responsive.css" />
     <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
+    <link rel="stylesheet" href="/assets/css/global/guest-layout.css" />
     <style>
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         .reveal { opacity: 0; animation: fadeInUp .5s cubic-bezier(.22,.61,.36,1) forwards; }
@@ -25,7 +26,7 @@
 
 <div id="page-content">
     <section class="mb-10 reveal">
-        <div class="relative overflow-hidden rounded-xl bg-primary-container p-8 md:p-10 shadow-lg text-on-primary-container">
+        <div class="relative overflow-hidden rounded-xl bg-primary-container p-5 sm:p-8 md:p-10 shadow-lg text-on-primary-container">
             <div class="relative z-10 max-w-2xl">
                 <h2 class="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl mb-4" id="welcome-message">
                     Welcome back!

@@ -159,6 +159,12 @@ export async function initLandingPage() {
   initMobileMenu();
   initLandingSearch();
 
+  document.querySelectorAll('.lp-facility-card img').forEach((img) => {
+    img.addEventListener('error', () => {
+      img.style.display = 'none';
+    }, { once: true });
+  });
+
   if (prefersReducedMotion()) {
     revealStatic();
     return;

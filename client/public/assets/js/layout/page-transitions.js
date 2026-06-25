@@ -76,9 +76,9 @@ function bindPortalNav({ navSelector, contentSelector, headerSelector, allowedPa
 
 export function initGuestPageNavTransitions() {
   bindPortalNav({
-    navSelector: '.guest-sidebar nav a, .guest-bottom-nav a',
-    contentSelector: '.guest-main',
-    headerSelector: '.guest-header',
+    navSelector: '#app-sidebar nav a, .guest-bottom-nav a',
+    contentSelector: '#page-content',
+    headerSelector: 'main > header',
     allowedPages: GUEST_PAGES,
   });
 }
