@@ -368,17 +368,12 @@ export function renderExtrasCatalog(services) {
 }
 
 function updateCatalogToolbar(tab) {
-  const roomsBtn = document.querySelector('[data-open-manage-facilities]');
   const editToggle = document.querySelector('[data-catalog-edit-toggle]');
   const addVenue = document.querySelector('[data-catalog-add="venue"]');
   const addMeal = document.querySelector('[data-catalog-add="meal"]');
   const addExtra = document.querySelector('[data-catalog-add="extra"]');
 
   const isCatalog = ['venues', 'meals', 'extras'].includes(tab);
-  roomsBtn?.classList.toggle('hidden', tab !== 'rooms');
-  document.querySelectorAll('[data-rooms-tab-action]').forEach((el) => {
-    el.classList.toggle('hidden', tab !== 'rooms');
-  });
 
   editToggle?.classList.toggle('hidden', !isCatalog);
   if (editToggle && isCatalog) {
@@ -402,6 +397,8 @@ function updateCatalogToolbar(tab) {
     if (!panelTab || panelTab === 'rooms') return;
     el.classList.toggle('hidden', !catalogEditMode[panelTab]);
   });
+
+  if (typeof window.syncFacToolbar === 'function') window.syncFacToolbar();
 }
 
 export function setCatalogToolbarTab(tab) {

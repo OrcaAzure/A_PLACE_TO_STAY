@@ -4,7 +4,7 @@
 
 import { getVenueScheduleOverview, updateFacilityBooking } from '/assets/js/services/api.js';
 
-const state = { date: '', data: null };
+const state = { date: '', data: null, showOpenOnly: false };
 
 function escapeHtml(str) {
   if (str == null) return '';
@@ -72,6 +72,11 @@ function renderFacilityRow(f) {
     </article>`;
 }
 
+function filterFacilities(facilities) {
+  if (!state.showOpenOnly) return facilities;
+  return facilities.filter((f) => f.is_free);
+}
+
 function renderSchedule() {
   const mount = document.getElementById('venue-schedule-mount');
   const summaryEl = document.getElementById('venue-schedule-summary');
@@ -85,7 +90,8 @@ function renderSchedule() {
 
   if (summaryEl && data.summary) {
     const s = data.summary;
-    summaryEl.textContent = `${formatDisplayDate(data.date)} — ${s.freeToday} open · ${s.bookedToday} booked · ${s.pendingRequests} pending request${s.pendingRequests === 1 ? '' : 's'}`;
+    const openLabel = state.showOpenOnly ? ' · showing open only' : '';
+    summaryEl.textContent = `${formatDisplayDate(data.date)} — ${s.freeToday} open · ${s.bookedToday} booked · ${s.pendingRequests} pending request${s.pendingRequests === 1 ? '' : 's'}${openLabel}`;
   }
 
   if (!data.venues?.length) {
@@ -93,16 +99,43 @@ function renderSchedule() {
     return;
   }
 
-  mount.innerHTML = data.venues.map((group) => `
+  const sections = data.venues.map((group) => {
+    const facilities = filterFacilities(group.facilities);
+    if (!facilities.length) return '';
+    return `
     <section class="venue-category-block">
       <header class="venue-category-block__head">
         <span class="material-symbols-outlined" aria-hidden="true">${escapeHtml(group.icon || 'place')}</span>
         <h3>${escapeHtml(group.category)}</h3>
+        <span class="venue-category-block__count">${facilities.length} space${facilities.length === 1 ? '' : 's'}</span>
       </header>
       <div class="venue-category-block__list">
-        ${group.facilities.map(renderFacilityRow).join('')}
+        ${facilities.map(renderFacilityRow).join('')}
       </div>
-    </section>`).join('');
+    </section>`;
+  }).filter(Boolean);
+
+  if (!sections.length) {
+    mount.innerHTML = `
+      <div class="rooms-board-empty">
+        <span class="material-symbols-outlined" aria-hidden="true">event_busy</span>
+        <p class="rooms-board-empty__title">No open venue spaces</p>
+        <p class="rooms-board-empty__text">Everything is booked on this date. Try another day or turn off "Open only".</p>
+      </div>`;
+    return;
+  }
+
+  mount.innerHTML = sections.join('');
+}
+
+function setShowFilter(mode) {
+  state.showOpenOnly = mode === 'open';
+  document.querySelectorAll('[data-venue-show]').forEach((btn) => {
+    const on = btn.getAttribute('data-venue-show') === mode;
+    btn.classList.toggle('is-active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  renderSchedule();
 }
 
 async function loadSchedule(date) {
@@ -152,6 +185,12 @@ export function initVenueScheduleBoard() {
     btn.addEventListener('click', () => {
       const offset = Number(btn.getAttribute('data-venue-day') || 0);
       loadSchedule(addDays(dateOnly(), offset));
+    });
+  });
+
+  document.querySelectorAll('[data-venue-show]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setShowFilter(btn.getAttribute('data-venue-show') || 'all');
     });
   });
 

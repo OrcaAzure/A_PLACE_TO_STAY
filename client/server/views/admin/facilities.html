@@ -33,14 +33,6 @@
       </nav>
 
       <div class="fac-actions" id="fac-toolbar">
-        <button type="button" id="rooms-board-add" class="admin-crud-btn-primary shadow-sm hidden" data-rooms-tab-action>
-          <span class="material-symbols-outlined text-[20px]">add</span>
-          Add room
-        </button>
-        <button type="button" data-open-manage-facilities class="admin-crud-btn-ghost shadow-sm hidden" data-rooms-tab-action>
-          <span class="material-symbols-outlined text-[20px]">tune</span>
-          Browse all rooms
-        </button>
         <button type="button" data-open-venue-booking-wizard class="admin-crud-btn-primary shadow-sm hidden" data-venue-schedule-action>
           <span class="material-symbols-outlined text-[20px]">add</span>
           Book a venue
@@ -68,62 +60,57 @@
 
       <header class="fac-panel-head">
         <div class="fac-panel-head__text">
-          <h2>Overnight rooms</h2>
-          <p>See every room by building. Tap a room to update its status or setup.</p>
+          <h2>Room status</h2>
+          <p>Current status for every guest room, grouped by building. Use <strong>Live</strong> for today’s housekeeping view, or switch to <strong>Dates</strong> to check availability for a stay.</p>
         </div>
         <div class="fac-panel-head__actions">
-          <button type="button" id="rooms-board-add-inline" class="admin-crud-btn-primary" data-rooms-tab-action-inline>
-            <span class="material-symbols-outlined text-[20px]">add</span>
-            Add room
+          <button type="button" data-open-manage-facilities class="admin-crud-btn-primary shadow-sm">
+            <span class="material-symbols-outlined text-[20px]">tune</span>
+            Manage rooms
           </button>
         </div>
       </header>
-
-      <div class="admin-notice" role="note">
-        <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">info</span>
-        <div class="admin-notice__body">
-          <p>Status labels: <strong>Vacant</strong>, <strong>Occupied</strong>, <strong>Check-out / dirty</strong>, and <strong>Out of order</strong>.</p>
-        </div>
-      </div>
 
       <div id="rooms-board-stats" class="rooms-board-stats">
         <article class="rooms-stat"><span class="rooms-stat__value">…</span><span class="rooms-stat__label">Loading</span></article>
       </div>
 
       <div class="rooms-board-toolbar">
-        <div class="rooms-board-toolbar__row">
+        <div class="rooms-toolbar-head">
+          <div class="rooms-view-switch" role="tablist" aria-label="Room view">
+            <button type="button" id="rooms-view-live" class="rooms-view-switch__btn is-active" role="tab" aria-selected="true">Live</button>
+            <button type="button" id="rooms-view-dates" class="rooms-view-switch__btn" role="tab" aria-selected="false">Dates</button>
+          </div>
+          <div id="rooms-date-bar" class="rooms-date-bar hidden">
+            <input id="rooms-avail-check-in" type="date" class="rooms-board-search rooms-board-search--date" aria-label="Check-in" />
+            <span class="rooms-date-sep" aria-hidden="true">→</span>
+            <input id="rooms-avail-check-out" type="date" class="rooms-board-search rooms-board-search--date" aria-label="Check-out" />
+            <button type="button" id="rooms-avail-check-btn" class="rooms-toolbar-go">Go</button>
+            <button type="button" id="rooms-avail-today-btn" class="rooms-toolbar-text-btn">Today</button>
+          </div>
           <div class="rooms-board-search-wrap">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
-            <input id="rooms-board-search" type="search" class="rooms-board-search" placeholder="Search room number or building…" autocomplete="off" />
+            <input id="rooms-board-search" type="search" class="rooms-board-search" placeholder="Search room, building, or type…" autocomplete="off" enterkeyhint="search" />
           </div>
         </div>
-        <div class="rooms-board-toolbar__row rooms-board-toolbar__row--filters">
-          <div class="rooms-filter-group" role="group" aria-label="Filter by status">
+        <div class="rooms-toolbar-filters">
+          <div id="rooms-live-filters" class="rooms-filter-group" role="group" aria-label="Filter by status">
             <span class="rooms-filter-label">Status</span>
-            <button type="button" class="rooms-filter-chip is-active" data-rooms-status="" aria-pressed="true">
-              <span class="material-symbols-outlined" aria-hidden="true">apps</span>
-              All
-            </button>
-            <button type="button" class="rooms-filter-chip" data-rooms-status="Available" aria-pressed="false">
-              <span class="material-symbols-outlined text-emerald-600" aria-hidden="true">check_circle</span>
-              Vacant
-            </button>
-            <button type="button" class="rooms-filter-chip" data-rooms-status="Occupied" aria-pressed="false">
-              <span class="material-symbols-outlined text-amber-500" aria-hidden="true">hotel</span>
-              Occupied
-            </button>
-            <button type="button" class="rooms-filter-chip" data-rooms-status="Dirty" aria-pressed="false">
-              <span class="material-symbols-outlined text-orange-500" aria-hidden="true">cleaning_services</span>
-              Check-out / dirty
-            </button>
-            <button type="button" class="rooms-filter-chip" data-rooms-status="Maintenance" aria-pressed="false">
-              <span class="material-symbols-outlined text-rose-500" aria-hidden="true">block</span>
-              Out of order
-            </button>
+            <button type="button" class="rooms-filter-chip is-active" data-rooms-status="" aria-pressed="true">All</button>
+            <button type="button" class="rooms-filter-chip" data-rooms-status="Available" aria-pressed="false">Vacant</button>
+            <button type="button" class="rooms-filter-chip" data-rooms-status="Occupied" aria-pressed="false">Occupied</button>
+            <button type="button" class="rooms-filter-chip" data-rooms-status="Dirty" aria-pressed="false">Dirty</button>
+            <button type="button" class="rooms-filter-chip" data-rooms-status="Maintenance" aria-pressed="false">Out of order</button>
+          </div>
+          <div id="rooms-date-filters" class="rooms-filter-group hidden" role="group" aria-label="Filter by availability">
+            <span class="rooms-filter-label">Show</span>
+            <button type="button" class="rooms-filter-chip is-active" data-rooms-avail-filter="all" aria-pressed="true">All</button>
+            <button type="button" class="rooms-filter-chip" data-rooms-avail-filter="available" aria-pressed="false">Available</button>
+            <button type="button" class="rooms-filter-chip" data-rooms-avail-filter="booked" aria-pressed="false">Booked</button>
           </div>
           <div class="rooms-filter-group" role="group" aria-label="Filter by setup">
             <span class="rooms-filter-label">Setup</span>
-            <button type="button" class="rooms-filter-chip is-active" data-rooms-setup="all" aria-pressed="true">All setups</button>
+            <button type="button" class="rooms-filter-chip is-active" data-rooms-setup="all" aria-pressed="true">All</button>
             <button type="button" class="rooms-filter-chip" data-rooms-setup="guest" aria-pressed="false">Guest</button>
             <button type="button" class="rooms-filter-chip" data-rooms-setup="sleep" aria-pressed="false">Group sleep</button>
             <button type="button" class="rooms-filter-chip" data-rooms-setup="meeting" aria-pressed="false">Meeting</button>
@@ -173,6 +160,8 @@
             <button type="button" class="rooms-filter-chip" data-venue-day="0">Today</button>
             <button type="button" class="rooms-filter-chip" data-venue-day="1">Tomorrow</button>
             <button type="button" class="rooms-filter-chip" data-venue-day="7">+7 days</button>
+            <button type="button" class="rooms-filter-chip" data-venue-show="all" aria-pressed="true">All spaces</button>
+            <button type="button" class="rooms-filter-chip" data-venue-show="open" aria-pressed="false">Open only</button>
           </div>
           <div class="rooms-board-meta">
             <span id="venue-schedule-summary">Loading venue schedule…</span>
@@ -301,13 +290,19 @@
     }
 
     function updateRoomsToolbar(tab) {
-      document.querySelectorAll('[data-rooms-tab-action]').forEach((el) => {
-        el.classList.toggle('hidden', tab !== 'rooms');
-      });
       document.querySelectorAll('[data-venue-schedule-action]').forEach((el) => {
         el.classList.toggle('hidden', tab !== 'venue-spaces' || activeVenueSubTab !== 'schedule');
       });
+      syncFacToolbar();
     }
+
+    function syncFacToolbar() {
+      const bar = document.getElementById('fac-toolbar');
+      if (!bar) return;
+      const hasVisible = [...bar.children].some((el) => !el.classList.contains('hidden'));
+      bar.classList.toggle('hidden', !hasVisible);
+    }
+    window.syncFacToolbar = syncFacToolbar;
 
     function switchFacTab(tab) {
       activeFacTab = tab;
@@ -327,10 +322,6 @@
     }
 
     initFacilityCatalog({ refresh: reloadCatalog });
-
-    document.getElementById('rooms-board-add-inline')?.addEventListener('click', () => {
-      window.dispatchEvent(new CustomEvent('manage-facilities:open', { detail: { create: true } }));
-    });
 
     try {
       const catalog = await getFacilitiesOverview();
