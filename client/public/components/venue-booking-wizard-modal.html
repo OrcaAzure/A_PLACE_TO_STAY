@@ -1,0 +1,22 @@
+<div id="venue-wizard-overlay" class="hidden fixed inset-0 bg-black/40 z-[85]"></div>
+<div id="venue-wizard-modal" class="hidden fixed inset-0 z-[90] flex items-center justify-center p-4" role="dialog" aria-modal="true">
+  <div class="res-modal bg-white rounded-xl w-full max-w-lg flex flex-col max-h-[92vh]">
+    <header class="res-modal-header">
+      <div>
+        <h2 id="venue-wizard-title" class="res-modal-title">Book a venue</h2>
+        <p id="venue-wizard-subtitle" class="res-hint">Step-by-step guide</p>
+      </div>
+      <button id="venue-wizard-close" type="button" class="res-icon-btn" aria-label="Close"><span class="material-symbols-outlined">close</span></button>
+    </header>
+    <div id="venue-wizard-steps" class="res-steps"></div>
+    <div id="venue-wizard-body" class="res-modal-body res-wizard-body"></div>
+    <footer class="res-modal-footer res-wizard-footer">
+      <p id="venue-wizard-error" class="res-error hidden"></p>
+      <div class="res-actions-row" style="width:100%;justify-content:flex-end;">
+        <button type="button" id="venue-wizard-back" class="res-btn res-btn--ghost hidden">Back</button>
+        <button type="button" id="venue-wizard-next" class="res-btn res-btn--primary">Next step</button>
+        <button type="button" id="venue-wizard-confirm" class="res-btn res-btn--primary hidden">Confirm booking</button>
+      </div>
+    </footer>
+  </div>
+</div>

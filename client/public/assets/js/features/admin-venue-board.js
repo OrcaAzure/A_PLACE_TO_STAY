@@ -64,6 +64,11 @@ function renderFacilityRow(f) {
         </span>
       </div>
       <ul class="venue-slot-list">${bookingsHtml}</ul>
+      <div class="venue-space-row__foot">
+        <button type="button" class="admin-crud-btn-ghost venue-book-btn" data-venue-book-id="${f.id}">
+          <span class="material-symbols-outlined text-[18px]">add</span> Book this space
+        </button>
+      </div>
     </article>`;
 }
 
@@ -151,6 +156,16 @@ export function initVenueScheduleBoard() {
   });
 
   document.getElementById('venue-schedule-mount')?.addEventListener('click', (e) => {
+    const book = e.target.closest('.venue-book-btn');
+    if (book) {
+      window.dispatchEvent(new CustomEvent('venue-booking-wizard:open', {
+        detail: {
+          facilityId: Number(book.dataset.venueBookId),
+          eventDate: state.date,
+        },
+      }));
+      return;
+    }
     const approve = e.target.closest('.venue-approve');
     if (approve) {
       handleApprove(Number(approve.dataset.bookingId));

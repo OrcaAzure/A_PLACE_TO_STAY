@@ -392,3 +392,40 @@ export async function updateFacilityBooking(id, payload) {
 export async function cancelFacilityBooking(id) {
   return updateFacilityBooking(id, { status: 'Cancelled' });
 }
+
+export async function deleteFacilityBooking(id) {
+  return apiRequest(`/facility-bookings/${id}`, { method: 'DELETE' });
+}
+
+export function normalizeFacilityBooking(row) {
+  const fmtTime = (t) => {
+    if (!t) return '';
+    const [h, m] = String(t).slice(0, 5).split(':').map(Number);
+    return new Date(2000, 0, 1, h, m).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+  const eventDate = String(row.event_date).slice(0, 10);
+  return {
+    kind: 'venue',
+    id: row.id,
+    facilityId: row.facility_id,
+    venueCategory: row.facility_category,
+    venueName: row.facility_name,
+    eventDate,
+    startTime: String(row.start_time).slice(0, 5),
+    endTime: String(row.end_time).slice(0, 5),
+    startLabel: fmtTime(row.start_time),
+    endLabel: fmtTime(row.end_time),
+    guestName: row.guest_name,
+    guestEmail: row.guest_email,
+    guestCount: row.guest_count,
+    status: row.status,
+    notes: row.notes,
+    totalAmount: row.total_amount != null ? Number(row.total_amount) : null,
+    season: row.season,
+    startDate: eventDate,
+    endDate: eventDate,
+    title: `${row.facility_category} — ${row.facility_name}`,
+    buildingName: row.facility_category,
+    roomNumber: row.facility_name,
+  };
+}

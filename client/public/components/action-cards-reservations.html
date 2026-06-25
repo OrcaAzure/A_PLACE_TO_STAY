@@ -1,11 +1,11 @@
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
   <button type="button" data-open-manage-requests class="res-action-card">
     <div class="res-action-card-icon res-action-card-icon--amber">
       <span class="material-symbols-outlined">inbox</span>
     </div>
     <div class="res-action-card-body">
-      <h4>Guest Requests</h4>
-      <p>Review details, then approve instantly, modify if something needs to change, or decline.</p>
+      <h4>Guest requests</h4>
+      <p>Room and group requests waiting for your approval. Review, modify, or decline each one.</p>
     </div>
     <div class="res-action-card-foot">
       <span id="pending-count" class="res-action-badge res-action-badge--warn">0 PENDING</span>
@@ -14,13 +14,27 @@
   </button>
   <button type="button" data-open-manage-reservations class="res-action-card">
     <div class="res-action-card-icon res-action-card-icon--navy">
-      <span class="material-symbols-outlined">event_available</span>
+      <span class="material-symbols-outlined">hotel</span>
     </div>
     <div class="res-action-card-body">
-      <h4>Reservations</h4>
-      <p>Create single or <strong>group</strong> stays. Pick multiple rooms with one wizard.</p>
+      <h4>Room stays</h4>
+      <p>Create or edit overnight reservations — single rooms or multi-room group stays.</p>
     </div>
     <div class="res-action-card-foot">
+      <span class="res-action-badge">MANAGE</span>
+      <span class="material-symbols-outlined">arrow_forward</span>
+    </div>
+  </button>
+  <button type="button" data-open-manage-venue-bookings class="res-action-card">
+    <div class="res-action-card-icon res-action-card-icon--teal">
+      <span class="material-symbols-outlined">church</span>
+    </div>
+    <div class="res-action-card-body">
+      <h4>Venue spaces</h4>
+      <p>Book chapels, Prayer Mountain, Burdine Commons, and other event spaces by date and time.</p>
+    </div>
+    <div class="res-action-card-foot">
+      <span id="venue-pending-count" class="res-action-badge res-action-badge--warn hidden">0 PENDING</span>
       <span class="res-action-badge">MANAGE</span>
       <span class="material-symbols-outlined">arrow_forward</span>
     </div>

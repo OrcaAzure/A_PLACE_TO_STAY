@@ -160,3 +160,16 @@
   padding: 0.375rem 0.75rem;
   font-size: 0.8125rem;
 }
+
+.venue-space-row__foot {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #e2e8f0;
+}
+
+.venue-space-row__foot .venue-book-btn {
+  width: 100%;
+  justify-content: center;
+  min-height: 2.75rem;
+  font-size: 0.9375rem;
+}

@@ -2,10 +2,11 @@
  * Reservation Master Timeline — simple upcoming list + optional room calendar.
  */
 import { openModal, closeModal, syncTimelineScroll, scrollTimelineToToday } from '/assets/js/layout/ui.js';
-import { getRooms, getBookings, normalizeRoom, normalizeBooking, normalizeManageRequest } from '/assets/js/services/api.js';
+import { getRooms, getBookings, getFacilityBookings, normalizeRoom, normalizeBooking, normalizeManageRequest, normalizeFacilityBooking } from '/assets/js/services/api.js';
 import {
   approveRequest, rejectRequest, openModifyRequestWizard, notifyBookingUpdated,
 } from '/assets/js/features/booking-actions.js';
+import { updateFacilityBooking } from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDate, formatDateLong, formatMoney, normStatus, stayNights,
 } from '/assets/js/features/reservation-shared.js';
@@ -238,6 +239,14 @@ function eventStatusClass(status) {
 
 function renderMonthEventChip(booking) {
   const guest = booking.guestName || booking.title || 'Guest';
+  if (booking.kind === 'venue') {
+    const label = `${guest} · ${booking.venueName || 'Venue'}`;
+    return `
+      <button type="button" class="mac-event mac-event--venue ${eventStatusClass(booking.status)}"
+              data-venue-booking-id="${booking.id}" title="${escapeHtml(label)}">
+        ${escapeHtml(label)}
+      </button>`;
+  }
   const room = [booking.buildingName, booking.roomNumber].filter(Boolean).join(' ');
   const label = room ? `${guest} · ${room}` : guest;
   return `
@@ -295,7 +304,7 @@ function countBookingsInMonth(bookings, year, month) {
     overlapsRange(b.startDate, b.endDate, monthStart, monthEnd)).length;
 }
 
-function bindMonthCalendar(root, { bookings, rawBookingsById, onRefresh }) {
+function bindMonthCalendar(root, { bookings, rawBookingsById, rawVenueById, onRefresh }) {
   if (!root) return;
 
   root.querySelectorAll('[data-booking-id]').forEach((btn) => {
@@ -303,6 +312,14 @@ function bindMonthCalendar(root, { bookings, rawBookingsById, onRefresh }) {
       e.stopPropagation();
       const id = btn.getAttribute('data-booking-id');
       openBookingModal(rawBookingsById[String(id)], { onRefresh });
+    });
+  });
+
+  root.querySelectorAll('[data-venue-booking-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-venue-booking-id');
+      openVenueBookingModal(rawVenueById[String(id)], { onRefresh });
     });
   });
 
@@ -316,13 +333,22 @@ function bindMonthCalendar(root, { bookings, rawBookingsById, onRefresh }) {
 
       const listHtml = skipped.map((b) => {
         const guest = b.guestName || b.title || 'Guest';
-        const room = [b.buildingName, b.roomNumber].filter(Boolean).join(' ') || 'Room TBD';
+        const isVenue = b.kind === 'venue';
+        const place = isVenue
+          ? `${b.venueCategory || ''} — ${b.venueName || 'Venue'}`
+          : ([b.buildingName, b.roomNumber].filter(Boolean).join(' ') || 'Room TBD');
         const st = normStatus(b.status) === 'pending' ? 'Needs approval' : 'Confirmed';
+        const attrs = isVenue
+          ? `data-venue-booking-id="${b.id}"`
+          : `data-booking-id="${b.id}"`;
+        const dates = isVenue
+          ? `${b.startLabel || ''} – ${b.endLabel || ''}`
+          : `${formatDate(b.startDate)} – ${formatDate(b.endDate)}`;
         return `
-          <button type="button" class="mac-day-list-item" data-booking-id="${b.id}">
+          <button type="button" class="mac-day-list-item" ${attrs}>
             <span class="mac-day-list-tag ${eventStatusClass(b.status)}">${st}</span>
             <strong>${escapeHtml(guest)}</strong>
-            <span>${escapeHtml(room)} · ${formatDate(b.startDate)} – ${formatDate(b.endDate)}</span>
+            <span>${escapeHtml(place)} · ${escapeHtml(dates)}</span>
           </button>`;
       }).join('');
 
@@ -331,6 +357,12 @@ function bindMonthCalendar(root, { bookings, rawBookingsById, onRefresh }) {
         el.addEventListener('click', () => {
           closeModal();
           openBookingModal(rawBookingsById[String(el.getAttribute('data-booking-id'))], { onRefresh });
+        });
+      });
+      document.getElementById('modalBody')?.querySelectorAll('[data-venue-booking-id]').forEach((el) => {
+        el.addEventListener('click', () => {
+          closeModal();
+          openVenueBookingModal(rawVenueById[String(el.getAttribute('data-venue-booking-id'))], { onRefresh });
         });
       });
     });
@@ -359,7 +391,8 @@ export function renderTimelineShell({ title }) {
         </div>
         <div class="mac-cal-legend" aria-hidden="true">
           <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--pending"></span>Needs approval</span>
-          <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--confirmed"></span>Confirmed</span>
+          <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--confirmed"></span>Room confirmed</span>
+          <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--venue"></span>Venue booking</span>
         </div>
       </header>
       <div id="mac-cal-mount" class="mac-cal-body"></div>
@@ -691,6 +724,68 @@ export function openBookingModal(rawBooking, { onRefresh } = {}) {
 /** @deprecated Use openBookingModal */
 export const openBookingDrawer = openBookingModal;
 
+function renderVenueDetailBody(raw, { busy = false, error = '' } = {}) {
+  const b = normalizeFacilityBooking(raw);
+  const pending = normStatus(b.status) === 'pending';
+  const rows = [
+    renderDetailRow('Status', statusLabel(b.status)),
+    renderDetailRow('Venue', `${b.venueCategory} — ${b.venueName}`),
+    renderDetailRow('Date', formatDateLong(b.eventDate)),
+    renderDetailRow('Time', `${b.startLabel} – ${b.endLabel}`),
+    renderDetailRow('Guests', b.guestCount),
+    renderDetailRow('Guest name', b.guestName),
+    b.totalAmount ? renderDetailRow('Amount', formatMoney(b.totalAmount)) : '',
+    b.notes ? renderDetailRow('Notes', b.notes) : '',
+  ].join('');
+
+  const actions = pending ? `
+    <div class="tl-detail-actions">
+      <button type="button" class="res-btn res-btn--approve res-btn--wide" data-vd-approve ${busy ? 'disabled' : ''}>Approve</button>
+      <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vd-decline ${busy ? 'disabled' : ''}>Decline</button>
+    </div>` : `
+    <p class="tl-detail-done">This venue booking is ${escapeHtml(statusLabel(b.status).toLowerCase())}.</p>`;
+
+  return `
+    <div class="tl-detail">
+      <div class="tl-detail-head">
+        <p class="tl-detail-lead">Venue booking</p>
+        ${renderBookingStatusBadge(b.status)}
+      </div>
+      ${renderDetailSection('Event details', rows)}
+      ${error ? `<p class="tl-action-error">${escapeHtml(error)}</p>` : ''}
+      ${actions}
+    </div>`;
+}
+
+export function openVenueBookingModal(rawBooking, { onRefresh } = {}) {
+  if (!rawBooking) return;
+  const b = normalizeFacilityBooking(rawBooking);
+  openModal(b.guestName || 'Venue booking', renderVenueDetailBody(rawBooking), { subtitle: `VEN-${b.id}` });
+
+  const body = document.getElementById('modalBody');
+  body?.querySelector('[data-vd-approve]')?.addEventListener('click', async () => {
+    try {
+      await updateFacilityBooking(b.id, { status: 'Approved' });
+      notifyBookingUpdated();
+      closeModal();
+      await onRefresh?.();
+    } catch (err) {
+      if (body) body.innerHTML = renderVenueDetailBody(rawBooking, { error: err.message || 'Could not approve.' });
+    }
+  });
+  body?.querySelector('[data-vd-decline]')?.addEventListener('click', async () => {
+    if (!window.confirm('Decline this venue booking?')) return;
+    try {
+      await updateFacilityBooking(b.id, { status: 'Rejected' });
+      notifyBookingUpdated();
+      closeModal();
+      await onRefresh?.();
+    } catch (err) {
+      if (body) body.innerHTML = renderVenueDetailBody(rawBooking, { error: err.message || 'Could not decline.' });
+    }
+  });
+}
+
 export async function mountBookingTimeline({ mountEl, title, onData }) {
   if (!mountEl) return;
 
@@ -701,6 +796,7 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
 
   let allBookings = [];
   let rawBookingsById = {};
+  let rawVenueById = {};
 
   function renderMonth() {
     const periodEl = document.getElementById('timeline-period');
@@ -716,15 +812,21 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
     bindMonthCalendar(mount, {
       bookings: allBookings,
       rawBookingsById,
+      rawVenueById,
       onRefresh: refresh,
     });
   }
 
   async function refresh() {
     try {
-      const rawBookings = await getBookings();
-      allBookings = rawBookings.filter((b) => !b.group_id).map(normalizeBooking);
+      const [rawBookings, rawVenues] = await Promise.all([getBookings(), getFacilityBookings()]);
+      const roomRows = rawBookings.filter((b) => !b.group_id).map(normalizeBooking);
+      const venueRows = rawVenues
+        .filter((b) => ['pending', 'approved'].includes(normStatus(b.status)))
+        .map(normalizeFacilityBooking);
+      allBookings = [...roomRows, ...venueRows];
       rawBookingsById = Object.fromEntries(rawBookings.map((b) => [String(b.id), b]));
+      rawVenueById = Object.fromEntries(rawVenues.map((b) => [String(b.id), b]));
       renderMonth();
       onData?.({ bookings: allBookings });
     } catch (err) {

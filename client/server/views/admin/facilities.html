@@ -18,93 +18,21 @@
   <link rel="stylesheet" href="/assets/css/features/admin-crud-modal.css" />
   <link rel="stylesheet" href="/assets/css/features/admin-rooms-board.css" />
   <link rel="stylesheet" href="/assets/css/features/admin-venue-board.css" />
-  <style>
-    #page-content .scrollbar-none::-webkit-scrollbar {
-      display: none;
-    }
-    #page-content .scrollbar-none {
-      -ms-overflow-style: none;
-      scrollbar-width: none;
-    }
-
-    .fac-tab {
-      padding: 0.625rem 1.25rem;
-      font-size: 0.9375rem;
-      font-weight: 600;
-      color: #64748b;
-      border-radius: 0.625rem;
-    }
-    .fac-tab.is-active {
-      background: #1a365d;
-      color: #fff;
-      box-shadow: 0 2px 8px rgba(26, 54, 93, 0.15);
-    }
-    .fac-tab:not(.is-active):hover {
-      background: #f1f5f9;
-      color: #334155;
-    }
-
-    .venue-card {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.875rem;
-      padding: 1.25rem;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .venue-card:hover {
-      border-color: #cbd5e0;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-    }
-
-    .meal-card {
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.875rem;
-      padding: 1.25rem;
-      text-align: center;
-    }
-
-    .venue-spaces-subtabs {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      padding: 0.25rem;
-      background: #fff;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.75rem;
-    }
-
-    .venue-spaces-subtab {
-      flex: 1 1 auto;
-      min-height: 2.75rem;
-      padding: 0.625rem 1rem;
-      border-radius: 0.5rem;
-      font-size: 0.9375rem;
-      font-weight: 600;
-      color: #64748b;
-      background: transparent;
-      border: none;
-      cursor: pointer;
-    }
-
-    .venue-spaces-subtab.is-active {
-      background: #1a365d;
-      color: #fff;
-    }
-  </style>
+  <link rel="stylesheet" href="/assets/css/features/admin-facilities-page.css" />
 </head>
 <body class="h-full bg-slate-50/50">
 
-  <div id="page-content" class="w-full flex flex-col space-y-6 antialiased text-slate-700">
+  <div id="page-content" class="fac-page antialiased text-slate-700">
 
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-2 bg-white p-1.5 rounded-xl border border-slate-100 shadow-sm">
+    <div class="fac-shell">
+      <nav class="fac-tab-bar" aria-label="Facilities sections">
         <button type="button" data-fac-tab="rooms" class="fac-tab is-active">Rooms</button>
         <button type="button" data-fac-tab="venue-spaces" class="fac-tab">Venue spaces</button>
         <button type="button" data-fac-tab="meals" class="fac-tab">Meal prices</button>
         <button type="button" data-fac-tab="extras" class="fac-tab">Extra fees</button>
-      </div>
-      <div class="flex flex-wrap items-center gap-2">
+      </nav>
+
+      <div class="fac-actions" id="fac-toolbar">
         <button type="button" id="rooms-board-add" class="admin-crud-btn-primary shadow-sm hidden" data-rooms-tab-action>
           <span class="material-symbols-outlined text-[20px]">add</span>
           Add room
@@ -113,13 +41,17 @@
           <span class="material-symbols-outlined text-[20px]">tune</span>
           Browse all rooms
         </button>
+        <button type="button" data-open-venue-booking-wizard class="admin-crud-btn-primary shadow-sm hidden" data-venue-schedule-action>
+          <span class="material-symbols-outlined text-[20px]">add</span>
+          Book a venue
+        </button>
         <button type="button" data-catalog-edit-toggle class="admin-crud-btn-ghost shadow-sm hidden" aria-pressed="false">
           <span class="material-symbols-outlined text-[20px]">edit</span>
           Edit prices
         </button>
         <button type="button" data-catalog-add="venue" class="admin-crud-btn-primary shadow-sm hidden">
           <span class="material-symbols-outlined text-[20px]">add</span>
-          Add venue
+          Add venue price
         </button>
         <button type="button" data-catalog-add="meal" class="admin-crud-btn-primary shadow-sm hidden">
           <span class="material-symbols-outlined text-[20px]">add</span>
@@ -132,12 +64,27 @@
       </div>
     </div>
 
-    <div id="fac-panel-rooms" class="space-y-5">
+    <div id="fac-panel-rooms" class="fac-panel">
 
-      <p class="rooms-board-hint">
-        <span class="material-symbols-outlined" aria-hidden="true">info</span>
-        Rooms are grouped by building. Tap a room to change setup or status — <strong>Vacant</strong>, <strong>Occupied</strong>, <strong>Check-out / dirty</strong>, or <strong>Out of order</strong>.
-      </p>
+      <header class="fac-panel-head">
+        <div class="fac-panel-head__text">
+          <h2>Overnight rooms</h2>
+          <p>See every room by building. Tap a room to update its status or setup.</p>
+        </div>
+        <div class="fac-panel-head__actions">
+          <button type="button" id="rooms-board-add-inline" class="admin-crud-btn-primary" data-rooms-tab-action-inline>
+            <span class="material-symbols-outlined text-[20px]">add</span>
+            Add room
+          </button>
+        </div>
+      </header>
+
+      <div class="admin-notice" role="note">
+        <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">info</span>
+        <div class="admin-notice__body">
+          <p>Status labels: <strong>Vacant</strong>, <strong>Occupied</strong>, <strong>Check-out / dirty</strong>, and <strong>Out of order</strong>.</p>
+        </div>
+      </div>
 
       <div id="rooms-board-stats" class="rooms-board-stats">
         <article class="rooms-stat"><span class="rooms-stat__value">…</span><span class="rooms-stat__label">Loading</span></article>
@@ -147,13 +94,7 @@
         <div class="rooms-board-toolbar__row">
           <div class="rooms-board-search-wrap">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
-            <input id="rooms-board-search" type="search" class="rooms-board-search" placeholder="Search room number, building, or type…" autocomplete="off" />
-          </div>
-          <div class="rooms-board-actions">
-            <button type="button" id="rooms-board-add-inline" class="admin-crud-btn-primary">
-              <span class="material-symbols-outlined text-[20px]">add</span>
-              Add room
-            </button>
+            <input id="rooms-board-search" type="search" class="rooms-board-search" placeholder="Search room number or building…" autocomplete="off" />
           </div>
         </div>
         <div class="rooms-board-toolbar__row rooms-board-toolbar__row--filters">
@@ -203,11 +144,21 @@
 
     </div>
 
-    <div id="fac-panel-venue-spaces" class="hidden space-y-4">
-      <p class="rooms-board-hint">
-        <span class="material-symbols-outlined" aria-hidden="true">info</span>
-        <strong>Overnight rooms</strong> and <strong>bookable venue spaces</strong> (chapels, Prayer Mountain, Burdine Commons, etc.) are managed separately. Guests book venues by date &amp; time — use the schedule below to see what is free or already reserved.
-      </p>
+    <div id="fac-panel-venue-spaces" class="fac-panel hidden">
+
+      <header class="fac-panel-head">
+        <div class="fac-panel-head__text">
+          <h2>Venue spaces</h2>
+          <p>Chapels, Prayer Mountain, Burdine Commons, and other bookable event areas — not overnight rooms.</p>
+        </div>
+      </header>
+
+      <div class="admin-notice" role="note">
+        <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">event</span>
+        <div class="admin-notice__body">
+          <p>Guests book by <strong>date and time</strong>. Use the schedule to see what is open, or tap <strong>Book a venue</strong> to add a reservation for someone.</p>
+        </div>
+      </div>
 
       <div class="venue-spaces-subtabs" role="tablist" aria-label="Venue spaces views">
         <button type="button" class="venue-spaces-subtab is-active" data-venue-subtab="schedule" role="tab" aria-selected="true">Schedule &amp; availability</button>
@@ -232,17 +183,19 @@
         </div>
       </div>
 
-      <div id="venue-prices-panel" data-venue-subpanel="prices" class="hidden space-y-4">
-      <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100">
-          <h3 class="text-base font-semibold text-slate-800">Venue price list</h3>
-          <p class="text-sm text-slate-500 mt-0.5">Rates for chapels, Prayer Mountain, Burdine Commons, and other event spaces. Use <strong>Edit prices</strong> to change a rate.</p>
+      <div id="venue-prices-panel" data-venue-subpanel="prices" class="hidden">
+      <section class="fac-catalog-section">
+        <div class="fac-catalog-section__head">
+          <h3>Venue price list</h3>
+          <p>Rates for each space and package. Turn on <strong>Edit prices</strong> above to change a rate.</p>
         </div>
-        <p class="catalog-edit-hint hidden" data-catalog-edit-hint data-catalog-panel="venues">
-          <span class="material-symbols-outlined">info</span>
-          Editing mode — tap <strong>Edit</strong> on any row to open the form, or use <strong>Remove</strong> inside the popup to delete.
-        </p>
-        <div id="venues-grid-mount" class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[120px]">
+        <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="venues" role="note">
+          <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
+          <div class="admin-notice__body">
+            <p>Editing mode — tap <strong>Edit</strong> on any row, or <strong>Remove</strong> inside the popup to delete.</p>
+          </div>
+        </div>
+        <div id="venues-grid-mount" class="fac-catalog-section__body grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[120px]">
           <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading venues…</p>
         </div>
       </section>
@@ -250,33 +203,41 @@
 
     </div>
 
-    <div id="fac-panel-meals" class="hidden space-y-4">
-      <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100">
-          <h3 class="text-base font-semibold text-slate-800">Meal Prices</h3>
-          <p class="text-sm text-slate-500 mt-0.5">Prices used when guests order meals with a room booking.</p>
+    <div id="fac-panel-meals" class="fac-panel hidden">
+      <header class="fac-panel-head">
+        <div class="fac-panel-head__text">
+          <h2>Meal prices</h2>
+          <p>Per-person rates shown when guests add meals to a room booking.</p>
         </div>
-        <p class="catalog-edit-hint hidden" data-catalog-edit-hint>
-          <span class="material-symbols-outlined">info</span>
-          Editing mode — tap <strong>Edit</strong> on a meal card to change its price in the popup.
-        </p>
-        <div id="meals-grid-mount" class="p-5 grid grid-cols-2 sm:grid-cols-4 gap-4 min-h-[100px]">
+      </header>
+      <section class="fac-catalog-section">
+        <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="meals" role="note">
+          <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
+          <div class="admin-notice__body">
+            <p>Editing mode — tap <strong>Edit</strong> on a meal card to change its price.</p>
+          </div>
+        </div>
+        <div id="meals-grid-mount" class="fac-catalog-section__body grid grid-cols-2 sm:grid-cols-4 gap-4 min-h-[100px]">
           <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading meals…</p>
         </div>
       </section>
     </div>
 
-    <div id="fac-panel-extras" class="hidden space-y-4">
-      <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <div class="px-5 py-4 border-b border-slate-100">
-          <h3 class="text-base font-semibold text-slate-800">Extra Services &amp; Fees</h3>
-          <p class="text-sm text-slate-500 mt-0.5">Laundry, corkage, maid service, extra mattresses, and other add-ons.</p>
+    <div id="fac-panel-extras" class="fac-panel hidden">
+      <header class="fac-panel-head">
+        <div class="fac-panel-head__text">
+          <h2>Extra services &amp; fees</h2>
+          <p>Laundry, corkage, maid service, extra mattresses, and other add-ons.</p>
         </div>
-        <p class="catalog-edit-hint hidden" data-catalog-edit-hint>
-          <span class="material-symbols-outlined">info</span>
-          Editing mode — tap <strong>Edit</strong> on any fee to change it in the popup.
-        </p>
-        <div id="extras-grid-mount" class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[100px]">
+      </header>
+      <section class="fac-catalog-section">
+        <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="extras" role="note">
+          <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
+          <div class="admin-notice__body">
+            <p>Editing mode — tap <strong>Edit</strong> on any fee to change it.</p>
+          </div>
+        </div>
+        <div id="extras-grid-mount" class="fac-catalog-section__body grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[100px]">
           <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading extras…</p>
         </div>
       </section>
@@ -325,6 +286,7 @@
       document.getElementById('venue-prices-panel')?.classList.toggle('hidden', sub !== 'prices');
       if (activeFacTab === 'venue-spaces') {
         setCatalogToolbarTab(sub === 'prices' ? 'venues' : 'venue-spaces');
+        updateRoomsToolbar('venue-spaces');
       }
     }
 
@@ -342,6 +304,9 @@
       document.querySelectorAll('[data-rooms-tab-action]').forEach((el) => {
         el.classList.toggle('hidden', tab !== 'rooms');
       });
+      document.querySelectorAll('[data-venue-schedule-action]').forEach((el) => {
+        el.classList.toggle('hidden', tab !== 'venue-spaces' || activeVenueSubTab !== 'schedule');
+      });
     }
 
     function switchFacTab(tab) {
@@ -353,7 +318,7 @@
       document.getElementById('fac-panel-venue-spaces')?.classList.toggle('hidden', tab !== 'venue-spaces');
       document.getElementById('fac-panel-meals')?.classList.toggle('hidden', tab !== 'meals');
       document.getElementById('fac-panel-extras')?.classList.toggle('hidden', tab !== 'extras');
-      if (tab === 'venue-spaces') {
+      if (activeFacTab === 'venue-spaces') {
         setCatalogToolbarTab(activeVenueSubTab === 'prices' ? 'venues' : 'venue-spaces');
       } else {
         setCatalogToolbarTab(tab);

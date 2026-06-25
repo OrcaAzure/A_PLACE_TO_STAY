@@ -1,0 +1,233 @@
+/* Admin facilities page — spacious, non-techy layout */
+
+.fac-page {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+@media (min-width: 1024px) {
+  .fac-page {
+    padding: 2rem 2rem 3rem;
+    gap: 2rem;
+  }
+}
+
+.admin-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1.125rem;
+  margin: 0;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.875rem;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: #1e3a8a;
+}
+
+.admin-notice__icon {
+  flex-shrink: 0;
+  font-size: 1.375rem;
+  line-height: 1;
+  margin-top: 0.125rem;
+  color: #2563eb;
+}
+
+.admin-notice__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-notice__body p {
+  margin: 0;
+}
+
+.admin-notice--inline {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+.fac-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.fac-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.fac-tab {
+  flex: 1 1 auto;
+  min-height: 3rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #64748b;
+  border-radius: 0.625rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.fac-tab.is-active {
+  background: #1a365d;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(26, 54, 93, 0.18);
+}
+
+.fac-tab:not(.is-active):hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.fac-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.625rem;
+  padding: 0.875rem 1rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
+}
+
+.fac-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.fac-panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.fac-panel-head__text h2 {
+  margin: 0;
+  font-size: 1.375rem;
+  font-weight: 700;
+  color: #1a202c;
+  line-height: 1.25;
+}
+
+.fac-panel-head__text p {
+  margin: 0.375rem 0 0;
+  font-size: 1rem;
+  color: #64748b;
+  line-height: 1.5;
+  max-width: 42rem;
+}
+
+.fac-panel-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.venue-spaces-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.375rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
+}
+
+.venue-spaces-subtab {
+  flex: 1 1 12rem;
+  min-height: 3rem;
+  padding: 0.75rem 1.125rem;
+  border-radius: 0.625rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.venue-spaces-subtab.is-active {
+  background: #1a365d;
+  color: #fff;
+}
+
+.fac-catalog-section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.fac-catalog-section__head {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.fac-catalog-section__head h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.fac-catalog-section__head p {
+  margin: 0.375rem 0 0;
+  font-size: 0.9375rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.fac-panel .rooms-board-stats { gap: 1rem; }
+.fac-panel .rooms-stat { padding: 1.125rem 1.25rem; }
+.fac-panel .rooms-stat__value { font-size: 2rem; }
+.fac-panel .rooms-stat__label { font-size: 0.875rem; margin-top: 0.375rem; }
+.fac-panel .rooms-board-toolbar { padding: 1.25rem 1.375rem; gap: 1.25rem; }
+.fac-panel .rooms-board-toolbar__row--filters {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+}
+@media (min-width: 900px) {
+  .fac-panel .rooms-board-toolbar__row--filters {
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+  }
+}
+.fac-panel .rooms-filter-group { gap: 0.5rem; }
+.fac-panel .rooms-filter-label {
+  display: block;
+  width: 100%;
+  margin: 0 0 0.375rem;
+  font-size: 0.875rem;
+}
+.fac-panel .rooms-filter-chip {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.9375rem;
+}
+.fac-panel .rooms-board-search { min-height: 3rem; font-size: 1rem; }
+.fac-panel .rooms-board-message { padding: 2.5rem 1.5rem; font-size: 1rem; }

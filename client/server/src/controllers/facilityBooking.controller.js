@@ -1,6 +1,6 @@
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
-import { resolveSeason } from '../services/booking.service.js';
+import { resolveSeason, resolveGuestUser } from '../services/booking.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -51,11 +51,19 @@ export const getFacilityBookingById = async (req, res) => {
 export const createFacilityBooking = async (req, res) => {
   try {
     const { id: userId, role } = req.user;
-    const { facility_id, event_date, start_time, end_time, guest_count, notes } = req.body;
+    const {
+      facility_id, event_date, start_time, end_time, guest_count, notes,
+      user_id, guest_name, email, status,
+    } = req.body;
 
     if (isEmpty(facility_id) || isEmpty(event_date) || isEmpty(start_time) || isEmpty(end_time)) {
       return res.status(400).json({ message: 'facility_id, event_date, start_time, and end_time are required' });
     }
+
+    const isAdmin = ADMIN_ROLES.includes(role);
+    const effectiveUserId = isAdmin
+      ? await resolveGuestUser({ userId: user_id, guestName: guest_name, email })
+      : userId;
 
     const [overlap] = await pool.query(
       `SELECT id FROM facility_bookings
@@ -80,13 +88,13 @@ export const createFacilityBooking = async (req, res) => {
     const hours        = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
     const total_amount = Math.round(rate * Math.max(hours, 1) * 100) / 100;
 
-    const bookingStatus = ADMIN_ROLES.includes(role) ? 'Approved' : 'Pending';
+    const bookingStatus = isAdmin ? (status || 'Approved') : 'Pending';
 
     const [result] = await pool.query(
       `INSERT INTO facility_bookings
          (user_id, facility_id, event_date, start_time, end_time, guest_count, season, total_amount, status, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [userId, facility_id, event_date, start_time, end_time, guest_count || 1,
+      [effectiveUserId, facility_id, event_date, start_time, end_time, guest_count || 1,
        season, total_amount, bookingStatus, notes || null]
     );
 

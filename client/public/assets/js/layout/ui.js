@@ -1,8 +1,10 @@
 import { initManageRequestsModal, isManageRequestsModalOpen, closeManageRequestsModal } from '/assets/js/features/manage-requests.js';
 import { initManageReservationsModal, isManageReservationsModalOpen, closeManageReservationsModal } from '/assets/js/features/manage-reservations.js';
+import { initManageVenueBookingsModal, isManageVenueBookingsModalOpen, closeManageVenueBookingsModal } from '/assets/js/features/manage-venue-bookings.js';
 import { initManageFacilitiesModal, isManageFacilitiesModalOpen, closeManageFacilitiesModal } from '/assets/js/features/manage-facilities.js';
 import { initReservationWizard, isReservationWizardOpen, closeReservationWizard } from '/assets/js/features/reservation-wizard.js';
 import { initGroupWizard, isGroupWizardOpen, closeGroupWizard } from '/assets/js/features/group-reservation-wizard.js';
+import { initVenueBookingWizard, isVenueBookingWizardOpen, closeVenueBookingWizard } from '/assets/js/features/venue-booking-wizard.js';
 import { initTabGroup, switchTabPanel } from '/assets/js/layout/tabs.js';
 import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDrawerOpen, animateModalOpen, animateNotificationsPanel } from '/assets/js/layout/animations.js';
 import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
@@ -54,7 +56,7 @@ export async function loadComponent(url) {
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v3';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v4';
 
 /** @type {Promise<Record<string, string>> | null} */
 let templatesPromise = null;
@@ -91,9 +93,11 @@ async function loadAdminTemplates() {
       loadComponent('/components/manage-facilities-modal.html'),
       loadComponent('/components/reservation-wizard-modal.html'),
       loadComponent('/components/group-wizard-modal.html'),
+      loadComponent('/components/venue-booking-wizard-modal.html'),
+      loadComponent('/components/manage-venue-bookings-modal.html'),
       loadComponent('/components/notifications.html'),
       loadComponent('/components/facility-catalog-modal.html'),
-    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, reservationWizard, groupWizard, notifications, facilityCatalog]) => {
+    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, reservationWizard, groupWizard, venueWizard, manageVenueBookings, notifications, facilityCatalog]) => {
       const bundle = {
         sidebar,
         header,
@@ -104,6 +108,8 @@ async function loadAdminTemplates() {
         manageFacilities,
         reservationWizard,
         groupWizard,
+        venueWizard,
+        manageVenueBookings,
         notifications,
         facilityCatalog,
       };
@@ -184,6 +190,8 @@ function buildAdminShell({
     ${templates.manageFacilities || ''}
     ${templates.reservationWizard || ''}
     ${templates.groupWizard || ''}
+    ${templates.venueWizard || ''}
+    ${templates.manageVenueBookings || ''}
     ${templates.notifications || ''}
     ${templates.facilityCatalog || ''}
   `;
@@ -383,9 +391,11 @@ export async function initAppLayout(config = {}) {
   if (!isGuest) {
     initManageRequestsModal();
     initManageReservationsModal();
+    initManageVenueBookingsModal();
     initManageFacilitiesModal();
     initReservationWizard();
     initGroupWizard();
+    initVenueBookingWizard();
     initDrawerTabs();
     initAdminPageNavTransitions();
     lockStaticChrome();
@@ -549,12 +559,20 @@ function bindLayoutEvents({ isGuest = false } = {}) {
         closeManageReservationsModal();
         return;
       }
+      if (!isGuest && isManageVenueBookingsModalOpen()) {
+        closeManageVenueBookingsModal();
+        return;
+      }
       if (!isGuest && isManageFacilitiesModalOpen()) {
         closeManageFacilitiesModal();
         return;
       }
       if (!isGuest && isReservationWizardOpen()) {
         closeReservationWizard();
+        return;
+      }
+      if (!isGuest && isVenueBookingWizardOpen()) {
+        closeVenueBookingWizard();
         return;
       }
       if (!isGuest && isGroupWizardOpen()) {
@@ -576,9 +594,11 @@ function updateBodyScrollLock() {
   const drawerOpen = drawer && !drawer.classList.contains('translate-x-full');
   const manageOpen = isManageRequestsModalOpen()
     || isManageReservationsModalOpen()
+    || isManageVenueBookingsModalOpen()
     || isManageFacilitiesModalOpen()
     || isReservationWizardOpen()
-    || isGroupWizardOpen();
+    || isGroupWizardOpen()
+    || isVenueBookingWizardOpen();
   const mobileSidebarOpen = isMobileSidebarOpen();
   document.body.style.overflow = (modalOpen || drawerOpen || manageOpen || mobileSidebarOpen) ? 'hidden' : '';
 

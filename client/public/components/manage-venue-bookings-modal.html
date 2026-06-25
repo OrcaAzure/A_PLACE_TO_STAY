@@ -1,0 +1,47 @@
+<div id="manage-venue-bookings-overlay" class="hidden fixed inset-0 bg-black/50 z-[70]"></div>
+<div id="manage-venue-bookings-modal" class="hidden fixed inset-0 z-[80] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="manage-venue-bookings-title">
+  <div class="res-modal res-modal--cards bg-white rounded-xl w-full flex flex-col max-h-[92vh]">
+    <header class="res-modal-header res-modal-header--cards">
+      <div class="res-modal-header-main">
+        <h2 id="manage-venue-bookings-title" class="res-modal-title">Venue bookings</h2>
+        <p class="res-lead res-lead--compact">Chapels, Prayer Mountain, Burdine Commons, and other event spaces. Use <strong>New venue booking</strong> to reserve one for a guest.</p>
+      </div>
+      <button id="manage-venue-bookings-close" type="button" class="res-icon-btn res-icon-btn--lg" aria-label="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <div class="res-modal-toolbar res-modal-toolbar--reservations">
+      <div class="res-field">
+        <label for="manage-venue-bookings-search" class="res-field-label">Search</label>
+        <input id="manage-venue-bookings-search" type="search" class="res-input" placeholder="Guest, venue, or date…" />
+      </div>
+      <div class="res-field res-field--narrow">
+        <label for="manage-venue-bookings-status-filter" class="res-field-label">Show</label>
+        <select id="manage-venue-bookings-status-filter" class="res-input res-input--select">
+          <option value="all">All bookings</option>
+          <option value="upcoming">Upcoming</option>
+          <option value="today">Today</option>
+          <option value="pending">Pending approval</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="res-toolbar-create">
+        <button type="button" data-open-venue-booking-wizard class="res-btn res-btn--primary res-btn--wide">
+          <span class="material-symbols-outlined">add</span> New venue booking
+        </button>
+      </div>
+    </div>
+
+    <div class="res-modal-body res-modal-body--cards">
+      <div id="manage-venue-bookings-list" class="res-card-list" role="list"></div>
+    </div>
+
+    <footer class="res-modal-footer res-modal-footer--cards">
+      <div class="res-modal-footer-left">
+        <p id="manage-venue-bookings-footer-count" class="res-footer-count">0 booking(s)</p>
+      </div>
+      <button id="manage-venue-bookings-close-btn" type="button" class="res-btn res-btn--secondary res-btn--wide">Close</button>
+    </footer>
+  </div>
+</div>

@@ -10,6 +10,7 @@
 .res-action-card-icon { width: 3rem; height: 3rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; }
 .res-action-card-icon--amber { background: #FFFBEB; color: #92400E; }
 .res-action-card-icon--navy { background: rgba(26,54,93,.1); color: #1A365D; }
+.res-action-card-icon--teal { background: #ECFEFF; color: #0E7490; }
 .res-action-card-body h4 { font-size: 1.125rem; font-weight: 700; color: #1A202C; }
 .res-action-card-body p { font-size: 0.9375rem; color: #4A5568; margin-top: 0.25rem; line-height: 1.5; }
 .res-action-card-foot { display: flex; align-items: center; justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid #EDF2F7; margin-top: auto; }
@@ -439,6 +440,7 @@
 .mac-legend-dot { width: 0.625rem; height: 0.625rem; border-radius: 0.2rem; }
 .mac-legend-dot--pending { background: #FF9500; }
 .mac-legend-dot--confirmed { background: #007AFF; }
+.mac-legend-dot--venue { background: #0E7490; }
 
 .mac-cal-body { padding: 0.75rem 1rem 1.25rem; }
 
@@ -494,6 +496,7 @@
 .mac-event:hover { filter: brightness(0.92); }
 .mac-event--pending { background: #FF9500; }
 .mac-event--confirmed { background: #007AFF; }
+.mac-event--venue { background: #0E7490; }
 .mac-event--other { background: #8E8E93; }
 
 .mac-event-more {

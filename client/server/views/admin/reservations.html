@@ -26,34 +26,42 @@
     import { requireAuth }          from '/assets/js/services/auth.js';
     import { initAppLayout }        from '/assets/js/layout/ui.js';
     import { mountBookingTimeline } from '/assets/js/features/timeline.js';
-    import { getBookings, getGroups } from '/assets/js/services/api.js';
+    import { getBookings, getGroups, getFacilityBookings } from '/assets/js/services/api.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
 
     async function syncPendingBadge() {
-      const [bookings, groups] = await Promise.all([getBookings(), getGroups()]);
-      const pending = bookings.filter((b) => !b.group_id && String(b.status).toLowerCase() === 'pending').length
+      const [bookings, groups, venues] = await Promise.all([
+        getBookings(), getGroups(), getFacilityBookings(),
+      ]);
+      const roomPending = bookings.filter((b) => !b.group_id && String(b.status).toLowerCase() === 'pending').length
         + groups.filter((g) => String(g.status).toLowerCase() === 'pending').length;
+      const venuePending = venues.filter((v) => String(v.status).toLowerCase() === 'pending').length;
+
       const countEl = document.getElementById('pending-count');
-      if (countEl) countEl.textContent = `${pending} PENDING`;
+      if (countEl) countEl.textContent = `${roomPending} PENDING`;
+
+      const venueEl = document.getElementById('venue-pending-count');
+      if (venueEl) {
+        venueEl.textContent = `${venuePending} PENDING`;
+        venueEl.classList.toggle('hidden', venuePending === 0);
+      }
     }
 
     const actionCards = await fetch('/components/action-cards-reservations.html').then(r => r.text());
     document.getElementById('action-cards-mount').innerHTML = actionCards;
 
-    // 2. Initialize framework application sidebar and templates
     await initAppLayout({
       portal:     'admin',
       activePage: 'reservations',
-      title:      'Reservation Operations Center',
-      subtitle:   'Mission Control',
+      title:      'Reservations',
+      subtitle:   'Rooms, groups & venue spaces',
       deferEnhancements: true,
     });
 
-    // 3. Render scheduling table entries natively from backend arrays
     await mountBookingTimeline({
       mountEl: document.getElementById('timeline-mount'),
-      title:   'Reservation Calendar',
+      title:   'Reservation calendar',
       onData:  () => { syncPendingBadge(); },
     });
 
