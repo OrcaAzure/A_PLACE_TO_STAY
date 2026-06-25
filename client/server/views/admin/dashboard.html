@@ -15,12 +15,13 @@
   <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
   <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
   <link rel="stylesheet" href="/assets/css/features/admin-crud-modal.css" />
+  <link rel="stylesheet" href="/assets/css/features/dashboard-queue.css" />
 </head>
 <body>
 
   <div id="page-content">
 
-    <section class="kpi-grid kpi-grid--6">
+    <section class="kpi-grid kpi-grid--6" data-no-page-enter>
       <article class="kpi-card">
         <div class="flex justify-between items-start mb-2">
           <div class="p-2.5 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
@@ -28,7 +29,7 @@
           </div>
           <span class="kpi-badge bg-primary/10 text-primary" id="kpi-upcoming-label">Live</span>
         </div>
-        <p class="kpi-label">Upcoming</p>
+        <p class="kpi-label">Upcoming Stays</p>
         <p class="kpi-value" id="kpi-upcoming">—</p>
       </article>
       <article class="kpi-card">
@@ -36,9 +37,9 @@
           <div class="p-2.5 bg-secondary/10 text-secondary rounded-lg flex items-center justify-center">
             <span class="material-symbols-outlined text-[1.35rem]">assignment_late</span>
           </div>
-          <span class="kpi-badge bg-secondary/10 text-secondary">Needs Action</span>
+          <span class="kpi-badge bg-secondary/10 text-secondary">Action needed</span>
         </div>
-        <p class="kpi-label">Pending</p>
+        <p class="kpi-label">Pending Requests</p>
         <p class="kpi-value" id="kpi-pending-count">—</p>
       </article>
       <article class="kpi-card">
@@ -48,7 +49,7 @@
           </div>
           <span class="kpi-badge bg-emerald-50 text-emerald-700" id="kpi-approval-rate">—</span>
         </div>
-        <p class="kpi-label">Approved</p>
+        <p class="kpi-label">Approved Total</p>
         <p class="kpi-value" id="kpi-approved">—</p>
       </article>
       <article class="kpi-card">
@@ -76,19 +77,55 @@
           <div class="p-2.5 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center">
             <span class="material-symbols-outlined text-[1.35rem]">payments</span>
           </div>
-          <span class="kpi-badge bg-amber-50 text-amber-700" id="kpi-revenue-label">Paid</span>
+          <span class="kpi-badge bg-amber-50 text-amber-700" id="kpi-revenue-label">Collected</span>
         </div>
-        <p class="kpi-label">Revenue</p>
+        <p class="kpi-label">Paid Revenue</p>
         <p class="kpi-value" id="kpi-revenue">—</p>
       </article>
     </section>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
+    <nav class="dashboard-quick-links" aria-label="Quick admin actions" data-no-page-enter>
+      <a href="reservations.html" class="dashboard-quick-link">
+        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+        <span>Reservations calendar</span>
+      </a>
+      <a href="facilities.html" class="dashboard-quick-link">
+        <span class="material-symbols-outlined" aria-hidden="true">domain</span>
+        <span>Rooms &amp; facilities</span>
+      </a>
+      <a href="payments.html" class="dashboard-quick-link">
+        <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+        <span>Payments</span>
+      </a>
+      <a href="residents.html" class="dashboard-quick-link">
+        <span class="material-symbols-outlined" aria-hidden="true">groups</span>
+        <span>Residents</span>
+      </a>
+    </nav>
+
+    <section class="admin-panel dashboard-queue-panel" data-no-page-enter>
+      <div class="admin-panel-header">
+        <div>
+          <h2>Reservation Queue</h2>
+          <p id="queue-summary">Pending requests and upcoming approved stays</p>
+        </div>
+        <div class="dashboard-queue-header-badges">
+          <span class="dashboard-queue-badge dashboard-queue-badge--pending"><span id="queue-pending-count">0</span> pending</span>
+          <span class="dashboard-queue-badge dashboard-queue-badge--upcoming"><span id="queue-upcoming-count">0</span> upcoming</span>
+          <a href="reservations.html" class="btn-primary">Open Calendar</a>
+        </div>
+      </div>
+      <div id="queue-mount" class="admin-panel-body dashboard-queue-body">
+        <p class="dashboard-queue-loading">Loading reservation queue…</p>
+      </div>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start" data-no-page-enter>
       <section class="lg:col-span-2 admin-panel">
         <div class="admin-panel-header">
           <div>
-            <h2>Facility Utilization</h2>
-            <p>Usage trends across seminary buildings (last 30 days)</p>
+            <h2>Building Usage</h2>
+            <p>Approved bookings per building (last 30 days)</p>
           </div>
           <span class="text-body-sm text-on-surface-variant font-medium px-3 py-2 bg-surface-container-low rounded-lg border border-outline-variant" id="chart-period-label">Loading…</span>
         </div>
@@ -99,37 +136,13 @@
       <section class="admin-panel flex flex-col">
         <div class="admin-panel-header">
           <h2>Recent Activity</h2>
-          <a href="reservations.html" class="text-primary font-bold text-body-sm hover:underline">View All</a>
+          <a href="reservations.html" class="text-primary font-bold text-body-sm hover:underline">View all</a>
         </div>
         <div class="admin-panel-body space-y-5" id="recent-activity-mount">
           <p class="text-body-sm text-on-surface-variant">Loading activity…</p>
         </div>
       </section>
     </div>
-
-    <section class="admin-panel">
-      <div class="admin-panel-header">
-        <h2>Reservation Queue</h2>
-        <a href="reservations.html" class="btn-primary">View All Reservations</a>
-      </div>
-      <div class="overflow-x-auto">
-        <table class="data-table admin-table w-full">
-          <thead>
-            <tr>
-              <th>Requester</th>
-              <th>Facility / Room</th>
-              <th>Dates</th>
-              <th>Guests</th>
-              <th>Status</th>
-              <th class="text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="queue-tbody">
-            <tr><td colspan="6" class="text-center py-8 text-on-surface-variant">Loading queue…</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
 
     <div id="action-cards-mount" class="hidden"></div>
     <div id="timeline-mount" class="hidden"></div>

@@ -27,6 +27,7 @@ export const getAdminSummary = async (req, res) => {
 
     const [
       [bookingCounts],
+      [groupCounts],
       [roomRows],
       [revenueRows],
       [buildingUsage],
@@ -41,6 +42,12 @@ export const getAdminSummary = async (req, res) => {
           SUM(status = 'Cancelled') AS cancelled,
           COUNT(*) AS total
         FROM bookings
+      `),
+      pool.query(`
+        SELECT
+          SUM(status = 'Pending')  AS pending,
+          SUM(status = 'Approved') AS approved
+        FROM reservation_groups
       `),
       pool.query(`
         SELECT
@@ -75,6 +82,7 @@ export const getAdminSummary = async (req, res) => {
     ]);
 
     const counts = bookingCounts[0];
+    const groupStats = groupCounts[0] || { pending: 0, approved: 0 };
     const roomStats = roomRows[0];
     const [upcomingRows] = await pool.query(
       `SELECT COUNT(*) AS count FROM bookings WHERE status = 'Approved' AND check_in >= ?`,
@@ -92,8 +100,10 @@ export const getAdminSummary = async (req, res) => {
     res.status(200).json({
       kpis: {
         upcoming: Number(upcomingRows[0].count),
-        pending: Number(counts.pending),
-        approved: Number(counts.approved),
+        pending: Number(counts.pending) + Number(groupStats.pending || 0),
+        approved: Number(counts.approved) + Number(groupStats.approved || 0),
+        pendingSingles: Number(counts.pending),
+        pendingGroups: Number(groupStats.pending || 0),
         rejected: Number(counts.rejected),
         cancelled: Number(counts.cancelled),
         totalBookings: Number(counts.total),

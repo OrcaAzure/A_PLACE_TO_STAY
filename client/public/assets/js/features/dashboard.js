@@ -1,5 +1,5 @@
 /**
- * Admin dashboard — loads live KPIs, activity feed, queue, and building chart from /api/stats/summary.
+ * Admin dashboard — KPIs, activity feed, action queue, and building chart.
  */
 
 import {
@@ -7,8 +7,8 @@ import {
   normalizeBooking, normalizeManageRequest, normalizeManageGroupRequest,
 } from '/assets/js/services/api.js';
 import { approveRequest, rejectRequest } from '/assets/js/features/booking-actions.js';
-import { normStatus } from '/assets/js/features/reservation-shared.js';
-import { animateStatCards, animateChartBars, staggerReveal, animateCountUp } from '/assets/js/layout/animations.js';
+import { normStatus, escapeHtml, stayNights, formatDateLong } from '/assets/js/features/reservation-shared.js';
+import { animateStatCards, animateChartBars, staggerReveal, animateCountUp, revealPageContent } from '/assets/js/layout/animations.js';
 
 function setText(id, value) {
   const el = document.getElementById(id);
@@ -20,7 +20,12 @@ function formatPHP(amount) {
 }
 
 function dateOnly(value) {
-  return String(value || '').slice(0, 10);
+  if (!value) return '';
+  const raw = String(value);
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toISOString().slice(0, 10);
 }
 
 function initials(name) {
@@ -29,22 +34,21 @@ function initials(name) {
 }
 
 function formatDateRange(start, end) {
-  const opts = { month: 'short', day: 'numeric', year: 'numeric' };
-  const a = new Date(`${dateOnly(start)}T00:00:00`).toLocaleDateString('en-US', opts);
-  const b = new Date(`${dateOnly(end)}T00:00:00`).toLocaleDateString('en-US', opts);
+  const a = formatDateLong(dateOnly(start));
+  const b = formatDateLong(dateOnly(end));
   return `${a} – ${b}`;
 }
 
 function statusPill(status) {
   const s = normStatus(status);
   const map = {
-    pending: 'bg-amber-50 text-amber-700',
-    approved: 'bg-emerald-50 text-emerald-700',
-    rejected: 'bg-rose-50 text-rose-600',
-    cancelled: 'bg-slate-100 text-slate-500',
+    pending: 'dashboard-pill dashboard-pill--pending',
+    approved: 'dashboard-pill dashboard-pill--approved',
+    rejected: 'dashboard-pill dashboard-pill--rejected',
+    cancelled: 'dashboard-pill dashboard-pill--cancelled',
   };
   const label = s.charAt(0).toUpperCase() + s.slice(1);
-  return `<span class="px-3 py-1 rounded-full ${map[s] || map.pending} text-xs font-bold uppercase tracking-wide">${label}</span>`;
+  return `<span class="${map[s] || map.pending}">${escapeHtml(label)}</span>`;
 }
 
 function relativeTime(iso) {
@@ -73,7 +77,7 @@ function facilityLabelForBooking(b) {
   const norm = normalizeBooking(b);
   if (norm.facilityLabel && norm.facilityLabel !== `Booking #${norm.id}`) return norm.facilityLabel;
   if (b.room_number || b.building_name) {
-    return [b.building_name, b.room_number].filter(Boolean).join(' ') || 'Room pending';
+    return [b.building_name, b.room_number].filter(Boolean).join(' · ') || 'Room pending';
   }
   return 'Room not assigned yet';
 }
@@ -96,11 +100,13 @@ function buildQueueItems(bookingsRaw, groupsRaw) {
       sortDate: dateOnly(b.check_in),
       pending: normStatus(b.status) === 'pending',
       name: b.guest_name || 'Unknown guest',
+      role: b.guest_role || 'Guest',
       facility: facilityLabelForBooking(b),
       checkIn: b.check_in,
       checkOut: b.check_out,
       guests: b.guest_count || 1,
       status: b.status,
+      submittedAt: b.created_at || b.updated_at,
     }));
 
   const groups = (groupsRaw || [])
@@ -117,29 +123,75 @@ function buildQueueItems(bookingsRaw, groupsRaw) {
       sortDate: dateOnly(g.check_in),
       pending: normStatus(g.status) === 'pending',
       name: g.group_name || g.contact_name || 'Group stay',
-      facility: `Group · ${g.rooms_requested ?? '?'} rooms`,
+      role: 'Group',
+      facility: `${g.rooms_requested ?? '?'} rooms requested`,
       checkIn: g.check_in,
       checkOut: g.check_out,
       guests: g.total_guests || 1,
       status: g.status,
+      submittedAt: g.created_at || g.updated_at,
     }));
 
   return [...singles, ...groups]
     .sort((a, b) => {
       if (a.pending !== b.pending) return a.pending ? -1 : 1;
       return a.sortDate.localeCompare(b.sortDate);
-    })
-    .slice(0, 12);
+    });
+}
+
+function renderQueueItem(item) {
+  const nights = stayNights(item.checkIn, item.checkOut);
+  const idLabel = item.type === 'group' ? `#GRP-${item.raw.id}` : `#APT-${item.raw.id}`;
+  const typeLabel = item.type === 'group' ? 'Group stay' : 'Single room';
+
+  return `
+    <article class="dashboard-queue-item${item.pending ? ' is-pending' : ''}" data-queue-key="${escapeHtml(item.key)}">
+      <div class="dashboard-queue-item__main">
+        <div class="dashboard-queue-item__avatar" aria-hidden="true">${escapeHtml(initials(item.name))}</div>
+        <div class="dashboard-queue-item__body">
+          <div class="dashboard-queue-item__head">
+            <h3 class="dashboard-queue-item__name">${escapeHtml(item.name)}</h3>
+            ${statusPill(item.status)}
+          </div>
+          <p class="dashboard-queue-item__facility">
+            <span class="material-symbols-outlined" aria-hidden="true">meeting_room</span>
+            ${escapeHtml(item.facility)}
+          </p>
+          <div class="dashboard-queue-item__meta">
+            <span><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>${escapeHtml(formatDateRange(item.checkIn, item.checkOut))}</span>
+            <span><span class="material-symbols-outlined" aria-hidden="true">group</span>${escapeHtml(String(item.guests))} guest${item.guests === 1 ? '' : 's'}${nights ? ` · ${nights} night${nights === 1 ? '' : 's'}` : ''}</span>
+            <span><span class="material-symbols-outlined" aria-hidden="true">badge</span>${escapeHtml(typeLabel)} · ${escapeHtml(item.role)}</span>
+            <span class="dashboard-queue-item__id">${escapeHtml(idLabel)}</span>
+          </div>
+        </div>
+      </div>
+      <div class="dashboard-queue-item__actions">
+        ${item.pending ? `
+          <button type="button" class="dashboard-queue-btn dashboard-queue-btn--approve queue-approve" data-queue-key="${escapeHtml(item.key)}" title="Approve request">
+            <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+            Approve
+          </button>
+          <button type="button" class="dashboard-queue-btn dashboard-queue-btn--decline queue-reject" data-queue-key="${escapeHtml(item.key)}" title="Decline request">
+            <span class="material-symbols-outlined" aria-hidden="true">cancel</span>
+            Decline
+          </button>
+          <a href="reservations.html" class="dashboard-queue-btn dashboard-queue-btn--ghost">Review</a>
+        ` : `
+          <span class="dashboard-queue-item__upcoming-label">Upcoming stay</span>
+          <a href="reservations.html" class="dashboard-queue-btn dashboard-queue-btn--ghost">View</a>
+        `}
+      </div>
+    </article>`;
 }
 
 export async function loadDashboard() {
   const summary = await getAdminSummary();
   const { kpis, buildingUsage, recentActivity } = summary;
 
-  setText('kpi-upcoming-label', 'Live');
-  setText('kpi-rooms-available-label', `${kpis.availableRooms} available`);
-  setText('kpi-maintenance-label', `${kpis.maintenanceRooms} in maint.`);
-  setText('kpi-approval-rate', `${kpis.approvalRate}% Rate`);
+  setText('kpi-upcoming-label', 'Approved');
+  setText('kpi-rooms-available-label', `${kpis.availableRooms} ready`);
+  setText('kpi-maintenance-label', `${kpis.maintenanceRooms} in repair`);
+  setText('kpi-approval-rate', `${kpis.approvalRate}% rate`);
 
   await animateStatCards();
 
@@ -154,9 +206,10 @@ export async function loadDashboard() {
 
   await renderBuildingChart(buildingUsage);
   renderRecentActivity(recentActivity);
-  await renderQueue();
+  await renderQueue(kpis);
 
   setText('chart-period-label', 'Last 30 days · approved bookings');
+  revealPageContent();
 }
 
 async function renderBuildingChart(buildingUsage) {
@@ -179,7 +232,7 @@ async function renderBuildingChart(buildingUsage) {
         <div class="w-full bg-surface-container rounded-t-lg relative overflow-hidden h-[180px]">
           <div class="chart-bar absolute bottom-0 w-full ${color} rounded-t-lg" style="height: 0px;" data-height="${height}px" title="${row.booking_count} approved (30d)"></div>
         </div>
-        <span class="text-body-sm font-semibold text-on-surface-variant truncate max-w-full px-1">${row.building_name}</span>
+        <span class="text-body-sm font-semibold text-on-surface-variant truncate max-w-full px-1">${escapeHtml(row.building_name)}</span>
         <span class="text-body-sm text-on-surface-variant">${row.booking_count}</span>
       </div>`;
   }).join('');
@@ -196,17 +249,17 @@ function renderRecentActivity(bookingsRaw) {
     return;
   }
 
-  mount.innerHTML = bookingsRaw.slice(0, 5).map((b) => {
+  mount.innerHTML = bookingsRaw.slice(0, 6).map((b) => {
     const status = normStatus(b.status);
     const { bg, icon } = activityIcon(status);
     const facility = facilityLabelForBooking(b);
     const action = status === 'pending'
-      ? `<span class="font-bold text-on-surface">${b.guest_name}</span> requested <span class="font-semibold text-primary">${facility}</span>`
+      ? `<span class="font-bold text-on-surface">${escapeHtml(b.guest_name)}</span> requested <span class="font-semibold text-primary">${escapeHtml(facility)}</span>`
       : status === 'approved'
-        ? `<span class="font-bold text-on-surface">${b.guest_name}</span> — <span class="font-semibold text-emerald-700">${facility}</span> approved`
+        ? `<span class="font-bold text-on-surface">${escapeHtml(b.guest_name)}</span> — <span class="font-semibold text-emerald-700">${escapeHtml(facility)}</span> approved`
         : status === 'rejected'
-          ? `<span class="font-bold text-on-surface">Request denied:</span> ${facility} (${b.guest_name})`
-          : `<span class="font-bold text-on-surface">${b.guest_name}</span> — ${facility} ${status}`;
+          ? `<span class="font-bold text-on-surface">Request denied:</span> ${escapeHtml(facility)} (${escapeHtml(b.guest_name)})`
+          : `<span class="font-bold text-on-surface">${escapeHtml(b.guest_name)}</span> — ${escapeHtml(facility)} ${escapeHtml(status)}`;
 
     return `
       <div class="flex gap-4">
@@ -215,7 +268,7 @@ function renderRecentActivity(bookingsRaw) {
         </div>
         <div>
           <p class="text-body-sm text-on-surface leading-relaxed">${action}</p>
-          <p class="text-body-sm text-on-surface-variant mt-1">${relativeTime(b.updated_at || b.created_at)} · ${b.guest_role || 'Guest'}</p>
+          <p class="text-body-sm text-on-surface-variant mt-1">${relativeTime(b.updated_at || b.created_at)} · ${escapeHtml(b.guest_role || 'Guest')}</p>
         </div>
       </div>`;
   }).join('');
@@ -223,56 +276,86 @@ function renderRecentActivity(bookingsRaw) {
   staggerReveal('#recent-activity-mount > div', document).catch(() => {});
 }
 
-async function renderQueue() {
-  const tbody = document.getElementById('queue-tbody');
-  if (!tbody) return;
+async function renderQueue(kpis = {}) {
+  const mount = document.getElementById('queue-mount');
+  if (!mount) return;
 
-  const [bookingsRaw, groupsRaw] = await Promise.all([getBookings(), getGroups()]);
-  const queue = buildQueueItems(bookingsRaw, groupsRaw);
+  mount.innerHTML = '<p class="dashboard-queue-loading">Loading reservation queue…</p>';
 
-  if (!queue.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-on-surface-variant">No pending or upcoming reservations right now.</td></tr>';
+  let bookingsRaw = [];
+  let groupsRaw = [];
+  try {
+    [bookingsRaw, groupsRaw] = await Promise.all([getBookings(), getGroups()]);
+  } catch (err) {
+    mount.innerHTML = `<p class="dashboard-queue-error">${escapeHtml(err.message || 'Could not load reservations.')}</p>`;
     return;
   }
 
-  tbody.innerHTML = queue.map((item) => {
-    const isPending = item.pending;
-    const typeBadge = item.type === 'group'
-      ? '<span class="ml-2 text-[10px] font-bold uppercase tracking-wide text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full">Group</span>'
-      : '';
+  const queue = buildQueueItems(bookingsRaw, groupsRaw);
+  const pending = queue.filter((q) => q.pending);
+  const upcoming = queue.filter((q) => !q.pending);
 
-    return `
-      <tr class="hover:bg-surface-container-low transition-colors" data-queue-key="${item.key}">
-        <td>
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold shrink-0">${initials(item.name)}</div>
-            <span class="text-body-sm font-semibold text-on-surface">${item.name}${typeBadge}</span>
-          </div>
-        </td>
-        <td class="text-body-sm text-on-surface-variant">${item.facility}</td>
-        <td class="text-body-sm text-on-surface-variant whitespace-nowrap">${formatDateRange(item.checkIn, item.checkOut)}</td>
-        <td class="text-body-sm text-on-surface-variant">${item.guests}</td>
-        <td>${statusPill(item.status)}</td>
-        <td class="text-right">
-          ${isPending ? `
-            <div class="flex justify-end gap-2">
-              <button type="button" class="queue-approve p-2 min-h-[2.75rem] min-w-[2.75rem] text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors" title="Approve" aria-label="Approve" data-queue-key="${item.key}">
-                <span class="material-symbols-outlined text-[1.35rem]">check_circle</span>
-              </button>
-              <button type="button" class="queue-reject p-2 min-h-[2.75rem] min-w-[2.75rem] text-secondary hover:bg-secondary/10 rounded-lg transition-colors" title="Decline" aria-label="Decline" data-queue-key="${item.key}">
-                <span class="material-symbols-outlined text-[1.35rem]">cancel</span>
-              </button>
-            </div>` : `<span class="text-body-sm text-on-surface-variant font-mono">${item.type === 'group' ? `#GRP-${item.raw.id}` : `#APT-${item.raw.id}`}</span>`}
-        </td>
-      </tr>`;
-  }).join('');
+  setText('queue-pending-count', String(pending.length));
+  setText('queue-upcoming-count', String(upcoming.length));
+
+  const summaryEl = document.getElementById('queue-summary');
+  if (summaryEl) {
+    if (!queue.length) {
+      summaryEl.textContent = 'No pending requests or upcoming stays right now.';
+    } else if (pending.length) {
+      summaryEl.textContent = `${pending.length} request${pending.length === 1 ? '' : 's'} need your approval · ${upcoming.length} upcoming approved stay${upcoming.length === 1 ? '' : 's'}`;
+    } else {
+      summaryEl.textContent = `${upcoming.length} upcoming approved stay${upcoming.length === 1 ? '' : 's'} — nothing waiting for approval`;
+    }
+  }
+
+  if (!queue.length) {
+    mount.innerHTML = `
+      <div class="dashboard-queue-empty">
+        <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+        <p class="dashboard-queue-empty__title">All clear</p>
+        <p class="dashboard-queue-empty__text">There are no pending guest requests and no upcoming approved stays on the calendar.</p>
+        <a href="reservations.html" class="btn-primary">Open Reservations</a>
+      </div>`;
+    return;
+  }
+
+  const sections = [];
+
+  if (pending.length) {
+    sections.push(`
+      <div class="dashboard-queue-section">
+        <h3 class="dashboard-queue-section__title">
+          <span class="material-symbols-outlined" aria-hidden="true">assignment_late</span>
+          Needs approval (${pending.length})
+        </h3>
+        <div class="dashboard-queue-list">
+          ${pending.map(renderQueueItem).join('')}
+        </div>
+      </div>`);
+  }
+
+  if (upcoming.length) {
+    sections.push(`
+      <div class="dashboard-queue-section">
+        <h3 class="dashboard-queue-section__title dashboard-queue-section__title--muted">
+          <span class="material-symbols-outlined" aria-hidden="true">upcoming</span>
+          Upcoming approved (${upcoming.length})
+        </h3>
+        <div class="dashboard-queue-list">
+          ${upcoming.map(renderQueueItem).join('')}
+        </div>
+      </div>`);
+  }
+
+  mount.innerHTML = sections.join('');
 
   const queueByKey = Object.fromEntries(queue.map((q) => [q.key, q]));
 
-  tbody.querySelectorAll('.queue-approve').forEach((btn) => {
+  mount.querySelectorAll('.queue-approve').forEach((btn) => {
     btn.addEventListener('click', () => handleQueueApprove(queueByKey[btn.dataset.queueKey]));
   });
-  tbody.querySelectorAll('.queue-reject').forEach((btn) => {
+  mount.querySelectorAll('.queue-reject').forEach((btn) => {
     btn.addEventListener('click', () => handleQueueReject(queueByKey[btn.dataset.queueKey]));
   });
 }
