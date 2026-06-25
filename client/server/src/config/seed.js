@@ -11,6 +11,8 @@ const SEED_USERS = [
   { full_name: 'Paul Mendoza',         email: 'paul.mendoza@apts.edu.ph',    role: 'Missionary',       status: 'Active' },
   { full_name: 'Grace Tan',            email: 'grace.tan@apts.edu.ph',       role: 'Supervisory User', status: 'Active' },
   { full_name: 'David Cho',            email: 'david.cho@apts.edu.ph',       role: 'GMC',              status: 'Active' },
+  { full_name: 'Rev. Samuel Park',     email: 'samuel.park@gracechurch.org', role: 'External Guest',   status: 'Active' },
+  { full_name: 'Manila Bible Church',  email: 'mbc.retreat@example.org',   role: 'External Guest',   status: 'Inactive' },
 ];
 
 const DEMO_BOOKINGS = [
@@ -198,11 +200,20 @@ export async function runSchemaPatches() {
          'GMC',
          'Faculty',
          'Staff',
-         'Missionary'
+         'Missionary',
+         'External Guest'
        ) NOT NULL DEFAULT 'Faculty'`
     );
   } catch {
     /* enum may already be up to date */
+  }
+
+  try {
+    await pool.execute(
+      `UPDATE users SET role = 'External Guest' WHERE email LIKE '%@aptspace.local'`
+    );
+  } catch {
+    /* walk-in guests may not exist */
   }
 
   try {

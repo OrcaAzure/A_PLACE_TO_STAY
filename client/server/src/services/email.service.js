@@ -27,6 +27,23 @@ async function sendMail({ to, subject, html }) {
   }
 }
 
+export async function sendGuestAccessEmail(user, tempPassword) {
+  const name = user.full_name || 'Guest';
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  return sendMail({
+    to: user.email,
+    subject: 'Your AptSpace Guest Access — APTS Housing',
+    html: `
+      <h2>Welcome to AptSpace, ${name}</h2>
+      <p>The APTS Housing Department has created a guest account for you. You can now log in and submit reservation requests online.</p>
+      <p><strong>Login email:</strong> ${user.email}</p>
+      <p><strong>Temporary password:</strong> ${tempPassword}</p>
+      <p>Sign in at <a href="${appUrl}/login.html">${appUrl}/login.html</a> and change your password after your first login.</p>
+      <p>If you did not request this access, please contact the Housing Department.</p>
+    `,
+  });
+}
+
 export async function sendWelcomeEmail(user) {
   const name = user.full_name || 'Guest';
   return sendMail({

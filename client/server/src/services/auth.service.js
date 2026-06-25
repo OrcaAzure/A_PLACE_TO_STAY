@@ -4,8 +4,7 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../config/db.js';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
 import { safeUser, isEmpty } from '../utils/helpers.js';
-import { DEFAULT_BOOKING_GUEST_ROLE } from '../utils/constants.js';
-import { sendWelcomeEmail, sendPasswordResetEmail } from './email.service.js';
+import { sendPasswordResetEmail } from './email.service.js';
 
 export const login = async ({ email, password }) => {
   if (isEmpty(email) || isEmpty(password)) {
@@ -45,38 +44,13 @@ export const login = async ({ email, password }) => {
   };
 };
 
-export const register = async ({ full_name, email, password, role }) => {
-  if (isEmpty(full_name) || isEmpty(email) || isEmpty(password)) {
-    throw new Error('Full name, email, and password are required');
-  }
-
-  const [existing] = await pool.query(
-    'SELECT id FROM users WHERE email = ? LIMIT 1',
-    [email]
+export const register = async ({ full_name, email, password }) => {
+  void full_name;
+  void email;
+  void password;
+  throw new Error(
+    'Self-registration is not available. Please contact the APTS Housing Department for guest access.'
   );
-
-  if (existing.length > 0) {
-    throw new Error('Email is already in use');
-  }
-
-  const hashedPassword = await bcrypt.hash(password, 10);
-
-  const [result] = await pool.query(
-    'INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)',
-    [full_name, email, hashedPassword, role || DEFAULT_BOOKING_GUEST_ROLE]
-  );
-
-  const [newUser] = await pool.query(
-    'SELECT * FROM users WHERE id = ? LIMIT 1',
-    [result.insertId]
-  );
-
-  void sendWelcomeEmail(newUser[0]);
-
-  return {
-    message: 'Registration successful',
-    user: safeUser(newUser[0])
-  };
 };
 
 export const getMe = async (userId) => {

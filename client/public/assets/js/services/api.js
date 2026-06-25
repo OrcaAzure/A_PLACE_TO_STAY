@@ -70,9 +70,31 @@ export async function updateFiscalYearSettings(payload) {
   });
 }
 
-export async function getUsers() {
-  const data = await apiRequest('/users');
+export async function getUsers(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.role) qs.set('role', params.role);
+  if (params.status) qs.set('status', params.status);
+  const query = qs.toString();
+  const data = await apiRequest(`/users${query ? `?${query}` : ''}`);
   return data.users || [];
+}
+
+export async function getGuestUsers(params = {}) {
+  return getUsers({ role: 'External Guest', ...params });
+}
+
+export async function createGuestUser(payload) {
+  return apiRequest('/users', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateUser(id, payload) {
+  return apiRequest(`/users/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function getUserById(id) {

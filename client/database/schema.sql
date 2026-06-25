@@ -139,7 +139,8 @@ CREATE TABLE IF NOT EXISTS users (
                  'GMC',
                  'Faculty',
                  'Staff',
-                 'Missionary'
+                 'Missionary',
+                 'External Guest'
                ) NOT NULL DEFAULT 'Faculty',
     status     ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

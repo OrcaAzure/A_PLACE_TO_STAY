@@ -20,7 +20,7 @@ export const ADMIN_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard.html' },
   { id: 'reservations', label: 'Reservations', icon: 'calendar_month', href: '/admin/reservations.html' },
   { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/admin/facilities.html' },
-  { id: 'residents', label: 'Residents', icon: 'groups', href: '/admin/residents.html' },
+  { id: 'residents', label: 'Guest Access', icon: 'badge', href: '/admin/residents.html' },
   { id: 'payments', label: 'Payments', icon: 'payments', href: '/admin/payments.html' },
   { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings.html' },
 ];
@@ -30,7 +30,7 @@ export const ADMIN_MOBILE_NAV = [
   { id: 'dashboard', label: 'Home', icon: 'dashboard', href: '/admin/dashboard.html' },
   { id: 'reservations', label: 'Bookings', icon: 'calendar_month', href: '/admin/reservations.html' },
   { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/admin/facilities.html' },
-  { id: 'residents', label: 'People', icon: 'groups', href: '/admin/residents.html' },
+  { id: 'residents', label: 'Guests', icon: 'badge', href: '/admin/residents.html' },
   { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings.html' },
 ];
 
@@ -215,7 +215,7 @@ const ADMIN_MOBILE_LABELS = {
   dashboard: 'Home',
   reservations: 'Bookings',
   facilities: 'Facilities',
-  residents: 'People',
+  residents: 'Guest Access',
   payments: 'Payments',
   settings: 'Settings',
 };

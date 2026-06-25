@@ -6,10 +6,14 @@ export const ROLES = {
   FACULTY: 'Faculty',
   STAFF: 'Staff',
   MISSIONARY: 'Missionary',
+  EXTERNAL_GUEST: 'External Guest',
 };
 
 /** Default role when admin creates a booking for someone not yet in the system. */
-export const DEFAULT_BOOKING_GUEST_ROLE = ROLES.FACULTY;
+export const DEFAULT_BOOKING_GUEST_ROLE = ROLES.EXTERNAL_GUEST;
+
+/** Roles the housing admin manages on the Guest Access page. */
+export const GUEST_ACCESS_ROLES = [ROLES.EXTERNAL_GUEST];
 
 export const USER_ROLES = Object.values(ROLES);
 

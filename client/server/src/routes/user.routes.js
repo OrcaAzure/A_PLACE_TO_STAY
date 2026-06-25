@@ -4,6 +4,7 @@ import { requireRole } from '../middleware/role.middleware.js';
 import {
   getAllUsers,
   getUserById,
+  createUser,
   updateUser,
   deleteUser
 } from '../controllers/user.controller.js';
@@ -11,6 +12,7 @@ import {
 const router = Router();
 
 router.get('/',     requireAuth, requireRole('Super Admin', 'Admin'), getAllUsers);
+router.post('/',    requireAuth, requireRole('Super Admin', 'Admin'), createUser);
 router.get('/:id',  requireAuth, getUserById);
 router.patch('/:id',  requireAuth, requireRole('Super Admin', 'Admin'), updateUser);
 router.delete('/:id', requireAuth, requireRole('Super Admin'), deleteUser);

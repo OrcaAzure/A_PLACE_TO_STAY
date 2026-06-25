@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Residents | AptSpace Admin</title>
+  <title>Guest Access | AptSpace Admin</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="/assets/js/config/tailwind-theme-base.js"></script>
   <script src="/assets/js/config/tailwind-admin.js"></script>
@@ -15,123 +15,138 @@
   <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
   <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
   <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-crud-modal.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-facilities-page.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-guest-access.css" />
 </head>
-<body>
-  <div id="page-content">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <div class="action-card">
-        <div class="action-card-icon bg-primary-container/10 text-primary">
-          <span class="material-symbols-outlined text-[28px]">groups</span>
-        </div>
-        <div>
-          <h4 class="font-headline-sm text-on-surface">Resident Overview</h4>
-          <p class="text-body-sm text-on-surface-variant mt-1">Current occupancy and resident stats.</p>
-        </div>
-        <div class="mt-auto pt-4 border-t border-outline-variant/30">
-          <span id="active-count" class="text-primary text-[10px] font-bold">LOADING...</span>
-        </div>
-      </div>
-      <div class="action-card">
-        <div class="action-card-icon bg-surface-container-high text-on-surface-variant">
-          <span class="material-symbols-outlined text-[28px]">login</span>
-        </div>
-        <div>
-          <h4 class="font-headline-sm text-on-surface">Check-In Queue</h4>
-          <p class="text-body-sm text-on-surface-variant mt-1">Arrivals scheduled for today.</p>
-        </div>
-        <div class="mt-auto pt-4 border-t border-outline-variant/30">
-          <span id="arriving-today-badge" class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold">—</span>
-        </div>
+<body class="h-full bg-slate-50/50">
+
+  <div id="page-content" class="ga-page antialiased text-slate-700">
+
+    <div class="admin-notice" role="note">
+      <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">info</span>
+      <div class="admin-notice__body">
+        <p>External guests cannot sign up on their own. Create an account here, then share login details through your official channels. Deactivate access when a guest’s stay is complete.</p>
       </div>
     </div>
 
-    <section class="timeline-workspace">
-      <div class="timeline-workspace-header">
-        <div class="flex items-center gap-4">
-          <div class="w-1.5 h-8 bg-primary rounded-full"></div>
-          <h3 class="font-headline-sm text-on-surface">Resident Directory</h3>
-        </div>
-        <input id="search-residents" type="search" placeholder="Search residents..."
-          class="border border-outline-variant rounded-lg px-3 py-2 text-body-sm w-64" />
+    <header class="ga-panel-head">
+      <div class="ga-panel-head__text">
+        <h2>External guest accounts</h2>
+        <p>Grant login access to churches, ministry groups, and other off-campus guests who need to submit reservation requests.</p>
       </div>
-      <div class="overflow-x-auto">
-        <table class="data-table">
+      <div class="ga-panel-head__actions">
+        <button type="button" id="grant-access-btn" class="admin-crud-btn-primary shadow-sm">
+          <span class="material-symbols-outlined text-[20px]">person_add</span>
+          Grant access
+        </button>
+      </div>
+    </header>
+
+    <div class="ga-stats">
+      <article class="ga-stat">
+        <span class="ga-stat__value" id="ga-stat-active">—</span>
+        <span class="ga-stat__label">Active accounts</span>
+      </article>
+      <article class="ga-stat">
+        <span class="ga-stat__value" id="ga-stat-inactive">—</span>
+        <span class="ga-stat__label">Inactive</span>
+      </article>
+      <article class="ga-stat">
+        <span class="ga-stat__value" id="ga-stat-total">—</span>
+        <span class="ga-stat__label">Total guest accounts</span>
+      </article>
+    </div>
+
+    <section class="fac-catalog-section">
+      <div class="ga-workspace-toolbar">
+        <div class="ga-filter-group" role="group" aria-label="Filter by status">
+          <button type="button" class="ga-filter-chip is-active" data-ga-filter="all" aria-pressed="true">All</button>
+          <button type="button" class="ga-filter-chip" data-ga-filter="active" aria-pressed="false">Active</button>
+          <button type="button" class="ga-filter-chip" data-ga-filter="inactive" aria-pressed="false">Inactive</button>
+        </div>
+        <input id="guest-access-search" type="search" class="ga-search" placeholder="Search name or email…" autocomplete="off" />
+      </div>
+      <div class="ga-table-wrap">
+        <table class="data-table ga-table w-full">
           <thead>
-            <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Joined</th></tr>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th class="text-right">Actions</th>
+            </tr>
           </thead>
-          <tbody id="residents-tbody">
-            <tr><td colspan="5" class="text-center text-on-surface-variant py-8">Loading residents...</td></tr>
+          <tbody id="guest-access-tbody">
+            <tr><td colspan="5"><p class="ga-empty">Loading guest accounts…</p></td></tr>
           </tbody>
         </table>
       </div>
     </section>
   </div>
 
+  <div id="guest-access-modal-overlay" class="hidden fixed inset-0 bg-black/40 z-[70]" aria-hidden="true"></div>
+  <div id="guest-access-modal" class="hidden fixed inset-0 z-[75] flex items-center justify-center p-4 pointer-events-none" role="dialog" aria-modal="true" aria-labelledby="guest-access-modal-title">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md pointer-events-auto">
+      <div class="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-slate-100">
+        <h2 id="guest-access-modal-title" class="text-xl font-bold text-slate-800">Grant guest access</h2>
+        <button type="button" id="guest-access-modal-close" class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg shrink-0" aria-label="Close">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <div class="px-5 py-4">
+        <form id="guest-access-form">
+          <div id="guest-access-feedback" class="hidden"></div>
+          <label class="catalog-label" for="guest-name">Full name</label>
+          <input id="guest-name" class="catalog-input" type="text" required placeholder="e.g. Rev. Samuel Park" autocomplete="name" />
+          <label class="catalog-label" for="guest-email">Email address</label>
+          <input id="guest-email" class="catalog-input" type="email" required placeholder="guest@organization.org" autocomplete="email" />
+          <p class="text-xs text-slate-500 mt-2 mb-4">A temporary password will be emailed to this address. You can also copy it from the confirmation screen.</p>
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" id="guest-access-modal-cancel" class="admin-crud-btn-ghost">Cancel</button>
+            <button type="submit" id="guest-access-submit" class="admin-crud-btn-primary">Create account</button>
+          </div>
+        </form>
+
+        <div id="guest-access-success" class="hidden">
+          <p class="text-sm text-slate-600 mb-3">Account created for <strong id="guest-success-name"></strong> (<span id="guest-success-email"></span>).</p>
+          <div class="ga-temp-password">
+            <p class="ga-temp-password__label">Temporary password</p>
+            <div class="ga-temp-password__row">
+              <code id="guest-temp-password" class="ga-temp-password__value"></code>
+              <button type="button" id="guest-copy-password" class="admin-crud-btn-ghost text-sm">Copy</button>
+            </div>
+            <p class="ga-temp-password__hint">Share this with the guest if email delivery fails. They should change it after first login.</p>
+          </div>
+          <div class="flex justify-end pt-4">
+            <button type="button" id="guest-access-done" class="admin-crud-btn-primary">Done</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
-    import { requireAuth }          from '/assets/js/services/auth.js';
-    import { initAppLayout }        from '/assets/js/layout/ui.js';
-    import { getUsers, normalizeUser } from '/assets/js/services/api.js';
+    import { requireAuth } from '/assets/js/services/auth.js';
+    import { initAppLayout } from '/assets/js/layout/ui.js';
+    import { initGuestAccessPage, loadGuestAccessPage } from '/assets/js/features/admin-guest-access.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
 
     await initAppLayout({
       portal:     'admin',
       activePage: 'residents',
-      title:      'Resident Operations Center',
-      subtitle:   'Mission Control',
+      title:      'Guest Access',
+      subtitle:   'External guest login accounts',
+      deferEnhancements: true,
     });
 
-    try {
-      const { getBookings, normalizeBooking } = await import('/assets/js/services/api.js');
-      const todayISO = new Date().toISOString().slice(0, 10);
-      const bookings = await getBookings();
-      const arrivingToday = bookings.filter(b => {
-        const nb = normalizeBooking(b);
-        return nb.startDate === todayISO && nb.status === 'approved';
-      });
-      const badge = document.getElementById('arriving-today-badge');
-      if (badge) {
-        badge.textContent = `${arrivingToday.length} ARRIVING TODAY`;
-      }
-    } catch { /* non-critical */ }
+    initGuestAccessPage();
+    await loadGuestAccessPage();
 
-    // load real users from the API
-    try {
-      const users  = await getUsers();
-      const active = users.filter(u => u.status === 'Active');
-
-      document.getElementById('active-count').textContent = `${active.length} ACTIVE`;
-
-      const tbody = document.getElementById('residents-tbody');
-      if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-on-surface-variant py-8">No residents found.</td></tr>';
-      } else {
-        tbody.innerHTML = users.map(u => {
-          const norm = normalizeUser(u);
-          const statusClass = u.status === 'Active' ? 'status-pill-approved' : 'status-pill-pending';
-          const date = norm.createdAt ? new Date(norm.createdAt).toLocaleDateString('en-PH', { month:'short', day:'2-digit', year:'numeric' }) : '—';
-          return `<tr>
-            <td class="font-medium">${norm.name}</td>
-            <td>${norm.email}</td>
-            <td>${norm.role}</td>
-            <td><span class="${statusClass} text-[10px] px-2 py-0.5 rounded-full font-bold">${u.status}</span></td>
-            <td>${date}</td>
-          </tr>`;
-        }).join('');
-      }
-
-      // search filter
-      document.getElementById('search-residents')?.addEventListener('input', (e) => {
-        const q = e.target.value.toLowerCase();
-        tbody.querySelectorAll('tr').forEach(row => {
-          row.style.display = row.textContent.toLowerCase().includes(q) ? '' : 'none';
-        });
-      });
-
-    } catch (err) {
-      document.getElementById('residents-tbody').innerHTML =
-        `<tr><td colspan="5" class="text-center text-error py-8">${err.message}</td></tr>`;
-    }
+    const { initAdminEnhancements } = await import('/assets/js/layout/animations.js');
+    await initAdminEnhancements();
   </script>
 </body>
 </html>

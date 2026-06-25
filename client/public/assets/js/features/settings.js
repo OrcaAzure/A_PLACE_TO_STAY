@@ -14,10 +14,8 @@ const ROLE_DESCRIPTIONS = {
   Faculty: 'Guest booking access',
   Staff: 'Guest booking access',
   Missionary: 'Guest booking access',
-  Student: 'Guest booking access',
+  'External Guest': 'Guest portal access — created by Housing admin',
 };
-
-let fiscalYearInfo = null;
 
 export async function loadAdminSettings() {
   bindTabs();
