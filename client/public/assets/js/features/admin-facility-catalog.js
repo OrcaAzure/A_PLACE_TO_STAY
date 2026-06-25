@@ -261,12 +261,12 @@ function applyEditModeClass(tab) {
   });
 }
 
-export function toggleCatalogEditMode() {
-  const key = activeCatalogTab;
+export function toggleCatalogEditMode(ev) {
+  const key = ev?.currentTarget?.getAttribute('data-catalog-for') || activeCatalogTab;
   if (!TAB_PANEL[key]) return;
   catalogEditMode[key] = !catalogEditMode[key];
   applyEditModeClass(key);
-  updateCatalogToolbar(key);
+  updateCatalogToolbar(activeCatalogTab);
 }
 
 export function renderVenuesCatalog(venues) {
@@ -275,7 +275,7 @@ export function renderVenuesCatalog(venues) {
   if (!mount) return;
 
   if (!venues?.length) {
-    mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No venues yet. Use <strong>Add venue</strong> to create your first price.</p>';
+    mount.innerHTML = '<p class="fac-catalog-grid__empty">No venues yet. Use <strong>Add venue</strong> to create your first price.</p>';
     return;
   }
 
@@ -318,18 +318,18 @@ export function renderMealsCatalog(meals) {
   if (!mount) return;
 
   if (!meals?.length) {
-    mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No meal prices yet. Use <strong>Add meal</strong> to get started.</p>';
+    mount.innerHTML = '<p class="fac-catalog-grid__empty">No meal prices yet. Use <strong>Add meal</strong> to get started.</p>';
     return;
   }
 
   mount.innerHTML = meals.map((meal) => `
-    <article class="meal-card catalog-meal-card">
-      <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mb-3">
-        <span class="material-symbols-outlined text-[28px]">${escapeHtml(meal.icon || 'restaurant')}</span>
+    <article class="fac-meal-card">
+      <div class="fac-meal-card__icon">
+        <span class="material-symbols-outlined">${escapeHtml(meal.icon || 'restaurant')}</span>
       </div>
-      <h4 class="text-base font-bold text-slate-800">${escapeHtml(meal.item)}</h4>
-      <p class="text-2xl font-bold text-slate-900 mt-2">${peso(meal.rate)}</p>
-      <p class="text-xs text-slate-400 mt-1 mb-3">per person</p>
+      <h4 class="fac-meal-card__title">${escapeHtml(meal.item)}</h4>
+      <p class="fac-meal-card__price">${peso(meal.rate)}</p>
+      <p class="fac-meal-card__unit">per person</p>
       ${editBtn('meal', meal.id)}
     </article>`).join('');
 }
@@ -340,55 +340,46 @@ export function renderExtrasCatalog(services) {
   if (!mount) return;
 
   if (!services?.length) {
-    mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No extra services yet. Use <strong>Add extra</strong> for laundry, mattress, corkage, and other fees.</p>';
+    mount.innerHTML = '<p class="fac-catalog-grid__empty">No extra services yet. Use <strong>Add extra</strong> for laundry, mattress, corkage, and other fees.</p>';
     return;
   }
 
   mount.innerHTML = services.map((group) => {
     const itemsHtml = group.items.map((item) => `
-      <li class="catalog-price-row flex items-center justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
-        <p class="text-sm font-medium text-slate-800 min-w-0">${escapeHtml(item.item)}</p>
-        <div class="flex items-center gap-3 shrink-0">
-          <p class="text-sm font-bold text-slate-900">${peso(item.rate)}</p>
+      <li class="catalog-price-row">
+        <p class="catalog-price-row__label">${escapeHtml(item.item)}</p>
+        <div class="catalog-price-row__meta">
+          <p class="catalog-price-row__price">${peso(item.rate)}</p>
           ${editBtn('extra', item.id)}
         </div>
       </li>`).join('');
 
     return `
-      <article class="venue-card">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+      <article class="fac-extra-card">
+        <div class="fac-extra-card__head">
+          <div class="fac-extra-card__icon">
             <span class="material-symbols-outlined">${escapeHtml(group.icon || 'add_circle')}</span>
           </div>
-          <h4 class="text-base font-bold text-slate-800">${escapeHtml(group.category)}</h4>
+          <h4 class="fac-extra-card__title">${escapeHtml(group.category)}</h4>
         </div>
-        <ul>${itemsHtml}</ul>
+        <ul class="fac-extra-card__list">${itemsHtml}</ul>
       </article>`;
   }).join('');
 }
 
 function updateCatalogToolbar(tab) {
-  const editToggle = document.querySelector('[data-catalog-edit-toggle]');
-  const addVenue = document.querySelector('[data-catalog-add="venue"]');
-  const addMeal = document.querySelector('[data-catalog-add="meal"]');
-  const addExtra = document.querySelector('[data-catalog-add="extra"]');
+  document.querySelectorAll('[data-catalog-edit-toggle]').forEach((editToggle) => {
+    const panelTab = editToggle.getAttribute('data-catalog-for');
+    if (!panelTab || !(panelTab in catalogEditMode)) return;
 
-  const isCatalog = ['venues', 'meals', 'extras'].includes(tab);
-
-  editToggle?.classList.toggle('hidden', !isCatalog);
-  if (editToggle && isCatalog) {
-    const editing = catalogEditMode[tab];
+    const editing = catalogEditMode[panelTab];
     editToggle.innerHTML = editing
       ? '<span class="material-symbols-outlined text-[20px]">check</span> Done editing'
       : '<span class="material-symbols-outlined text-[20px]">edit</span> Edit prices';
     editToggle.classList.toggle('admin-crud-btn-primary', editing);
     editToggle.classList.toggle('admin-crud-btn-ghost', !editing);
     editToggle.setAttribute('aria-pressed', editing ? 'true' : 'false');
-  }
-
-  addVenue?.classList.toggle('hidden', tab !== 'venues');
-  addMeal?.classList.toggle('hidden', tab !== 'meals');
-  addExtra?.classList.toggle('hidden', tab !== 'extras');
+  });
 
   document.querySelectorAll('[data-catalog-edit-hint]').forEach((el) => {
     const panelTab = el.getAttribute('data-catalog-panel')
@@ -397,8 +388,6 @@ function updateCatalogToolbar(tab) {
     if (!panelTab || panelTab === 'rooms') return;
     el.classList.toggle('hidden', !catalogEditMode[panelTab]);
   });
-
-  if (typeof window.syncFacToolbar === 'function') window.syncFacToolbar();
 }
 
 export function setCatalogToolbarTab(tab) {
@@ -416,7 +405,9 @@ export function initFacilityCatalog({ refresh }) {
   $('catalog-modal-save')?.addEventListener('click', saveModal);
   $('catalog-modal-delete')?.addEventListener('click', deleteRow);
 
-  document.querySelector('[data-catalog-edit-toggle]')?.addEventListener('click', toggleCatalogEditMode);
+  document.querySelectorAll('[data-catalog-edit-toggle]').forEach((btn) => {
+    btn.addEventListener('click', toggleCatalogEditMode);
+  });
 
   $('catalog-modal')?.addEventListener('click', (e) => {
     if (e.target === $('catalog-modal')) hideModal();

@@ -31,25 +31,6 @@
         <button type="button" data-fac-tab="meals" class="fac-tab">Meal prices</button>
         <button type="button" data-fac-tab="extras" class="fac-tab">Extra fees</button>
       </nav>
-
-      <div class="fac-actions" id="fac-toolbar">
-        <button type="button" data-catalog-edit-toggle class="admin-crud-btn-ghost shadow-sm hidden" aria-pressed="false">
-          <span class="material-symbols-outlined text-[20px]">edit</span>
-          Edit prices
-        </button>
-        <button type="button" data-catalog-add="venue" class="admin-crud-btn-primary shadow-sm hidden">
-          <span class="material-symbols-outlined text-[20px]">add</span>
-          Add venue price
-        </button>
-        <button type="button" data-catalog-add="meal" class="admin-crud-btn-primary shadow-sm hidden">
-          <span class="material-symbols-outlined text-[20px]">add</span>
-          Add meal
-        </button>
-        <button type="button" data-catalog-add="extra" class="admin-crud-btn-primary shadow-sm hidden">
-          <span class="material-symbols-outlined text-[20px]">add</span>
-          Add extra
-        </button>
-      </div>
     </div>
 
     <div id="fac-panel-rooms" class="fac-panel">
@@ -179,6 +160,16 @@
           <h2>Meal prices</h2>
           <p>Per-person rates shown when guests add meals to a room booking.</p>
         </div>
+        <div class="fac-panel-head__actions">
+          <button type="button" data-catalog-edit-toggle data-catalog-for="meals" class="admin-crud-btn-ghost shadow-sm" aria-pressed="false">
+            <span class="material-symbols-outlined text-[20px]">edit</span>
+            Edit prices
+          </button>
+          <button type="button" data-catalog-add="meal" class="admin-crud-btn-primary shadow-sm">
+            <span class="material-symbols-outlined text-[20px]">add</span>
+            Add meal
+          </button>
+        </div>
       </header>
       <section class="fac-catalog-section">
         <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="meals" role="note">
@@ -187,8 +178,8 @@
             <p>Editing mode — tap <strong>Edit</strong> on a meal card to change its price.</p>
           </div>
         </div>
-        <div id="meals-grid-mount" class="fac-catalog-section__body grid grid-cols-2 sm:grid-cols-4 gap-4 min-h-[100px]">
-          <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading meals…</p>
+        <div id="meals-grid-mount" class="fac-catalog-grid fac-catalog-grid--meals">
+          <p class="fac-catalog-grid__empty">Loading meals…</p>
         </div>
       </section>
     </div>
@@ -199,6 +190,16 @@
           <h2>Extra services &amp; fees</h2>
           <p>Laundry, corkage, maid service, extra mattresses, and other add-ons.</p>
         </div>
+        <div class="fac-panel-head__actions">
+          <button type="button" data-catalog-edit-toggle data-catalog-for="extras" class="admin-crud-btn-ghost shadow-sm" aria-pressed="false">
+            <span class="material-symbols-outlined text-[20px]">edit</span>
+            Edit prices
+          </button>
+          <button type="button" data-catalog-add="extra" class="admin-crud-btn-primary shadow-sm">
+            <span class="material-symbols-outlined text-[20px]">add</span>
+            Add extra
+          </button>
+        </div>
       </header>
       <section class="fac-catalog-section">
         <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="extras" role="note">
@@ -207,8 +208,8 @@
             <p>Editing mode — tap <strong>Edit</strong> on any fee to change it.</p>
           </div>
         </div>
-        <div id="extras-grid-mount" class="fac-catalog-section__body grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[100px]">
-          <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading extras…</p>
+        <div id="extras-grid-mount" class="fac-catalog-grid fac-catalog-grid--extras">
+          <p class="fac-catalog-grid__empty">Loading extras…</p>
         </div>
       </section>
     </div>
@@ -250,14 +251,6 @@
       renderExtrasCatalog(allExtras);
     }
 
-    function syncFacToolbar() {
-      const bar = document.getElementById('fac-toolbar');
-      if (!bar) return;
-      const hasVisible = [...bar.children].some((el) => !el.classList.contains('hidden'));
-      bar.classList.toggle('hidden', !hasVisible);
-    }
-    window.syncFacToolbar = syncFacToolbar;
-
     function switchFacTab(tab) {
       activeFacTab = tab;
       document.querySelectorAll('[data-fac-tab]').forEach((btn) => {
@@ -272,7 +265,6 @@
       } else {
         setCatalogToolbarTab(tab);
       }
-      syncFacToolbar();
     }
 
     initFacilityCatalog({ refresh: reloadCatalog });
@@ -284,7 +276,6 @@
       renderMealsCatalog(allMeals);
       renderExtrasCatalog(allExtras);
       setCatalogToolbarTab(activeFacTab);
-      syncFacToolbar();
 
       await bootstrapRoomsBoard();
       await bootstrapVenueScheduleBoard();
