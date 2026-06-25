@@ -38,7 +38,7 @@
     <div class="flex items-center gap-2 sm:gap-3">
       <div class="hidden sm:flex items-center bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant/50 min-w-0">
         <span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">search</span>
-        <input class="bg-transparent border-none focus:ring-0 text-body-sm w-28 lg:w-40 ml-1 min-w-0" placeholder="Search facilities..." type="search" aria-label="Search facilities"/>
+        <input id="landing-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-28 lg:w-40 ml-1 min-w-0" placeholder="Search facilities..." type="search" aria-label="Search facilities"/>
       </div>
       <button type="button" class="hidden sm:inline-flex material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all" aria-label="Notifications">notifications</button>
       <button type="button" class="hidden sm:inline-flex material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all" aria-label="Settings">settings</button>
@@ -94,7 +94,7 @@
             </a>
           </div>
 
-          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="grid grid-cols-2 gap-3 max-w-md">
             <div class="lp-stat rounded-xl px-4 py-4">
               <p class="text-2xl font-bold text-white"><span data-count="90" data-suffix="+">90+</span></p>
               <p class="text-white/55 text-label-sm mt-0.5">Rooms & Spaces</p>
@@ -102,14 +102,6 @@
             <div class="lp-stat rounded-xl px-4 py-4">
               <p class="text-2xl font-bold text-white"><span data-count="5">5</span></p>
               <p class="text-white/55 text-label-sm mt-0.5">Buildings</p>
-            </div>
-            <div class="lp-stat rounded-xl px-4 py-4">
-              <p class="text-2xl font-bold text-white"><span data-count="3">3</span></p>
-              <p class="text-white/55 text-label-sm mt-0.5">Rate Seasons</p>
-            </div>
-            <div class="lp-stat rounded-xl px-4 py-4">
-              <p class="text-2xl font-bold text-white">Live</p>
-              <p class="text-white/55 text-label-sm mt-0.5">Real-time Status</p>
             </div>
           </div>
         </div>
@@ -178,7 +170,7 @@
 
       <div class="lp-facilities-grid grid grid-cols-1 md:grid-cols-12 gap-5">
 
-        <a href="/login.html" class="lp-facility-card md:col-span-7 md:min-h-[22rem] group block">
+        <a href="/login.html" class="lp-facility-card md:col-span-7 md:min-h-[22rem] group block" data-facility-name="Guest Houses PCALM Thesda Sampaguita Peranza rooms dorm">
           <img src="https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1400&q=80" alt="Guest house room interior" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
             <span class="inline-block w-fit px-3 py-1 bg-white/15 text-white text-label-sm rounded-full mb-3 backdrop-blur-sm">PCALM · Thesda · Sampaguita · Peranza</span>
@@ -190,7 +182,7 @@
           </div>
         </a>
 
-        <a href="/login.html" class="lp-facility-card md:col-span-5 md:min-h-[22rem] group block">
+        <a href="/login.html" class="lp-facility-card md:col-span-5 md:min-h-[22rem] group block" data-facility-name="Conference Classrooms Russ Turney meeting">
           <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80" alt="Conference room" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
             <span class="inline-block w-fit px-3 py-1 bg-white/15 text-white text-label-sm rounded-full mb-3 backdrop-blur-sm">Up to 100 guests</span>
@@ -202,7 +194,7 @@
           </div>
         </a>
 
-        <a href="/login.html" class="lp-facility-card md:col-span-4 group block">
+        <a href="/login.html" class="lp-facility-card md:col-span-4 group block" data-facility-name="Chapel Garden GMC Osgood wedding">
           <img src="https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1200&q=80" alt="Chapel interior" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
             <h3 class="text-white text-xl font-bold mb-2">Chapel & Garden</h3>
@@ -213,7 +205,7 @@
           </div>
         </a>
 
-        <a href="/login.html" class="lp-facility-card md:col-span-4 group block">
+        <a href="/login.html" class="lp-facility-card md:col-span-4 group block" data-facility-name="Prayer Mountain retreat ministry">
           <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80" alt="Mountain landscape" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
             <h3 class="text-white text-xl font-bold mb-2">Prayer Mountain</h3>
@@ -224,7 +216,7 @@
           </div>
         </a>
 
-        <a href="/login.html" class="lp-facility-card md:col-span-4 group block">
+        <a href="/login.html" class="lp-facility-card md:col-span-4 group block" data-facility-name="Sports Rec basketball playground">
           <img src="https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80" alt="Basketball court" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
             <h3 class="text-white text-xl font-bold mb-2">Sports & Rec</h3>

@@ -84,9 +84,36 @@ function animateCounters(gsap) {
   });
 }
 
+function initLandingSearch() {
+  const input = document.getElementById('landing-search');
+  if (!input) return;
+
+  const cards = () => document.querySelectorAll('.lp-facility-card');
+
+  const applyFilter = (query) => {
+    const q = query.trim().toLowerCase();
+    cards().forEach((card) => {
+      const hay = `${card.dataset.facilityName || ''} ${card.textContent}`.toLowerCase();
+      const match = !q || hay.includes(q);
+      card.classList.toggle('hidden', !match);
+      card.style.opacity = match ? '1' : '0.35';
+    });
+  };
+
+  input.addEventListener('input', () => applyFilter(input.value));
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('facilities')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      applyFilter(input.value);
+    }
+  });
+}
+
 export async function initLandingPage() {
   initSmoothAnchors();
   initNavScroll(document.querySelector('.lp-nav'));
+  initLandingSearch();
 
   if (prefersReducedMotion()) {
     revealStatic();
