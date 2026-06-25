@@ -196,11 +196,20 @@
             <div class="space-y-lg mb-xl">
                 <div class="grid grid-cols-1 gap-lg max-w-md">
                     <div class="space-y-xs">
-                        <label class="font-label-md text-label-md text-on-surface-variant">Current Password</label>
-                        <input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="••••••••" type="password"/>
+                        <label class="font-label-md text-label-md text-on-surface-variant" for="current-password">Current Password</label>
+                        <input id="current-password" class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="••••••••" type="password" />
+                    </div>
+                    <div class="space-y-xs">
+                        <label class="font-label-md text-label-md text-on-surface-variant" for="new-password">New Password</label>
+                        <input id="new-password" class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Min. 6 characters" type="password" />
+                    </div>
+                    <div class="space-y-xs">
+                        <label class="font-label-md text-label-md text-on-surface-variant" for="confirm-new-password">Confirm New Password</label>
+                        <input id="confirm-new-password" class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Repeat new password" type="password" />
                     </div>
                 </div>
-                <button class="js-requires-write bg-primary-container text-on-primary-container px-lg py-md rounded-lg font-label-md text-label-md hover:opacity-90">Update Password</button>
+                <div id="password-feedback" class="hidden text-body-sm rounded-lg px-3 py-2"></div>
+                <button id="update-password-btn" class="js-requires-write bg-primary-container text-on-primary-container px-lg py-md rounded-lg font-label-md text-label-md hover:opacity-90">Update Password</button>
             </div>
         </div>
     </section>
@@ -255,6 +264,52 @@
     tabsSelector: '[role="tablist"]',
     panelsSelector: '.app-tab-panels',
     useHiddenClass: true,
+  });
+
+  document.getElementById('update-password-btn')?.addEventListener('click', async () => {
+    const currentPw  = document.getElementById('current-password')?.value.trim();
+    const newPw      = document.getElementById('new-password')?.value.trim();
+    const confirmPw  = document.getElementById('confirm-new-password')?.value.trim();
+    const feedback   = document.getElementById('password-feedback');
+    const btn        = document.getElementById('update-password-btn');
+
+    const showMsg = (msg, isError) => {
+      if (!feedback) return;
+      feedback.textContent = msg;
+      feedback.className = isError
+        ? 'text-body-sm rounded-lg px-3 py-2 bg-error/10 text-error'
+        : 'text-body-sm rounded-lg px-3 py-2 bg-emerald-50 text-emerald-700';
+      feedback.classList.remove('hidden');
+    };
+
+    if (!currentPw || !newPw || !confirmPw) return showMsg('All password fields are required.', true);
+    if (newPw.length < 6)                   return showMsg('New password must be at least 6 characters.', true);
+    if (newPw !== confirmPw)                return showMsg('New passwords do not match.', true);
+
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+    try {
+      const res = await fetch('/api/auth/me/password', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+        body: JSON.stringify({ current_password: currentPw, new_password: newPw }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Update failed');
+      showMsg(data.message || 'Password updated.', false);
+      ['current-password', 'new-password', 'confirm-new-password'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+      });
+    } catch (err) {
+      showMsg(err.message, true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Update Password';
+    }
   });
 </script>
 </body>

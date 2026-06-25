@@ -101,6 +101,25 @@ export const updateMe = async (userId, { full_name }) => {
   return getMe(userId);
 };
 
+export const changePassword = async (userId, { current_password, new_password }) => {
+  if (isEmpty(current_password) || isEmpty(new_password)) {
+    throw new Error('current_password and new_password are required');
+  }
+  if (new_password.length < 6) {
+    throw new Error('New password must be at least 6 characters');
+  }
+
+  const [rows] = await pool.query('SELECT * FROM users WHERE id = ? LIMIT 1', [userId]);
+  if (!rows.length) throw new Error('User not found');
+
+  const isMatch = await bcrypt.compare(current_password, rows[0].password);
+  if (!isMatch) throw new Error('Current password is incorrect');
+
+  const hashed = await bcrypt.hash(new_password, 10);
+  await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashed, userId]);
+  return { message: 'Password changed successfully' };
+};
+
 export const requestPasswordReset = async (email) => {
   if (isEmpty(email)) {
     throw new Error('Email is required');

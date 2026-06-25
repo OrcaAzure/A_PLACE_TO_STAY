@@ -163,7 +163,73 @@
     </div>
   </div>
 
+  <div class="reveal" style="animation-delay:.15s">
+    <h2 class="font-headline-xl text-headline-xl text-on-surface">Browse Venues</h2>
+    <p class="font-body-md text-body-md text-on-surface-variant">Book a seminar hall, chapel, or meeting space for your event.</p>
+  </div>
+
+  <div id="venues-mount" class="space-y-10 reveal" style="animation-delay:.2s">
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+      <div class="skeleton h-48"></div>
+      <div class="skeleton h-48"></div>
+      <div class="skeleton h-48"></div>
+    </div>
+  </div>
+
 </div>
+
+<!-- Venue Booking Modal -->
+<div id="venue-booking-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
+  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 space-y-4">
+    <div class="flex items-center justify-between">
+      <h3 class="font-headline-sm text-on-surface" id="vbm-title">Book Venue</h3>
+      <button id="vbm-close" type="button" class="text-on-surface-variant hover:text-on-surface">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+
+    <input type="hidden" id="vbm-facility-id" />
+
+    <div class="space-y-3">
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-date">Event Date</label>
+        <input type="date" id="vbm-date" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+      </div>
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-start">Start Time</label>
+          <input type="time" id="vbm-start" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-end">End Time</label>
+          <input type="time" id="vbm-end" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-guests">Number of guests</label>
+        <input type="number" id="vbm-guests" min="1" value="1" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+      </div>
+      <div>
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-notes">Notes (optional)</label>
+        <textarea id="vbm-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Purpose, special requirements…"></textarea>
+      </div>
+    </div>
+
+    <div id="vbm-feedback" class="hidden text-body-sm rounded-lg px-3 py-2"></div>
+
+    <div class="flex gap-3 pt-1">
+      <button type="button" id="vbm-cancel-btn"
+        class="flex-1 border border-outline-variant rounded-lg py-2.5 text-body-sm text-on-surface hover:bg-surface-container-low">
+        Cancel
+      </button>
+      <button type="button" id="vbm-submit-btn"
+        class="flex-1 bg-primary text-white rounded-lg py-2.5 text-body-sm font-medium hover:opacity-90 disabled:opacity-50">
+        Submit Request
+      </button>
+    </div>
+  </div>
+</div>
+
 </main>
 
 <footer class="guest-footer border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
@@ -182,7 +248,7 @@
 
 <script type="module">
   import { requireAuth, doLogout, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
-  import { getRooms, getRoomAvailability, normalizeRoom } from '/assets/js/services/api.js';
+  import { getRooms, getRoomAvailability, normalizeRoom, getVenueFacilities, createFacilityBooking } from '/assets/js/services/api.js';
   import { initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
   import { initGuestSidebar } from '/assets/js/layout/guest-sidebar.js';
 
@@ -421,5 +487,130 @@
   });
 
   loadRooms();
+
+  // ---- Venue section ----
+  function escapeHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function venueCard(item) {
+    const rate = item.rate != null ? `₱${Number(item.rate).toLocaleString('en-PH', { minimumFractionDigits: 2 })} / hr` : '—';
+    return `
+      <div class="flex flex-col bg-white rounded-2xl overflow-hidden border border-outline-variant hover:border-primary/40 hover:shadow-xl transition-all duration-300 reveal">
+        <div class="h-24 bg-gradient-to-br from-secondary/15 to-secondary/5 flex items-center justify-center">
+          <span class="material-symbols-outlined text-[40px] text-secondary/70">corporate_fare</span>
+        </div>
+        <div class="p-5 flex flex-col flex-1">
+          <p class="text-label-sm text-primary font-medium mb-1">${escapeHtml(item.category)}</p>
+          <h3 class="font-headline-sm text-on-surface mb-1">${escapeHtml(item.item)}</h3>
+          <p class="text-body-sm text-on-surface-variant mb-3">${rate}</p>
+          ${!readOnly ? `<button type="button"
+            class="book-venue-btn mt-auto w-full border border-primary text-primary rounded-lg py-2 text-label-sm hover:bg-primary hover:text-white transition-colors"
+            data-facility-id="${item.id}"
+            data-facility-name="${escapeHtml(item.item)}">
+            Book this venue
+          </button>` : `<div class="mt-auto w-full py-2 text-center bg-surface-container-low text-outline border border-outline-variant/50 rounded-lg text-label-sm">View only</div>`}
+        </div>
+      </div>`;
+  }
+
+  async function loadVenues() {
+    const mount = document.getElementById('venues-mount');
+    try {
+      const venues = await getVenueFacilities();
+      if (!venues.length) {
+        mount.innerHTML = '<p class="text-body-sm text-on-surface-variant">No venues available.</p>';
+        return;
+      }
+      const groups = {};
+      venues.forEach(v => { (groups[v.category] = groups[v.category] || []).push(v); });
+      mount.innerHTML = Object.keys(groups).sort().map(cat => `
+        <div class="space-y-5">
+          <div class="flex items-center gap-4">
+            <h4 class="font-headline-sm text-on-surface-variant whitespace-nowrap">${escapeHtml(cat)}</h4>
+            <div class="h-[1px] w-full bg-outline-variant/30"></div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            ${groups[cat].map(venueCard).join('')}
+          </div>
+        </div>`).join('');
+    } catch (err) {
+      mount.innerHTML = `<div class="text-center py-8 text-error"><p>${err.message}</p></div>`;
+    }
+  }
+
+  loadVenues();
+
+  // ---- Venue booking modal ----
+  const modal    = document.getElementById('venue-booking-modal');
+  const titleEl  = document.getElementById('vbm-title');
+  const fidEl    = document.getElementById('vbm-facility-id');
+  const feedback = document.getElementById('vbm-feedback');
+  const submitBtn= document.getElementById('vbm-submit-btn');
+
+  function openVenueModal(facilityId, facilityName) {
+    if (fidEl)   fidEl.value = facilityId;
+    if (titleEl) titleEl.textContent = `Book — ${facilityName}`;
+    const dateEl = document.getElementById('vbm-date');
+    if (dateEl) dateEl.min = new Date().toISOString().slice(0, 10);
+    feedback?.classList.add('hidden');
+    modal?.classList.remove('hidden');
+  }
+
+  function closeVenueModal() {
+    modal?.classList.add('hidden');
+    ['vbm-date','vbm-start','vbm-end','vbm-notes'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const guests = document.getElementById('vbm-guests');
+    if (guests) guests.value = '1';
+  }
+
+  document.getElementById('vbm-close')?.addEventListener('click', closeVenueModal);
+  document.getElementById('vbm-cancel-btn')?.addEventListener('click', closeVenueModal);
+  modal?.addEventListener('click', (e) => { if (e.target === modal) closeVenueModal(); });
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.book-venue-btn');
+    if (btn) openVenueModal(btn.dataset.facilityId, btn.dataset.facilityName);
+  });
+
+  submitBtn?.addEventListener('click', async () => {
+    const showMsg = (msg, isError) => {
+      if (!feedback) return;
+      feedback.textContent = msg;
+      feedback.className = isError
+        ? 'text-body-sm rounded-lg px-3 py-2 bg-error/10 text-error'
+        : 'text-body-sm rounded-lg px-3 py-2 bg-emerald-50 text-emerald-700';
+      feedback.classList.remove('hidden');
+    };
+
+    const facilityId = document.getElementById('vbm-facility-id')?.value;
+    const eventDate  = document.getElementById('vbm-date')?.value;
+    const startTime  = document.getElementById('vbm-start')?.value;
+    const endTime    = document.getElementById('vbm-end')?.value;
+    const guestCount = Number(document.getElementById('vbm-guests')?.value || 1);
+    const notes      = document.getElementById('vbm-notes')?.value.trim();
+
+    if (!eventDate) return showMsg('Please select an event date.', true);
+    if (!startTime || !endTime) return showMsg('Please set start and end times.', true);
+    if (endTime <= startTime) return showMsg('End time must be after start time.', true);
+
+    submitBtn.disabled    = true;
+    submitBtn.textContent = 'Submitting…';
+
+    try {
+      await createFacilityBooking({ facility_id: facilityId, event_date: eventDate,
+        start_time: startTime, end_time: endTime, guest_count: guestCount, notes });
+      showMsg('Venue request submitted! You will be notified once it is approved.', false);
+      submitBtn.textContent = 'Submitted';
+      setTimeout(closeVenueModal, 2000);
+    } catch (err) {
+      showMsg(err.message || 'Submission failed. Please try again.', true);
+      submitBtn.disabled    = false;
+      submitBtn.textContent = 'Submit Request';
+    }
+  });
 </script>
 </body></html>

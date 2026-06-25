@@ -317,3 +317,26 @@ export function normalizeUser(user) {
     createdAt: user.created_at,
   };
 }
+
+export async function getFacilityBookings() {
+  const data = await apiRequest('/facility-bookings');
+  return data.bookings || [];
+}
+
+export async function createFacilityBooking(payload) {
+  return apiRequest('/facility-bookings', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateFacilityBooking(id, payload) {
+  return apiRequest(`/facility-bookings/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function cancelFacilityBooking(id) {
+  return updateFacilityBooking(id, { status: 'Cancelled' });
+}

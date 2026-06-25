@@ -39,7 +39,7 @@
           <p class="text-body-sm text-on-surface-variant mt-1">Arrivals scheduled for today.</p>
         </div>
         <div class="mt-auto pt-4 border-t border-outline-variant/30">
-          <span class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold">6 ARRIVING TODAY</span>
+          <span id="arriving-today-badge" class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold">—</span>
         </div>
       </div>
     </div>
@@ -79,6 +79,20 @@
       title:      'Resident Operations Center',
       subtitle:   'Mission Control',
     });
+
+    try {
+      const { getBookings, normalizeBooking } = await import('/assets/js/services/api.js');
+      const todayISO = new Date().toISOString().slice(0, 10);
+      const bookings = await getBookings();
+      const arrivingToday = bookings.filter(b => {
+        const nb = normalizeBooking(b);
+        return nb.startDate === todayISO && nb.status === 'approved';
+      });
+      const badge = document.getElementById('arriving-today-badge');
+      if (badge) {
+        badge.textContent = `${arrivingToday.length} ARRIVING TODAY`;
+      }
+    } catch { /* non-critical */ }
 
     // load real users from the API
     try {

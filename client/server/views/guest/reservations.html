@@ -265,7 +265,15 @@
 
         <div id="featured-card" class="hidden"></div>
 
-        <div class="bg-white p-4 rounded-xl border border-outline-variant shadow-sm flex flex-wrap items-center gap-3 reveal" style="animation-delay:.3s">
+        <div class="bg-white rounded-xl border border-outline-variant shadow-sm reveal" style="animation-delay:.28s">
+          <div class="flex border-b border-outline-variant px-4 pt-3 gap-1" role="tablist">
+            <button type="button" role="tab" data-res-tab="room-stays" class="app-tab-btn app-tab-active" aria-selected="true">Room Stays</button>
+            <button type="button" role="tab" data-res-tab="venues" class="app-tab-btn" aria-selected="false">Venue Bookings</button>
+          </div>
+
+          <div data-res-panel="room-stays" role="tabpanel">
+
+        <div class="bg-white p-4 rounded-xl flex flex-wrap items-center gap-3" style="animation-delay:.3s">
           <div class="flex items-center gap-2 mr-1 text-on-surface-variant">
             <span class="material-symbols-outlined text-[20px]">filter_list</span>
             <span class="text-label-sm uppercase tracking-wider font-bold">Filter</span>
@@ -288,6 +296,16 @@
           <div class="skeleton h-28 rounded-2xl"></div>
           <div class="skeleton h-28 rounded-2xl"></div>
         </div>
+
+          </div><!-- /room-stays panel -->
+
+          <div data-res-panel="venues" class="is-tab-hidden hidden" role="tabpanel">
+            <div id="venue-bookings-list" class="space-y-3 p-4">
+              <div class="text-body-sm text-on-surface-variant text-center py-8">Loading venue bookings…</div>
+            </div>
+          </div>
+
+        </div><!-- /tab workspace -->
       </div>
 
       <div class="lg:col-span-4 space-y-gutter">
@@ -473,6 +491,7 @@
   import {
     getBookings, getGroups, createBooking, createGroup, updateBooking, updateGroup,
     getRoomAvailability, normalizeBooking, formatGroupId,
+    getFacilityBookings, cancelFacilityBooking,
   } from '/assets/js/services/api.js';
   import { initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
   import { loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint } from '/assets/js/features/reservation-shared.js';
@@ -984,6 +1003,76 @@
     if (e.key !== 'Escape') return;
     if (!modal.classList.contains('is-hidden')) closeBookingModal();
     if (!groupModal.classList.contains('is-hidden')) closeGroupModal();
+  });
+
+  /* ---------- Venue Bookings tab ---------- */
+  function escapeHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  const statusClass = {
+    Pending:   'res-pill--pending',
+    Approved:  'res-pill--approved',
+    Rejected:  'res-pill--rejected',
+    Cancelled: 'res-pill--cancelled',
+  };
+
+  async function loadVenueBookings() {
+    const mount = document.getElementById('venue-bookings-list');
+    if (!mount) return;
+    try {
+      const bookings = await getFacilityBookings();
+      if (!bookings.length) {
+        mount.innerHTML = '<div class="text-body-sm text-on-surface-variant text-center py-8">No venue bookings yet. Browse Facilities to book a venue.</div>';
+        return;
+      }
+      mount.innerHTML = bookings.map(b => `
+        <article class="res-list-card" data-fb-id="${b.id}">
+          <div class="res-list-card-head">
+            <span class="res-list-id">#VEN-${b.id}</span>
+            <span class="res-pill ${statusClass[b.status] || ''}">${b.status}</span>
+          </div>
+          <h3 class="res-list-title">${escapeHtml(b.facility_name || b.facility_category)}</h3>
+          <dl class="res-list-dates">
+            <div><dt>Date</dt><dd>${b.event_date}</dd></div>
+            <div><dt>Time</dt><dd>${b.start_time?.slice(0,5)} – ${b.end_time?.slice(0,5)}</dd></div>
+            <div><dt>Total</dt><dd>${b.total_amount != null ? '₱' + Number(b.total_amount).toLocaleString('en-PH') : '—'}</dd></div>
+          </dl>
+          ${b.status === 'Pending' ? `<button type="button" class="res-btn res-btn--ghost cancel-fb-btn" data-fb-id="${b.id}">Cancel request</button>` : ''}
+        </article>`).join('');
+
+      mount.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.cancel-fb-btn');
+        if (!btn) return;
+        if (!confirm('Cancel this venue booking request?')) return;
+        try {
+          await cancelFacilityBooking(btn.dataset.fbId);
+          await loadVenueBookings();
+        } catch (err) {
+          alert(err.message);
+        }
+      });
+    } catch (err) {
+      mount.innerHTML = `<div class="text-body-sm text-error text-center py-8">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  /* Tab switching for room-stays / venues */
+  document.querySelectorAll('[data-res-tab]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.resTab;
+      document.querySelectorAll('[data-res-tab]').forEach(b => {
+        const on = b === btn;
+        b.classList.toggle('app-tab-active', on);
+        b.setAttribute('aria-selected', on ? 'true' : 'false');
+      });
+      document.querySelectorAll('[data-res-panel]').forEach(panel => {
+        const show = panel.dataset.resPanel === target;
+        panel.classList.toggle('hidden', !show);
+        panel.classList.toggle('is-tab-hidden', !show);
+      });
+      if (target === 'venues') loadVenueBookings();
+    });
   });
 
   loadBookings();

@@ -50,6 +50,16 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
+// PATCH /api/auth/me/password  (protected)
+export const updatePassword = async (req, res) => {
+  try {
+    const result = await authService.changePassword(req.user.id, req.body);
+    res.status(200).json(result);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 // POST /api/auth/reset-password
 export const resetPassword = async (req, res) => {
   try {

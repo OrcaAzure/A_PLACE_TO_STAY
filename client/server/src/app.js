@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import authRoutes    from './routes/auth.routes.js';
 import roomRoutes    from './routes/room.routes.js';
 import bookingRoutes from './routes/booking.routes.js';
@@ -9,7 +11,8 @@ import userRoutes    from './routes/user.routes.js';
 import paymentRoutes from './routes/payment.routes.js';
 import statsRoutes   from './routes/stats.routes.js';
 import groupRoutes    from './routes/group.routes.js';
-import facilityRoutes  from './routes/facility.routes.js';
+import facilityRoutes        from './routes/facility.routes.js';
+import facilityBookingRoutes from './routes/facilityBooking.routes.js';
 import settingsRoutes  from './routes/settings.routes.js';
 import pageRoutes      from './routes/pages.routes.js';
 
@@ -17,6 +20,20 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir  = path.join(__dirname, '../../public');
 
 const app = express();
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:     ["'self'"],
+      scriptSrc:      ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdn.tailwindcss.com', 'https://cdn.jsdelivr.net'],
+      styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+      fontSrc:        ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc:         ["'self'", 'data:', 'https:'],
+      connectSrc:     ["'self'"],
+      workerSrc:      ["'self'", 'blob:'],
+    },
+  },
+}));
 
 app.use(cors({
   origin: process.env.ALLOWED_ORIGIN || [
@@ -36,6 +53,16 @@ app.get('/api', (req, res) => {
   res.json({ message: 'AptSpace API is running' });
 });
 
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' },
+});
+app.use('/api/auth/login',           authLimiter);
+app.use('/api/auth/forgot-password', authLimiter);
+
 app.use('/api/auth',     authRoutes);
 app.use('/api/users',    userRoutes);
 app.use('/api/rooms',    roomRoutes);
@@ -43,7 +70,8 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/groups',   groupRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/stats',      statsRoutes);
-app.use('/api/facilities', facilityRoutes);
+app.use('/api/facilities',        facilityRoutes);
+app.use('/api/facility-bookings', facilityBookingRoutes);
 app.use('/api/settings',   settingsRoutes);
 
 app.use(pageRoutes);
