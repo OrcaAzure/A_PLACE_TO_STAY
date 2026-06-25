@@ -13,6 +13,7 @@ const SEED_USERS = [
   { full_name: 'David Cho',            email: 'david.cho@apts.edu.ph',       role: 'GMC',              status: 'Active' },
   { full_name: 'Rev. Samuel Park',     email: 'samuel.park@gracechurch.org', role: 'External Guest',   status: 'Active' },
   { full_name: 'Manila Bible Church',  email: 'mbc.retreat@example.org',   role: 'External Guest',   status: 'Inactive' },
+  { full_name: 'Pacific Outreach Group', email: 'outreach@example.org',    role: 'External Guest',   status: 'Active' },
 ];
 
 const DEMO_BOOKINGS = [
@@ -268,8 +269,60 @@ export async function runSchemaPatches() {
   }
 }
 
+export async function seedGuestStayExamples() {
+  const samuelId = await getUserId('samuel.park@gracechurch.org');
+  const mbcId = await getUserId('mbc.retreat@example.org');
+  const roomId = await getRoomId('PCALM', '301');
+  if (!roomId) return;
+
+  const today = new Date();
+  const iso = (offset) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + offset);
+    return d.toISOString().slice(0, 10);
+  };
+
+  if (samuelId) {
+    const [exists] = await pool.execute('SELECT id FROM bookings WHERE user_id = ? LIMIT 1', [samuelId]);
+    if (!exists.length) {
+      await pool.execute(
+        `INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [samuelId, roomId, iso(-2), iso(4), 2, 'Regular', 'Single/Double Occupancy', 8500, 'Approved', 'External guest — ministry retreat']
+      );
+      console.log('[seed] Demo in-stay booking for external guest');
+    }
+  }
+
+  if (mbcId) {
+    const [exists] = await pool.execute('SELECT id FROM bookings WHERE user_id = ? LIMIT 1', [mbcId]);
+    if (!exists.length) {
+      await pool.execute(
+        `INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [mbcId, roomId, iso(-20), iso(-14), 8, 'Regular', 'Daily Maximum', 42000, 'Approved', 'Past group retreat — access review']
+      );
+      console.log('[seed] Demo ended-stay booking for external guest');
+    }
+  }
+
+  const outreachId = await getUserId('outreach@example.org');
+  if (outreachId) {
+    const [exists] = await pool.execute('SELECT id FROM bookings WHERE user_id = ? LIMIT 1', [outreachId]);
+    if (!exists.length) {
+      await pool.execute(
+        `INSERT INTO bookings (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [outreachId, roomId, iso(-14), iso(-10), 5, 'Regular', 'Daily Maximum', 18000, 'Approved', 'Completed outreach — deactivate access']
+      );
+      console.log('[seed] Demo review-access booking for external guest');
+    }
+  }
+}
+
 export async function runSeed() {
   await runSchemaPatches();
   await seedUsers();
   await seedDemoData();
+  await seedGuestStayExamples();
 }

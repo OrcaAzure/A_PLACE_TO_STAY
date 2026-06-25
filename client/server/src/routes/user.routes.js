@@ -4,6 +4,7 @@ import { requireRole } from '../middleware/role.middleware.js';
 import {
   getAllUsers,
   getUserById,
+  getGuestAccessOverview,
   createUser,
   updateUser,
   deleteUser
@@ -11,6 +12,7 @@ import {
 
 const router = Router();
 
+router.get('/guest-access', requireAuth, requireRole('Super Admin', 'Admin'), getGuestAccessOverview);
 router.get('/',     requireAuth, requireRole('Super Admin', 'Admin'), getAllUsers);
 router.post('/',    requireAuth, requireRole('Super Admin', 'Admin'), createUser);
 router.get('/:id',  requireAuth, getUserById);

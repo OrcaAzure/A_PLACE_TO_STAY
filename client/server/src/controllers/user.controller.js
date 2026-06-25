@@ -2,6 +2,16 @@ import { pool } from '../config/db.js';
 import { safeUser } from '../utils/helpers.js';
 import { ROLES } from '../utils/constants.js';
 import { createGuestUser } from '../services/user.service.js';
+import { getGuestAccessOverview as buildGuestAccessOverview } from '../services/guest-access.service.js';
+
+export const getGuestAccessOverview = async (req, res) => {
+  try {
+    const overview = await buildGuestAccessOverview();
+    res.status(200).json(overview);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 export const getAllUsers = async (req, res) => {
   try {

@@ -30,6 +30,8 @@
       </div>
     </div>
 
+    <div id="ga-review-banner" class="admin-notice admin-notice--warning hidden" role="status"></div>
+
     <header class="ga-panel-head">
       <div class="ga-panel-head__text">
         <h2>External guest accounts</h2>
@@ -43,27 +45,45 @@
       </div>
     </header>
 
-    <div class="ga-stats">
-      <article class="ga-stat">
-        <span class="ga-stat__value" id="ga-stat-active">—</span>
+    <div class="ga-stats ga-stats--ops">
+      <article class="ga-stat ga-stat--ops">
+        <span class="ga-stat__value" id="ga-stat-arriving">—</span>
+        <span class="ga-stat__label">Arriving this week</span>
+      </article>
+      <article class="ga-stat ga-stat--ops">
+        <span class="ga-stat__value" id="ga-stat-staying">—</span>
+        <span class="ga-stat__label">Currently staying</span>
+      </article>
+      <article class="ga-stat ga-stat--ops ga-stat--review">
+        <span class="ga-stat__value" id="ga-stat-review">—</span>
+        <span class="ga-stat__label">Review access</span>
+      </article>
+    </div>
+
+    <div class="ga-stats ga-stats--accounts">
+      <article class="ga-stat ga-stat--compact">
+        <span class="ga-stat__value ga-stat__value--sm" id="ga-stat-active">—</span>
         <span class="ga-stat__label">Active accounts</span>
       </article>
-      <article class="ga-stat">
-        <span class="ga-stat__value" id="ga-stat-inactive">—</span>
+      <article class="ga-stat ga-stat--compact">
+        <span class="ga-stat__value ga-stat__value--sm" id="ga-stat-inactive">—</span>
         <span class="ga-stat__label">Inactive</span>
       </article>
-      <article class="ga-stat">
-        <span class="ga-stat__value" id="ga-stat-total">—</span>
+      <article class="ga-stat ga-stat--compact">
+        <span class="ga-stat__value ga-stat__value--sm" id="ga-stat-total">—</span>
         <span class="ga-stat__label">Total guest accounts</span>
       </article>
     </div>
 
     <section class="fac-catalog-section">
       <div class="ga-workspace-toolbar">
-        <div class="ga-filter-group" role="group" aria-label="Filter by status">
+        <div class="ga-filter-group" role="group" aria-label="Filter guest accounts">
           <button type="button" class="ga-filter-chip is-active" data-ga-filter="all" aria-pressed="true">All</button>
           <button type="button" class="ga-filter-chip" data-ga-filter="active" aria-pressed="false">Active</button>
           <button type="button" class="ga-filter-chip" data-ga-filter="inactive" aria-pressed="false">Inactive</button>
+          <button type="button" class="ga-filter-chip" data-ga-filter="in_stay" aria-pressed="false">In stay</button>
+          <button type="button" class="ga-filter-chip" data-ga-filter="arriving" aria-pressed="false">Arriving</button>
+          <button type="button" class="ga-filter-chip" data-ga-filter="review" aria-pressed="false">Review access</button>
         </div>
         <input id="guest-access-search" type="search" class="ga-search" placeholder="Search name or email…" autocomplete="off" />
       </div>
@@ -73,8 +93,8 @@
             <tr>
               <th>Name</th>
               <th>Email</th>
-              <th>Status</th>
-              <th>Created</th>
+              <th>Access</th>
+              <th>Reservation</th>
               <th class="text-right">Actions</th>
             </tr>
           </thead>

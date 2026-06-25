@@ -79,6 +79,10 @@ export async function getUsers(params = {}) {
   return data.users || [];
 }
 
+export async function getGuestAccessOverview() {
+  return apiRequest('/users/guest-access');
+}
+
 export async function getGuestUsers(params = {}) {
   return getUsers({ role: 'External Guest', ...params });
 }

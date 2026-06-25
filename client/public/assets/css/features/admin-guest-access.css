@@ -162,6 +162,128 @@
   font-size: 0.9375rem;
 }
 
+.admin-notice--inline {
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+.admin-notice--warning {
+  background: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
+  align-items: center;
+}
+
+.admin-notice--warning .admin-notice__icon {
+  color: #d97706;
+}
+
+.ga-stats--ops {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ga-stats--accounts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 639px) {
+  .ga-stats--ops,
+  .ga-stats--accounts {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ga-stat--ops .ga-stat__value {
+  font-size: 2rem;
+}
+
+.ga-stat--review .ga-stat__value {
+  color: #b45309;
+}
+
+.ga-stat--compact {
+  padding: 0.75rem 1rem;
+}
+
+.ga-stat__value--sm {
+  font-size: 1.375rem;
+}
+
+.ga-row--review {
+  background: #fffbeb;
+}
+
+.ga-row--review:hover {
+  background: #fef3c7;
+}
+
+.ga-stay-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+  min-width: 10rem;
+}
+
+.ga-stay-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+  line-height: 1.3;
+}
+
+.ga-stay-badge--stay {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ga-stay-badge--arriving {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.ga-stay-badge--pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.ga-stay-badge--upcoming {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.ga-stay-badge--ended {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.ga-stay-badge--none {
+  background: #f8fafc;
+  color: #94a3b8;
+}
+
+.ga-stay-detail {
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.ga-stay-review-hint {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #b45309;
+}
+
+.ga-btn-text--emphasis {
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .ga-temp-password {
   margin-top: 0.75rem;
   padding: 0.875rem 1rem;
