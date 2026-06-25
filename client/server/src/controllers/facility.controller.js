@@ -12,6 +12,7 @@ const SERVICE_CATEGORIES = new Set([
   'Laundry-Iron',
   'Corkage Fee',
   'Maid Service',
+  'Accommodation Extras',
 ]);
 
 const CATEGORY_ICONS = {
@@ -24,6 +25,14 @@ const CATEGORY_ICONS = {
   'Basketball Court': 'sports_basketball',
   'Childrens Playground': 'child_care',
   'Rec Center': 'fitness_center',
+};
+
+const SERVICE_ICONS = {
+  Laundry: 'local_laundry_service',
+  'Laundry-Iron': 'iron',
+  'Corkage Fee': 'restaurant',
+  'Maid Service': 'cleaning_services',
+  'Accommodation Extras': 'bed',
 };
 
 const MEAL_ICONS = {
@@ -98,7 +107,11 @@ function groupServiceRows(rows) {
     if (!SERVICE_CATEGORIES.has(row.category)) continue;
 
     if (!byCategory.has(row.category)) {
-      byCategory.set(row.category, { category: row.category, items: [] });
+      byCategory.set(row.category, {
+        category: row.category,
+        icon: SERVICE_ICONS[row.category] || 'add_circle',
+        items: [],
+      });
     }
     byCategory.get(row.category).items.push({
       id: row.id,
@@ -108,7 +121,11 @@ function groupServiceRows(rows) {
     });
   }
 
-  return [...byCategory.values()];
+  return [...byCategory.values()].map((g) => ({
+    category: g.category,
+    icon: g.icon,
+    items: g.items,
+  }));
 }
 
 /** Admin facilities page: venues, meals, and add-on services grouped for display. */
