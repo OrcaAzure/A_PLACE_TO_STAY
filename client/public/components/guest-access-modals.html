@@ -1,0 +1,75 @@
+<div id="guest-access-modal-overlay" class="hidden fixed inset-0 bg-black/40 z-[70]" aria-hidden="true"></div>
+<div id="guest-access-modal" class="hidden fixed inset-0 z-[75] flex items-center justify-center p-4 pointer-events-none" role="dialog" aria-modal="true" aria-labelledby="guest-access-modal-title">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-md pointer-events-auto border border-slate-200">
+    <div class="flex items-start justify-between gap-3 px-5 pt-5 pb-3 border-b border-slate-100">
+      <h2 id="guest-access-modal-title" class="text-xl font-bold text-slate-800">Add guest</h2>
+      <button type="button" id="guest-access-modal-close" class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg shrink-0" aria-label="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="px-5 py-4">
+      <form id="guest-access-form">
+        <div id="guest-access-feedback" class="hidden"></div>
+
+        <fieldset class="ga-modal-mode" role="radiogroup" aria-label="How to add this guest">
+          <label class="ga-modal-mode__option">
+            <span class="ga-modal-mode__control">
+              <input type="radio" name="ga-add-mode" value="grant" checked />
+              <span class="ga-modal-mode__dot" aria-hidden="true"></span>
+            </span>
+            <span class="ga-modal-mode__text">
+              <strong>Grant access now</strong>
+              <small>Create login and send a temporary password</small>
+            </span>
+          </label>
+          <label class="ga-modal-mode__option">
+            <span class="ga-modal-mode__control">
+              <input type="radio" name="ga-add-mode" value="queue" />
+              <span class="ga-modal-mode__dot" aria-hidden="true"></span>
+            </span>
+            <span class="ga-modal-mode__text">
+              <strong>Save for later</strong>
+              <small>Record the request — approve when ready</small>
+            </span>
+          </label>
+        </fieldset>
+
+        <p id="ga-mode-hint" class="ga-mode-hint">Use this when you are ready to send login details to the guest.</p>
+
+        <label class="catalog-label" for="guest-name">Full name</label>
+        <input id="guest-name" class="catalog-input" type="text" required placeholder="e.g. Rev. Samuel Park" autocomplete="name" />
+        <label class="catalog-label" for="guest-email">Email address</label>
+        <input id="guest-email" class="catalog-input" type="email" required placeholder="guest@organization.org" autocomplete="email" />
+        <label class="catalog-label" for="guest-org">Organization <span class="text-slate-400 font-normal">(optional)</span></label>
+        <input id="guest-org" class="catalog-input" type="text" placeholder="e.g. Grace Community Church" />
+
+        <div id="ga-queue-notes" class="hidden">
+          <label class="catalog-label" for="guest-notes">Notes <span class="text-slate-400 font-normal">(optional)</span></label>
+          <textarea id="guest-notes" class="catalog-input min-h-[4.5rem]" placeholder="How they contacted you, intended dates, etc."></textarea>
+        </div>
+
+        <p id="ga-grant-hint" class="text-xs text-slate-500 mt-2 mb-4">A temporary password is emailed to the guest. You can copy it from the next screen.</p>
+
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" id="guest-access-modal-cancel" class="admin-crud-btn-ghost">Cancel</button>
+          <button type="submit" id="guest-access-submit" class="admin-crud-btn-primary">Create account</button>
+        </div>
+      </form>
+
+      <div id="guest-access-success" class="hidden">
+        <p class="text-sm text-slate-600 mb-3">Login ready for <strong id="guest-success-name"></strong> (<span id="guest-success-email"></span>).</p>
+        <div id="guest-temp-password-wrap" class="ga-temp-password">
+          <p class="ga-temp-password__label">Temporary password</p>
+          <div class="ga-temp-password__row">
+            <code id="guest-temp-password" class="ga-temp-password__value"></code>
+            <button type="button" id="guest-copy-password" class="admin-crud-btn-ghost text-sm">Copy</button>
+          </div>
+          <p class="ga-temp-password__hint">Share this with the guest if email delivery fails. They should change it after first login.</p>
+        </div>
+        <div class="flex justify-end pt-4">
+          <button type="button" id="guest-access-done" class="admin-crud-btn-primary">Done</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

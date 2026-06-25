@@ -83,6 +83,44 @@ export async function getGuestAccessOverview() {
   return apiRequest('/users/guest-access');
 }
 
+export async function getGuestAccessRequests(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.status) qs.set('status', params.status);
+  const query = qs.toString();
+  const data = await apiRequest(`/users/guest-access/requests${query ? `?${query}` : ''}`);
+  return data.requests || [];
+}
+
+export async function createGuestAccessRequest(payload) {
+  return apiRequest('/users/guest-access/requests', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function approveGuestAccessRequest(id) {
+  return apiRequest(`/users/guest-access/requests/${id}/approve`, { method: 'POST' });
+}
+
+export async function rejectGuestAccessRequest(id, payload = {}) {
+  return apiRequest(`/users/guest-access/requests/${id}/reject`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function bulkDeactivateGuests(payload = {}) {
+  return apiRequest('/users/guest-access/bulk-deactivate', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getGuestAccessActivity(limit = 25) {
+  const data = await apiRequest(`/users/guest-access/activity?limit=${limit}`);
+  return data.entries || [];
+}
+
 export async function getGuestUsers(params = {}) {
   return getUsers({ role: 'External Guest', ...params });
 }

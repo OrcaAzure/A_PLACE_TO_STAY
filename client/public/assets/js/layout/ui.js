@@ -56,7 +56,7 @@ export async function loadComponent(url) {
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v5';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v8';
 
 /** @type {Promise<Record<string, string>> | null} */
 let templatesPromise = null;
@@ -80,7 +80,7 @@ function writeTemplateCache(templates) {
 
 async function loadAdminTemplates() {
   const cached = readTemplateCache();
-  if (cached?.sidebar && cached?.facilityCatalog) return cached;
+  if (cached?.sidebar && cached?.facilityCatalog && cached?.guestAccessModals) return cached;
 
   if (!templatesPromise) {
     templatesPromise = Promise.all([
@@ -97,7 +97,8 @@ async function loadAdminTemplates() {
       loadComponent('/components/manage-venue-bookings-modal.html'),
       loadComponent('/components/notifications.html'),
       loadComponent('/components/facility-catalog-modal.html'),
-    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, reservationWizard, groupWizard, venueWizard, manageVenueBookings, notifications, facilityCatalog]) => {
+      loadComponent('/components/guest-access-modals.html'),
+    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, reservationWizard, groupWizard, venueWizard, manageVenueBookings, notifications, facilityCatalog, guestAccessModals]) => {
       const bundle = {
         sidebar,
         header,
@@ -112,6 +113,7 @@ async function loadAdminTemplates() {
         manageVenueBookings,
         notifications,
         facilityCatalog,
+        guestAccessModals,
       };
       writeTemplateCache(bundle);
       return bundle;
@@ -194,6 +196,7 @@ function buildAdminShell({
     ${templates.manageVenueBookings || ''}
     ${templates.notifications || ''}
     ${templates.facilityCatalog || ''}
+    ${templates.guestAccessModals || ''}
   `;
 }
 

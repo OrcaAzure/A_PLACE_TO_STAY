@@ -4,19 +4,35 @@ import { requireRole } from '../middleware/role.middleware.js';
 import {
   getAllUsers,
   getUserById,
-  getGuestAccessOverview,
   createUser,
   updateUser,
-  deleteUser
+  deleteUser,
 } from '../controllers/user.controller.js';
+import {
+  getGuestAccessOverview,
+  getGuestAccessRequests,
+  postGuestAccessRequest,
+  approveGuestAccessRequestHandler,
+  rejectGuestAccessRequestHandler,
+  bulkDeactivateGuestAccounts,
+  getGuestAccessActivity,
+} from '../controllers/guest-access.controller.js';
 
 const router = Router();
+const adminOnly = [requireAuth, requireRole('Super Admin', 'Admin')];
 
-router.get('/guest-access', requireAuth, requireRole('Super Admin', 'Admin'), getGuestAccessOverview);
-router.get('/',     requireAuth, requireRole('Super Admin', 'Admin'), getAllUsers);
-router.post('/',    requireAuth, requireRole('Super Admin', 'Admin'), createUser);
-router.get('/:id',  requireAuth, getUserById);
-router.patch('/:id',  requireAuth, requireRole('Super Admin', 'Admin'), updateUser);
+router.get('/guest-access/activity', ...adminOnly, getGuestAccessActivity);
+router.get('/guest-access/requests', ...adminOnly, getGuestAccessRequests);
+router.post('/guest-access/requests', ...adminOnly, postGuestAccessRequest);
+router.post('/guest-access/requests/:id/approve', ...adminOnly, approveGuestAccessRequestHandler);
+router.post('/guest-access/requests/:id/reject', ...adminOnly, rejectGuestAccessRequestHandler);
+router.post('/guest-access/bulk-deactivate', ...adminOnly, bulkDeactivateGuestAccounts);
+router.get('/guest-access', ...adminOnly, getGuestAccessOverview);
+
+router.get('/', ...adminOnly, getAllUsers);
+router.post('/', ...adminOnly, createUser);
+router.get('/:id', requireAuth, getUserById);
+router.patch('/:id', ...adminOnly, updateUser);
 router.delete('/:id', requireAuth, requireRole('Super Admin'), deleteUser);
 
 export default router;

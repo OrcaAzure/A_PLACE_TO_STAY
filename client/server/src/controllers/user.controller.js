@@ -2,16 +2,7 @@ import { pool } from '../config/db.js';
 import { safeUser } from '../utils/helpers.js';
 import { ROLES } from '../utils/constants.js';
 import { createGuestUser } from '../services/user.service.js';
-import { getGuestAccessOverview as buildGuestAccessOverview } from '../services/guest-access.service.js';
-
-export const getGuestAccessOverview = async (req, res) => {
-  try {
-    const overview = await buildGuestAccessOverview();
-    res.status(200).json(overview);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+import { logAudit, AUDIT_ACTIONS } from '../services/audit.service.js';
 
 export const getAllUsers = async (req, res) => {
   try {
@@ -49,7 +40,10 @@ export const getUserById = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const result = await createGuestUser(req.body);
+    const result = await createGuestUser({
+      ...req.body,
+      actorUserId: req.user?.id,
+    });
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -80,6 +74,24 @@ export const updateUser = async (req, res) => {
       WHERE id = ?`,
       [full_name, role, status, req.params.id]
     );
+
+    if (
+      target.role === ROLES.EXTERNAL_GUEST
+      && status
+      && status !== target.status
+      && req.user?.id
+    ) {
+      await logAudit({
+        actorUserId: req.user.id,
+        action: status === 'Active'
+          ? AUDIT_ACTIONS.GUEST_ACCOUNT_ACTIVATED
+          : AUDIT_ACTIONS.GUEST_ACCOUNT_DEACTIVATED,
+        entityType: 'user',
+        entityId: target.id,
+        details: { full_name: target.full_name, email: target.email },
+      });
+    }
+
     const [updated] = await pool.query('SELECT * FROM users WHERE id = ?', [req.params.id]);
     res.status(200).json({ message: 'User updated', user: safeUser(updated[0]) });
   } catch (error) {

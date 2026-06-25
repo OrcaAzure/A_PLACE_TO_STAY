@@ -4,6 +4,7 @@ import { pool } from '../config/db.js';
 import { safeUser, isEmpty } from '../utils/helpers.js';
 import { ROLES } from '../utils/constants.js';
 import { sendGuestAccessEmail } from './email.service.js';
+import { logAudit, AUDIT_ACTIONS } from './audit.service.js';
 
 export function generateTempPassword() {
   const segment = crypto.randomBytes(3).toString('hex');
@@ -11,7 +12,7 @@ export function generateTempPassword() {
   return `${segment}${digits}`;
 }
 
-export async function createGuestUser({ full_name, email }) {
+export async function createGuestUser({ full_name, email, organization, actorUserId = null }) {
   if (isEmpty(full_name) || isEmpty(email)) {
     throw new Error('Full name and email are required');
   }
@@ -40,6 +41,20 @@ export async function createGuestUser({ full_name, email }) {
   const [rows] = await pool.query('SELECT * FROM users WHERE id = ? LIMIT 1', [result.insertId]);
   const user = rows[0];
   void sendGuestAccessEmail(user, tempPassword);
+
+  if (actorUserId) {
+    await logAudit({
+      actorUserId,
+      action: AUDIT_ACTIONS.GUEST_ACCOUNT_CREATED,
+      entityType: 'user',
+      entityId: user.id,
+      details: {
+        full_name: user.full_name,
+        email: user.email,
+        organization: organization?.trim() || null,
+      },
+    });
+  }
 
   return {
     message: 'Guest account created',
