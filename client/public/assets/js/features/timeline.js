@@ -14,6 +14,8 @@ export const DAY_WIDTH = 80;
 
 const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
 const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MAX_EVENTS_PER_DAY = 3;
 
 export function getMonthRange(year, month) {
   const days = new Date(year, month + 1, 0).getDate();
@@ -180,189 +182,197 @@ function renderSimpleSummary(stats) {
   if (stats.pending > 0) {
     parts.push(`<strong>${stats.pending}</strong> need${stats.pending === 1 ? 's' : ''} your approval`);
   }
-  if (stats.inStay > 0) parts.push(`<strong>${stats.inStay}</strong> staying now`);
-  if (stats.upcoming > 0) parts.push(`<strong>${stats.upcoming}</strong> coming up`);
-  if (!parts.length) return 'No active reservations right now.';
-  return parts.join(' · ');
+  if (stats.inMonth > 0) parts.push(`<strong>${stats.inMonth}</strong> this month`);
+  if (!parts.length) return 'Tap a reservation to see full details.';
+  return parts.join(' · ') + '. Tap any reservation to see full details.';
 }
 
-function renderAgendaCard(booking) {
-  const st = normStatus(booking.status);
+function buildMonthWeeks(year, month, todayStr) {
+  const weeks = [];
+  const gridStart = new Date(year, month, 1);
+  gridStart.setDate(gridStart.getDate() - gridStart.getDay());
+
+  const gridEnd = new Date(year, month + 1, 0);
+  gridEnd.setDate(gridEnd.getDate() + (6 - gridEnd.getDay()));
+
+  const cursor = new Date(gridStart);
+  while (cursor <= gridEnd) {
+    const week = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(cursor);
+      week.push({
+        iso: dateOnly(d),
+        dayNum: d.getDate(),
+        inMonth: d.getMonth() === month,
+        isToday: dateOnly(d) === todayStr,
+        isWeekend: d.getDay() === 0 || d.getDay() === 6,
+      });
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    weeks.push(week);
+  }
+  return weeks;
+}
+
+function activeBookings(bookings) {
+  return bookings.filter((b) => ['pending', 'approved'].includes(normStatus(b.status)));
+}
+
+function bookingsOnDay(bookings, iso) {
+  return bookings
+    .filter((b) => overlapsRange(b.startDate, b.endDate, iso, iso))
+    .sort((a, b) => {
+      const pa = normStatus(a.status) === 'pending' ? 0 : 1;
+      const pb = normStatus(b.status) === 'pending' ? 0 : 1;
+      if (pa !== pb) return pa - pb;
+      return String(a.guestName || a.title || '').localeCompare(String(b.guestName || b.title || ''));
+    });
+}
+
+function eventStatusClass(status) {
+  const s = normStatus(status);
+  if (s === 'pending') return 'mac-event--pending';
+  if (s === 'approved') return 'mac-event--confirmed';
+  return 'mac-event--other';
+}
+
+function renderMonthEventChip(booking) {
   const guest = booking.guestName || booking.title || 'Guest';
-  const room = [booking.buildingName, booking.roomNumber].filter(Boolean).join(' ') || 'Room not assigned';
-  const nights = stayNights(booking.startDate, booking.endDate);
-  const pending = st === 'pending';
-  const inStay = st === 'approved'
-    && dateOnly(booking.startDate) <= dateOnly(new Date())
-    && dateOnly(booking.endDate) > dateOnly(new Date());
-
-  let tag = 'Confirmed';
-  let tagCls = 'tl-agenda-tag--ok';
-  if (pending) { tag = 'Needs approval'; tagCls = 'tl-agenda-tag--pending'; }
-  else if (inStay) { tag = 'Staying now'; tagCls = 'tl-agenda-tag--now'; }
-
+  const room = [booking.buildingName, booking.roomNumber].filter(Boolean).join(' ');
+  const label = room ? `${guest} · ${room}` : guest;
   return `
-    <button type="button" class="tl-agenda-card ${pending ? 'tl-agenda-card--pending' : ''}" data-agenda-id="${booking.id}">
-      <div class="tl-agenda-card-top">
-        <span class="tl-agenda-tag ${tagCls}">${tag}</span>
-        <span class="tl-agenda-dates">${formatDateLong(booking.startDate)} → ${formatDateLong(booking.endDate)}</span>
-      </div>
-      <h4 class="tl-agenda-name">${escapeHtml(guest)}</h4>
-      <p class="tl-agenda-room">${escapeHtml(room)}${booking.guestCount ? ` · ${booking.guestCount} guest${booking.guestCount === 1 ? '' : 's'}` : ''}${nights ? ` · ${nights} night${nights === 1 ? '' : 's'}` : ''}</p>
-      <span class="tl-agenda-cta">Tap to view details <span class="material-symbols-outlined">arrow_forward</span></span>
+    <button type="button" class="mac-event ${eventStatusClass(booking.status)}"
+            data-booking-id="${booking.id}" title="${escapeHtml(label)}">
+      ${escapeHtml(label)}
     </button>`;
 }
 
-function renderAgendaList(bookings, { horizonDays, search, todayStr }) {
-  const q = search.trim().toLowerCase();
-  const horizonEnd = new Date(`${todayStr}T00:00:00`);
-  horizonEnd.setDate(horizonEnd.getDate() + horizonDays);
-  const horizonEndStr = horizonEnd.toISOString().slice(0, 10);
+function renderMonthDayCell(day, dayBookings) {
+  const visible = dayBookings.slice(0, MAX_EVENTS_PER_DAY);
+  const overflow = dayBookings.length - visible.length;
+  const dayCls = [
+    'mac-day',
+    !day.inMonth ? 'mac-day--outside' : '',
+    day.isToday ? 'mac-day--today' : '',
+    day.isWeekend && day.inMonth ? 'mac-day--weekend' : '',
+  ].filter(Boolean).join(' ');
 
-  const filtered = bookings.filter((b) => {
-    const st = normStatus(b.status);
-    if (!['pending', 'approved'].includes(st)) return false;
-    if (dateOnly(b.endDate) < todayStr) return false;
-    if (st !== 'pending' && dateOnly(b.startDate) > horizonEndStr) return false;
-    if (q) {
-      const hay = [b.id, b.guestName, b.title, b.buildingName, b.roomNumber, b.facilityLabel].join(' ').toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
+  const eventsHtml = visible.map(renderMonthEventChip).join('');
+  const moreHtml = overflow > 0
+    ? `<button type="button" class="mac-event-more" data-day-iso="${day.iso}">+${overflow} more</button>`
+    : '';
+
+  return `
+    <div class="${dayCls}" data-day="${day.iso}">
+      <span class="mac-day-num">${day.dayNum}</span>
+      <div class="mac-day-events">${eventsHtml}${moreHtml}</div>
+    </div>`;
+}
+
+function renderMonthCalendar(bookings, year, month, todayStr) {
+  const weeks = buildMonthWeeks(year, month, todayStr);
+  const active = activeBookings(bookings);
+  const weekdayHeader = WEEKDAYS.map((d) =>
+    `<div class="mac-weekday">${d}</div>`).join('');
+
+  const weeksHtml = weeks.map((week) => {
+    const daysHtml = week.map((day) =>
+      renderMonthDayCell(day, bookingsOnDay(active, day.iso))).join('');
+    return `<div class="mac-week">${daysHtml}</div>`;
+  }).join('');
+
+  return `
+    <div class="mac-cal-grid" role="grid" aria-label="${MONTHS_FULL[month]} ${year}">
+      <div class="mac-weekdays">${weekdayHeader}</div>
+      ${weeksHtml}
+    </div>`;
+}
+
+function countBookingsInMonth(bookings, year, month) {
+  const monthStart = dateOnly(new Date(year, month, 1));
+  const monthEnd = dateOnly(new Date(year, month + 1, 0));
+  return activeBookings(bookings).filter((b) =>
+    overlapsRange(b.startDate, b.endDate, monthStart, monthEnd)).length;
+}
+
+function bindMonthCalendar(root, { bookings, rawBookingsById, onRefresh }) {
+  if (!root) return;
+
+  root.querySelectorAll('[data-booking-id]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.getAttribute('data-booking-id');
+      openBookingModal(rawBookingsById[String(id)], { onRefresh });
+    });
   });
 
-  const pending = filtered.filter((b) => normStatus(b.status) === 'pending')
-    .sort((a, b) => dateOnly(a.startDate).localeCompare(dateOnly(b.startDate)));
-  const inStay = filtered.filter((b) => {
-    const st = normStatus(b.status);
-    return st === 'approved' && dateOnly(b.startDate) <= todayStr && dateOnly(b.endDate) > todayStr;
-  }).sort((a, b) => dateOnly(a.endDate).localeCompare(dateOnly(b.endDate)));
-  const upcoming = filtered.filter((b) => {
-    const st = normStatus(b.status);
-    return st === 'approved' && dateOnly(b.startDate) > todayStr;
-  }).sort((a, b) => dateOnly(a.startDate).localeCompare(dateOnly(b.startDate)));
+  root.querySelectorAll('[data-day-iso]').forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const iso = btn.getAttribute('data-day-iso');
+      const dayBookings = bookingsOnDay(activeBookings(bookings), iso);
+      const skipped = dayBookings.slice(MAX_EVENTS_PER_DAY);
+      if (!skipped.length) return;
 
-  if (!pending.length && !inStay.length && !upcoming.length) {
-    return `<div class="tl-empty">
-      <span class="material-symbols-outlined tl-empty-icon">event_available</span>
-      <p class="tl-empty-title">Nothing scheduled in this time range</p>
-      <p class="tl-empty-hint">Try "Next 6 months" below, or switch to Room calendar to browse further ahead.</p>
-    </div>`;
-  }
+      const listHtml = skipped.map((b) => {
+        const guest = b.guestName || b.title || 'Guest';
+        const room = [b.buildingName, b.roomNumber].filter(Boolean).join(' ') || 'Room TBD';
+        const st = normStatus(b.status) === 'pending' ? 'Needs approval' : 'Confirmed';
+        return `
+          <button type="button" class="mac-day-list-item" data-booking-id="${b.id}">
+            <span class="mac-day-list-tag ${eventStatusClass(b.status)}">${st}</span>
+            <strong>${escapeHtml(guest)}</strong>
+            <span>${escapeHtml(room)} · ${formatDate(b.startDate)} – ${formatDate(b.endDate)}</span>
+          </button>`;
+      }).join('');
 
-  const section = (title, hint, items) => {
-    if (!items.length) return '';
-    return `
-      <section class="tl-agenda-section">
-        <h3 class="tl-agenda-section-title">${escapeHtml(title)}</h3>
-        ${hint ? `<p class="tl-agenda-section-hint">${escapeHtml(hint)}</p>` : ''}
-        <div class="tl-agenda-list">${items.map(renderAgendaCard).join('')}</div>
-      </section>`;
-  };
-
-  return [
-    section('Needs your approval', 'Tap a card to approve, modify, or decline.', pending),
-    section('Guests staying now', null, inStay),
-    section('Coming up', null, upcoming),
-  ].join('');
+      openModal(formatDateLong(iso), `<div class="mac-day-list">${listHtml}</div>`);
+      document.getElementById('modalBody')?.querySelectorAll('[data-booking-id]').forEach((el) => {
+        el.addEventListener('click', () => {
+          closeModal();
+          openBookingModal(rawBookingsById[String(el.getAttribute('data-booking-id'))], { onRefresh });
+        });
+      });
+    });
+  });
 }
 
 export function renderTimelineShell({ title }) {
   return `
-    <section class="tl-shell bg-white border border-outline-variant rounded-xl overflow-hidden shadow-sm flex flex-col relative" id="timeline-section">
-      <div class="tl-header p-5 border-b border-outline-variant/50 shrink-0">
-        <div class="flex items-start gap-4">
-          <div class="w-1.5 h-8 bg-primary rounded-full shrink-0 mt-1"></div>
-          <div class="min-w-0 flex-1">
-            <h3 class="font-headline-sm text-on-surface font-bold text-xl">${escapeHtml(title)}</h3>
-            <p class="tl-summary text-base text-slate-600 mt-2 leading-relaxed" id="timeline-summary">Loading…</p>
+    <section class="mac-cal-shell" id="timeline-section">
+      <header class="mac-cal-header">
+        <div class="mac-cal-header-top">
+          <div class="mac-cal-title-block">
+            <h3 class="mac-cal-title">${escapeHtml(title)}</h3>
+            <p class="mac-cal-summary" id="timeline-summary">Loading…</p>
+          </div>
+          <div class="mac-cal-nav">
+            <button type="button" id="timeline-prev" class="mac-cal-nav-btn" aria-label="Previous month">
+              <span class="material-symbols-outlined">chevron_left</span>
+            </button>
+            <h4 class="mac-cal-month" id="timeline-period">Loading…</h4>
+            <button type="button" id="timeline-next" class="mac-cal-nav-btn" aria-label="Next month">
+              <span class="material-symbols-outlined">chevron_right</span>
+            </button>
+            <button type="button" id="timeline-today" class="mac-cal-today-btn">Today</button>
           </div>
         </div>
-        <div class="tl-mode-tabs mt-5" role="tablist" aria-label="How to view reservations">
-          <button type="button" class="tl-mode-tab is-active" data-tl-mode="agenda" role="tab" aria-selected="true">
-            <span class="material-symbols-outlined">list_alt</span>
-            Upcoming stays
-          </button>
-          <button type="button" class="tl-mode-tab" data-tl-mode="calendar" role="tab" aria-selected="false">
-            <span class="material-symbols-outlined">calendar_view_week</span>
-            Room calendar
-          </button>
+        <div class="mac-cal-legend" aria-hidden="true">
+          <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--pending"></span>Needs approval</span>
+          <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--confirmed"></span>Confirmed</span>
         </div>
-      </div>
-
-      <div id="timeline-agenda-panel" class="tl-panel">
-        <div class="tl-agenda-controls">
-          <p class="tl-controls-label">Show reservations for:</p>
-          <div class="tl-horizon-tabs" role="group" aria-label="Time range">
-            <button type="button" class="tl-horizon-btn" data-horizon="short">Next 2 weeks</button>
-            <button type="button" class="tl-horizon-btn is-active" data-horizon="medium">Next 2 months</button>
-            <button type="button" class="tl-horizon-btn" data-horizon="long">Next 6 months</button>
-          </div>
-          <label class="tl-search-simple">
-            <span class="material-symbols-outlined">search</span>
-            <input type="search" id="timeline-search" placeholder="Find guest by name…" autocomplete="off" />
-          </label>
-        </div>
-        <div id="timeline-agenda-list" class="tl-agenda-body"></div>
-      </div>
-
-      <div id="timeline-calendar-panel" class="tl-panel hidden">
-        <div class="tl-cal-controls">
-          <button type="button" id="timeline-prev" class="tl-cal-btn">
-            <span class="material-symbols-outlined">arrow_back</span>
-            Earlier dates
-          </button>
-          <div class="tl-cal-center">
-            <button type="button" id="timeline-today" class="tl-today-btn">Jump to today</button>
-            <p class="tl-cal-range" id="timeline-period">Loading…</p>
-          </div>
-          <button type="button" id="timeline-next" class="tl-cal-btn">
-            Later dates
-            <span class="material-symbols-outlined">arrow_forward</span>
-          </button>
-        </div>
-        <p class="tl-scroll-hint">
-          <span class="material-symbols-outlined">swipe</span>
-          Scroll sideways on the calendar below to see more dates
-        </p>
-        <div id="timeline-unassigned" class="hidden"></div>
-        <div class="tl-cal-grid-wrap flex flex-col overflow-hidden min-h-[420px]">
-          <div class="gantt-container border-b-2 border-outline-variant/20 bg-surface-container-low/30 sticky top-0 z-20">
-            <div class="tl-room-label p-4 border-r border-outline-variant/30 flex items-center bg-surface-container-low/50">
-              <span class="text-sm font-bold text-outline uppercase tracking-wide">Room</span>
-            </div>
-            <div class="timeline-scroll tl-scroll-visible w-full">
-              <div class="gantt-grid" id="timeline-day-headers" style="--timeline-days: ${CALENDAR_DAYS}"></div>
-            </div>
-          </div>
-          <div class="overflow-y-auto max-h-[480px]" id="timeline-rows"></div>
-        </div>
-      </div>
+      </header>
+      <div id="mac-cal-mount" class="mac-cal-body"></div>
     </section>`;
 }
 
-function computeStats(bookings, todayStr, horizonDays = 60) {
-  const horizonEnd = new Date(`${todayStr}T00:00:00`);
-  horizonEnd.setDate(horizonEnd.getDate() + horizonDays);
-  const horizonEndStr = horizonEnd.toISOString().slice(0, 10);
-
+function computeStats(bookings, todayStr, year, month) {
   let pending = 0;
-  let inStay = 0;
-  let upcoming = 0;
-
   bookings.forEach((b) => {
-    const st = normStatus(b.status);
-    const ci = dateOnly(b.startDate);
-    const co = dateOnly(b.endDate);
-    if (co < todayStr) return;
-    if (st === 'pending') pending += 1;
-    if (st === 'approved') {
-      if (ci <= todayStr && co > todayStr) inStay += 1;
-      else if (ci > todayStr && ci <= horizonEndStr) upcoming += 1;
-    }
+    if (normStatus(b.status) === 'pending' && dateOnly(b.endDate) >= todayStr) pending += 1;
   });
-
-  return { pending, inStay, upcoming };
+  const inMonth = countBookingsInMonth(bookings, year, month);
+  return { pending, inMonth };
 }
 
 function filterBookings(bookings, { statusFilter, search, rangeStart, rangeEnd }) {
@@ -686,134 +696,61 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
 
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
+  let viewYear = now.getFullYear();
+  let viewMonth = now.getMonth();
 
-  let viewMode = 'agenda';
-  let agendaHorizon = 'medium';
-  let calendarStart = startOfWeek(now);
-  let allRooms = [];
   let allBookings = [];
   let rawBookingsById = {};
-  let search = '';
 
-  function openBooking(id) {
-    openBookingModal(rawBookingsById[String(id)], { onRefresh: refresh });
-  }
-
-  function setMode(mode) {
-    viewMode = mode;
-    document.querySelectorAll('[data-tl-mode]').forEach((btn) => {
-      const active = btn.getAttribute('data-tl-mode') === mode;
-      btn.classList.toggle('is-active', active);
-      btn.setAttribute('aria-selected', active ? 'true' : 'false');
-    });
-    document.getElementById('timeline-agenda-panel')?.classList.toggle('hidden', mode !== 'agenda');
-    document.getElementById('timeline-calendar-panel')?.classList.toggle('hidden', mode !== 'calendar');
-    if (mode === 'calendar' && allBookings.length) renderCalendar();
-    else if (allBookings.length) renderAgenda();
-    else refresh();
-  }
-
-  function renderAgenda() {
-    const horizonDays = AGENDA_HORIZONS[agendaHorizon] || AGENDA_HORIZONS.medium;
-    const stats = computeStats(allBookings, todayStr, horizonDays);
-    const summaryEl = document.getElementById('timeline-summary');
-    if (summaryEl) summaryEl.innerHTML = renderSimpleSummary(stats);
-
-    const listEl = document.getElementById('timeline-agenda-list');
-    if (!listEl) return;
-    listEl.innerHTML = renderAgendaList(allBookings, { horizonDays, search, todayStr });
-
-    listEl.querySelectorAll('[data-agenda-id]').forEach((btn) => {
-      btn.addEventListener('click', () => openBooking(btn.getAttribute('data-agenda-id')));
-    });
-  }
-
-  function renderCalendar() {
-    const dates = getDateRangeFrom(calendarStart, CALENDAR_DAYS);
-    const rangeStart = dates[0].toISOString().slice(0, 10);
-    const rangeEnd = dates[dates.length - 1].toISOString().slice(0, 10);
-
+  function renderMonth() {
     const periodEl = document.getElementById('timeline-period');
-    if (periodEl) periodEl.textContent = formatRangeLabel(rangeStart, rangeEnd);
+    if (periodEl) periodEl.textContent = `${MONTHS_FULL[viewMonth]} ${viewYear}`;
 
-    const stats = computeStats(allBookings, todayStr, AGENDA_HORIZONS.long);
+    const stats = computeStats(allBookings, todayStr, viewYear, viewMonth);
     const summaryEl = document.getElementById('timeline-summary');
     if (summaryEl) summaryEl.innerHTML = renderSimpleSummary(stats);
 
-    renderTimeline({
-      rooms: allRooms,
-      items: allBookings,
-      rangeStart,
-      dates,
-      barRenderer: (booking) => renderBookingBar(booking, rangeStart, dates.length),
-      onBarClick: (booking) => openBooking(booking.id),
-      filters: { status: 'active', search: '', building: 'all' },
+    const mount = document.getElementById('mac-cal-mount');
+    if (!mount) return;
+    mount.innerHTML = renderMonthCalendar(allBookings, viewYear, viewMonth, todayStr);
+    bindMonthCalendar(mount, {
+      bookings: allBookings,
+      rawBookingsById,
+      onRefresh: refresh,
     });
-
-    const unassigned = allBookings.filter((b) =>
-      normStatus(b.status) === 'pending' && !b.roomId
-      && overlapsRange(b.startDate, b.endDate, rangeStart, rangeEnd)
-    );
-    renderUnassignedStrip(unassigned, (b) => openBooking(b.id));
   }
 
   async function refresh() {
     try {
-      const [rawRooms, rawBookings] = await Promise.all([getRooms(), getBookings()]);
-      allRooms = rawRooms.map(normalizeRoom);
+      const rawBookings = await getBookings();
       allBookings = rawBookings.filter((b) => !b.group_id).map(normalizeBooking);
       rawBookingsById = Object.fromEntries(rawBookings.map((b) => [String(b.id), b]));
-
-      if (viewMode === 'calendar') renderCalendar();
-      else renderAgenda();
-
-      onData?.({ rooms: allRooms, bookings: allBookings });
+      renderMonth();
+      onData?.({ bookings: allBookings });
     } catch (err) {
-      const target = viewMode === 'calendar'
-        ? document.getElementById('timeline-rows')
-        : document.getElementById('timeline-agenda-list');
-      if (target) {
-        target.innerHTML = `<div class="tl-empty"><p class="tl-action-error">${escapeHtml(err.message)}</p></div>`;
+      const mount = document.getElementById('mac-cal-mount');
+      if (mount) {
+        mount.innerHTML = `<div class="tl-empty"><p class="tl-action-error">${escapeHtml(err.message)}</p></div>`;
       }
     }
   }
 
   mountEl.innerHTML = renderTimelineShell({ title });
 
-  document.querySelectorAll('[data-tl-mode]').forEach((btn) => {
-    btn.addEventListener('click', () => setMode(btn.getAttribute('data-tl-mode')));
-  });
-
-  document.querySelectorAll('[data-horizon]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      agendaHorizon = btn.getAttribute('data-horizon');
-      document.querySelectorAll('[data-horizon]').forEach((b) => {
-        b.classList.toggle('is-active', b === btn);
-      });
-      renderAgenda();
-    });
-  });
-
   document.getElementById('timeline-prev')?.addEventListener('click', () => {
-    calendarStart.setDate(calendarStart.getDate() - CALENDAR_SHIFT);
-    renderCalendar();
+    viewMonth -= 1;
+    if (viewMonth < 0) { viewMonth = 11; viewYear -= 1; }
+    renderMonth();
   });
   document.getElementById('timeline-next')?.addEventListener('click', () => {
-    calendarStart.setDate(calendarStart.getDate() + CALENDAR_SHIFT);
-    renderCalendar();
+    viewMonth += 1;
+    if (viewMonth > 11) { viewMonth = 0; viewYear += 1; }
+    renderMonth();
   });
   document.getElementById('timeline-today')?.addEventListener('click', () => {
-    calendarStart = startOfWeek(now);
-    renderCalendar();
-  });
-
-  let searchTimer;
-  document.getElementById('timeline-search')?.addEventListener('input', (e) => {
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => {
-      search = e.target.value;
-      renderAgenda();
-    }, 200);
+    viewYear = now.getFullYear();
+    viewMonth = now.getMonth();
+    renderMonth();
   });
 
   await refresh();
