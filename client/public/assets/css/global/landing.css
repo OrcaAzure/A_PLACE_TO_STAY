@@ -10,11 +10,14 @@
 }
 
 .lp-nav {
-  transition: background-color 0.35s ease, box-shadow 0.35s ease, padding 0.35s ease;
+  transition: background-color 0.35s ease, box-shadow 0.35s ease;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .lp-nav.is-scrolled {
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 8px 32px rgba(26, 54, 93, 0.08);
 }
 
@@ -22,8 +25,72 @@
   transition: height 0.35s ease;
 }
 
-.lp-nav.is-scrolled .lp-nav-inner {
-  height: 4rem;
+.lp-nav-actions {
+  flex-shrink: 0;
+}
+
+.lp-login-btn {
+  min-height: 2.75rem;
+  min-width: 5.5rem;
+  position: relative;
+  z-index: 2;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.lp-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0.375rem;
+  border: none;
+  border-radius: 0.625rem;
+  background: transparent;
+  color: #4A5568;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.lp-menu-btn:hover {
+  background: rgba(26, 54, 93, 0.08);
+  color: #1A365D;
+}
+
+.lp-mobile-menu {
+  border-top: 1px solid rgba(203, 213, 224, 0.5);
+  background: rgba(255, 255, 255, 0.98);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.lp-mobile-menu:not(.hidden) {
+  display: block;
+}
+
+.lp-mobile-link {
+  display: block;
+  padding: 0.875rem 1rem;
+  border-radius: 0.625rem;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #1A365D;
+}
+
+.lp-mobile-link:hover,
+.lp-mobile-link:focus {
+  background: rgba(26, 54, 93, 0.08);
+}
+
+.lp-main {
+  padding-top: calc(4rem + env(safe-area-inset-top, 0px));
+}
+
+@media (min-width: 768px) {
+  .lp-main {
+    padding-top: calc(4.5rem + env(safe-area-inset-top, 0px));
+  }
 }
 
 .lp-hero {
@@ -181,6 +248,26 @@
 
 .lp-gwill-hide {
   /* Initial state handled by GSAP autoAlpha; kept for reduced-motion fallback hook */
+}
+
+@media (max-width: 767px) {
+  .lp-hero-badge span:last-child {
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+  }
+
+  .lp-hero h1 {
+    font-size: clamp(1.875rem, 8vw, 2.5rem);
+  }
+
+  .lp-hero-cta a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .lp-scroll-hint {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

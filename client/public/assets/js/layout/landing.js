@@ -39,11 +39,80 @@ function revealStatic() {
     el.style.opacity = '1';
     el.style.transform = 'none';
   });
+  document.querySelector('.lp-nav')?.style.removeProperty('visibility');
+  document.querySelector('.lp-nav')?.style.removeProperty('opacity');
+  document.querySelectorAll('.lp-login-btn').forEach((el) => {
+    el.style.visibility = 'visible';
+    el.style.opacity = '1';
+  });
   if (window.gsap) {
-    window.gsap.set('.lp-nav, .lp-hero-badge, .lp-hero-line, .lp-hero-sub, .lp-hero-cta > *, .lp-stat, .lp-hero-visual, .lp-hero-float, .lp-scroll-hint', {
+    window.gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-sub, .lp-hero-cta > *, .lp-stat, .lp-hero-visual, .lp-hero-float, .lp-scroll-hint', {
       clearProps: 'all',
     });
   }
+}
+
+function initMobileMenu() {
+  const toggle = document.getElementById('lp-menu-toggle');
+  const menu   = document.getElementById('lp-mobile-menu');
+  if (!toggle || !menu) return;
+
+  const setOpen = (open) => {
+    menu.classList.toggle('hidden', !open);
+    menu.setAttribute('aria-hidden', open ? 'false' : 'true');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    toggle.querySelector('.material-symbols-outlined').textContent = open ? 'close' : 'menu';
+  };
+
+  toggle.addEventListener('click', () => setOpen(menu.classList.contains('hidden')));
+
+  menu.querySelectorAll('a[href^="#"]').forEach((link) => {
+    link.addEventListener('click', () => setOpen(false));
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setOpen(false);
+  });
+}
+
+function initLandingSearch() {
+  const inputs = [
+    document.getElementById('landing-search'),
+    document.getElementById('landing-search-mobile'),
+  ].filter(Boolean);
+
+  if (!inputs.length) return;
+
+  const cards = () => document.querySelectorAll('.lp-facility-card');
+
+  const applyFilter = (query) => {
+    const q = query.trim().toLowerCase();
+    cards().forEach((card) => {
+      const hay = `${card.dataset.facilityName || ''} ${card.textContent}`.toLowerCase();
+      const match = !q || hay.includes(q);
+      card.classList.toggle('hidden', !match);
+      card.style.opacity = match ? '1' : '0.35';
+    });
+  };
+
+  const syncAndFilter = (value, source) => {
+    inputs.forEach((el) => {
+      if (el !== source) el.value = value;
+    });
+    applyFilter(value);
+  };
+
+  inputs.forEach((input) => {
+    input.addEventListener('input', () => syncAndFilter(input.value, input));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('facilities')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        syncAndFilter(input.value, input);
+        document.getElementById('lp-mobile-menu')?.classList.add('hidden');
+      }
+    });
+  });
 }
 
 function initNavScroll(nav) {
@@ -84,35 +153,10 @@ function animateCounters(gsap) {
   });
 }
 
-function initLandingSearch() {
-  const input = document.getElementById('landing-search');
-  if (!input) return;
-
-  const cards = () => document.querySelectorAll('.lp-facility-card');
-
-  const applyFilter = (query) => {
-    const q = query.trim().toLowerCase();
-    cards().forEach((card) => {
-      const hay = `${card.dataset.facilityName || ''} ${card.textContent}`.toLowerCase();
-      const match = !q || hay.includes(q);
-      card.classList.toggle('hidden', !match);
-      card.style.opacity = match ? '1' : '0.35';
-    });
-  };
-
-  input.addEventListener('input', () => applyFilter(input.value));
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      document.getElementById('facilities')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      applyFilter(input.value);
-    }
-  });
-}
-
 export async function initLandingPage() {
   initSmoothAnchors();
   initNavScroll(document.querySelector('.lp-nav'));
+  initMobileMenu();
   initLandingSearch();
 
   if (prefersReducedMotion()) {
@@ -130,11 +174,16 @@ export async function initLandingPage() {
 
   const ST = window.ScrollTrigger;
 
-  /* Hero — each from() includes autoAlpha so content always fades in */
-  const heroTl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+  /* Hero — never hide the nav (Safari loses Log In if autoAlpha sticks on header) */
+  const heroTl = gsap.timeline({
+    defaults: { ease: 'power3.out' },
+    onComplete: () => {
+      gsap.set('.lp-login-btn, .lp-nav, .lp-nav-actions', { clearProps: 'visibility,opacity,transform' });
+    },
+  });
 
   heroTl
-    .from('.lp-nav', { y: -24, autoAlpha: 0, duration: 0.55 })
+    .from('.lp-nav-inner', { y: -16, duration: 0.45 })
     .from('.lp-hero-badge', { y: 20, autoAlpha: 0, duration: 0.5 }, '-=0.2')
     .from('.lp-hero-line', { y: 48, autoAlpha: 0, stagger: 0.12, duration: 0.75 }, '-=0.15')
     .from('.lp-hero-sub', { y: 24, autoAlpha: 0, duration: 0.55 }, '-=0.35')

@@ -6,6 +6,10 @@
   --guest-sidebar-width: 260px;
   --guest-header-height: 4rem;
   --guest-bottom-nav-height: 5.75rem;
+  --guest-safe-top: env(safe-area-inset-top, 0px);
+  --guest-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --guest-safe-left: env(safe-area-inset-left, 0px);
+  --guest-safe-right: env(safe-area-inset-right, 0px);
 }
 
 .guest-shell {
@@ -13,7 +17,9 @@
   min-height: 100vh;
   overflow-x: hidden;
   background-color: #F8FAFC;
-  --guest-gutter-x: 1rem;
+  --guest-gutter-x: max(1rem, var(--guest-safe-left));
+  padding-left: var(--guest-safe-left);
+  padding-right: var(--guest-safe-right);
 }
 
 @media (min-width: 768px) {
@@ -117,6 +123,7 @@
   height: var(--guest-header-height);
   z-index: 30;
   background: rgba(255, 255, 255, 0.92);
+  -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
 }
 
@@ -171,8 +178,8 @@
   width: 100%;
   max-width: 100%;
   box-sizing: border-box;
-  padding-top: calc(var(--guest-header-height) + 0.75rem);
-  padding-bottom: var(--guest-bottom-nav-height);
+  padding-top: calc(var(--guest-header-height) + var(--guest-safe-top) + 0.75rem);
+  padding-bottom: calc(var(--guest-bottom-nav-height) + var(--guest-safe-bottom));
 }
 
 .guest-footer {
@@ -180,13 +187,66 @@
   min-width: 0;
 }
 
-/* ── Mobile: fixed chrome ── */
+/* ── Mobile: fixed chrome + Safari-safe layout ── */
 @media (max-width: 1023px) {
   .guest-header {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
+    padding-top: var(--guest-safe-top);
+    height: calc(var(--guest-header-height) + var(--guest-safe-top));
+  }
+
+  .guest-header .guest-header-inner {
+    min-height: var(--guest-header-height);
+    flex-wrap: nowrap;
+    overflow: visible;
+  }
+
+  .guest-header .guest-header-title h2 {
+    max-width: 42vw;
+  }
+
+  .guest-header .guest-header-actions {
+    gap: 0.25rem;
+  }
+
+  .guest-header .guest-header-actions button {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    flex-shrink: 0;
+  }
+
+  .guest-header .guest-user-block {
+    max-width: 50%;
+  }
+
+  .guest-header .guest-user-block .text-right {
+    max-width: 6.5rem;
+  }
+
+  .guest-header .guest-user-block .text-right p {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .guest-header .js-user-avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+    flex-shrink: 0;
+  }
+
+  .guest-bottom-nav {
+    padding-bottom: calc(0.75rem + var(--guest-safe-bottom));
+    padding-left: var(--guest-safe-left);
+    padding-right: var(--guest-safe-right);
+  }
+
+  .guest-bottom-nav a {
+    min-height: 2.75rem;
+    min-width: 3.5rem;
   }
 }
 
