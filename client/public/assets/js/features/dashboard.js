@@ -2,8 +2,13 @@
  * Admin dashboard — loads live KPIs, activity feed, queue, and building chart from /api/stats/summary.
  */
 
-import { getAdminSummary, getBookings, updateBooking, normalizeBooking } from '/assets/js/services/api.js';
-import { animateStatCards, animateChartBars, animateTableRows, staggerReveal, animateCountUp } from '/assets/js/layout/animations.js';
+import {
+  getAdminSummary, getBookings, getGroups,
+  normalizeBooking, normalizeManageRequest, normalizeManageGroupRequest,
+} from '/assets/js/services/api.js';
+import { approveRequest, rejectRequest } from '/assets/js/features/booking-actions.js';
+import { normStatus } from '/assets/js/features/reservation-shared.js';
+import { animateStatCards, animateChartBars, staggerReveal, animateCountUp } from '/assets/js/layout/animations.js';
 
 function setText(id, value) {
   const el = document.getElementById(id);
@@ -14,6 +19,10 @@ function formatPHP(amount) {
   return `₱${Number(amount || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
 }
 
+function dateOnly(value) {
+  return String(value || '').slice(0, 10);
+}
+
 function initials(name) {
   if (!name) return '?';
   return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
@@ -21,20 +30,21 @@ function initials(name) {
 
 function formatDateRange(start, end) {
   const opts = { month: 'short', day: 'numeric', year: 'numeric' };
-  const a = new Date(`${start}T00:00:00`).toLocaleDateString('en-US', opts);
-  const b = new Date(`${end}T00:00:00`).toLocaleDateString('en-US', opts);
+  const a = new Date(`${dateOnly(start)}T00:00:00`).toLocaleDateString('en-US', opts);
+  const b = new Date(`${dateOnly(end)}T00:00:00`).toLocaleDateString('en-US', opts);
   return `${a} – ${b}`;
 }
 
 function statusPill(status) {
+  const s = normStatus(status);
   const map = {
     pending: 'bg-amber-50 text-amber-700',
     approved: 'bg-emerald-50 text-emerald-700',
     rejected: 'bg-rose-50 text-rose-600',
     cancelled: 'bg-slate-100 text-slate-500',
   };
-  const label = status.charAt(0).toUpperCase() + status.slice(1);
-  return `<span class="px-3 py-1 rounded-full ${map[status] || map.pending} text-xs font-bold uppercase tracking-wide">${label}</span>`;
+  const label = s.charAt(0).toUpperCase() + s.slice(1);
+  return `<span class="px-3 py-1 rounded-full ${map[s] || map.pending} text-xs font-bold uppercase tracking-wide">${label}</span>`;
 }
 
 function relativeTime(iso) {
@@ -49,13 +59,77 @@ function relativeTime(iso) {
 }
 
 function activityIcon(status) {
+  const s = normStatus(status);
   const map = {
     pending: { bg: 'bg-primary/10 text-primary', icon: 'person' },
     approved: { bg: 'bg-emerald-50 text-emerald-700', icon: 'verified' },
     rejected: { bg: 'bg-rose-50 text-rose-600', icon: 'cancel' },
     cancelled: { bg: 'bg-slate-50 text-slate-500', icon: 'event_busy' },
   };
-  return map[status] || map.pending;
+  return map[s] || map.pending;
+}
+
+function facilityLabelForBooking(b) {
+  const norm = normalizeBooking(b);
+  if (norm.facilityLabel && norm.facilityLabel !== `Booking #${norm.id}`) return norm.facilityLabel;
+  if (b.room_number || b.building_name) {
+    return [b.building_name, b.room_number].filter(Boolean).join(' ') || 'Room pending';
+  }
+  return 'Room not assigned yet';
+}
+
+function buildQueueItems(bookingsRaw, groupsRaw) {
+  const today = dateOnly(new Date());
+
+  const singles = (bookingsRaw || [])
+    .filter((b) => !b.group_id)
+    .filter((b) => {
+      const s = normStatus(b.status);
+      if (s === 'pending') return true;
+      if (s === 'approved' && dateOnly(b.check_out) >= today) return true;
+      return false;
+    })
+    .map((b) => ({
+      key: `b-${b.id}`,
+      type: 'single',
+      raw: b,
+      sortDate: dateOnly(b.check_in),
+      pending: normStatus(b.status) === 'pending',
+      name: b.guest_name || 'Unknown guest',
+      facility: facilityLabelForBooking(b),
+      checkIn: b.check_in,
+      checkOut: b.check_out,
+      guests: b.guest_count || 1,
+      status: b.status,
+    }));
+
+  const groups = (groupsRaw || [])
+    .filter((g) => {
+      const s = normStatus(g.status);
+      if (s === 'pending') return true;
+      if (s === 'approved' && dateOnly(g.check_out) >= today) return true;
+      return false;
+    })
+    .map((g) => ({
+      key: `g-${g.id}`,
+      type: 'group',
+      raw: g,
+      sortDate: dateOnly(g.check_in),
+      pending: normStatus(g.status) === 'pending',
+      name: g.group_name || g.contact_name || 'Group stay',
+      facility: `Group · ${g.rooms_requested ?? '?'} rooms`,
+      checkIn: g.check_in,
+      checkOut: g.check_out,
+      guests: g.total_guests || 1,
+      status: g.status,
+    }));
+
+  return [...singles, ...groups]
+    .sort((a, b) => {
+      if (a.pending !== b.pending) return a.pending ? -1 : 1;
+      return a.sortDate.localeCompare(b.sortDate);
+    })
+    .slice(0, 12);
 }
 
 export async function loadDashboard() {
@@ -123,10 +197,9 @@ function renderRecentActivity(bookingsRaw) {
   }
 
   mount.innerHTML = bookingsRaw.slice(0, 5).map((b) => {
-    const norm = normalizeBooking(b);
-    const status = norm.status;
+    const status = normStatus(b.status);
     const { bg, icon } = activityIcon(status);
-    const facility = norm.facilityLabel;
+    const facility = facilityLabelForBooking(b);
     const action = status === 'pending'
       ? `<span class="font-bold text-on-surface">${b.guest_name}</span> requested <span class="font-semibold text-primary">${facility}</span>`
       : status === 'approved'
@@ -154,63 +227,82 @@ async function renderQueue() {
   const tbody = document.getElementById('queue-tbody');
   if (!tbody) return;
 
-  const bookingsRaw = await getBookings();
-  const queue = bookingsRaw
-    .filter((b) => ['Pending', 'Approved'].includes(b.status))
-    .sort((a, b) => new Date(a.check_in) - new Date(b.check_in))
-    .slice(0, 10);
+  const [bookingsRaw, groupsRaw] = await Promise.all([getBookings(), getGroups()]);
+  const queue = buildQueueItems(bookingsRaw, groupsRaw);
 
   if (!queue.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-on-surface-variant">No reservations in queue.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-8 text-on-surface-variant">No pending or upcoming reservations right now.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = queue.map((b) => {
-    const norm = normalizeBooking(b);
-    const isPending = norm.status === 'pending';
+  tbody.innerHTML = queue.map((item) => {
+    const isPending = item.pending;
+    const typeBadge = item.type === 'group'
+      ? '<span class="ml-2 text-[10px] font-bold uppercase tracking-wide text-violet-700 bg-violet-50 px-2 py-0.5 rounded-full">Group</span>'
+      : '';
 
     return `
-      <tr class="hover:bg-surface-container-low transition-colors" data-booking-id="${b.id}">
+      <tr class="hover:bg-surface-container-low transition-colors" data-queue-key="${item.key}">
         <td>
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold">${initials(b.guest_name)}</div>
-            <span class="text-body-sm font-semibold text-on-surface">${b.guest_name || 'Unknown'}</span>
+            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center text-sm font-bold shrink-0">${initials(item.name)}</div>
+            <span class="text-body-sm font-semibold text-on-surface">${item.name}${typeBadge}</span>
           </div>
         </td>
-        <td class="text-body-sm text-on-surface-variant">${norm.facilityLabel}</td>
-        <td class="text-body-sm text-on-surface-variant">${formatDateRange(norm.startDate, norm.endDate)}</td>
-        <td class="text-body-sm text-on-surface-variant">${norm.guestCount || 1}</td>
-        <td>${statusPill(norm.status)}</td>
+        <td class="text-body-sm text-on-surface-variant">${item.facility}</td>
+        <td class="text-body-sm text-on-surface-variant whitespace-nowrap">${formatDateRange(item.checkIn, item.checkOut)}</td>
+        <td class="text-body-sm text-on-surface-variant">${item.guests}</td>
+        <td>${statusPill(item.status)}</td>
         <td class="text-right">
           ${isPending ? `
             <div class="flex justify-end gap-2">
-              <button type="button" class="queue-approve p-2 min-h-[2.75rem] min-w-[2.75rem] text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors" title="Approve booking" aria-label="Approve" data-id="${b.id}">
+              <button type="button" class="queue-approve p-2 min-h-[2.75rem] min-w-[2.75rem] text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors" title="Approve" aria-label="Approve" data-queue-key="${item.key}">
                 <span class="material-symbols-outlined text-[1.35rem]">check_circle</span>
               </button>
-              <button type="button" class="queue-reject p-2 min-h-[2.75rem] min-w-[2.75rem] text-secondary hover:bg-secondary/10 rounded-lg transition-colors" title="Reject booking" aria-label="Reject" data-id="${b.id}">
+              <button type="button" class="queue-reject p-2 min-h-[2.75rem] min-w-[2.75rem] text-secondary hover:bg-secondary/10 rounded-lg transition-colors" title="Decline" aria-label="Decline" data-queue-key="${item.key}">
                 <span class="material-symbols-outlined text-[1.35rem]">cancel</span>
               </button>
-            </div>` : `<span class="text-body-sm text-on-surface-variant">#APT-${b.id}</span>`}
+            </div>` : `<span class="text-body-sm text-on-surface-variant font-mono">${item.type === 'group' ? `#GRP-${item.raw.id}` : `#APT-${item.raw.id}`}</span>`}
         </td>
       </tr>`;
   }).join('');
 
+  const queueByKey = Object.fromEntries(queue.map((q) => [q.key, q]));
+
   tbody.querySelectorAll('.queue-approve').forEach((btn) => {
-    btn.addEventListener('click', () => handleQueueAction(btn.dataset.id, 'Approved'));
+    btn.addEventListener('click', () => handleQueueApprove(queueByKey[btn.dataset.queueKey]));
   });
   tbody.querySelectorAll('.queue-reject').forEach((btn) => {
-    btn.addEventListener('click', () => handleQueueAction(btn.dataset.id, 'Rejected'));
+    btn.addEventListener('click', () => handleQueueReject(queueByKey[btn.dataset.queueKey]));
   });
-
-  await animateTableRows('#queue-tbody', document);
 }
 
-async function handleQueueAction(id, status) {
+async function handleQueueApprove(item) {
+  if (!item) return;
   try {
-    await updateBooking(id, { status });
+    const request = item.type === 'group'
+      ? normalizeManageGroupRequest(item.raw)
+      : normalizeManageRequest(item.raw);
+    await approveRequest(request);
     await loadDashboard();
     window.dispatchEvent(new CustomEvent('booking:updated'));
   } catch (err) {
-    alert(err.message || 'Action failed');
+    alert(err.message || 'Could not approve this request.');
+  }
+}
+
+async function handleQueueReject(item) {
+  if (!item) return;
+  const name = item.name;
+  if (!window.confirm(`Decline this request for ${name}?`)) return;
+  try {
+    const request = item.type === 'group'
+      ? normalizeManageGroupRequest(item.raw)
+      : normalizeManageRequest(item.raw);
+    await rejectRequest(request, '');
+    await loadDashboard();
+    window.dispatchEvent(new CustomEvent('booking:updated'));
+  } catch (err) {
+    alert(err.message || 'Could not decline this request.');
   }
 }

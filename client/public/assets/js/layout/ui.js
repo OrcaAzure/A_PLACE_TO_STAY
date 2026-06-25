@@ -23,7 +23,7 @@ export async function loadComponent(url) {
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v2';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v3';
 
 /** @type {Promise<Record<string, string>> | null} */
 let templatesPromise = null;
@@ -47,7 +47,7 @@ function writeTemplateCache(templates) {
 
 async function loadAdminTemplates() {
   const cached = readTemplateCache();
-  if (cached?.sidebar) return cached;
+  if (cached?.sidebar && cached?.facilityCatalog) return cached;
 
   if (!templatesPromise) {
     templatesPromise = Promise.all([
@@ -61,7 +61,8 @@ async function loadAdminTemplates() {
       loadComponent('/components/reservation-wizard-modal.html'),
       loadComponent('/components/group-wizard-modal.html'),
       loadComponent('/components/notifications.html'),
-    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, reservationWizard, groupWizard, notifications]) => {
+      loadComponent('/components/facility-catalog-modal.html'),
+    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, reservationWizard, groupWizard, notifications, facilityCatalog]) => {
       const bundle = {
         sidebar,
         header,
@@ -73,6 +74,7 @@ async function loadAdminTemplates() {
         reservationWizard,
         groupWizard,
         notifications,
+        facilityCatalog,
       };
       writeTemplateCache(bundle);
       return bundle;
@@ -133,6 +135,7 @@ function buildAdminShell({
     ${templates.reservationWizard}
     ${templates.groupWizard}
     ${templates.notifications}
+    ${templates.facilityCatalog || ''}
     <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[45]"></div>
   `;
 }
@@ -178,6 +181,14 @@ function renderSidebarNav(items, active) {
   `).join('');
 }
 
+function extractPreservedLayoutNodes() {
+  const fragment = document.createDocumentFragment();
+  document.querySelectorAll('[data-layout-preserve]').forEach((el) => {
+    fragment.appendChild(el);
+  });
+  return fragment;
+}
+
 export async function initAppLayout(config = {}) {
   const {
     portal = 'admin',
@@ -197,6 +208,7 @@ export async function initAppLayout(config = {}) {
   document.documentElement.classList.add('admin-chrome-boot');
 
   const savedContent = document.getElementById('page-content')?.innerHTML || '';
+  const preservedNodes = extractPreservedLayoutNodes();
   const existingSidebar = document.getElementById('app-sidebar');
 
   if (existingSidebar) {
@@ -222,6 +234,9 @@ export async function initAppLayout(config = {}) {
     userInitial,
     collapsed,
   });
+  if (preservedNodes.childNodes.length) {
+    document.body.appendChild(preservedNodes);
+  }
   document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
 
   bindLayoutEvents();

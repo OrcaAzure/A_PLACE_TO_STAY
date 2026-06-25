@@ -71,39 +71,6 @@
       padding: 1.25rem;
       text-align: center;
     }
-
-    .catalog-edit-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.25rem;
-      padding: 0.375rem 0.75rem;
-      font-size: 0.8125rem;
-      font-weight: 600;
-      color: #1a365d;
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      border-radius: 0.5rem;
-      cursor: pointer;
-    }
-    .catalog-edit-btn:hover { background: #e2e8f0; }
-
-    .catalog-label {
-      display: block;
-      font-size: 0.9375rem;
-      font-weight: 600;
-      color: #334155;
-      margin-bottom: 0.375rem;
-      margin-top: 0.75rem;
-    }
-    .catalog-input {
-      width: 100%;
-      min-height: 2.75rem;
-      padding: 0.625rem 0.875rem;
-      font-size: 1rem;
-      border: 1px solid #cbd5e0;
-      border-radius: 0.5rem;
-    }
-    .catalog-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
   </style>
 </head>
 <body class="h-full bg-slate-50/50">
@@ -122,17 +89,21 @@
           <span class="material-symbols-outlined text-[20px]">edit</span>
           Manage Rooms
         </button>
+        <button type="button" data-catalog-edit-toggle class="admin-crud-btn-ghost shadow-sm hidden" aria-pressed="false">
+          <span class="material-symbols-outlined text-[20px]">edit</span>
+          Edit prices
+        </button>
         <button type="button" data-catalog-add="venue" class="admin-crud-btn-primary shadow-sm hidden">
           <span class="material-symbols-outlined text-[20px]">add</span>
-          Add Venue Price
+          Add venue
         </button>
         <button type="button" data-catalog-add="meal" class="admin-crud-btn-primary shadow-sm hidden">
           <span class="material-symbols-outlined text-[20px]">add</span>
-          Add Meal Price
+          Add meal
         </button>
         <button type="button" data-catalog-add="extra" class="admin-crud-btn-primary shadow-sm hidden">
           <span class="material-symbols-outlined text-[20px]">add</span>
-          Add Extra Service
+          Add extra
         </button>
       </div>
     </div>
@@ -220,8 +191,12 @@
       <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100">
           <h3 class="text-base font-semibold text-slate-800">Campus Venues</h3>
-          <p class="text-sm text-slate-500 mt-0.5">Tap <strong>Edit</strong> on any price to change it, or use <strong>Add Venue Price</strong> above.</p>
+          <p class="text-sm text-slate-500 mt-0.5">Browse venue packages and prices. Use <strong>Edit prices</strong> to change a rate, or <strong>Add venue</strong> for a new one.</p>
         </div>
+        <p class="catalog-edit-hint hidden" data-catalog-edit-hint>
+          <span class="material-symbols-outlined">info</span>
+          Editing mode — tap <strong>Edit</strong> on any row to open the form, or use <strong>Remove</strong> inside the popup to delete.
+        </p>
         <div id="venues-grid-mount" class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[120px]">
           <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading venues…</p>
         </div>
@@ -232,8 +207,12 @@
       <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100">
           <h3 class="text-base font-semibold text-slate-800">Meal Prices</h3>
-          <p class="text-sm text-slate-500 mt-0.5">Tap <strong>Edit</strong> to update a meal price used when booking.</p>
+          <p class="text-sm text-slate-500 mt-0.5">Prices used when guests order meals with a room booking.</p>
         </div>
+        <p class="catalog-edit-hint hidden" data-catalog-edit-hint>
+          <span class="material-symbols-outlined">info</span>
+          Editing mode — tap <strong>Edit</strong> on a meal card to change its price in the popup.
+        </p>
         <div id="meals-grid-mount" class="p-5 grid grid-cols-2 sm:grid-cols-4 gap-4 min-h-[100px]">
           <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading meals…</p>
         </div>
@@ -244,35 +223,18 @@
       <section class="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         <div class="px-5 py-4 border-b border-slate-100">
           <h3 class="text-base font-semibold text-slate-800">Extra Services &amp; Fees</h3>
-          <p class="text-sm text-slate-500 mt-0.5">Laundry, corkage, maid service, mattresses, and other add-ons. Tap <strong>Edit</strong> or <strong>Add Extra Service</strong>.</p>
+          <p class="text-sm text-slate-500 mt-0.5">Laundry, corkage, maid service, extra mattresses, and other add-ons.</p>
         </div>
+        <p class="catalog-edit-hint hidden" data-catalog-edit-hint>
+          <span class="material-symbols-outlined">info</span>
+          Editing mode — tap <strong>Edit</strong> on any fee to change it in the popup.
+        </p>
         <div id="extras-grid-mount" class="p-5 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 min-h-[100px]">
           <p class="text-sm text-slate-400 col-span-full text-center py-8">Loading extras…</p>
         </div>
       </section>
     </div>
 
-  </div>
-
-  <div id="catalog-modal-overlay" class="hidden fixed inset-0 bg-black/40 z-[70]"></div>
-  <div id="catalog-modal" class="hidden fixed inset-0 z-[75] flex items-center justify-center p-4" role="dialog" aria-modal="true">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto p-6">
-      <div class="flex items-start justify-between gap-3 mb-4">
-        <h2 id="catalog-modal-title" class="text-lg font-bold text-slate-800">Edit Price</h2>
-        <button type="button" id="catalog-modal-close" class="p-2 text-slate-500 hover:bg-slate-100 rounded-lg" aria-label="Close">
-          <span class="material-symbols-outlined">close</span>
-        </button>
-      </div>
-      <p class="text-sm text-slate-500 mb-3">Changes save to the database and appear in new reservations right away.</p>
-      <div id="catalog-modal-feedback" class="hidden"></div>
-      <div id="catalog-modal-fields"></div>
-      <div class="flex flex-wrap gap-2 mt-6 pt-4 border-t border-slate-100">
-        <button type="button" id="catalog-modal-delete" class="admin-crud-btn-danger hidden">Remove</button>
-        <div class="flex-1"></div>
-        <button type="button" id="catalog-modal-cancel" class="admin-crud-btn-ghost">Cancel</button>
-        <button type="button" id="catalog-modal-save" class="admin-crud-btn-primary">Save</button>
-      </div>
-    </div>
   </div>
 
   <script type="module">

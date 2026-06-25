@@ -14,6 +14,7 @@
   <link rel="stylesheet" href="/assets/css/global/responsive.css" />
   <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
   <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-crud-modal.css" />
 </head>
 <body>
 
@@ -146,11 +147,15 @@
       activePage: 'dashboard',
       title:      'Reservation Operations Center',
       subtitle:   'Mission Control',
+      deferEnhancements: true,
     });
 
     try {
       await loadDashboard();
       window.addEventListener('booking:updated', loadDashboard);
+
+      const { initAdminEnhancements } = await import('/assets/js/layout/animations.js');
+      await initAdminEnhancements();
     } catch (err) {
       const mount = document.getElementById('page-content');
       if (mount) {

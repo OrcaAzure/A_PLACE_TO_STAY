@@ -28,8 +28,8 @@ const bookingSelect = `
          b.name AS building_name
   FROM bookings bk
   JOIN users u ON bk.user_id = u.id
-  JOIN rooms r ON bk.room_id = r.id
-  JOIN buildings b ON r.building_id = b.id
+  LEFT JOIN rooms r ON bk.room_id = r.id
+  LEFT JOIN buildings b ON r.building_id = b.id
 `;
 
 async function enrichBooking(row) {

@@ -126,7 +126,7 @@ export async function initAdminPageAnimations(root = document) {
     duration: DUR.slow,
     stagger: 0.12,
     ease: EASE.soft,
-    clearProps: 'transform',
+    clearProps: 'opacity,transform',
   });
 }
 
@@ -154,7 +154,7 @@ export async function animateStatCards(selector = '.kpi-card, .admin-stat-card',
       duration: DUR.med,
       stagger: 0.08,
       ease: EASE.soft,
-      clearProps: 'transform',
+      clearProps: 'opacity,transform',
     }
   );
 }
@@ -231,7 +231,7 @@ export async function animateTableRows(tbodySelector, root = document) {
   gsap.fromTo(
     rows,
     { opacity: 0, y: 4 },
-    { opacity: 1, y: 0, duration: DUR.fast, stagger: 0.05, ease: EASE.soft, clearProps: 'transform' }
+    { opacity: 1, y: 0, duration: DUR.fast, stagger: 0.05, ease: EASE.soft, clearProps: 'opacity,transform' }
   );
 }
 
@@ -346,7 +346,7 @@ export async function animatePanelContent(
   gsap.fromTo(
     panels,
     { opacity: 0, y: 6 },
-    { opacity: 1, y: 0, duration: DUR.med, stagger: 0.08, ease: EASE.soft, clearProps: 'transform' }
+    { opacity: 1, y: 0, duration: DUR.med, stagger: 0.08, ease: EASE.soft, clearProps: 'opacity,transform' }
   );
 }
 

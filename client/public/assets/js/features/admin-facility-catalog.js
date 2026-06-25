@@ -1,5 +1,6 @@
 /**
- * Admin catalog editor — venues, meals, and extra services (boomer-friendly).
+ * Admin catalog editor — venues, meals, and extra services.
+ * Per-item Edit buttons appear only after "Edit prices" is turned on.
  */
 
 import {
@@ -19,6 +20,8 @@ const EXTRA_CATEGORIES = [
 
 const SEASONS = ['Regular', 'Peak', 'N/A'];
 
+const TAB_PANEL = { venues: 'fac-panel-venues', meals: 'fac-panel-meals', extras: 'fac-panel-extras' };
+
 function peso(n) {
   return `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
 }
@@ -33,6 +36,9 @@ function escapeHtml(value) {
 
 let onRefresh = async () => {};
 let modalState = { mode: 'edit', kind: 'venue', row: null };
+let activeCatalogTab = 'rooms';
+const catalogEditMode = { venues: false, meals: false, extras: false };
+const catalogCache = { venues: [], meals: [], services: [] };
 
 function $(id) {
   return document.getElementById(id);
@@ -41,13 +47,22 @@ function $(id) {
 function showModal() {
   $('catalog-modal-overlay')?.classList.remove('hidden');
   $('catalog-modal')?.classList.remove('hidden');
+  $('catalog-modal-overlay')?.setAttribute('aria-hidden', 'false');
+  $('catalog-modal')?.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => $('cat-rate')?.focus());
 }
 
 function hideModal() {
   $('catalog-modal-overlay')?.classList.add('hidden');
   $('catalog-modal')?.classList.add('hidden');
+  $('catalog-modal-overlay')?.setAttribute('aria-hidden', 'true');
+  $('catalog-modal')?.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
+}
+
+export function isFacilityCatalogModalOpen() {
+  return !$('catalog-modal')?.classList.contains('hidden');
 }
 
 function setFeedback(msg, ok = false) {
@@ -75,6 +90,9 @@ function renderModalForm() {
   title.textContent = mode === 'add'
     ? (kind === 'venue' ? 'Add Venue Price' : kind === 'meal' ? 'Add Meal Price' : 'Add Extra Service')
     : (kind === 'venue' ? 'Edit Venue Price' : kind === 'meal' ? 'Edit Meal Price' : 'Edit Extra Service');
+
+  const saveBtn = $('catalog-modal-save');
+  if (saveBtn) saveBtn.textContent = mode === 'add' ? 'Add' : 'Save changes';
 
   deleteBtn?.classList.toggle('hidden', mode !== 'edit' || !row?.id);
 
@@ -108,7 +126,6 @@ function renderModalForm() {
     return;
   }
 
-  // venue
   fields.innerHTML = `
     <label class="catalog-label">Venue group (e.g. Prayer Mountain, GMC Chapel)</label>
     <input id="cat-category" class="catalog-input" type="text" value="${escapeHtml(row?.category || '')}" placeholder="Venue name" />
@@ -138,7 +155,6 @@ function openModal({ mode, kind, row = null }) {
   setFeedback('');
   renderModalForm();
   showModal();
-  $('cat-rate')?.focus();
 }
 
 function readPayload() {
@@ -146,8 +162,10 @@ function readPayload() {
   const item = $('cat-item')?.value?.trim();
   const season = $('cat-season')?.value || 'N/A';
   const rate = Number($('cat-rate')?.value);
-  const capacity_min = $('cat-cap-min')?.value ? Number($('cat-cap-min').value) : null;
-  const capacity_max = $('cat-cap-max')?.value ? Number($('cat-cap-max').value) : null;
+  const capMinEl = $('cat-cap-min');
+  const capMaxEl = $('cat-cap-max');
+  const capacity_min = capMinEl?.value ? Number(capMinEl.value) : null;
+  const capacity_max = capMaxEl?.value ? Number(capMaxEl.value) : null;
 
   if (!category || !item || !rate || rate <= 0) {
     throw new Error('Please fill in all required fields with a valid price.');
@@ -197,21 +215,67 @@ async function deleteRow() {
   }
 }
 
-function editBtn(row, kind) {
-  return `<button type="button" class="catalog-edit-btn" data-catalog-edit="${kind}" data-id="${row.id}"
-    data-category="${escapeHtml(row.category || '')}" data-item="${escapeHtml(row.item || '')}"
-    data-season="${escapeHtml(row.season || 'N/A')}" data-rate="${row.rate ?? ''}"
-    data-cap-min="${row.capacity_min ?? ''}" data-cap-max="${row.capacity_max ?? ''}">
+function resolveRow(kind, id) {
+  const numId = Number(id);
+  if (kind === 'meal') {
+    const m = catalogCache.meals.find((x) => x.id === numId);
+    return m ? { id: m.id, category: 'Food Service', item: m.item, season: 'N/A', rate: m.rate } : null;
+  }
+  if (kind === 'extra') {
+    for (const group of catalogCache.services) {
+      const item = group.items.find((x) => x.id === numId);
+      if (item) {
+        return { id: item.id, category: group.category, item: item.item, season: item.season, rate: item.rate };
+      }
+    }
+    return null;
+  }
+  for (const venue of catalogCache.venues) {
+    for (const item of venue.items) {
+      const rate = item.rates.find((r) => r.id === numId);
+      if (rate) {
+        return {
+          id: rate.id,
+          category: venue.category,
+          item: item.item,
+          season: rate.season,
+          rate: rate.rate,
+          capacity_min: item.capacity_min,
+          capacity_max: item.capacity_max,
+        };
+      }
+    }
+  }
+  return null;
+}
+
+function editBtn(kind, id) {
+  return `<button type="button" class="catalog-edit-btn" data-catalog-edit="${kind}" data-id="${id}" aria-label="Edit this price">
     <span class="material-symbols-outlined text-[18px]">edit</span> Edit
   </button>`;
 }
 
+function applyEditModeClass(tab) {
+  Object.entries(TAB_PANEL).forEach(([key, panelId]) => {
+    $(panelId)?.classList.toggle('catalog-is-editing', catalogEditMode[key] && tab === key);
+  });
+}
+
+export function toggleCatalogEditMode() {
+  const key = activeCatalogTab;
+  if (!TAB_PANEL[key]) return;
+  catalogEditMode[key] = !catalogEditMode[key];
+  applyEditModeClass(key);
+  updateCatalogToolbar(key);
+}
+
 export function renderVenuesCatalog(venues) {
+  catalogCache.venues = venues || [];
   const mount = $('venues-grid-mount');
   if (!mount) return;
 
   if (!venues?.length) {
-    mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No venues yet. Tap “Add Venue Price” to create one.</p>';
+    mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No venues yet. Use <strong>Add venue</strong> to create your first price.</p>';
     return;
   }
 
@@ -221,24 +285,15 @@ export function renderVenuesCatalog(venues) {
         const cap = item.capacity_max
           ? (item.capacity_min > 1 ? `${item.capacity_min}–${item.capacity_max} people` : `Up to ${item.capacity_max} people`)
           : '';
-        const row = {
-          id: rate.id,
-          category: venue.category,
-          item: item.item,
-          season: rate.season,
-          rate: rate.rate,
-          capacity_min: item.capacity_min,
-          capacity_max: item.capacity_max,
-        };
         return `
-          <li class="flex items-start justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
+          <li class="catalog-price-row flex items-start justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
             <div class="min-w-0 flex-1">
               <p class="text-sm font-medium text-slate-800">${escapeHtml(item.item)}</p>
               <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(rate.season)}${cap ? ` · ${escapeHtml(cap)}` : ''}</p>
             </div>
             <div class="text-right shrink-0 flex flex-col items-end gap-1.5">
               <p class="text-sm font-bold text-slate-900">${peso(rate.rate)}</p>
-              ${editBtn(row, 'venue')}
+              ${editBtn('venue', rate.id)}
             </div>
           </li>`;
       })
@@ -258,50 +313,46 @@ export function renderVenuesCatalog(venues) {
 }
 
 export function renderMealsCatalog(meals) {
+  catalogCache.meals = meals || [];
   const mount = $('meals-grid-mount');
   if (!mount) return;
 
   if (!meals?.length) {
-    mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No meal prices yet.</p>';
+    mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No meal prices yet. Use <strong>Add meal</strong> to get started.</p>';
     return;
   }
 
-  mount.innerHTML = meals.map((meal) => {
-    const row = { id: meal.id, category: 'Food Service', item: meal.item, season: 'N/A', rate: meal.rate };
-    return `
-      <article class="meal-card catalog-meal-card">
-        <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mb-3">
-          <span class="material-symbols-outlined text-[28px]">${escapeHtml(meal.icon || 'restaurant')}</span>
-        </div>
-        <h4 class="text-base font-bold text-slate-800">${escapeHtml(meal.item)}</h4>
-        <p class="text-2xl font-bold text-slate-900 mt-2">${peso(meal.rate)}</p>
-        <p class="text-xs text-slate-400 mt-1 mb-3">per person</p>
-        ${editBtn(row, 'meal')}
-      </article>`;
-  }).join('');
+  mount.innerHTML = meals.map((meal) => `
+    <article class="meal-card catalog-meal-card">
+      <div class="w-12 h-12 mx-auto rounded-full bg-slate-100 text-slate-600 flex items-center justify-center mb-3">
+        <span class="material-symbols-outlined text-[28px]">${escapeHtml(meal.icon || 'restaurant')}</span>
+      </div>
+      <h4 class="text-base font-bold text-slate-800">${escapeHtml(meal.item)}</h4>
+      <p class="text-2xl font-bold text-slate-900 mt-2">${peso(meal.rate)}</p>
+      <p class="text-xs text-slate-400 mt-1 mb-3">per person</p>
+      ${editBtn('meal', meal.id)}
+    </article>`).join('');
 }
 
 export function renderExtrasCatalog(services) {
+  catalogCache.services = services || [];
   const mount = $('extras-grid-mount');
   if (!mount) return;
 
   if (!services?.length) {
-    mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No extra services yet. Add laundry, mattress, corkage, and other fees here.</p>';
+    mount.innerHTML = '<p class="text-sm text-slate-400 col-span-full text-center py-8">No extra services yet. Use <strong>Add extra</strong> for laundry, mattress, corkage, and other fees.</p>';
     return;
   }
 
   mount.innerHTML = services.map((group) => {
-    const itemsHtml = group.items.map((item) => {
-      const row = { id: item.id, category: group.category, item: item.item, season: item.season, rate: item.rate };
-      return `
-        <li class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
-          <p class="text-sm font-medium text-slate-800 min-w-0">${escapeHtml(item.item)}</p>
-          <div class="flex items-center gap-3 shrink-0">
-            <p class="text-sm font-bold text-slate-900">${peso(item.rate)}</p>
-            ${editBtn(row, 'extra')}
-          </div>
-        </li>`;
-    }).join('');
+    const itemsHtml = group.items.map((item) => `
+      <li class="catalog-price-row flex items-center justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
+        <p class="text-sm font-medium text-slate-800 min-w-0">${escapeHtml(item.item)}</p>
+        <div class="flex items-center gap-3 shrink-0">
+          <p class="text-sm font-bold text-slate-900">${peso(item.rate)}</p>
+          ${editBtn('extra', item.id)}
+        </div>
+      </li>`).join('');
 
     return `
       <article class="venue-card">
@@ -316,6 +367,44 @@ export function renderExtrasCatalog(services) {
   }).join('');
 }
 
+function updateCatalogToolbar(tab) {
+  const roomsBtn = document.querySelector('[data-open-manage-facilities]');
+  const editToggle = document.querySelector('[data-catalog-edit-toggle]');
+  const addVenue = document.querySelector('[data-catalog-add="venue"]');
+  const addMeal = document.querySelector('[data-catalog-add="meal"]');
+  const addExtra = document.querySelector('[data-catalog-add="extra"]');
+
+  const isCatalog = ['venues', 'meals', 'extras'].includes(tab);
+  roomsBtn?.classList.toggle('hidden', tab !== 'rooms');
+
+  editToggle?.classList.toggle('hidden', !isCatalog);
+  if (editToggle && isCatalog) {
+    const editing = catalogEditMode[tab];
+    editToggle.innerHTML = editing
+      ? '<span class="material-symbols-outlined text-[20px]">check</span> Done editing'
+      : '<span class="material-symbols-outlined text-[20px]">edit</span> Edit prices';
+    editToggle.classList.toggle('admin-crud-btn-primary', editing);
+    editToggle.classList.toggle('admin-crud-btn-ghost', !editing);
+    editToggle.setAttribute('aria-pressed', editing ? 'true' : 'false');
+  }
+
+  addVenue?.classList.toggle('hidden', tab !== 'venues');
+  addMeal?.classList.toggle('hidden', tab !== 'meals');
+  addExtra?.classList.toggle('hidden', tab !== 'extras');
+
+  document.querySelectorAll('[data-catalog-edit-hint]').forEach((el) => {
+    const panelTab = el.closest('[id^="fac-panel-"]')?.id?.replace('fac-panel-', '');
+    if (!panelTab || panelTab === 'rooms') return;
+    el.classList.toggle('hidden', !catalogEditMode[panelTab]);
+  });
+}
+
+export function setCatalogToolbarTab(tab) {
+  activeCatalogTab = tab;
+  applyEditModeClass(tab);
+  updateCatalogToolbar(tab);
+}
+
 export function initFacilityCatalog({ refresh }) {
   onRefresh = refresh;
 
@@ -325,22 +414,23 @@ export function initFacilityCatalog({ refresh }) {
   $('catalog-modal-save')?.addEventListener('click', saveModal);
   $('catalog-modal-delete')?.addEventListener('click', deleteRow);
 
+  document.querySelector('[data-catalog-edit-toggle]')?.addEventListener('click', toggleCatalogEditMode);
+
+  $('catalog-modal')?.addEventListener('click', (e) => {
+    if (e.target === $('catalog-modal')) hideModal();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isFacilityCatalogModalOpen()) hideModal();
+  });
+
   document.body.addEventListener('click', (e) => {
     const edit = e.target.closest('[data-catalog-edit]');
     if (edit) {
-      openModal({
-        mode: 'edit',
-        kind: edit.getAttribute('data-catalog-edit'),
-        row: {
-          id: Number(edit.getAttribute('data-id')),
-          category: edit.getAttribute('data-category'),
-          item: edit.getAttribute('data-item'),
-          season: edit.getAttribute('data-season'),
-          rate: Number(edit.getAttribute('data-rate')),
-          capacity_min: edit.getAttribute('data-cap-min') || null,
-          capacity_max: edit.getAttribute('data-cap-max') || null,
-        },
-      });
+      const kind = edit.getAttribute('data-catalog-edit');
+      const row = resolveRow(kind, edit.getAttribute('data-id'));
+      if (!row) return;
+      openModal({ mode: 'edit', kind, row });
       return;
     }
 
@@ -349,16 +439,4 @@ export function initFacilityCatalog({ refresh }) {
       openModal({ mode: 'add', kind: add.getAttribute('data-catalog-add') });
     }
   });
-}
-
-export function setCatalogToolbarTab(tab) {
-  const roomsBtn = document.querySelector('[data-open-manage-facilities]');
-  const addVenue = document.querySelector('[data-catalog-add="venue"]');
-  const addMeal = document.querySelector('[data-catalog-add="meal"]');
-  const addExtra = document.querySelector('[data-catalog-add="extra"]');
-
-  roomsBtn?.classList.toggle('hidden', tab !== 'rooms');
-  addVenue?.classList.toggle('hidden', tab !== 'venues');
-  addMeal?.classList.toggle('hidden', tab !== 'meals');
-  addExtra?.classList.toggle('hidden', tab !== 'extras');
 }

@@ -420,3 +420,80 @@
   font-weight: 700;
   color: #1a202c;
 }
+
+/* ── Facility catalog (venues / meals / extras) ── */
+
+.catalog-edit-btn {
+  display: none;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1a365d;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.catalog-is-editing .catalog-edit-btn {
+  display: inline-flex;
+}
+
+.catalog-edit-btn:hover {
+  background: #e2e8f0;
+}
+
+.catalog-edit-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0;
+  background: #eff6ff;
+  border-bottom: 1px solid #bfdbfe;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #1e40af;
+}
+
+.catalog-edit-hint .material-symbols-outlined {
+  font-size: 1.25rem;
+}
+
+.catalog-label {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #334155;
+  margin-bottom: 0.375rem;
+  margin-top: 0.75rem;
+}
+
+.catalog-input {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 1rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #1a202c;
+}
+
+.catalog-input:focus {
+  outline: none;
+  border-color: #1a365d;
+  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.12);
+}
+
+.catalog-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+#catalog-modal:not(.hidden) {
+  pointer-events: auto;
+}

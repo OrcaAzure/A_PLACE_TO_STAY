@@ -445,15 +445,24 @@ html.admin-chrome-boot .app-tab-panels {
   padding: 0.375rem 0.75rem;
 }
 
-/* ── Page content ── */
+/* ── Page content — flex column so main scrolls, not body ── */
 .admin-shell main {
   min-width: 0;
   flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .admin-shell #page-content {
   display: flex;
   flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 1.75rem var(--admin-gutter-x);
   gap: 1.75rem;
   max-width: 100%;
