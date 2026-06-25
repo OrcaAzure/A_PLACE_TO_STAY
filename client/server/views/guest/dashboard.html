@@ -1,133 +1,29 @@
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html class="h-full" lang="en">
 <head>
     <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard | AptSpace Guest</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="/assets/js/config/tailwind-theme-base.js"></script>
-    <script src="/assets/js/config/tailwind-guest.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+    <script src="/assets/js/config/tailwind-admin.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="/assets/css/global/guest-layout.css" />
-    <link rel="stylesheet" href="/assets/css/global/tabs-layout.css" />
+    <link rel="stylesheet" href="/assets/css/global/main.css" />
+    <link rel="stylesheet" href="/assets/css/components/components.css" />
+    <link rel="stylesheet" href="/assets/css/global/responsive.css" />
+    <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #F8FAFC;
-        }
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
         .reveal { opacity: 0; animation: fadeInUp .5s cubic-bezier(.22,.61,.36,1) forwards; }
         .skeleton { background: #eef2f7; border-radius: 12px; animation: pulse 1.3s ease-in-out infinite; }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
         @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
     </style>
-    <script type="module">
-      import { requireAuth } from '/assets/js/services/auth.js';
-      requireAuth();
-    </script>
 </head>
-<body class="guest-shell text-on-surface">
+<body>
 
-<aside id="guest-sidebar" class="guest-sidebar hidden lg:flex flex-col pt-6 pb-4 fixed left-0 top-0 h-full bg-surface-container-lowest border-r border-outline-variant z-40">
-    <div class="guest-brand-row px-3">
-        <div class="guest-brand-block">
-            <span class="guest-brand-mark" aria-hidden="true">A</span>
-            <div class="guest-brand-text">
-                <h1 class="font-headline-sm text-headline-sm font-black text-primary leading-tight">AptSpace</h1>
-                <p class="text-body-sm text-on-surface-variant mt-1 js-portal-label">Guest Portal</p>
-            </div>
-        </div>
-        <button id="guest-sidebar-collapse-btn" type="button" class="guest-sidebar-collapse-btn" aria-label="Hide sidebar" title="Hide sidebar">
-            <span class="material-symbols-outlined">dock_to_right</span>
-        </button>
-    </div>
-    <nav class="flex-1 px-3 space-y-1">
-        <a class="flex items-center gap-3 px-4 py-3 text-primary bg-primary/10 border-l-4 border-primary font-bold transition-all active:scale-95 duration-150" href="./dashboard.html">
-            <span class="material-symbols-outlined">dashboard</span>
-            <span class="font-label-md text-label-md guest-nav-label">Dashboard</span>
-        </a>
-        <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./reservations.html">
-            <span class="material-symbols-outlined">event_available</span>
-            <span class="font-label-md text-label-md guest-nav-label">Reservations</span>
-        </a>
-        <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./facilities.html">
-            <span class="material-symbols-outlined">domain</span>
-            <span class="font-label-md text-label-md guest-nav-label">Facilities</span>
-        </a>
-        <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container rounded-lg transition-all active:scale-95 duration-150" href="./settings.html">
-            <span class="material-symbols-outlined">settings</span>
-            <span class="font-label-md text-label-md guest-nav-label">Settings</span>
-        </a>
-    </nav>
-    <div class="p-lg mt-auto border-t border-outline-variant guest-sidebar-footer">
-        <div class="flex items-center gap-md">
-            <div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center">
-                <span class="material-symbols-outlined text-primary">account_circle</span>
-            </div>
-            <div class="overflow-hidden">
-                <p class="font-label-md text-label-md truncate js-user-name" id="sidebar-user-name">Guest User</p>
-                <p class="font-label-sm text-label-sm text-on-surface-variant truncate cursor-pointer js-logout">Log Out</p>
-            </div>
-        </div>
-    </div>
-</aside>
-
-<header class="guest-header fixed top-0 z-30 bg-surface/80 backdrop-blur-md border-b border-outline-variant shadow-sm transition-all">
-<div class="guest-header-inner flex justify-between items-center px-margin-mobile md:px-gutter h-full w-full max-w-none mx-auto">
-<div class="guest-header-title flex items-center gap-4 min-w-0">
-<button id="guest-sidebar-open-btn" type="button" class="guest-sidebar-open-btn" aria-label="Show sidebar" title="Show sidebar">
-<span class="material-symbols-outlined">menu</span>
-</button>
-<h2 class="font-headline-md text-headline-md font-bold text-primary truncate">Dashboard</h2>
-<div class="hidden xl:flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-72 min-w-0 shrink-0 transition-all focus-within:border-primary focus-within:shadow-sm">
-<span class="material-symbols-outlined text-outline text-[20px]">search</span>
-<input class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full" placeholder="Search..." type="text"/>
-</div>
-</div>
-<div class="guest-header-actions flex items-center gap-2 sm:gap-4 shrink-0">
-<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
-<span class="material-symbols-outlined">notifications</span>
-</button>
-<button class="p-2 text-on-surface-variant hover:text-primary transition-colors cursor-pointer active:opacity-70">
-<span class="material-symbols-outlined">help</span>
-</button>
-<div class="h-8 w-px bg-outline-variant mx-2"></div>
-<div class="guest-user-block flex items-center gap-2 sm:gap-3 cursor-pointer active:opacity-70 min-w-0">
-<div class="text-right hidden sm:block">
-<p class="font-label-md text-label-md font-bold leading-none js-user-name">Guest User</p>
-<p class="font-label-sm text-[10px] text-on-surface-variant uppercase tracking-wider hover:text-error transition-colors js-logout">Log Out</p>
-</div>
-<span class="js-role-badge hidden px-2.5 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wider"></span>
-<div class="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm js-user-avatar">?</div>
-</div>
-</div>
-</div>
-</header>
-
-<nav class="guest-bottom-nav lg:hidden fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-3 pb-safe bg-surface border-t border-outline-variant z-50 rounded-t-xl shadow-lg">
-    <a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-1 touch-manipulation duration-200" href="./dashboard.html">
-        <span class="material-symbols-outlined">dashboard</span>
-        <span class="font-label-sm text-[10px]">Dashboard</span>
-    </a>
-    <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./reservations.html">
-        <span class="material-symbols-outlined">event_available</span>
-        <span class="font-label-sm text-[10px]">Reservations</span>
-    </a>
-    <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./facilities.html">
-        <span class="material-symbols-outlined">domain</span>
-        <span class="font-label-sm text-[10px]">Facilities</span>
-    </a>
-    <a class="flex flex-col items-center justify-center text-on-surface-variant active:bg-surface-variant px-4 py-1 touch-manipulation duration-200" href="./settings.html">
-        <span class="material-symbols-outlined">settings</span>
-        <span class="font-label-sm text-[10px]">Settings</span>
-    </a>
-</nav>
-
-<main class="guest-main px-margin-mobile md:px-gutter">
+<div id="page-content">
     <section class="mb-10 reveal">
         <div class="relative overflow-hidden rounded-xl bg-primary-container p-8 md:p-10 shadow-lg text-on-primary-container">
             <div class="relative z-10 max-w-2xl">
@@ -226,9 +122,8 @@
             </div>
         </div>
     </div>
-</main>
 
-<footer class="guest-footer border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter">
+<footer class="border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter mt-10">
     <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
         <div class="flex items-center gap-2">
             <span class="font-headline-sm text-primary">AptSpace</span>
@@ -241,16 +136,20 @@
         </div>
     </div>
 </footer>
+</div>
 
 <script type="module">
-    import { requireAuth, doLogout, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
+    import { requireAuth, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
+    import { initAppLayout } from '/assets/js/layout/ui.js';
     import { getBookings, getGroups, normalizeBooking, formatGroupId } from '/assets/js/services/api.js';
-    import { initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
-    import { initGuestSidebar } from '/assets/js/layout/guest-sidebar.js';
 
     requireAuth();
-    initGuestPageNavTransitions();
-    initGuestSidebar();
+    await initAppLayout({
+      portal: 'guest',
+      activePage: 'dashboard',
+      title: 'Dashboard',
+      subtitle: 'Guest Portal',
+    });
 
     const BLOCKED_BUILDINGS = ['House'];
     const isBlocked = (n) => BLOCKED_BUILDINGS.includes(String(n || '').trim());
@@ -258,11 +157,8 @@
     const user = getCurrentUser();
     const name = user ? (user.full_name || user.name || 'Guest User') : 'Guest User';
     const firstName = name.split(' ')[0];
-    document.querySelectorAll('.js-user-name').forEach((el) => { el.textContent = name; });
-    document.querySelectorAll('.js-user-avatar').forEach((el) => { el.textContent = (name[0] || 'G').toUpperCase(); });
     const welcomeEl = document.getElementById('welcome-message');
     if (welcomeEl) welcomeEl.textContent = `Welcome back, ${firstName}!`;
-    document.querySelectorAll('.js-logout').forEach((el) => el.addEventListener('click', (e) => { e.preventDefault(); doLogout(); }));
 
     const { readOnly } = applyRoleUI();
 

@@ -16,6 +16,21 @@ export const ADMIN_NAV = [
   { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings.html' },
 ];
 
+export const GUEST_NAV = [
+  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/guest/dashboard.html' },
+  { id: 'reservations', label: 'Reservations', icon: 'event_available', href: '/guest/reservations.html' },
+  { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/guest/facilities.html' },
+  { id: 'settings', label: 'Settings', icon: 'settings', href: '/guest/settings.html' },
+];
+
+export const GUEST_NEW_RESERVATION_FOOTER = `
+  <div class="mb-md px-sm admin-sidebar-footer-action js-requires-write">
+    <a href="/guest/reservations.html#new-reservation" class="w-full flex items-center gap-md px-md py-md bg-primary text-on-primary rounded-lg font-body-md font-semibold hover:bg-primary/90 transition-colors min-h-[3rem] no-underline">
+      <span class="material-symbols-outlined text-[1.35rem] shrink-0">add</span>
+      <span class="admin-nav-label">New Reservation</span>
+    </a>
+  </div>`;
+
 export async function loadComponent(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Failed to load ${url}`);
@@ -84,8 +99,26 @@ async function loadAdminTemplates() {
   return templatesPromise;
 }
 
+/** @type {Promise<Record<string, string>> | null} */
+let guestTemplatesPromise = null;
+
+async function loadGuestTemplates() {
+  if (!guestTemplatesPromise) {
+    guestTemplatesPromise = Promise.all([
+      loadComponent('/components/sidebar.html'),
+      loadComponent('/components/header.html'),
+      loadComponent('/components/notifications.html'),
+    ]).then(([sidebar, header, notifications]) => ({ sidebar, header, notifications }));
+  }
+  return guestTemplatesPromise;
+}
+
 if (typeof window !== 'undefined' && window.location.pathname.includes('/admin/')) {
   loadAdminTemplates().catch(() => {});
+}
+
+if (typeof window !== 'undefined' && window.location.pathname.includes('/guest/')) {
+  loadGuestTemplates().catch(() => {});
 }
 
 function isDesktopSidebar() {
@@ -107,10 +140,15 @@ function buildAdminShell({
   userRole,
   userInitial,
   collapsed,
+  navItems = ADMIN_NAV,
+  brandHref = '/admin/dashboard.html',
+  sidebarFooter = '',
 }) {
   const sidebar = templates.sidebar
-    .replace('{{NAV_ITEMS}}', renderSidebarNav(ADMIN_NAV, activePage))
+    .replace('{{NAV_ITEMS}}', renderSidebarNav(navItems, activePage))
     .replace('{{PORTAL_LABEL}}', portalLabel)
+    .replace('{{BRAND_HREF}}', brandHref)
+    .replace('{{SIDEBAR_FOOTER}}', sidebarFooter)
     .replace('{{PROPERTY_LINK}}', '/guest/dashboard.html')
     .replace('{{PROPERTY_LABEL}}', 'Guest Portal');
 
@@ -123,28 +161,42 @@ function buildAdminShell({
 
   return `
     ${sidebar}
-    <main class="flex-1 flex flex-col overflow-hidden h-full">
+    <main class="flex-1 flex flex-col overflow-hidden h-full min-w-0">
       ${header}
       <div id="page-content" class="flex-1 overflow-y-auto min-h-0">${pageContent}</div>
     </main>
-    ${templates.drawer}
-    ${templates.modal}
-    ${templates.manageRequests}
-    ${templates.manageReservations}
-    ${templates.manageFacilities}
-    ${templates.reservationWizard}
-    ${templates.groupWizard}
-    ${templates.notifications}
+    ${templates.drawer || ''}
+    ${templates.modal || ''}
+    ${templates.manageRequests || ''}
+    ${templates.manageReservations || ''}
+    ${templates.manageFacilities || ''}
+    ${templates.reservationWizard || ''}
+    ${templates.groupWizard || ''}
+    ${templates.notifications || ''}
     ${templates.facilityCatalog || ''}
     <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[45]"></div>
   `;
 }
 
-function updateActiveNav(activePage) {
+function buildGuestShell(options) {
+  return buildAdminShell({
+    ...options,
+    navItems: GUEST_NAV,
+    brandHref: '/guest/dashboard.html',
+    sidebarFooter: GUEST_NEW_RESERVATION_FOOTER,
+    templates: {
+      sidebar: options.templates.sidebar,
+      header: options.templates.header,
+      notifications: options.templates.notifications,
+    },
+  });
+}
+
+function updateActiveNav(activePage, navItems = ADMIN_NAV) {
   document.querySelectorAll('#app-sidebar nav a').forEach((link) => {
     const href = link.getAttribute('href') || '';
     const page = href.split('/').pop() || '';
-    const id = ADMIN_NAV.find((item) => item.href.endsWith(page))?.id;
+    const id = navItems.find((item) => item.href.endsWith(page))?.id;
     const active = id === activePage;
     link.className = navLinkClass(active, id || '');
     link.setAttribute('aria-current', active ? 'page' : 'false');
@@ -199,9 +251,12 @@ export async function initAppLayout(config = {}) {
     deferEnhancements = false,
   } = config;
 
+  const isGuest = portal === 'guest';
+  const navItems = isGuest ? GUEST_NAV : ADMIN_NAV;
+
   const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const userName = user.full_name || user.name || 'Admin User';
-  const userRole = user.role || 'Ops Commander';
+  const userName = user.full_name || user.name || (isGuest ? 'Guest User' : 'Admin User');
+  const userRole = user.role || (isGuest ? 'Guest' : 'Ops Commander');
   const userInitial = userName.charAt(0).toUpperCase();
   const collapsed = isSidebarCollapsedPreferred();
 
@@ -213,43 +268,63 @@ export async function initAppLayout(config = {}) {
 
   if (existingSidebar) {
     document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
-    updateActiveNav(activePage);
+    updateActiveNav(activePage, navItems);
     updateAdminHeader({ title, subtitle, userName, userRole, userInitial });
     lockStaticChrome();
-    if (!deferEnhancements) initAdminEnhancements().catch(() => releaseChromeBoot());
+    if (!deferEnhancements && !isGuest) initAdminEnhancements().catch(() => releaseChromeBoot());
+    else releaseChromeBoot();
     return;
   }
 
-  const templates = await loadAdminTemplates();
+  const templates = isGuest ? await loadGuestTemplates() : await loadAdminTemplates();
+  const shellHtml = isGuest
+    ? buildGuestShell({
+        templates,
+        pageContent: savedContent,
+        activePage,
+        title,
+        subtitle,
+        portalLabel,
+        userName,
+        userRole,
+        userInitial,
+        collapsed,
+      })
+    : buildAdminShell({
+        templates,
+        pageContent: savedContent,
+        activePage,
+        title,
+        subtitle,
+        portalLabel,
+        userName,
+        userRole,
+        userInitial,
+        collapsed,
+        brandHref: '/admin/dashboard.html',
+      });
 
-  document.body.innerHTML = buildAdminShell({
-    templates,
-    pageContent: savedContent,
-    activePage,
-    title,
-    subtitle,
-    portalLabel,
-    userName,
-    userRole,
-    userInitial,
-    collapsed,
-  });
+  document.body.innerHTML = shellHtml;
   if (preservedNodes.childNodes.length) {
     document.body.appendChild(preservedNodes);
   }
   document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
 
-  bindLayoutEvents();
+  bindLayoutEvents({ isGuest });
   initSidebarCollapse();
-  initManageRequestsModal();
-  initManageReservationsModal();
-  initManageFacilitiesModal();
-  initReservationWizard();
-  initGroupWizard();
-  initDrawerTabs();
-  initAdminPageNavTransitions();
-  lockStaticChrome();
-  if (!deferEnhancements) initAdminEnhancements().catch(() => releaseChromeBoot());
+  if (!isGuest) {
+    initManageRequestsModal();
+    initManageReservationsModal();
+    initManageFacilitiesModal();
+    initReservationWizard();
+    initGroupWizard();
+    initDrawerTabs();
+    initAdminPageNavTransitions();
+    lockStaticChrome();
+    if (!deferEnhancements) initAdminEnhancements().catch(() => releaseChromeBoot());
+  } else {
+    releaseChromeBoot();
+  }
 }
 
 let drawerTabGroup = null;
@@ -328,7 +403,7 @@ function openMobileSidebar() {
   document.getElementById('sidebar-open-btn')?.setAttribute('aria-expanded', 'true');
 }
 
-function bindLayoutEvents() {
+function bindLayoutEvents({ isGuest = false } = {}) {
   document.getElementById('logout-btn')?.addEventListener('click', (e) => {
     e.preventDefault();
     localStorage.removeItem('token');
@@ -349,6 +424,23 @@ function bindLayoutEvents() {
     if (isHidden && list) {
       list.innerHTML = '<div class="p-4 text-body-sm text-on-surface-variant text-center">Loading…</div>';
       try {
+        if (isGuest) {
+          const items = [
+            { icon: 'event_available', text: 'Reservation updates', sub: 'Check My Reservations for status changes' },
+            { icon: 'info', text: 'Need help?', sub: 'Contact facility staff from your dashboard' },
+            { icon: 'wifi', text: 'Portal status: Live', sub: 'Guest services are available' },
+          ];
+          list.innerHTML = items.map((item) => `
+          <div class="p-4 border-b border-outline-variant/30 hover:bg-surface-container-low/50 flex items-start gap-3">
+            <span class="material-symbols-outlined text-[18px] text-on-surface-variant mt-0.5">${item.icon}</span>
+            <div>
+              <p class="text-body-sm font-medium text-on-surface">${item.text}</p>
+              <p class="text-[11px] text-on-surface-variant mt-0.5">${item.sub}</p>
+            </div>
+          </div>`).join('');
+          return;
+        }
+
         const { getAdminSummary } = await import('/assets/js/services/api.js');
         const summary = await getAdminSummary();
         const kpis    = summary?.kpis || {};
@@ -392,28 +484,30 @@ function bindLayoutEvents() {
 
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
-      if (isManageRequestsModalOpen()) {
+      if (!isGuest && isManageRequestsModalOpen()) {
         closeManageRequestsModal();
         return;
       }
-      if (isManageReservationsModalOpen()) {
+      if (!isGuest && isManageReservationsModalOpen()) {
         closeManageReservationsModal();
         return;
       }
-      if (isManageFacilitiesModalOpen()) {
+      if (!isGuest && isManageFacilitiesModalOpen()) {
         closeManageFacilitiesModal();
         return;
       }
-      if (isReservationWizardOpen()) {
+      if (!isGuest && isReservationWizardOpen()) {
         closeReservationWizard();
         return;
       }
-      if (isGroupWizardOpen()) {
+      if (!isGuest && isGroupWizardOpen()) {
         closeGroupWizard();
         return;
       }
-      closeModal();
-      closeDrawer();
+      if (!isGuest) {
+        closeModal();
+        closeDrawer();
+      }
       closeSidebar();
     }
   });
