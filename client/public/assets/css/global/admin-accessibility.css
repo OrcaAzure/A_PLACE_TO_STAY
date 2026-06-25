@@ -663,12 +663,97 @@ html.admin-chrome-boot .app-tab-panels {
   }
 }
 
-/* Page navigation — sidebar/header static; content may animate via GSAP */
-.admin-shell #app-sidebar,
-.admin-shell #app-sidebar.anim-static,
-.admin-shell main > header,
-.admin-shell main > header.admin-app-header,
-.admin-shell main > header.anim-static {
-  opacity: 1;
-  transform: none;
+/* Page navigation — sidebar/header static on desktop; content may animate via GSAP */
+@media (min-width: 1024px) {
+  .admin-shell #app-sidebar,
+  .admin-shell #app-sidebar.anim-static,
+  .admin-shell main > header,
+  .admin-shell main > header.admin-app-header,
+  .admin-shell main > header.anim-static {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Mobile sidebar drawer (overlay) — must come after desktop static rules ── */
+@media (max-width: 1023px) {
+  .admin-shell #app-sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100%;
+    height: 100dvh;
+    width: min(280px, 85vw);
+    max-width: 280px;
+    z-index: 60;
+    flex: none;
+    pointer-events: none;
+    transform: translateX(-100%);
+    padding-left: 1rem;
+    padding-right: 1rem;
+    border-right: 1px solid var(--color-outline-variant, #CBD5E0);
+    background: #fff;
+  }
+
+  html.sidebar-user-toggle .admin-shell #app-sidebar {
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .admin-shell #app-sidebar.sidebar-open {
+    transform: translateX(0);
+    pointer-events: auto;
+    box-shadow: 8px 0 24px rgba(26, 54, 93, 0.12);
+  }
+
+  .admin-shell > main {
+    width: 100%;
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  #sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 55;
+    opacity: 0;
+    pointer-events: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html.sidebar-user-toggle #sidebar-overlay {
+    transition: opacity 0.24s ease;
+  }
+
+  #sidebar-overlay.is-active {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  html.sidebar-mobile-open .sidebar-open-btn {
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  html.sidebar-mobile-open .sidebar-open-btn[hidden] {
+    display: none !important;
+    visibility: hidden;
+  }
+
+  html.sidebar-mobile-open .admin-shell #page-content {
+    overflow: hidden;
+  }
+
+  html.sidebar-mobile-open #notifications-panel {
+    display: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.sidebar-user-toggle .admin-shell #app-sidebar,
+  html.sidebar-user-toggle #sidebar-overlay {
+    transition: none !important;
+  }
 }

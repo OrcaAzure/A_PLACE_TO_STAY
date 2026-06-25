@@ -166,6 +166,7 @@ function buildAdminShell({
 
   return `
     ${sidebar}
+    <div id="sidebar-overlay" aria-hidden="true"></div>
     <main class="flex-1 flex flex-col overflow-hidden h-full min-w-0">
       ${header}
       <div id="page-content" class="flex-1 overflow-y-auto min-h-0">${pageContent}</div>
@@ -179,7 +180,6 @@ function buildAdminShell({
     ${templates.groupWizard || ''}
     ${templates.notifications || ''}
     ${templates.facilityCatalog || ''}
-    <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/40 z-[50]" aria-hidden="true"></div>
   `;
 }
 
@@ -299,6 +299,7 @@ export async function initAppLayout(config = {}) {
     document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${isGuest ? ' guest-portal' : ''}${collapsed ? ' sidebar-collapsed' : ''}`;
     updateActiveNav(activePage, navItems);
     updateAdminHeader({ title, subtitle, userName, userRole, userInitial });
+    ensureSidebarUi();
     lockStaticChrome();
     if (!deferEnhancements && !isGuest) initAdminEnhancements().catch(() => releaseChromeBoot());
     else releaseChromeBoot();
@@ -340,8 +341,7 @@ export async function initAppLayout(config = {}) {
   document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${isGuest ? ' guest-portal' : ''}${collapsed ? ' sidebar-collapsed' : ''}`;
 
   bindLayoutEvents({ isGuest });
-  initSidebarCollapse();
-  bindMobileSidebarEvents({ onScrollLockChange: updateBodyScrollLock });
+  ensureSidebarUi();
   if (!isGuest) {
     initManageRequestsModal();
     initManageReservationsModal();
@@ -369,6 +369,21 @@ function initDrawerTabs() {
     panelAttr: 'data-drawer-panel',
     useHiddenClass: true,
   });
+}
+
+let sidebarUiInitialized = false;
+
+function ensureSidebarUi() {
+  if (sidebarUiInitialized) return;
+  sidebarUiInitialized = true;
+  if (!document.getElementById('sidebar-overlay') && document.getElementById('app-sidebar')) {
+    const overlay = document.createElement('div');
+    overlay.id = 'sidebar-overlay';
+    overlay.setAttribute('aria-hidden', 'true');
+    document.getElementById('app-sidebar').after(overlay);
+  }
+  initSidebarCollapse();
+  bindMobileSidebarEvents({ onScrollLockChange: updateBodyScrollLock });
 }
 
 function initSidebarCollapse() {
