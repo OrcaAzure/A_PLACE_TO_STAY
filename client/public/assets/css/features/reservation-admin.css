@@ -127,6 +127,7 @@
 
 /* Card-based modals — Guest Requests & Reservations */
 .res-modal--cards { max-width: 44rem; }
+.res-modal--wizard { max-width: 44rem; width: 100%; margin: 0 auto; }
 .res-modal-header--cards { align-items: flex-start; padding: 1.5rem 1.75rem; }
 .res-modal-header-top { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
 .res-modal-header-main { flex: 1; min-width: 0; }

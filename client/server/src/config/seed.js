@@ -207,6 +207,37 @@ export async function runSchemaPatches() {
 
   try {
     await pool.execute(
+      `CREATE TABLE IF NOT EXISTS facility_bookings (
+         id           INT AUTO_INCREMENT PRIMARY KEY,
+         user_id      INT NOT NULL,
+         facility_id  INT NOT NULL,
+         event_date   DATE NOT NULL,
+         start_time   TIME NOT NULL,
+         end_time     TIME NOT NULL,
+         guest_count  INT NOT NULL DEFAULT 1,
+         season       ENUM('Regular', 'Peak', 'N/A') NOT NULL DEFAULT 'Regular',
+         total_amount DECIMAL(10,2) DEFAULT NULL,
+         status       ENUM('Pending', 'Approved', 'Rejected', 'Cancelled') NOT NULL DEFAULT 'Pending',
+         notes        TEXT DEFAULT NULL,
+         created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+         updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+         CONSTRAINT fk_fbooking_user
+           FOREIGN KEY (user_id) REFERENCES users(id)
+           ON DELETE RESTRICT ON UPDATE CASCADE,
+         CONSTRAINT fk_fbooking_facility
+           FOREIGN KEY (facility_id) REFERENCES facilities(id)
+           ON DELETE RESTRICT ON UPDATE CASCADE,
+         CONSTRAINT chk_fb_times  CHECK (end_time > start_time),
+         CONSTRAINT chk_fb_guests CHECK (guest_count >= 1),
+         CONSTRAINT chk_fb_total  CHECK (total_amount IS NULL OR total_amount > 0)
+       )`
+    );
+  } catch (err) {
+    console.warn('[schema] facility_bookings patch skipped:', err.message);
+  }
+
+  try {
+    await pool.execute(
       `CREATE TABLE IF NOT EXISTS system_settings (
          setting_key   VARCHAR(64) PRIMARY KEY,
          setting_value VARCHAR(255) NOT NULL,

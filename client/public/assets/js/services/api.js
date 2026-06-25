@@ -376,9 +376,12 @@ export async function getFacilityBookings() {
 }
 
 export async function createFacilityBooking(payload) {
+  const body = { ...payload };
+  if (body.start_time) body.start_time = String(body.start_time).slice(0, 5);
+  if (body.end_time) body.end_time = String(body.end_time).slice(0, 5);
   return apiRequest('/facility-bookings', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
   });
 }
 

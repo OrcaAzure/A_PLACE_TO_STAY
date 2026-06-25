@@ -56,7 +56,7 @@ export async function loadComponent(url) {
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v4';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v5';
 
 /** @type {Promise<Record<string, string>> | null} */
 let templatesPromise = null;

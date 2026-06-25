@@ -4,6 +4,15 @@ import { resolveSeason, resolveGuestUser } from '../services/booking.service.js'
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
+/** Ensure TIME values work with MySQL (HH:MM or HH:MM:SS). */
+function normalizeTime(value) {
+  if (!value) return value;
+  const raw = String(value).trim();
+  if (/^\d{1,2}:\d{2}:\d{2}$/.test(raw)) return raw;
+  if (/^\d{1,2}:\d{2}$/.test(raw)) return `${raw}:00`;
+  return raw;
+}
+
 const bookingSelect = `
   SELECT fb.*,
          u.full_name AS guest_name,
@@ -65,13 +74,16 @@ export const createFacilityBooking = async (req, res) => {
       ? await resolveGuestUser({ userId: user_id, guestName: guest_name, email })
       : userId;
 
+    const startTime = normalizeTime(start_time);
+    const endTime = normalizeTime(end_time);
+
     const [overlap] = await pool.query(
       `SELECT id FROM facility_bookings
        WHERE facility_id = ? AND event_date = ?
          AND status IN ('Pending', 'Approved')
          AND start_time < ? AND end_time > ?
        LIMIT 1`,
-      [facility_id, event_date, end_time, start_time]
+      [facility_id, event_date, endTime, startTime]
     );
     if (overlap.length) {
       return res.status(409).json({ message: 'This venue is already booked for the selected time slot.' });
@@ -83,8 +95,8 @@ export const createFacilityBooking = async (req, res) => {
       [facility_id]
     );
     const rate         = fRows.length ? Number(fRows[0].rate) : 0;
-    const [sh, sm]     = start_time.split(':').map(Number);
-    const [eh, em]     = end_time.split(':').map(Number);
+    const [sh, sm]     = startTime.split(':').map(Number);
+    const [eh, em]     = endTime.split(':').map(Number);
     const hours        = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
     const total_amount = Math.round(rate * Math.max(hours, 1) * 100) / 100;
 
@@ -94,7 +106,7 @@ export const createFacilityBooking = async (req, res) => {
       `INSERT INTO facility_bookings
          (user_id, facility_id, event_date, start_time, end_time, guest_count, season, total_amount, status, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [effectiveUserId, facility_id, event_date, start_time, end_time, guest_count || 1,
+      [effectiveUserId, facility_id, event_date, startTime, endTime, guest_count || 1,
        season, total_amount, bookingStatus, notes || null]
     );
 

@@ -148,9 +148,13 @@ export function closeManageVenueBookingsModal() {
 }
 
 async function setStatus(id, status) {
-  await updateFacilityBooking(id, { status });
-  window.dispatchEvent(new CustomEvent('booking:updated'));
-  await load();
+  try {
+    await updateFacilityBooking(id, { status });
+    window.dispatchEvent(new CustomEvent('booking:updated'));
+    await load();
+  } catch (err) {
+    alert(err.message || 'Could not update this booking.');
+  }
 }
 
 function onClick(e) {
