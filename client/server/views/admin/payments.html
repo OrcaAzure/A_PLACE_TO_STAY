@@ -46,6 +46,7 @@
     </div>
 
     <section class="timeline-workspace">
+      <div id="payments-feedback" class="hidden mx-6 mt-4"></div>
       <div class="timeline-workspace-header">
         <div class="flex items-center gap-4">
           <div class="w-1.5 h-8 bg-primary rounded-full"></div>
@@ -59,9 +60,9 @@
       </div>
       <div class="overflow-x-auto">
         <table class="data-table">
-          <thead><tr><th>Booking ID</th><th>Amount</th><th>Method</th><th>Date</th><th>Status</th></tr></thead>
+          <thead><tr><th>Booking ID</th><th>Amount</th><th>Method</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody id="payments-tbody">
-            <tr><td colspan="5" class="text-center text-on-surface-variant py-8">Loading payments...</td></tr>
+            <tr><td colspan="6" class="text-center text-on-surface-variant py-8">Loading payments...</td></tr>
           </tbody>
         </table>
       </div>
@@ -71,7 +72,7 @@
   <script type="module">
     import { requireAuth }   from '/assets/js/services/auth.js';
     import { initAppLayout } from '/assets/js/layout/ui.js';
-    import { getPayments }   from '/assets/js/services/api.js';
+    import { loadPaymentsPage } from '/assets/js/features/admin-payments.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
 
@@ -82,53 +83,7 @@
       subtitle:   'Mission Control',
     });
 
-    try {
-      const payments = await getPayments();
-      let allRows = payments;
-
-      const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-
-      const paid    = payments.filter(p => p.status === 'Paid');
-      const pending = payments.filter(p => p.status === 'Pending');
-      const revenue = paid.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
-      const due     = pending.reduce((s, p) => s + parseFloat(p.amount || 0), 0);
-
-      document.getElementById('total-revenue').textContent  = fmt(revenue);
-      document.getElementById('pending-amount').textContent = `${fmt(due)} DUE`;
-
-      function renderRows(list) {
-        if (list.length === 0) return '<tr><td colspan="5" class="text-center text-on-surface-variant py-8">No payments found.</td></tr>';
-        return list.map(p => {
-          const statusClass = p.status === 'Paid' ? 'status-pill-approved' : 'status-pill-pending';
-          const date = p.paid_at || p.created_at
-            ? new Date(p.paid_at || p.created_at).toLocaleDateString('en-PH', { month:'short', day:'2-digit', year:'numeric' })
-            : '—';
-          return `<tr>
-            <td>#${p.booking_id}</td>
-            <td>${fmt(p.amount)}</td>
-            <td>${p.method}</td>
-            <td>${date}</td>
-            <td><span class="${statusClass} text-[10px] px-2 py-0.5 rounded-full font-bold">${p.status}</span></td>
-          </tr>`;
-        }).join('');
-      }
-
-      const tbody = document.getElementById('payments-tbody');
-      tbody.innerHTML = renderRows(allRows);
-
-      // tab filter — runs after initAppLayout so the tabs are in the DOM
-      document.querySelectorAll('[data-tab]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const t = btn.getAttribute('data-tab');
-          const filtered = t === 'paid' ? paid : t === 'pending' ? pending : payments;
-          tbody.innerHTML = renderRows(filtered);
-        });
-      });
-
-    } catch (err) {
-      document.getElementById('payments-tbody').innerHTML =
-        `<tr><td colspan="5" class="text-center text-error py-8">${err.message}</td></tr>`;
-    }
+    await loadPaymentsPage();
   </script>
 </body>
 </html>

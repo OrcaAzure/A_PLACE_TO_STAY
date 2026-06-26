@@ -15,11 +15,17 @@ import facilityRoutes        from './routes/facility.routes.js';
 import facilityBookingRoutes from './routes/facilityBooking.routes.js';
 import settingsRoutes  from './routes/settings.routes.js';
 import pageRoutes      from './routes/pages.routes.js';
+import { pool }        from './config/db.js';
+import { getAllowedOrigins, isProduction } from './config/env.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir  = path.join(__dirname, '../../public');
 
 const app = express();
+
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
 
 app.use(helmet({
   contentSecurityPolicy: {
@@ -36,21 +42,26 @@ app.use(helmet({
 }));
 
 app.use(cors({
-  origin: process.env.ALLOWED_ORIGIN || [
-    'http://localhost:3000',
-    'http://localhost:5500',
-    'http://127.0.0.1:3000',
-    'http://127.0.0.1:5500'
-  ],
+  origin: getAllowedOrigins(),
   methods: ['GET', 'POST', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 app.get('/api', (req, res) => {
   res.json({ message: 'AptSpace API is running' });
+});
+
+app.get('/api/health', async (req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', db: 'connected', env: isProduction ? 'production' : 'development' });
+  } catch {
+    res.status(503).json({ status: 'error', db: 'disconnected' });
+  }
 });
 
 const authLimiter = rateLimit({
@@ -62,6 +73,7 @@ const authLimiter = rateLimit({
 });
 app.use('/api/auth/login',           authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
+app.use('/api/auth/reset-password',  authLimiter);
 
 app.use('/api/auth',     authRoutes);
 app.use('/api/users',    userRoutes);
@@ -88,8 +100,10 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err.stack || err);
-  res.status(err.statusCode || 500).json({
-    message: err.message || 'Server error',
+  const status = err.statusCode || 500;
+  const expose = status < 500 || !isProduction;
+  res.status(status).json({
+    message: expose ? (err.message || 'Server error') : 'Server error',
   });
 });
 

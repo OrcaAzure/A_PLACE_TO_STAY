@@ -1,6 +1,7 @@
 import bcrypt from 'bcryptjs';
 import { pool } from './db.js';
 import { FISCAL_YEAR_DEFAULTS } from '../utils/constants.js';
+import { isProduction } from './env.js';
 
 const SEED_USERS = [
   { full_name: 'System Administrator', email: 'admin@aptspace.com',          role: 'Super Admin',   status: 'Active' },
@@ -390,8 +391,21 @@ export async function seedGuestAccessRequests() {
 
 export async function runSeed() {
   await runSchemaPatches();
-  await seedUsers();
-  await seedDemoData();
-  await seedGuestStayExamples();
-  await seedGuestAccessRequests();
+
+  const bootstrapUsers = process.env.ENABLE_SEED === 'true' || !isProduction;
+  const loadDemoData = process.env.ENABLE_DEMO_DATA === 'true' || !isProduction;
+
+  if (bootstrapUsers) {
+    await seedUsers();
+  } else if (isProduction) {
+    console.log('[seed] User bootstrap skipped (set ENABLE_SEED=true on first deploy)');
+  }
+
+  if (loadDemoData) {
+    await seedDemoData();
+    await seedGuestStayExamples();
+    await seedGuestAccessRequests();
+  } else if (isProduction) {
+    console.log('[seed] Demo data skipped in production');
+  }
 }

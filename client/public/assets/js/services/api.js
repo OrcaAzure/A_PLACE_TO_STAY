@@ -337,12 +337,15 @@ export async function getMealRates() {
 }
 
 export async function getPayments() {
-  try {
-    const data = await apiRequest('/payments');
-    return data.payments || [];
-  } catch {
-    return [];
-  }
+  const data = await apiRequest('/payments');
+  return data.payments || [];
+}
+
+export async function updatePayment(id, payload) {
+  return apiRequest(`/payments/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }
 
 export function normalizeRoom(room) {

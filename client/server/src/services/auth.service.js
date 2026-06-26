@@ -2,9 +2,17 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from '../config/db.js';
-import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
+import { JWT_SECRET, JWT_EXPIRES_IN, isProduction } from '../config/env.js';
 import { safeUser, isEmpty } from '../utils/helpers.js';
 import { sendPasswordResetEmail } from './email.service.js';
+
+const MIN_PASSWORD_LENGTH = isProduction ? 8 : 6;
+
+function assertPasswordStrength(password) {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
+  }
+}
 
 export const login = async ({ email, password }) => {
   if (isEmpty(email) || isEmpty(password)) {
@@ -79,9 +87,7 @@ export const changePassword = async (userId, { current_password, new_password })
   if (isEmpty(current_password) || isEmpty(new_password)) {
     throw new Error('current_password and new_password are required');
   }
-  if (new_password.length < 6) {
-    throw new Error('New password must be at least 6 characters');
-  }
+  assertPasswordStrength(new_password);
 
   const [rows] = await pool.query('SELECT * FROM users WHERE id = ? LIMIT 1', [userId]);
   if (!rows.length) throw new Error('User not found');
@@ -146,6 +152,8 @@ export const resetPassword = async (token, newPassword) => {
   if (rows.length === 0) {
     throw new Error('Invalid or expired reset token');
   }
+
+  assertPasswordStrength(newPassword);
 
   const record = rows[0];
   if (new Date(record.expires_at) < new Date()) {

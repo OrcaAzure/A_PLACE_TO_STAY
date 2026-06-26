@@ -74,8 +74,9 @@
                     </select>
                 </div>
             </div>
+            <div id="settings-feedback" class="hidden mt-lg text-body-sm rounded-lg px-3 py-2"></div>
             <div class="mt-xl pt-lg border-t border-outline-variant flex justify-end js-requires-write">
-                <button class="bg-primary text-on-primary px-xl py-md rounded-lg font-label-md text-label-md hover:opacity-95 shadow-md active:scale-95 transition-all">Save Changes</button>
+                <button id="settings-save-btn" type="button" class="bg-primary text-on-primary px-xl py-md rounded-lg font-label-md text-label-md hover:opacity-95 shadow-md active:scale-95 transition-all">Save Changes</button>
             </div>
         </div>
     </section>
@@ -150,9 +151,10 @@
 </div>
 
 <script type="module">
-  import { requireAuth, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
+  import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
   import { initAppLayout } from '/assets/js/layout/ui.js';
   import { initTabGroup } from '/assets/js/layout/tabs.js';
+  import { loadGuestSettings } from '/assets/js/features/guest-settings.js';
 
   requireAuth();
   await initAppLayout({
@@ -162,13 +164,7 @@
     subtitle: 'Guest Portal',
   });
 
-  const user = getCurrentUser();
-  if (user) {
-    const nameEl = document.getElementById('settings-name');
-    const emailEl = document.getElementById('settings-email');
-    if (nameEl) nameEl.value = user.full_name || user.name || '';
-    if (emailEl) emailEl.value = user.email || '';
-  }
+  await loadGuestSettings();
 
   const { readOnly } = applyRoleUI();
   if (readOnly) {

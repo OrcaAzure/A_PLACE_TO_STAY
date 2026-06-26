@@ -4,6 +4,8 @@ import { ROLES } from '../utils/constants.js';
 import { createGuestUser } from '../services/user.service.js';
 import { logAudit, AUDIT_ACTIONS } from '../services/audit.service.js';
 
+const ADMIN_ROLES = ['Super Admin', 'Admin'];
+
 export const getAllUsers = async (req, res) => {
   try {
     const { role, status } = req.query;
@@ -30,6 +32,12 @@ export const getAllUsers = async (req, res) => {
 
 export const getUserById = async (req, res) => {
   try {
+    const targetId = Number(req.params.id);
+    const isAdmin = ADMIN_ROLES.includes(req.user.role);
+    if (!isAdmin && targetId !== req.user.id) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+
     const [rows] = await pool.query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.params.id]);
     if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
     res.status(200).json({ user: safeUser(rows[0]) });
