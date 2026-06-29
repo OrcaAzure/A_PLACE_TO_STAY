@@ -23,7 +23,6 @@
     .reveal { opacity: 0; animation: fadeInUp .45s cubic-bezier(.22,.61,.36,1) forwards; }
     .skeleton { background: #eef2f7; border-radius: 16px; animation: pulse 1.3s ease-in-out infinite; }
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
-    .chip { transition: all .2s ease; }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
@@ -52,51 +51,65 @@
 
   <div id="browse-price-notice" class="reveal" style="animation-delay:.05s"></div>
 
-  <div id="browse-room-tools" class="space-y-4 reveal" style="animation-delay:.08s">
-    <section class="browse-panel p-4 sm:p-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+  <div id="browse-room-tools" class="space-y-5 reveal" style="animation-delay:.08s">
+    <section class="browse-stay-planner browse-panel" id="browse-stay-planner">
+      <div class="browse-stay-planner-top">
         <div>
-          <label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Check-in</label>
-          <input id="filter-check-in" class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm" type="date">
+          <h3 class="browse-stay-planner-title">Plan your stay</h3>
+          <p class="browse-stay-planner-desc">Pick your dates and guests below — you can adjust them anytime without losing your selections.</p>
         </div>
-        <div>
-          <label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Check-out</label>
-          <input id="filter-check-out" class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm" type="date">
+        <span id="browse-stay-status" class="browse-stay-status hidden" aria-live="polite"></span>
+      </div>
+
+      <div class="browse-stay-bar">
+        <div class="browse-stay-segment">
+          <label class="browse-stay-label" for="filter-check-in">Check-in</label>
+          <input id="filter-check-in" class="browse-stay-input" type="date" autocomplete="off">
         </div>
-        <div>
-          <label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Guests</label>
-          <input id="filter-guests" type="number" min="1" value="1" class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm">
+        <div class="browse-stay-segment">
+          <label class="browse-stay-label" for="filter-check-out">Check-out</label>
+          <input id="filter-check-out" class="browse-stay-input" type="date" autocomplete="off">
         </div>
-        <div class="flex items-end">
-          <button id="find-rooms" class="w-full bg-primary text-white px-6 py-3 rounded-xl font-label-md flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-md active:scale-[0.98]">
-            <span class="material-symbols-outlined text-xl">search</span>
-            Check availability
+        <div class="browse-stay-segment browse-stay-segment--guests">
+          <label class="browse-stay-label" for="filter-guests">Guests</label>
+          <input id="filter-guests" type="number" min="1" value="1" class="browse-stay-input" inputmode="numeric">
+        </div>
+        <div class="browse-stay-segment browse-stay-segment--action">
+          <button id="find-rooms" type="button" class="browse-stay-submit" disabled>
+            <span class="material-symbols-outlined">search</span>
+            <span class="browse-stay-submit-text">See available rooms</span>
           </button>
         </div>
       </div>
-      <div id="availability-note" class="hidden mt-4 flex items-center justify-between gap-3 text-body-sm">
-        <span id="availability-text" class="text-on-surface-variant"></span>
-        <button id="clear-dates" class="text-primary font-label-md hover:underline">Clear dates</button>
+
+      <div id="availability-note" class="browse-stay-feedback hidden" role="status">
+        <span id="availability-text"></span>
+        <button type="button" id="clear-stay-btn" class="browse-stay-clear hidden">Reset stay</button>
       </div>
     </section>
 
-    <section class="browse-panel p-4 sm:p-5 space-y-3">
-      <div class="flex items-center bg-surface-container-low px-4 py-2.5 rounded-full border border-outline-variant w-full sm:max-w-md transition-all focus-within:border-primary focus-within:shadow-sm">
-        <span class="material-symbols-outlined text-outline text-[20px]">search</span>
-        <input id="room-search" class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full ml-2" placeholder="Search by room, building, or type…" type="text"/>
-      </div>
-      <div class="flex flex-wrap gap-2" id="building-filters"></div>
-      <div class="flex flex-wrap items-center gap-2">
-        <span class="text-label-sm text-outline uppercase tracking-wider mr-1">Type</span>
-        <div class="flex flex-wrap gap-2" id="type-filters"></div>
-      </div>
-    </section>
-  </div>
+    <div id="browse-room-results" class="browse-room-results space-y-4">
+      <section id="browse-refine-panel" class="browse-panel browse-refine-panel hidden">
+        <div class="browse-refine-bar">
+          <div class="browse-refine-search-wrap">
+            <label class="browse-refine-search" for="room-search">
+              <span class="material-symbols-outlined browse-refine-search-icon" aria-hidden="true">search</span>
+              <input id="room-search" type="search" placeholder="Search by room number or type…" autocomplete="off" />
+            </label>
+          </div>
+          <div class="browse-refine-divider" aria-hidden="true"></div>
+          <div class="browse-refine-types">
+            <span class="browse-refine-types-label" id="type-filter-label">Room type</span>
+            <div id="type-filters" class="browse-type-segment" role="group" aria-labelledby="type-filter-label"></div>
+          </div>
+        </div>
+        <div id="building-filter-wrap" class="browse-building-row hidden">
+          <label class="browse-refine-types-label" for="building-select">Building</label>
+          <select id="building-select" class="browse-building-select"></select>
+        </div>
+      </section>
 
-  <div id="rooms-mount" class="space-y-8">
-    <div class="grid grid-cols-1 gap-5">
-      <div class="skeleton h-56"></div>
-      <div class="skeleton h-56"></div>
+      <div id="rooms-mount" class="space-y-8"></div>
     </div>
   </div>
 
@@ -181,7 +194,6 @@
   import {
     buildBookReservationUrl,
     isAvailabilityBookable,
-    isDbStatusBookable,
     priceNoticeHtml,
     readBrowseQuery,
     isInternalGuest,
@@ -214,6 +226,22 @@
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+  const fmtStayDate = (d) => {
+    if (!d) return '—';
+    const dt = new Date(`${d}T00:00:00`);
+    return Number.isNaN(dt.getTime())
+      ? d
+      : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const roomResults = document.getElementById('browse-room-results');
+  const refinePanel = document.getElementById('browse-refine-panel');
+  const stayStatus = document.getElementById('browse-stay-status');
+  const findRoomsBtn = document.getElementById('find-rooms');
+  const findRoomsBtnText = findRoomsBtn?.querySelector('.browse-stay-submit-text');
+  const checkInEl = document.getElementById('filter-check-in');
+  const checkOutEl = document.getElementById('filter-check-out');
+  const guestsEl = document.getElementById('filter-guests');
 
   const TYPE_ICON = {
     'Dorm': 'bed',
@@ -231,16 +259,168 @@
     'Deluxe 3 BR': 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80',
   };
 
-  const CATEGORY_DEFS = browseCategories;
+  const STAY_STORAGE_KEY = 'guest-browse-stay';
+  let restoringStayCriteria = false;
+
+  function readStayFields() {
+    return {
+      checkIn: checkInEl?.value || '',
+      checkOut: checkOutEl?.value || '',
+      guests: guestsEl?.value || '1',
+    };
+  }
+
+  function writeStayFields({ checkIn, checkOut, guests } = {}) {
+    if (checkIn != null && checkInEl) checkInEl.value = checkIn;
+    if (checkOut != null && checkOutEl) checkOutEl.value = checkOut;
+    if (guests != null && guestsEl) guestsEl.value = guests;
+  }
+
+  function persistStayCriteria() {
+    if (restoringStayCriteria) return;
+    const stay = readStayFields();
+    try {
+      sessionStorage.setItem(STAY_STORAGE_KEY, JSON.stringify(stay));
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }
+
+  function restoreStayCriteria() {
+    try {
+      const raw = sessionStorage.getItem(STAY_STORAGE_KEY);
+      if (!raw) return false;
+      const stay = JSON.parse(raw);
+      restoringStayCriteria = true;
+      writeStayFields(stay);
+      return hasValidStayDates();
+    } catch {
+      return false;
+    } finally {
+      restoringStayCriteria = false;
+    }
+  }
+
+  function syncSearchButtonLabel() {
+    if (findRoomsBtnText) {
+      findRoomsBtnText.textContent = isRoomBrowseUnlocked()
+        ? 'Update available rooms'
+        : 'See available rooms';
+    }
+  }
+
+  function setStayStatus(message, tone = '') {
+    if (!stayStatus) return;
+    if (!message) {
+      stayStatus.classList.add('hidden');
+      stayStatus.textContent = '';
+      stayStatus.className = 'browse-stay-status hidden';
+      return;
+    }
+    stayStatus.textContent = message;
+    stayStatus.className = `browse-stay-status browse-stay-status--${tone || 'neutral'}`;
+    stayStatus.classList.remove('hidden');
+  }
 
   let allRooms = [];
   let availability = null;
+  let lastSearchedStay = null;
   let filters = { building: '', type: '', search: '' };
   let selectedCategory = resolveBrowseCategory(readBrowseQuery().category, isInternal);
 
+  function hasValidStayDates() {
+    const checkIn = checkInEl?.value;
+    const checkOut = checkOutEl?.value;
+    return Boolean(checkIn && checkOut && new Date(checkOut) > new Date(checkIn));
+  }
+
+  function isRoomBrowseUnlocked() {
+    return availability !== null;
+  }
+
+  function readStaySnapshot() {
+    return {
+      checkIn: checkInEl?.value || '',
+      checkOut: checkOutEl?.value || '',
+      guests: guestsEl?.value || '1',
+    };
+  }
+
+  function stayMatchesLastSearch() {
+    if (!lastSearchedStay) return true;
+    const current = readStaySnapshot();
+    return current.checkIn === lastSearchedStay.checkIn
+      && current.checkOut === lastSearchedStay.checkOut
+      && String(current.guests) === String(lastSearchedStay.guests);
+  }
+
+  function updateStayFormState() {
+    if (findRoomsBtn) {
+      findRoomsBtn.disabled = !hasValidStayDates();
+      findRoomsBtn.classList.toggle('browse-stay-submit--stale', isRoomBrowseUnlocked() && !stayMatchesLastSearch());
+    }
+    syncSearchButtonLabel();
+    document.getElementById('clear-stay-btn')?.classList.toggle(
+      'hidden',
+      !checkInEl?.value && !checkOutEl?.value,
+    );
+  }
+
+  function onStayCriteriaChange() {
+    persistStayCriteria();
+    updateStayFormState();
+    if (restoringStayCriteria) return;
+    if (!isRoomBrowseUnlocked()) return;
+
+    if (stayMatchesLastSearch()) {
+      setAvailabilityFeedback('');
+      return;
+    }
+    setAvailabilityFeedback('Stay details changed — click “Update available rooms” to refresh results.');
+  }
+
+  function updateRoomBrowseVisibility() {
+    const showRooms = categoryShowsRooms(selectedCategory);
+    const unlocked = isRoomBrowseUnlocked();
+
+    roomResults?.classList.toggle('hidden', !showRooms);
+    refinePanel?.classList.toggle('hidden', !showRooms || !unlocked);
+  }
+
+  function focusStayPlanner() {
+    document.getElementById('browse-stay-planner')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    checkInEl?.focus();
+  }
+
+  function renderRoomsPrompt() {
+    return `
+      <div class="browse-rooms-prompt browse-panel">
+        <div class="browse-rooms-prompt-icon">
+          <span class="material-symbols-outlined">calendar_month</span>
+        </div>
+        <h3 class="browse-rooms-prompt-title">Ready when you are</h3>
+        <p class="browse-rooms-prompt-desc">Choose check-in, check-out, and guest count above, then search to see rooms open for your dates.</p>
+      </div>`;
+  }
+
+  function setAvailabilityFeedback(message, isError = false) {
+    const note = document.getElementById('availability-note');
+    const noteText = document.getElementById('availability-text');
+    if (!note || !noteText) return;
+    if (!message) {
+      note.classList.add('hidden');
+      note.classList.remove('is-error');
+      noteText.textContent = '';
+      return;
+    }
+    noteText.textContent = message;
+    note.classList.toggle('is-error', isError);
+    note.classList.remove('hidden');
+  }
+
   function statusInfo(room) {
     if (availability) {
-      const a = availability.get(room.id);
+      const a = availabilityForRoom(room.id);
       const map = {
         available: { label: 'Available', cls: 'bg-emerald-500 text-white', bookable: true },
         booked: { label: 'Booked', cls: 'bg-slate-600 text-white', bookable: false },
@@ -271,8 +451,8 @@
     if (subtitle) {
       subtitle.textContent = categoryShowsRooms(selectedCategory)
         ? (isInternal
-          ? 'Set your dates to see bookable rooms across campus guest houses.'
-          : 'Set your dates to see bookable PCALM rooms for your stay.')
+          ? 'Set your stay dates above, then browse open rooms across campus guest houses.'
+          : 'Set your stay dates above, then browse open PCALM rooms for your trip.')
         : `Browse ${meta.label.toLowerCase()} available to your account. Pick a space and submit a request.`;
     }
     if (roomsHeading) {
@@ -310,6 +490,7 @@
     }
     updateBrowseHeadings();
     applyCategoryVisibility();
+    updateRoomBrowseVisibility();
   }
 
   function setSelectedCategory(categoryId, { scroll = false } = {}) {
@@ -328,59 +509,90 @@
 
   function applyCategoryVisibility() {
     const roomTools = document.getElementById('browse-room-tools');
-    const roomsBlock = document.getElementById('rooms-mount');
     const venuesSection = document.getElementById('venues');
     const venuesBlock = document.getElementById('venues-mount');
     const showRooms = categoryShowsRooms(selectedCategory);
     roomTools?.classList.toggle('hidden', !showRooms);
-    roomsBlock?.classList.toggle('hidden', !showRooms);
     venuesSection?.classList.toggle('hidden', showRooms);
     venuesBlock?.classList.toggle('hidden', showRooms);
   }
 
-  function visibleRooms() {
-    const filtered = applyFilters().filter((room) => roomAllowedForGuest(room, isInternal));
-    if (!categoryShowsRooms(selectedCategory)) return [];
-    if (availability) {
-      return filtered.filter((r) => {
-        const a = availability.get(r.id);
-        return a && isAvailabilityBookable(a.availability_status);
-      });
-    }
-    return filtered.filter((r) => isDbStatusBookable(r.status));
+  function roomFromAvailability(entry) {
+    return {
+      id: entry.id,
+      building: entry.building_name,
+      roomNumber: entry.room_number,
+      roomType: entry.room_type,
+      status: entry.status,
+      capacityMin: entry.capacity_min,
+      capacityMax: entry.capacity_max,
+    };
   }
 
-  function priceFor(room) {
-    if (!availability) return null;
-    const a = availability.get(room.id);
-    if (!a) return null;
-    return { perNight: a.price_per_night, total: a.estimated_total, nights: a.nights };
+  function availabilityForRoom(roomId) {
+    return availability?.get(String(roomId));
   }
 
-  function renderFilters() {
-    const buildings = [...new Set(allRooms.map((r) => r.building))].sort();
-    const types = [...new Set(allRooms.map((r) => r.roomType))].sort();
-
-    const chip = (active, label, attr) =>
-      `<button data-${attr}="${label === 'All' ? '' : label}" class="chip px-4 py-1.5 rounded-full font-medium text-label-md ${active ? 'bg-primary text-white shadow-md' : 'bg-surface-container-low border border-outline-variant text-on-surface-variant hover:bg-surface-container'}">${label}</button>`;
-
-    document.getElementById('building-filters').innerHTML =
-      chip(filters.building === '', 'All', 'building') +
-      buildings.map((b) => chip(filters.building === b, b, 'building')).join('');
-
-    document.getElementById('type-filters').innerHTML =
-      chip(filters.type === '', 'All', 'type') +
-      types.map((t) => chip(filters.type === t, t, 'type')).join('');
+  function roomsForFilters() {
+    if (allRooms.length) return allRooms;
+    if (!availability) return [];
+    return [...availability.values()]
+      .filter((a) => isAvailabilityBookable(a.availability_status))
+      .map(roomFromAvailability)
+      .filter((r) => roomAllowedForGuest(r, isInternal) && !isBlocked(r.building));
   }
 
-  function applyFilters() {
+  function applyFiltersToList(rooms) {
     const q = filters.search.trim().toLowerCase();
-    return allRooms.filter((r) => {
+    return rooms.filter((r) => {
       if (filters.building && r.building !== filters.building) return false;
       if (filters.type && r.roomType !== filters.type) return false;
       if (q && !`${r.building} ${r.roomNumber} ${r.roomType}`.toLowerCase().includes(q)) return false;
       return true;
     });
+  }
+
+  function visibleRooms() {
+    if (!isRoomBrowseUnlocked() || !availability) return [];
+    if (!categoryShowsRooms(selectedCategory)) return [];
+
+    const bookable = [...availability.values()]
+      .filter((a) => isAvailabilityBookable(a.availability_status))
+      .filter((a) => !isBlocked(a.building_name))
+      .map(roomFromAvailability)
+      .filter((r) => roomAllowedForGuest(r, isInternal));
+
+    return applyFiltersToList(bookable);
+  }
+
+  function priceFor(room) {
+    const a = availabilityForRoom(room.id);
+    if (!a) return null;
+    return { perNight: a.price_per_night, total: a.estimated_total, nights: a.nights };
+  }
+
+  function renderFilters() {
+    const source = roomsForFilters();
+    const buildings = [...new Set(source.map((r) => r.building))].sort();
+    const types = [...new Set(source.map((r) => r.roomType))].sort();
+    const buildingWrap = document.getElementById('building-filter-wrap');
+    const buildingSelect = document.getElementById('building-select');
+
+    if (buildings.length <= 1) {
+      filters.building = '';
+      buildingWrap?.classList.add('hidden');
+    } else if (buildingWrap && buildingSelect) {
+      buildingWrap.classList.remove('hidden');
+      buildingSelect.innerHTML =
+        `<option value="">All buildings</option>${buildings.map((b) => `<option value="${b}" ${filters.building === b ? 'selected' : ''}>${b}</option>`).join('')}`;
+    }
+
+    const typeBtn = (active, label, value) =>
+      `<button type="button" data-type="${value}" class="browse-type-opt ${active ? 'is-active' : ''}" aria-pressed="${active ? 'true' : 'false'}">${label}</button>`;
+
+    document.getElementById('type-filters').innerHTML =
+      typeBtn(filters.type === '', 'All types', '') +
+      types.map((t) => typeBtn(filters.type === t, t, t)).join('');
   }
 
   function roomCard(room) {
@@ -395,12 +607,10 @@
     if (readOnly) {
       reserveBtn = `<div class="mt-auto w-full py-3 text-center bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">visibility</span>View only</div>`;
     } else if (st.bookable) {
-      const checkIn = document.getElementById('filter-check-in').value;
-      const checkOut = document.getElementById('filter-check-out').value;
-      const guests = document.getElementById('filter-guests').value || '1';
-      const href = availability
-        ? buildBookReservationUrl({ roomId: room.id, checkIn, checkOut, guests })
-        : buildBookReservationUrl({ roomId: room.id });
+      const checkIn = checkInEl.value;
+      const checkOut = checkOutEl.value;
+      const guests = guestsEl.value || '1';
+      const href = buildBookReservationUrl({ roomId: room.id, checkIn, checkOut, guests });
       reserveBtn = `<a href="${href}" class="mt-auto block text-center w-full py-3 bg-primary text-white rounded-xl font-bold text-label-md hover:brightness-110 transition-all shadow-md active:scale-95 no-underline">Reserve</a>`;
     } else {
       reserveBtn = `<button disabled class="mt-auto w-full py-3 bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md cursor-not-allowed">${st.label}</button>`;
@@ -437,15 +647,21 @@
 
   function render() {
     const mount = document.getElementById('rooms-mount');
+    if (!mount) return;
     applyCategoryVisibility();
+    updateRoomBrowseVisibility();
+
+    if (!isRoomBrowseUnlocked()) {
+      mount.innerHTML = renderRoomsPrompt();
+      return;
+    }
+
     const rooms = visibleRooms();
     if (!rooms.length) {
-      const hasFilters = filters.building || filters.type || filters.search.trim();
-      const msg = availability
-        ? 'No rooms are available for these dates and filters. Try different dates, fewer guests, or another building.'
-        : hasFilters
-          ? 'No bookable rooms match your filters right now. Clear filters or pick dates to check future availability.'
-          : 'No rooms are open for booking at the moment. Select check-in and check-out dates above to see what opens up for your stay.';
+      const hasFilters = filters.type || filters.search.trim() || filters.building;
+      const msg = hasFilters
+        ? 'No rooms match your filters for these dates. Try clearing filters or adjusting guest count.'
+        : 'No rooms are available for these dates. Try different dates or fewer guests.';
       mount.innerHTML = `<div class="text-center py-16 text-on-surface-variant"><span class="material-symbols-outlined text-[48px] mb-2 block">search_off</span><p class="max-w-md mx-auto">${msg}</p></div>`;
       return;
     }
@@ -474,7 +690,7 @@
         .filter((r) => roomAllowedForGuest(r, isInternal));
       renderCategoryCards();
       renderFilters();
-      render();
+      if (isRoomBrowseUnlocked()) render();
     } catch (err) {
       document.getElementById('rooms-mount').innerHTML =
         `<div class="text-center py-16 text-error"><span class="material-symbols-outlined text-[40px] mb-2 block">error</span><p>${err.message}</p></div>`;
@@ -482,60 +698,99 @@
   }
 
   async function checkAvailability() {
-    const checkIn = document.getElementById('filter-check-in').value;
-    const checkOut = document.getElementById('filter-check-out').value;
-    const guests = Number(document.getElementById('filter-guests').value) || 1;
-    const note = document.getElementById('availability-note');
-    const noteText = document.getElementById('availability-text');
+    const checkIn = checkInEl.value;
+    const checkOut = checkOutEl.value;
+    const guests = Number(guestsEl.value) || 1;
 
     if (!checkIn || !checkOut) {
-      note.classList.remove('hidden');
-      noteText.textContent = 'Please choose both check-in and check-out dates.';
+      setAvailabilityFeedback('Please choose both check-in and check-out dates.', true);
       return;
     }
     if (new Date(checkOut) <= new Date(checkIn)) {
-      note.classList.remove('hidden');
-      noteText.textContent = 'Check-out must be after check-in.';
+      setAvailabilityFeedback('Check-out must be after check-in.', true);
       return;
     }
 
-    const btn = document.getElementById('find-rooms');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="material-symbols-outlined text-xl animate-spin">progress_activity</span> Checking…';
+    findRoomsBtn.disabled = true;
+    findRoomsBtn.classList.add('is-loading');
+    if (findRoomsBtnText) findRoomsBtnText.textContent = 'Checking…';
+    setAvailabilityFeedback('');
     try {
       const data = await getRoomAvailability({ check_in: checkIn, check_out: checkOut, guest_count: guests });
-      availability = new Map((data.rooms || []).map((r) => [r.id, r]));
-      const avail = (data.rooms || []).filter((r) => r.availability_status === 'available' && !isBlocked(r.building_name)).length;
-      note.classList.remove('hidden');
-      noteText.textContent = `${avail} bookable room(s) for ${checkIn} → ${checkOut} · ${guests} guest(s). Occupied, booked, and out-of-order rooms are hidden.`;
+      availability = new Map((data.rooms || []).map((r) => [String(r.id), r]));
+      lastSearchedStay = readStaySnapshot();
+      const avail = (data.rooms || []).filter(
+        (r) => r.availability_status === 'available'
+          && !isBlocked(r.building_name)
+          && roomAllowedForGuest({ building: r.building_name }, isInternal),
+      ).length;
+      updateRoomBrowseVisibility();
+      renderFilters();
       render();
+      persistStayCriteria();
+      setStayStatus(`${avail} room${avail === 1 ? '' : 's'} available`, avail > 0 ? 'success' : 'warn');
+      setAvailabilityFeedback(
+        avail > 0
+          ? `Showing ${avail} bookable room${avail === 1 ? '' : 's'} for ${fmtStayDate(checkIn)} → ${fmtStayDate(checkOut)}.`
+          : 'No rooms are open for these dates. Try different dates or fewer guests.',
+      );
+      document.getElementById('rooms-mount')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     } catch (err) {
-      note.classList.remove('hidden');
-      noteText.textContent = err.message || 'Could not check availability.';
+      availability = null;
+      updateRoomBrowseVisibility();
+      render();
+      setStayStatus('');
+      setAvailabilityFeedback(err.message || 'Could not check availability.', true);
     } finally {
-      btn.disabled = false;
-      btn.innerHTML = '<span class="material-symbols-outlined text-xl">search</span> Check availability';
+      findRoomsBtn.classList.remove('is-loading');
+      updateStayFormState();
     }
   }
 
   function clearDates() {
     availability = null;
-    document.getElementById('filter-check-in').value = '';
-    document.getElementById('filter-check-out').value = '';
-    document.getElementById('availability-note').classList.add('hidden');
+    lastSearchedStay = null;
+    writeStayFields({ checkIn: '', checkOut: '', guests: '1' });
+    try {
+      sessionStorage.removeItem(STAY_STORAGE_KEY);
+    } catch {
+      /* ignore */
+    }
+    filters.type = '';
+    filters.search = '';
+    filters.building = '';
+    document.getElementById('room-search').value = '';
+    setAvailabilityFeedback('');
+    setStayStatus('');
+    updateStayFormState();
+    updateRoomBrowseVisibility();
+    renderFilters();
     render();
+    focusStayPlanner();
   }
 
-  document.getElementById('find-rooms').addEventListener('click', checkAvailability);
-  document.getElementById('clear-dates').addEventListener('click', clearDates);
-  document.getElementById('filter-check-in').min = todayStr;
-  document.getElementById('filter-check-out').min = todayStr;
+  findRoomsBtn.addEventListener('click', checkAvailability);
+  document.getElementById('clear-stay-btn')?.addEventListener('click', clearDates);
+  checkInEl.addEventListener('change', () => {
+    if (checkOutEl.value && checkOutEl.value <= checkInEl.value) {
+      const next = new Date(`${checkInEl.value}T00:00:00`);
+      next.setDate(next.getDate() + 1);
+      checkOutEl.value = next.toISOString().slice(0, 10);
+    }
+    onStayCriteriaChange();
+  });
+  checkOutEl.addEventListener('change', onStayCriteriaChange);
+  guestsEl.addEventListener('input', () => {
+    persistStayCriteria();
+    updateStayFormState();
+  });
+  guestsEl.addEventListener('change', onStayCriteriaChange);
+  checkInEl.min = todayStr;
+  checkOutEl.min = todayStr;
+  updateStayFormState();
 
-  document.getElementById('building-filters').addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-building]');
-    if (!btn) return;
-    filters.building = btn.dataset.building;
-    renderFilters();
+  document.getElementById('building-select')?.addEventListener('change', (e) => {
+    filters.building = e.target.value;
     render();
   });
   document.getElementById('type-filters').addEventListener('click', (e) => {
@@ -808,9 +1063,19 @@
   renderCategoryCards();
   loadRooms();
   loadVenues();
-  if (browseQ.checkIn) document.getElementById('filter-check-in').value = browseQ.checkIn;
-  if (browseQ.checkOut) document.getElementById('filter-check-out').value = browseQ.checkOut;
-  if (browseQ.guests) document.getElementById('filter-guests').value = browseQ.guests;
+  if (browseQ.checkIn || browseQ.checkOut) {
+    writeStayFields({
+      checkIn: browseQ.checkIn,
+      checkOut: browseQ.checkOut,
+      guests: browseQ.guests || '1',
+    });
+  } else {
+    restoreStayCriteria();
+  }
+  persistStayCriteria();
+  updateStayFormState();
+  updateRoomBrowseVisibility();
+  render();
   if (browseQ.checkIn && browseQ.checkOut) {
     checkAvailability();
   } else if (browseQ.focus === 'venues' || !categoryShowsRooms(selectedCategory)) {

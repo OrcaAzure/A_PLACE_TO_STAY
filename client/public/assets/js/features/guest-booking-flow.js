@@ -90,6 +90,11 @@ export function parseBookQuery() {
   };
 }
 
+/** True when browse already picked a specific room and date range. */
+export function hasCompleteBookIntent({ roomId, checkIn, checkOut } = {}) {
+  return Boolean(roomId && checkIn && checkOut);
+}
+
 export function isDbStatusBookable(status) {
   return String(status || '').trim() === 'Available';
 }

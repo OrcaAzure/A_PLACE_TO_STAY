@@ -107,16 +107,6 @@
         <h2 class="font-headline-xl text-headline-xl text-on-surface">My Reservations</h2>
         <p class="font-body-md text-body-md text-on-surface-variant">Manage and track your facility reservations with ease.</p>
       </div>
-      <div class="flex flex-wrap items-center gap-3 js-requires-write">
-        <button id="new-reservation-btn" class="flex items-center gap-2 bg-primary text-on-primary px-6 py-3 rounded-xl font-label-md text-label-md font-bold hover:shadow-lg transition-all active:scale-[0.98] hover:-translate-y-0.5">
-          <span class="material-symbols-outlined text-[20px]">person</span>
-          Single Room
-        </button>
-        <button id="new-group-btn" type="button" class="flex items-center gap-2 bg-surface-container-high text-on-surface px-6 py-3 rounded-xl font-label-md text-label-md font-bold border border-outline-variant hover:shadow-lg transition-all active:scale-[0.98] hover:-translate-y-0.5">
-          <span class="material-symbols-outlined text-[20px]">groups</span>
-          Group Stay
-        </button>
-      </div>
     </div>
 
     <div class="js-readonly-banner hidden mb-xl flex items-start gap-3 bg-amber-500/10 border border-amber-500/30 text-amber-800 rounded-2xl p-4 animate-fade-up">
@@ -264,128 +254,114 @@
     </div>
   </div>
 
-<!-- ============ Single booking modal ============ -->
+<!-- ============ Booking modal ============ -->
 <div id="booking-modal-overlay" class="modal-overlay is-hidden fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
   <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[92vh] overflow-y-auto nice-scroll">
     <div class="p-6 border-b border-outline-variant flex items-center justify-between sticky top-0 bg-white z-10">
       <div>
-        <h3 class="font-headline-md text-headline-md">New Reservation</h3>
-        <p class="text-body-sm text-on-surface-variant">Pick your dates, choose a room, and submit. Your selections carry through each step automatically.</p>
+        <h3 id="booking-modal-title" class="font-headline-md text-headline-md">Confirm your reservation</h3>
+        <p id="booking-modal-subtitle" class="text-body-sm text-on-surface-variant">Review your room and dates, then submit your request.</p>
       </div>
       <button type="button" id="booking-modal-close" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-full p-1 transition-colors">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
     <form id="booking-form" class="p-6 space-y-5">
-      <div id="booking-price-notice"></div>
-      <div class="grid grid-cols-2 gap-4">
+      <div id="booking-form-fields" class="space-y-5">
+        <div id="booking-price-notice"></div>
+
+        <div id="booking-confirm-panel" class="hidden space-y-4">
+          <div id="booking-selected-room" class="rounded-2xl border border-outline-variant p-4 bg-surface-container-low/40">
+            <div class="flex items-center gap-3 text-on-surface-variant text-body-sm">
+              <span class="material-symbols-outlined animate-spin">progress_activity</span>
+              Loading room details…
+            </div>
+          </div>
+          <dl class="grid grid-cols-3 gap-3 rounded-xl bg-surface-container-low border border-outline-variant/60 p-4 text-center">
+            <div>
+              <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Check-in</dt>
+              <dd id="confirm-check-in" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
+            </div>
+            <div>
+              <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Check-out</dt>
+              <dd id="confirm-check-out" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
+            </div>
+            <div>
+              <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Guests</dt>
+              <dd id="confirm-guests" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
+            </div>
+          </dl>
+          <button type="button" id="booking-change-selection" class="text-primary text-body-sm font-medium hover:underline">
+            Change room or dates
+          </button>
+        </div>
+
+        <div id="booking-search-panel" class="space-y-5">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-in">Check-in</label>
+              <input type="date" id="booking-check-in" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+            </div>
+            <div>
+              <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-out">Check-out</label>
+              <input type="date" id="booking-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+            </div>
+          </div>
+          <p id="booking-fiscal-hint" class="text-[12px] text-on-surface-variant hidden"></p>
+          <div>
+            <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-guests">Guests</label>
+            <input type="number" id="booking-guests" min="1" value="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+          </div>
+
+          <button type="button" id="find-rooms-btn" class="w-full py-3 bg-surface-container-high text-on-surface rounded-lg font-label-md font-bold border border-outline-variant hover:bg-surface-container transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[20px]">search</span>
+            Find available rooms
+          </button>
+
+          <div id="room-results-wrap" class="hidden">
+            <div class="flex items-center justify-between mb-2">
+              <label class="text-label-sm text-on-surface-variant block">Available rooms</label>
+              <span id="room-results-count" class="text-[11px] font-bold text-on-surface-variant uppercase"></span>
+            </div>
+            <div id="room-results" class="space-y-2 max-h-64 overflow-y-auto nice-scroll pr-1"></div>
+          </div>
+        </div>
+
+        <input type="hidden" id="booking-room" />
+
         <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-in">Check-in</label>
-          <input type="date" id="booking-check-in" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-notes">Notes (optional)</label>
+          <textarea id="booking-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Special requests, arrival time, etc."></textarea>
         </div>
+
+        <div id="booking-summary" class="hidden bg-surface-container-low rounded-xl p-4 border border-outline-variant animate-scale-in">
+          <div class="flex items-center justify-between text-body-sm">
+            <span class="text-on-surface-variant" id="booking-summary-room">—</span>
+            <span class="font-bold text-primary text-headline-sm" id="booking-summary-total">—</span>
+          </div>
+          <p class="text-[11px] text-on-surface-variant mt-1" id="booking-summary-meta"></p>
+        </div>
+
+        <div id="booking-form-error" class="hidden text-body-sm text-error bg-error-container rounded-lg px-3 py-2"></div>
+        <div class="flex gap-3 pt-1">
+          <button type="button" id="booking-cancel-btn" class="flex-1 py-3 border border-outline-variant rounded-lg font-label-md hover:bg-surface-container transition-colors">Cancel</button>
+          <button type="submit" id="booking-submit-btn" disabled class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">Submit Request</button>
+        </div>
+      </div>
+
+      <div id="booking-success-panel" class="hidden text-center space-y-4 py-2">
+        <span class="material-symbols-outlined text-[52px] text-emerald-600">check_circle</span>
         <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-out">Check-out</label>
-          <input type="date" id="booking-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+          <h4 class="font-headline-sm text-headline-sm text-on-surface">Request submitted</h4>
+          <p id="booking-success-msg" class="text-body-sm text-on-surface-variant mt-2"></p>
         </div>
-      </div>
-      <p id="booking-fiscal-hint" class="text-[12px] text-on-surface-variant hidden"></p>
-      <div>
-        <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-guests">Guests</label>
-        <input type="number" id="booking-guests" min="1" value="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
-      </div>
-
-      <button type="button" id="find-rooms-btn" class="w-full py-3 bg-surface-container-high text-on-surface rounded-lg font-label-md font-bold border border-outline-variant hover:bg-surface-container transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-        <span class="material-symbols-outlined text-[20px]">search</span>
-        Find available rooms
-      </button>
-
-      <div id="room-results-wrap" class="hidden">
-        <div class="flex items-center justify-between mb-2">
-          <label class="text-label-sm text-on-surface-variant block">Available rooms</label>
-          <span id="room-results-count" class="text-[11px] font-bold text-on-surface-variant uppercase"></span>
+        <p class="text-body-sm text-on-surface-variant leading-relaxed max-w-sm mx-auto">
+          Need more than one room for the same stay? Book additional rooms without re-entering your dates.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+          <button type="button" id="booking-add-another" class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90 transition-all">Book another room</button>
+          <button type="button" id="booking-success-done" class="flex-1 py-3 border border-outline-variant rounded-lg font-label-md hover:bg-surface-container transition-colors">Done</button>
         </div>
-        <div id="room-results" class="space-y-2 max-h-64 overflow-y-auto nice-scroll pr-1"></div>
-      </div>
-
-      <input type="hidden" id="booking-room" />
-
-      <div>
-        <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-notes">Notes (optional)</label>
-        <textarea id="booking-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Special requests, arrival time, etc."></textarea>
-      </div>
-
-      <div id="booking-summary" class="hidden bg-surface-container-low rounded-xl p-4 border border-outline-variant animate-scale-in">
-        <div class="flex items-center justify-between text-body-sm">
-          <span class="text-on-surface-variant" id="booking-summary-room">—</span>
-          <span class="font-bold text-primary text-headline-sm" id="booking-summary-total">—</span>
-        </div>
-        <p class="text-[11px] text-on-surface-variant mt-1" id="booking-summary-meta"></p>
-      </div>
-
-      <div id="booking-form-error" class="hidden text-body-sm text-error bg-error-container rounded-lg px-3 py-2"></div>
-      <div class="flex gap-3 pt-1">
-        <button type="button" id="booking-cancel-btn" class="flex-1 py-3 border border-outline-variant rounded-lg font-label-md hover:bg-surface-container transition-colors">Cancel</button>
-        <button type="submit" id="booking-submit-btn" disabled class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">Submit Request</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- ============ Group request modal ============ -->
-<div id="group-modal-overlay" class="modal-overlay is-hidden fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
-  <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[92vh] overflow-y-auto nice-scroll">
-    <div class="p-6 border-b border-outline-variant flex items-center justify-between sticky top-0 bg-white z-10">
-      <div>
-        <h3 class="font-headline-md text-headline-md">Group Stay Request</h3>
-        <p class="text-body-sm text-on-surface-variant">Housing will assign rooms after you submit.</p>
-      </div>
-      <button type="button" id="group-modal-close" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-full p-1 transition-colors">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-    <form id="group-form" class="p-6 space-y-4">
-      <div id="group-price-notice"></div>
-      <div>
-        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-name">Group / organization name</label>
-        <input type="text" id="group-name" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="e.g. Youth Camp 2026" />
-      </div>
-      <div>
-        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-contact">Contact person</label>
-        <input type="text" id="group-contact" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
-      </div>
-      <div>
-        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-phone">Contact number</label>
-        <input type="tel" id="group-phone" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
-      </div>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-check-in">Check-in</label>
-          <input type="date" id="group-check-in" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
-        </div>
-        <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-check-out">Check-out</label>
-          <input type="date" id="group-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
-        </div>
-      </div>
-      <p id="group-fiscal-hint" class="text-[12px] text-on-surface-variant hidden"></p>
-      <div class="grid grid-cols-2 gap-4">
-        <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-total-guests">Total guests</label>
-          <input type="number" id="group-total-guests" min="2" value="10" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
-        </div>
-        <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="group-rooms-needed">Rooms needed (estimate)</label>
-          <input type="number" id="group-rooms-needed" min="1" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Optional" />
-        </div>
-      </div>
-      <div>
-        <label class="text-label-sm text-on-surface-variant block mb-1" for="group-notes">Notes (optional)</label>
-        <textarea id="group-notes" rows="3" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Special needs, meal preferences, etc."></textarea>
-      </div>
-      <div id="group-form-error" class="hidden text-body-sm text-error bg-error-container rounded-lg px-3 py-2"></div>
-      <div class="flex gap-3 pt-2">
-        <button type="button" id="group-cancel-btn" class="flex-1 py-3 border border-outline-variant rounded-lg font-label-md hover:bg-surface-container transition-colors">Cancel</button>
-        <button type="submit" id="group-submit-btn" class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90 transition-all active:scale-[0.98]">Submit Group Request</button>
       </div>
     </form>
   </div>
@@ -394,15 +370,15 @@
 </div>
 
 <script type="module">
-  import { requireAuth, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
+  import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
   import { initAppLayout } from '/assets/js/layout/ui.js';
   import {
-    getBookings, getGroups, createBooking, createGroup, updateBooking, updateGroup,
+    getBookings, getGroups, createBooking, updateBooking, updateGroup,
     getRoomAvailability, normalizeBooking, formatGroupId,
     getFacilityBookings, cancelFacilityBooking,
   } from '/assets/js/services/api.js';
   import { loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint } from '/assets/js/features/reservation-shared.js';
-  import { parseBookQuery, priceNoticeHtml } from '/assets/js/features/guest-booking-flow.js';
+  import { parseBookQuery, priceNoticeHtml, hasCompleteBookIntent } from '/assets/js/features/guest-booking-flow.js';
 
   requireAuth();
   await initAppLayout({
@@ -411,7 +387,6 @@
   });
 
   document.getElementById('booking-price-notice').innerHTML = priceNoticeHtml();
-  document.getElementById('group-price-notice').innerHTML = priceNoticeHtml();
 
   let fiscalBounds = null;
   try {
@@ -423,8 +398,6 @@
   /* Buildings guests are not allowed to view/book. */
   const BLOCKED_BUILDINGS = ['House'];
   const isBlockedBuilding = (name) => BLOCKED_BUILDINGS.includes(String(name || '').trim());
-
-  const user = getCurrentUser();
 
   const { readOnly } = applyRoleUI();
 
@@ -630,9 +603,8 @@
         <div class="text-center py-16 text-on-surface-variant animate-fade-in">
           <span class="material-symbols-outlined text-[48px] mb-2 block">event_busy</span>
           <p class="font-body-md text-body-md">No reservations found.</p>
-          ${readOnly ? '' : '<button type="button" id="empty-new-booking" class="mt-4 text-primary font-label-md hover:underline">Create your first reservation</button>'}
+          ${readOnly ? '' : '<a href="/guest/facilities.html?category=guest-houses" class="mt-4 inline-flex items-center gap-1 text-primary font-label-md hover:underline no-underline"><span class="material-symbols-outlined text-[18px]">explore</span>Browse rooms to book</a>'}
         </div>`;
-      document.getElementById('empty-new-booking')?.addEventListener('click', openBookingModal);
       return;
     }
     list.innerHTML = bookings.map((b, i) => renderCard(b, i)).join('');
@@ -687,13 +659,24 @@
     document.body.style.overflow = '';
   }
 
-  /* ---------- Single booking modal (availability flow) ---------- */
+  /* ---------- Booking modal ---------- */
   const modal = document.getElementById('booking-modal-overlay');
   const form = document.getElementById('booking-form');
   const roomInput = document.getElementById('booking-room');
   const submitBtn = document.getElementById('booking-submit-btn');
+  const confirmPanel = document.getElementById('booking-confirm-panel');
+  const searchPanel = document.getElementById('booking-search-panel');
+  const formFields = document.getElementById('booking-form-fields');
+  const successPanel = document.getElementById('booking-success-panel');
   let availableRooms = [];
   let selectedRoom = null;
+  let bookingMode = 'search';
+  let savedTrip = null;
+
+  function setModalCopy({ title, subtitle }) {
+    document.getElementById('booking-modal-title').textContent = title;
+    document.getElementById('booking-modal-subtitle').textContent = subtitle;
+  }
 
   function resetBookingResults() {
     availableRooms = [];
@@ -704,17 +687,85 @@
     document.getElementById('booking-summary').classList.add('hidden');
   }
 
+  function setBookingMode(mode) {
+    bookingMode = mode;
+    const isConfirm = mode === 'confirm';
+    confirmPanel.classList.toggle('hidden', !isConfirm);
+    searchPanel.classList.toggle('hidden', isConfirm);
+    document.getElementById('booking-summary').classList.toggle('hidden', isConfirm);
+    if (isConfirm) {
+      setModalCopy({
+        title: 'Confirm your reservation',
+        subtitle: 'Review your room and dates, then submit your request.',
+      });
+    } else {
+      setModalCopy({
+        title: 'Book a room',
+        subtitle: 'Choose your dates and pick an available room.',
+      });
+    }
+  }
+
+  function updateConfirmSummary() {
+    document.getElementById('confirm-check-in').textContent =
+      fmtDate(document.getElementById('booking-check-in').value);
+    document.getElementById('confirm-check-out').textContent =
+      fmtDate(document.getElementById('booking-check-out').value);
+    document.getElementById('confirm-guests').textContent =
+      document.getElementById('booking-guests').value || '1';
+  }
+
+  function renderSelectedRoomCard(room) {
+    const mount = document.getElementById('booking-selected-room');
+    if (!room) {
+      mount.innerHTML = '<p class="text-body-sm text-error">This room is no longer available for the selected dates.</p>';
+      return;
+    }
+    mount.innerHTML = `
+      <div class="flex items-start justify-between gap-4">
+        <div>
+          <p class="text-label-sm text-primary font-semibold mb-0.5">${room.building_name}</p>
+          <h4 class="font-headline-sm text-headline-sm text-on-surface">Room ${room.room_number}</h4>
+          <p class="text-body-sm text-on-surface-variant mt-1">${room.room_type} · up to ${room.capacity_max} guests</p>
+        </div>
+        <div class="text-right shrink-0">
+          <p class="font-bold text-primary text-headline-sm">${room.estimated_total != null ? peso(room.estimated_total) : '—'}</p>
+          <p class="text-[11px] text-on-surface-variant uppercase">${room.nights} night(s) · estimate</p>
+        </div>
+      </div>`;
+  }
+
+  function selectRoom(room) {
+    selectedRoom = room;
+    roomInput.value = room?.id ?? '';
+    submitBtn.disabled = !room;
+    if (bookingMode === 'confirm') {
+      renderSelectedRoomCard(room);
+    } else {
+      showBookingSummary();
+    }
+  }
+
+  function hideSuccessPanel() {
+    successPanel.classList.add('hidden');
+    formFields.classList.remove('hidden');
+  }
+
   function closeBookingModal() {
     closeModal(modal);
     form.reset();
     resetBookingResults();
+    hideSuccessPanel();
+    setBookingMode('search');
+    savedTrip = null;
     document.getElementById('booking-form-error').classList.add('hidden');
+    document.getElementById('booking-notes').value = '';
   }
 
-  function applyFiscalDateLimits(checkInId, checkOutId, hintId) {
-    const checkInEl = document.getElementById(checkInId);
-    const checkOutEl = document.getElementById(checkOutId);
-    const hintEl = document.getElementById(hintId);
+  function applyFiscalDateLimits() {
+    const checkInEl = document.getElementById('booking-check-in');
+    const checkOutEl = document.getElementById('booking-check-out');
+    const hintEl = document.getElementById('booking-fiscal-hint');
     if (fiscalBounds) {
       applyBookingDateBounds(checkInEl, checkOutEl, fiscalBounds);
       if (hintEl) {
@@ -727,15 +778,64 @@
     }
   }
 
-  function openBookingModal() {
-    form.reset();
-    resetBookingResults();
-    document.getElementById('booking-form-error').classList.add('hidden');
-    applyFiscalDateLimits('booking-check-in', 'booking-check-out', 'booking-fiscal-hint');
-    openModal(modal);
+  function prefillTrip({ checkIn = '', checkOut = '', guests = '' } = {}) {
+    if (checkIn) document.getElementById('booking-check-in').value = checkIn;
+    if (checkOut) document.getElementById('booking-check-out').value = checkOut;
+    if (guests) document.getElementById('booking-guests').value = guests;
+    updateConfirmSummary();
   }
 
-  function renderRoomResults() {
+  function openSearchBooking(prefill = {}) {
+    hideSuccessPanel();
+    if (!prefill.checkIn && !prefill.checkOut) form.reset();
+    resetBookingResults();
+    document.getElementById('booking-form-error').classList.add('hidden');
+    applyFiscalDateLimits();
+    prefillTrip(prefill);
+    setBookingMode('search');
+    openModal(modal);
+    if (prefill.checkIn && prefill.checkOut) {
+      findRooms();
+    }
+  }
+
+  async function openConfirmBooking({ roomId, checkIn, checkOut, guests }) {
+    hideSuccessPanel();
+    resetBookingResults();
+    document.getElementById('booking-form-error').classList.add('hidden');
+    applyFiscalDateLimits();
+    prefillTrip({ checkIn, checkOut, guests: guests || '1' });
+    setBookingMode('confirm');
+    openModal(modal);
+    submitBtn.disabled = true;
+
+    const errorEl = document.getElementById('booking-form-error');
+    try {
+      const data = await getRoomAvailability({
+        check_in: checkIn,
+        check_out: checkOut,
+        guest_count: Number(guests) || 1,
+      });
+      availableRooms = data.rooms || [];
+      const room = availableRooms.find(
+        (r) => String(r.id) === String(roomId) && r.availability_status === 'available' && !isBlockedBuilding(r.building_name),
+      );
+      if (!room) {
+        errorEl.textContent = 'That room is no longer available for these dates. Pick another room or adjust your dates.';
+        errorEl.classList.remove('hidden');
+        setBookingMode('search');
+        await findRooms(roomId);
+        return;
+      }
+      selectRoom(room);
+    } catch (err) {
+      errorEl.textContent = err.message || 'Could not verify room availability';
+      errorEl.classList.remove('hidden');
+      setBookingMode('search');
+    }
+  }
+
+  function renderRoomResults(preferredRoomId = '') {
     const wrap = document.getElementById('room-results-wrap');
     const list = document.getElementById('room-results');
     const countEl = document.getElementById('room-results-count');
@@ -752,7 +852,7 @@
     }
 
     list.innerHTML = bookable.map((r) => `
-      <button type="button" class="room-option w-full text-left p-3 rounded-xl border border-outline-variant hover:border-primary/50 bg-white flex items-center justify-between gap-3" data-room-id="${r.id}">
+      <button type="button" class="room-option w-full text-left p-3 rounded-xl border border-outline-variant hover:border-primary/50 bg-white flex items-center justify-between gap-3 ${String(r.id) === String(preferredRoomId) ? 'selected' : ''}" data-room-id="${r.id}">
         <div>
           <p class="font-label-md font-bold text-body-sm">${r.building_name} ${r.room_number}</p>
           <p class="text-[11px] text-on-surface-variant">${r.room_type} · max ${r.capacity_max} guests</p>
@@ -766,14 +866,17 @@
     list.querySelectorAll('.room-option').forEach((btn) => {
       btn.addEventListener('click', () => {
         const id = btn.dataset.roomId;
-        selectedRoom = bookable.find((r) => String(r.id) === String(id));
-        roomInput.value = id;
+        const room = bookable.find((r) => String(r.id) === String(id));
         list.querySelectorAll('.room-option').forEach((b) => b.classList.remove('selected'));
         btn.classList.add('selected');
-        submitBtn.disabled = false;
-        showBookingSummary();
+        selectRoom(room);
       });
     });
+
+    if (preferredRoomId) {
+      const preferred = bookable.find((r) => String(r.id) === String(preferredRoomId));
+      if (preferred) selectRoom(preferred);
+    }
   }
 
   function showBookingSummary() {
@@ -788,12 +891,13 @@
     box.classList.remove('hidden');
   }
 
-  async function findRooms() {
+  async function findRooms(preferredRoomId = '') {
     const checkIn = document.getElementById('booking-check-in').value;
     const checkOut = document.getElementById('booking-check-out').value;
     const guests = Number(document.getElementById('booking-guests').value) || 1;
     const errorEl = document.getElementById('booking-form-error');
     errorEl.classList.add('hidden');
+    updateConfirmSummary();
 
     if (!checkIn || !checkOut) {
       errorEl.textContent = 'Please choose check-in and check-out dates first.';
@@ -813,7 +917,7 @@
     try {
       const data = await getRoomAvailability({ check_in: checkIn, check_out: checkOut, guest_count: guests });
       availableRooms = data.rooms || [];
-      renderRoomResults();
+      renderRoomResults(preferredRoomId);
     } catch (err) {
       errorEl.textContent = err.message || 'Could not load availability';
       errorEl.classList.remove('hidden');
@@ -823,8 +927,42 @@
     }
   }
 
-  document.getElementById('find-rooms-btn').addEventListener('click', findRooms);
-  document.getElementById('new-reservation-btn')?.addEventListener('click', openBookingModal);
+  function showBookingSuccess(room) {
+    const checkIn = document.getElementById('booking-check-in').value;
+    const checkOut = document.getElementById('booking-check-out').value;
+    const guests = document.getElementById('booking-guests').value || '1';
+    savedTrip = { checkIn, checkOut, guests };
+    const label = room
+      ? `${room.building_name} Room ${room.room_number}`
+      : 'Your room';
+    document.getElementById('booking-success-msg').textContent =
+      `${label} for ${fmtDate(checkIn)} → ${fmtDate(checkOut)} is pending approval.`;
+    formFields.classList.add('hidden');
+    successPanel.classList.remove('hidden');
+    setModalCopy({
+      title: 'Request submitted',
+      subtitle: 'You can book another room for the same stay or close this window.',
+    });
+  }
+
+  function startAnotherRoomBooking() {
+    if (!savedTrip) return;
+    hideSuccessPanel();
+    resetBookingResults();
+    document.getElementById('booking-form-error').classList.add('hidden');
+    document.getElementById('booking-notes').value = '';
+    prefillTrip(savedTrip);
+    setBookingMode('search');
+    findRooms();
+  }
+
+  document.getElementById('find-rooms-btn').addEventListener('click', () => findRooms());
+  document.getElementById('booking-change-selection').addEventListener('click', () => {
+    setBookingMode('search');
+    findRooms(selectedRoom?.id || roomInput.value);
+  });
+  document.getElementById('booking-add-another').addEventListener('click', startAnotherRoomBooking);
+  document.getElementById('booking-success-done').addEventListener('click', closeBookingModal);
   document.getElementById('booking-modal-close').addEventListener('click', closeBookingModal);
   document.getElementById('booking-cancel-btn').addEventListener('click', closeBookingModal);
   modal.addEventListener('click', (e) => { if (e.target === modal) closeBookingModal(); });
@@ -836,6 +974,7 @@
     errorEl.classList.add('hidden');
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
+    const bookedRoom = selectedRoom;
     try {
       await createBooking({
         room_id: Number(roomInput.value),
@@ -844,74 +983,20 @@
         guest_count: Number(document.getElementById('booking-guests').value) || 1,
         notes: document.getElementById('booking-notes').value.trim() || null,
       });
-      closeBookingModal();
       await loadBookings();
+      showBookingSuccess(bookedRoom);
     } catch (err) {
       errorEl.textContent = err.message || 'Booking failed';
       errorEl.classList.remove('hidden');
     } finally {
-      submitBtn.disabled = false;
+      submitBtn.disabled = !roomInput.value;
       submitBtn.textContent = 'Submit Request';
     }
   });
 
-  /* ---------- Group request modal ---------- */
-  const groupModal = document.getElementById('group-modal-overlay');
-  const groupForm = document.getElementById('group-form');
-
-  function closeGroupModal() {
-    closeModal(groupModal);
-    groupForm.reset();
-    document.getElementById('group-form-error').classList.add('hidden');
-  }
-
-  function openGroupModal() {
-    groupForm.reset();
-    document.getElementById('group-form-error').classList.add('hidden');
-    if (user) document.getElementById('group-contact').value = user.full_name || user.name || '';
-    applyFiscalDateLimits('group-check-in', 'group-check-out', 'group-fiscal-hint');
-    openModal(groupModal);
-  }
-
-  document.getElementById('new-group-btn')?.addEventListener('click', openGroupModal);
-  document.getElementById('group-modal-close').addEventListener('click', closeGroupModal);
-  document.getElementById('group-cancel-btn').addEventListener('click', closeGroupModal);
-  groupModal.addEventListener('click', (e) => { if (e.target === groupModal) closeGroupModal(); });
-
-  groupForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const errorEl = document.getElementById('group-form-error');
-    const gSubmit = document.getElementById('group-submit-btn');
-    errorEl.classList.add('hidden');
-    gSubmit.disabled = true;
-    gSubmit.textContent = 'Submitting…';
-    try {
-      await createGroup({
-        group_name: document.getElementById('group-name').value.trim(),
-        contact_name: document.getElementById('group-contact').value.trim(),
-        contact_phone: document.getElementById('group-phone').value.trim() || undefined,
-        check_in: document.getElementById('group-check-in').value,
-        check_out: document.getElementById('group-check-out').value,
-        total_guests: Number(document.getElementById('group-total-guests').value) || 2,
-        rooms_requested: Number(document.getElementById('group-rooms-needed').value) || undefined,
-        notes: document.getElementById('group-notes').value.trim() || undefined,
-      });
-      closeGroupModal();
-      await loadBookings();
-    } catch (err) {
-      errorEl.textContent = err.message || 'Request failed';
-      errorEl.classList.remove('hidden');
-    } finally {
-      gSubmit.disabled = false;
-      gSubmit.textContent = 'Submit Group Request';
-    }
-  });
-
-  /* ESC closes any open modal */
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (!modal.classList.contains('is-hidden')) closeBookingModal();
-    if (!groupModal.classList.contains('is-hidden')) closeGroupModal();
   });
 
   /* ---------- Venue Bookings tab ---------- */
@@ -989,18 +1074,21 @@
   async function applyBookingFromQuery() {
     const qp = parseBookQuery();
     if (location.hash === '#new-reservation') qp.book = true;
-    if (!qp.book && !qp.roomId && !qp.checkIn) return;
+    if (!qp.book && !hasCompleteBookIntent(qp) && !qp.checkIn) return;
 
-    openBookingModal();
-    if (qp.checkIn) document.getElementById('booking-check-in').value = qp.checkIn;
-    if (qp.checkOut) document.getElementById('booking-check-out').value = qp.checkOut;
-    if (qp.guests) document.getElementById('booking-guests').value = qp.guests;
-
-    if (qp.checkIn && qp.checkOut) {
-      await findRooms();
-      if (qp.roomId) {
-        document.querySelector(`.room-option[data-room-id="${qp.roomId}"]`)?.click();
-      }
+    if (hasCompleteBookIntent(qp)) {
+      await openConfirmBooking({
+        roomId: qp.roomId,
+        checkIn: qp.checkIn,
+        checkOut: qp.checkOut,
+        guests: qp.guests || '1',
+      });
+    } else {
+      openSearchBooking({
+        checkIn: qp.checkIn,
+        checkOut: qp.checkOut,
+        guests: qp.guests,
+      });
     }
 
     if (window.history.replaceState) {
