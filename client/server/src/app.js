@@ -95,7 +95,10 @@ app.get('/', (req, res) => {
 });
 
 app.use((req, res) => {
-  res.status(404).json({ message: 'Not found' });
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ message: 'Not found' });
+  }
+  res.status(404).type('text/plain').send('Page not found');
 });
 
 app.use((err, req, res, next) => {

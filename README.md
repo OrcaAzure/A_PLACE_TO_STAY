@@ -188,6 +188,8 @@ server {
 
 `trust proxy` is enabled automatically when `NODE_ENV=production`.
 
+See `deploy/apache-proxy.example.conf` for a starter Apache config to hand to IT.
+
 ### 6. Health monitoring
 
 `GET /api/health` — use for uptime checks. Returns 503 if MySQL is down.

@@ -91,9 +91,17 @@ export async function loadPaymentsPage() {
     return;
   }
 
-  document.querySelectorAll('[data-tab]').forEach((btn) => {
+  document.querySelectorAll('[data-payment-filter]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      activeFilter = btn.getAttribute('data-tab') || 'all';
+      activeFilter = btn.getAttribute('data-payment-filter') || 'all';
+      document.querySelectorAll('[data-payment-filter]').forEach((tab) => {
+        const active = tab === btn;
+        tab.classList.toggle('border-primary', active);
+        tab.classList.toggle('text-primary', active);
+        tab.classList.toggle('font-bold', active);
+        tab.classList.toggle('border-transparent', !active);
+        tab.classList.toggle('text-on-surface-variant', !active);
+      });
       reload().catch((err) => {
         if (feedback) {
           feedback.textContent = err.message;

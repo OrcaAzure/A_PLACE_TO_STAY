@@ -6,6 +6,9 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const example = path.join(root, '.env.example');
 const target = path.join(root, 'client/server/.env');
 
+const logsDir = path.join(root, 'client/server/logs');
+fs.mkdirSync(logsDir, { recursive: true });
+
 console.log('AptSpace setup\n');
 
 if (!fs.existsSync(target)) {
