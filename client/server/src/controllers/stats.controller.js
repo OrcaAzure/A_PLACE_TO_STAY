@@ -1,5 +1,4 @@
 import { pool } from '../config/db.js';
-import Booking from '../models/Booking.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -17,6 +16,18 @@ const bookingSelect = `
   LEFT JOIN buildings b ON r.building_id = b.id
 `;
 
+const venueBookingSelect = `
+  SELECT fb.*,
+         u.full_name AS guest_name,
+         u.email AS guest_email,
+         u.role AS guest_role,
+         f.category AS facility_category,
+         f.item AS facility_name
+  FROM facility_bookings fb
+  JOIN users u ON fb.user_id = u.id
+  JOIN facilities f ON fb.facility_id = f.id
+`;
+
 export const getAdminSummary = async (req, res) => {
   try {
     if (!ADMIN_ROLES.includes(req.user.role)) {
@@ -31,7 +42,8 @@ export const getAdminSummary = async (req, res) => {
       [roomRows],
       [revenueRows],
       [buildingUsage],
-      [recentRows],
+      [recentRoomRows],
+      [recentVenueRows],
       [usersByRole],
     ] = await Promise.all([
       pool.query(`
@@ -72,7 +84,8 @@ export const getAdminSummary = async (req, res) => {
         GROUP BY b.id, b.name
         ORDER BY b.name
       `),
-      pool.query(`${bookingSelect} ORDER BY bk.updated_at DESC LIMIT 10`),
+      pool.query(`${bookingSelect} ORDER BY bk.updated_at DESC LIMIT 12`),
+      pool.query(`${venueBookingSelect} ORDER BY fb.updated_at DESC LIMIT 12`),
       pool.query(`
         SELECT role, COUNT(*) AS count
         FROM users
@@ -97,6 +110,13 @@ export const getAdminSummary = async (req, res) => {
       ? Math.round((Number(roomStats.occupied) / Number(roomStats.total)) * 100)
       : 0;
 
+    const recentActivity = [
+      ...recentRoomRows.map((r) => ({ ...r, kind: 'room' })),
+      ...recentVenueRows.map((r) => ({ ...r, kind: 'venue' })),
+    ]
+      .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+      .slice(0, 10);
+
     res.status(200).json({
       kpis: {
         upcoming: Number(upcomingRows[0].count),
@@ -116,7 +136,7 @@ export const getAdminSummary = async (req, res) => {
         paidRevenue: Number(revenueRows[0].paid_revenue),
       },
       buildingUsage,
-      recentActivity: recentRows.map((r) => new Booking(r)),
+      recentActivity,
       usersByRole,
     });
   } catch (error) {

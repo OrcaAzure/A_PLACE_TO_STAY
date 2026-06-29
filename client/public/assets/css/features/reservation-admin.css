@@ -445,6 +445,20 @@
 .mac-legend-dot--pending { background: #FF9500; }
 .mac-legend-dot--confirmed { background: #007AFF; }
 .mac-legend-dot--venue { background: #0E7490; }
+.mac-legend-dot--cancelled { background: #CBD5E1; border: 1px dashed #64748B; }
+
+.mac-event--cancelled {
+  background: #E2E8F0;
+  color: #64748B;
+  border: 1px dashed #94A3B8;
+  text-decoration: line-through;
+  opacity: 0.92;
+}
+.mac-event--cancelled.mac-event--venue {
+  background: #F1F5F9;
+  color: #64748B;
+}
+.mac-day-list-tag.mac-event--cancelled { background: #CBD5E1; color: #475569; text-decoration: line-through; }
 
 .mac-cal-body { padding: 0.75rem 1rem 1.25rem; }
 

@@ -74,12 +74,41 @@ function activityIcon(status) {
 }
 
 function facilityLabelForBooking(b) {
+  if (b.kind === 'venue' || b.facility_name) {
+    return [b.facility_category, b.facility_name].filter(Boolean).join(' — ') || 'Venue space';
+  }
   const norm = normalizeBooking(b);
   if (norm.facilityLabel && norm.facilityLabel !== `Booking #${norm.id}`) return norm.facilityLabel;
   if (b.room_number || b.building_name) {
     return [b.building_name, b.room_number].filter(Boolean).join(' · ') || 'Room pending';
   }
   return 'Room not assigned yet';
+}
+
+function activityDateLabel(b) {
+  if (b.kind === 'venue' || b.event_date) {
+    return formatDateLong(String(b.event_date).slice(0, 10));
+  }
+  return formatDateRange(b.check_in, b.check_out);
+}
+
+function activityActionText(b, status, facility) {
+  const name = escapeHtml(b.guest_name || 'Guest');
+  const place = escapeHtml(facility);
+  const dates = escapeHtml(activityDateLabel(b));
+  if (status === 'pending') {
+    return `<span class="font-bold text-on-surface">${name}</span> requested <span class="font-semibold text-primary">${place}</span>`;
+  }
+  if (status === 'approved') {
+    return `<span class="font-bold text-on-surface">${name}</span> — <span class="font-semibold text-emerald-700">${place}</span> approved`;
+  }
+  if (status === 'cancelled') {
+    return `<span class="font-bold text-on-surface">${name}</span> cancelled <span class="font-semibold text-slate-600 line-through">${place}</span> <span class="text-on-surface-variant">(${dates})</span>`;
+  }
+  if (status === 'rejected') {
+    return `<span class="font-bold text-on-surface">Request denied:</span> ${place} (${name})`;
+  }
+  return `<span class="font-bold text-on-surface">${name}</span> — ${place} ${escapeHtml(status)}`;
 }
 
 function buildQueueItems(bookingsRaw, groupsRaw) {
@@ -252,22 +281,17 @@ function renderRecentActivity(bookingsRaw) {
     const status = normStatus(b.status);
     const { bg, icon } = activityIcon(status);
     const facility = facilityLabelForBooking(b);
-    const action = status === 'pending'
-      ? `<span class="font-bold text-on-surface">${escapeHtml(b.guest_name)}</span> requested <span class="font-semibold text-primary">${escapeHtml(facility)}</span>`
-      : status === 'approved'
-        ? `<span class="font-bold text-on-surface">${escapeHtml(b.guest_name)}</span> — <span class="font-semibold text-emerald-700">${escapeHtml(facility)}</span> approved`
-        : status === 'rejected'
-          ? `<span class="font-bold text-on-surface">Request denied:</span> ${escapeHtml(facility)} (${escapeHtml(b.guest_name)})`
-          : `<span class="font-bold text-on-surface">${escapeHtml(b.guest_name)}</span> — ${escapeHtml(facility)} ${escapeHtml(status)}`;
+    const action = activityActionText(b, status, facility);
+    const typeNote = b.kind === 'venue' ? ' · Venue' : '';
 
     return `
-      <div class="flex gap-4">
+      <div class="flex gap-4${status === 'cancelled' ? ' opacity-90' : ''}">
         <div class="w-11 h-11 rounded-full ${bg} flex items-center justify-center shrink-0">
           <span class="material-symbols-outlined text-[1.35rem]">${icon}</span>
         </div>
         <div>
           <p class="text-body-sm text-on-surface leading-relaxed">${action}</p>
-          <p class="text-body-sm text-on-surface-variant mt-1">${relativeTime(b.updated_at || b.created_at)} · ${escapeHtml(b.guest_role || 'Guest')}</p>
+          <p class="text-body-sm text-on-surface-variant mt-1">${relativeTime(b.updated_at || b.created_at)} · ${escapeHtml(b.guest_role || 'Guest')}${typeNote}${status === 'cancelled' ? ' · <span class="font-semibold text-slate-600">Cancelled</span>' : ''}</p>
         </div>
       </div>`;
   }).join('');

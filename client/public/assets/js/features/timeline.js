@@ -186,7 +186,10 @@ function renderSimpleSummary(stats) {
   if (stats.pending > 0) {
     parts.push(`<strong>${stats.pending}</strong> need${stats.pending === 1 ? 's' : ''} your approval`);
   }
-  if (stats.inMonth > 0) parts.push(`<strong>${stats.inMonth}</strong> this month`);
+  if (stats.inMonth > 0) parts.push(`<strong>${stats.inMonth}</strong> active this month`);
+  if (stats.cancelledInMonth > 0) {
+    parts.push(`<strong>${stats.cancelledInMonth}</strong> cancelled this month <span class="text-on-surface-variant">(shown muted — slot is free)</span>`);
+  }
   if (!parts.length) return 'Tap a reservation to see full details.';
   return parts.join(' · ') + '. Tap any reservation to see full details.';
 }
@@ -218,6 +221,10 @@ function buildMonthWeeks(year, month, todayStr) {
   return weeks;
 }
 
+function calendarBookings(bookings) {
+  return bookings.filter((b) => ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)));
+}
+
 function activeBookings(bookings) {
   return bookings.filter((b) => ['pending', 'approved'].includes(normStatus(b.status)));
 }
@@ -235,6 +242,7 @@ function bookingsOnDay(bookings, iso) {
 
 function eventStatusClass(status) {
   const s = normStatus(status);
+  if (s === 'cancelled') return 'mac-event--cancelled';
   if (s === 'pending') return 'mac-event--pending';
   if (s === 'approved') return 'mac-event--confirmed';
   return 'mac-event--other';
@@ -243,20 +251,23 @@ function eventStatusClass(status) {
 function renderMonthEventChip(booking) {
   const guest = booking.guestName || booking.title || 'Guest';
   const phaseClass = lifecycleEventClass(lifecyclePhaseForBooking(booking));
+  const cancelled = normStatus(booking.status) === 'cancelled';
   if (booking.kind === 'venue') {
     const label = `${guest} · ${booking.venueName || 'Venue'}`;
+    const text = cancelled ? `Cancelled · ${label}` : label;
     return `
       <button type="button" class="mac-event mac-event--venue ${eventStatusClass(booking.status)} ${phaseClass}"
-              data-venue-booking-id="${booking.id}" title="${escapeHtml(label)}">
-        ${escapeHtml(label)}
+              data-venue-booking-id="${booking.id}" title="${escapeHtml(text)}">
+        ${escapeHtml(text)}
       </button>`;
   }
   const room = [booking.buildingName, booking.roomNumber].filter(Boolean).join(' ');
   const label = room ? `${guest} · ${room}` : guest;
+  const text = cancelled ? `Cancelled · ${label}` : label;
   return `
     <button type="button" class="mac-event ${eventStatusClass(booking.status)} ${phaseClass}"
-            data-booking-id="${booking.id}" title="${escapeHtml(label)}">
-      ${escapeHtml(label)}
+            data-booking-id="${booking.id}" title="${escapeHtml(text)}">
+      ${escapeHtml(text)}
     </button>`;
 }
 
@@ -284,13 +295,13 @@ function renderMonthDayCell(day, dayBookings) {
 
 function renderMonthCalendar(bookings, year, month, todayStr) {
   const weeks = buildMonthWeeks(year, month, todayStr);
-  const active = activeBookings(bookings);
+  const visible = calendarBookings(bookings);
   const weekdayHeader = WEEKDAYS.map((d) =>
     `<div class="mac-weekday">${d}</div>`).join('');
 
   const weeksHtml = weeks.map((week) => {
     const daysHtml = week.map((day) =>
-      renderMonthDayCell(day, bookingsOnDay(active, day.iso))).join('');
+      renderMonthDayCell(day, bookingsOnDay(visible, day.iso))).join('');
     return `<div class="mac-week">${daysHtml}</div>`;
   }).join('');
 
@@ -306,6 +317,14 @@ function countBookingsInMonth(bookings, year, month) {
   const monthEnd = dateOnly(new Date(year, month + 1, 0));
   return activeBookings(bookings).filter((b) =>
     overlapsRange(b.startDate, b.endDate, monthStart, monthEnd)).length;
+}
+
+function countCancelledInMonth(bookings, year, month) {
+  const monthStart = dateOnly(new Date(year, month, 1));
+  const monthEnd = dateOnly(new Date(year, month + 1, 0));
+  return calendarBookings(bookings).filter((b) =>
+    normStatus(b.status) === 'cancelled'
+    && overlapsRange(b.startDate, b.endDate, monthStart, monthEnd)).length;
 }
 
 function bindMonthCalendar(root, { bookings, rawBookingsById, rawVenueById, onRefresh }) {
@@ -331,7 +350,7 @@ function bindMonthCalendar(root, { bookings, rawBookingsById, rawVenueById, onRe
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const iso = btn.getAttribute('data-day-iso');
-      const dayBookings = bookingsOnDay(activeBookings(bookings), iso);
+      const dayBookings = bookingsOnDay(calendarBookings(bookings), iso);
       const skipped = dayBookings.slice(MAX_EVENTS_PER_DAY);
       if (!skipped.length) return;
 
@@ -400,6 +419,7 @@ export function renderTimelineShell({ title }) {
           <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--pending"></span>Needs approval</span>
           <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--confirmed"></span>Room confirmed</span>
           <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--venue"></span>Venue booking</span>
+          <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--cancelled"></span>Cancelled (audit only)</span>
         </div>
       </header>
       <div id="mac-cal-mount" class="mac-cal-body"></div>
@@ -412,7 +432,8 @@ function computeStats(bookings, todayStr, year, month) {
     if (normStatus(b.status) === 'pending' && dateOnly(b.endDate) >= todayStr) pending += 1;
   });
   const inMonth = countBookingsInMonth(bookings, year, month);
-  return { pending, inMonth };
+  const cancelledInMonth = countCancelledInMonth(bookings, year, month);
+  return { pending, inMonth, cancelledInMonth };
 }
 
 function filterBookings(bookings, { statusFilter, search, rangeStart, rangeEnd }) {
@@ -827,9 +848,11 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
   async function refresh() {
     try {
       const [rawBookings, rawVenues] = await Promise.all([getBookings(), getFacilityBookings()]);
-      const roomRows = rawBookings.filter((b) => !b.group_id).map(normalizeBooking);
+      const roomRows = rawBookings
+        .filter((b) => !b.group_id && ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
+        .map(normalizeBooking);
       const venueRows = rawVenues
-        .filter((b) => ['pending', 'approved'].includes(normStatus(b.status)))
+        .filter((b) => ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
         .map(normalizeFacilityBooking);
       allBookings = [...roomRows, ...venueRows];
       rawBookingsById = Object.fromEntries(rawBookings.map((b) => [String(b.id), b]));
