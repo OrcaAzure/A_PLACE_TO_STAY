@@ -9,7 +9,7 @@ import {
 import { updateFacilityBooking } from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDate, formatDateLong, formatMoney, normStatus, stayNights,
-  toLocalDateString,
+  toLocalDateString, lifecyclePhaseForBooking, lifecycleEventClass, venuePhaseLabel,
 } from '/assets/js/features/reservation-shared.js';
 
 export const DAY_WIDTH = 80;
@@ -130,15 +130,18 @@ export function renderBookingBar(booking, rangeStart, totalDays) {
   const guest = booking.guestName || booking.title || 'Guest';
   const nights = stayNights(booking.startDate, booking.endDate);
   const pending = normStatus(booking.status) === 'pending';
+  const phase = lifecyclePhaseForBooking(booking);
+  const lifecycleLabel = phase && phase !== 'upcoming' ? venuePhaseLabel(phase) : '';
 
   return `
     <div class="gantt-booking-bar" style="grid-column: ${clampedStart} / ${Math.min(colEnd, totalDays + 1)}">
       <div class="tl-bar ${pill} ${pending ? 'tl-bar--pending' : ''} ${accent} border-l-4"
            data-booking-id="${booking.id}" role="button" tabindex="0"
-           aria-label="${escapeHtml(guest)}, ${label}, ${formatDate(booking.startDate)} to ${formatDate(booking.endDate)}">
+           aria-label="${escapeHtml(guest)}, ${label}${lifecycleLabel ? `, ${lifecycleLabel}` : ''}, ${formatDate(booking.startDate)} to ${formatDate(booking.endDate)}">
         <span class="tl-bar-guest">${escapeHtml(guest)}</span>
         <span class="tl-bar-meta">
           <span class="tl-bar-status">${escapeHtml(label)}</span>
+          ${lifecycleLabel ? `<span class="tl-bar-lifecycle">${escapeHtml(lifecycleLabel)}</span>` : ''}
           ${nights ? `<span class="tl-bar-nights">${nights}n</span>` : ''}
         </span>
         <span class="tl-bar-dates">${formatDate(booking.startDate)} – ${formatDate(booking.endDate)}</span>
@@ -239,10 +242,11 @@ function eventStatusClass(status) {
 
 function renderMonthEventChip(booking) {
   const guest = booking.guestName || booking.title || 'Guest';
+  const phaseClass = lifecycleEventClass(lifecyclePhaseForBooking(booking));
   if (booking.kind === 'venue') {
     const label = `${guest} · ${booking.venueName || 'Venue'}`;
     return `
-      <button type="button" class="mac-event mac-event--venue ${eventStatusClass(booking.status)}"
+      <button type="button" class="mac-event mac-event--venue ${eventStatusClass(booking.status)} ${phaseClass}"
               data-venue-booking-id="${booking.id}" title="${escapeHtml(label)}">
         ${escapeHtml(label)}
       </button>`;
@@ -250,7 +254,7 @@ function renderMonthEventChip(booking) {
   const room = [booking.buildingName, booking.roomNumber].filter(Boolean).join(' ');
   const label = room ? `${guest} · ${room}` : guest;
   return `
-    <button type="button" class="mac-event ${eventStatusClass(booking.status)}"
+    <button type="button" class="mac-event ${eventStatusClass(booking.status)} ${phaseClass}"
             data-booking-id="${booking.id}" title="${escapeHtml(label)}">
       ${escapeHtml(label)}
     </button>`;
@@ -338,6 +342,8 @@ function bindMonthCalendar(root, { bookings, rawBookingsById, rawVenueById, onRe
           ? `${b.venueCategory || ''} — ${b.venueName || 'Venue'}`
           : ([b.buildingName, b.roomNumber].filter(Boolean).join(' ') || 'Room TBD');
         const st = normStatus(b.status) === 'pending' ? 'Needs approval' : 'Confirmed';
+        const phase = lifecyclePhaseForBooking(b);
+        const lifecycle = phase && phase !== 'upcoming' ? venuePhaseLabel(phase) : '';
         const attrs = isVenue
           ? `data-venue-booking-id="${b.id}"`
           : `data-booking-id="${b.id}"`;
@@ -346,7 +352,8 @@ function bindMonthCalendar(root, { bookings, rawBookingsById, rawVenueById, onRe
           : `${formatDate(b.startDate)} – ${formatDate(b.endDate)}`;
         return `
           <button type="button" class="mac-day-list-item" ${attrs}>
-            <span class="mac-day-list-tag ${eventStatusClass(b.status)}">${st}</span>
+            <span class="mac-day-list-tag ${eventStatusClass(b.status)} ${lifecycleEventClass(phase)}">${st}</span>
+            ${lifecycle ? `<span class="mac-day-list-tag ${lifecycleEventClass(phase)}">${escapeHtml(lifecycle)}</span>` : ''}
             <strong>${escapeHtml(guest)}</strong>
             <span>${escapeHtml(place)} · ${escapeHtml(dates)}</span>
           </button>`;

@@ -3,6 +3,7 @@
  */
 
 import { getVenueScheduleOverview, updateFacilityBooking } from '/assets/js/services/api.js';
+import { venueEventPhase, venuePhaseLabel } from '/assets/js/features/reservation-shared.js';
 
 const state = {
   date: '',
@@ -11,6 +12,7 @@ const state = {
   data: null,
   showOpenOnly: false,
   search: '',
+  bookingView: 'operations',
 };
 
 function escapeHtml(str) {
@@ -115,17 +117,54 @@ function emptyDayMessage() {
   return '<li class="venue-slot venue-slot--free"><span class="material-symbols-outlined" aria-hidden="true">event_available</span> No bookings this day</li>';
 }
 
+function combineDateTime(dateStr, timeStr) {
+  const date = String(dateStr).slice(0, 10);
+  const raw = String(timeStr || '00:00:00').trim();
+  const time = /^\d{1,2}:\d{2}$/.test(raw) ? `${raw}:00` : raw.slice(0, 8);
+  return new Date(`${date}T${time}`);
+}
+
+function filterBookingsForView(bookings, scheduleDate) {
+  if (state.bookingView === 'history') return bookings || [];
+  const today = dateOnly();
+  const now = new Date();
+  if (scheduleDate < today) return [];
+
+  return (bookings || []).filter((b) => {
+    if (b.status === 'Cancelled' || b.status === 'Rejected') return false;
+    if (b.status === 'Pending') return true;
+    if (b.status === 'Approved') {
+      const end = combineDateTime(scheduleDate, b.end_time);
+      return now <= end;
+    }
+    return false;
+  });
+}
+
 function renderFacilityRow(f) {
   const badge = spaceBadge(f);
-  const bookingsHtml = f.bookings?.length
-    ? f.bookings.map((b) => {
+  const visibleBookings = filterBookingsForView(f.bookings, state.date || state.data?.date || dateOnly());
+  const bookingsHtml = visibleBookings.length
+    ? visibleBookings.map((b) => {
       const pending = b.status === 'Pending';
       const conflict = b.conflicts_slot;
+      const scheduleDate = state.date || state.data?.date || dateOnly();
+      const phase = venueEventPhase(scheduleDate, b.start_time, b.end_time);
+      const slotPhaseClass = phase === 'past' ? ' venue-slot--completed' : phase === 'active' ? ' venue-slot--in-progress' : '';
+      const statusText = conflict
+        ? 'Overlaps your slot'
+        : pending
+          ? 'Awaiting approval'
+          : phase === 'past'
+            ? 'Completed'
+            : phase === 'active'
+              ? 'In progress'
+              : 'Confirmed';
       return `
-        <li class="venue-slot${pending ? ' venue-slot--pending' : ''}${conflict ? ' venue-slot--conflict' : ''}">
+        <li class="venue-slot${pending ? ' venue-slot--pending' : ''}${conflict ? ' venue-slot--conflict' : ''}${slotPhaseClass}">
           <div class="venue-slot__times">${escapeHtml(b.start_label)} – ${escapeHtml(b.end_label)}</div>
           <div class="venue-slot__guest">${escapeHtml(b.guest_name)} · ${b.guest_count} guest${b.guest_count === 1 ? '' : 's'}</div>
-          <div class="venue-slot__status">${conflict ? 'Overlaps your slot' : pending ? 'Awaiting approval' : 'Confirmed'}</div>
+          <div class="venue-slot__status">${escapeHtml(statusText)}</div>
           ${pending ? `
             <div class="venue-slot__actions">
               <button type="button" class="dashboard-queue-btn dashboard-queue-btn--approve venue-approve" data-booking-id="${b.id}">Approve</button>
@@ -204,11 +243,12 @@ function renderSchedule() {
   const visible = countVisibleSpaces();
   if (summaryEl) {
     const openNote = state.showOpenOnly ? ' · free for slot only' : '';
+    const viewNote = state.bookingView === 'history' ? ' · full history' : ' · active bookings only';
     const searchNote = state.search.trim() ? ` · matching “${state.search.trim()}”` : '';
     const slotNote = hasSlotCheck()
       ? ` · checking ${formatTimeRange(data.check_start, data.check_end)}`
       : '';
-    summaryEl.textContent = `${formatDisplayDate(data.date)}${slotNote} · ${visible} space${visible === 1 ? '' : 's'} shown${openNote}${searchNote}`;
+    summaryEl.textContent = `${formatDisplayDate(data.date)}${slotNote} · ${visible} space${visible === 1 ? '' : 's'} shown${viewNote}${openNote}${searchNote}`;
   }
 
   if (!data.venues?.length) {
@@ -237,12 +277,24 @@ function renderSchedule() {
       <div class="rooms-board-empty">
         <span class="material-symbols-outlined" aria-hidden="true">search_off</span>
         <p class="rooms-board-empty__title">No spaces match</p>
-        <p class="rooms-board-empty__text">Try another date or time, turn off “Free for slot”, or clear your search.</p>
+        <p class="rooms-board-empty__text">${state.bookingView === 'operations' && state.date < dateOnly()
+    ? 'Operations view hides past dates. Switch to <strong>Full history</strong> or pick today / a future date.'
+    : 'Try another date or time, turn off “Free for slot”, or clear your search.'}</p>
       </div>`;
     return;
   }
 
   mount.innerHTML = sections.join('');
+}
+
+function setBookingView(mode) {
+  state.bookingView = mode === 'history' ? 'history' : 'operations';
+  document.querySelectorAll('[data-venue-bookings]').forEach((btn) => {
+    const on = btn.getAttribute('data-venue-bookings') === state.bookingView;
+    btn.classList.toggle('is-active', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  renderSchedule();
 }
 
 function setShowFilter(mode) {
@@ -373,6 +425,17 @@ export function initVenueScheduleBoard() {
     btn.addEventListener('click', () => {
       setShowFilter(btn.getAttribute('data-venue-show') || 'all');
     });
+  });
+
+  document.querySelectorAll('[data-venue-bookings]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      setBookingView(btn.getAttribute('data-venue-bookings') || 'operations');
+    });
+  });
+
+  document.getElementById('venue-open-history')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.querySelector('[data-open-manage-venue-bookings]')?.click();
   });
 
   document.getElementById('venue-schedule-mount')?.addEventListener('click', (e) => {

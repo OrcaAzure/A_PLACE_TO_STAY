@@ -182,6 +182,7 @@
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-guests">Number of guests</label>
         <input type="number" id="vbm-guests" min="1" value="1" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        <p id="vbm-capacity-hint" class="text-body-sm text-on-surface-variant mt-1 hidden"></p>
       </div>
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-notes">Notes (optional)</label>
@@ -226,6 +227,9 @@
     roomAllowedForGuest,
     venueMatchesBrowseCategory,
     guestAccessNoticeHtml,
+    parsePackageHours,
+    formatVenueRateLabel,
+    venueCapacityLabel,
   } from '/assets/js/features/guest-booking-flow.js';
 
   requireAuth();

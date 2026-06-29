@@ -2,6 +2,10 @@ import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
 import { resolveSeason, resolveGuestUser } from '../services/booking.service.js';
 import {
+  assertCanCancelVenueBooking,
+  getGuestCancellationCutoffDays,
+} from '../services/reservationLifecycle.service.js';
+import {
   NON_VENUE_CATEGORIES,
   bookingOverlapsSlot,
   findVenueBookingOverlap,
@@ -9,6 +13,11 @@ import {
   normalizeTimeValue,
   resolveFacilityIdentity,
   resolveVenueFacilityRow,
+  computeVenueTotal,
+  validateVenueCapacity,
+  validateVenueDuration,
+  venueRateMeta,
+  bookingDurationHours,
 } from '../services/facility.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
@@ -89,6 +98,10 @@ export const createFacilityBooking = async (req, res) => {
     const startTime = normalizeTime(start_time);
     const endTime = normalizeTime(end_time);
 
+    if (event_date < new Date().toISOString().slice(0, 10)) {
+      return res.status(400).json({ message: 'Event date cannot be in the past.' });
+    }
+
     const identity = await resolveFacilityIdentity({
       facility_id, category, item, event_date,
     });
@@ -98,6 +111,16 @@ export const createFacilityBooking = async (req, res) => {
 
     const { row: facilityRow } = identity;
     const facilityId = facilityRow.id;
+
+    const durationError = validateVenueDuration(startTime, endTime, identity.item);
+    if (durationError) {
+      return res.status(400).json({ message: durationError });
+    }
+
+    const capacityError = validateVenueCapacity(facilityRow, guest_count);
+    if (capacityError) {
+      return res.status(400).json({ message: capacityError });
+    }
 
     const overlap = await findVenueBookingOverlap({
       category: identity.category,
@@ -111,11 +134,7 @@ export const createFacilityBooking = async (req, res) => {
     }
 
     const season = await resolveSeason(event_date);
-    const rate = facilityRow.rate;
-    const [sh, sm] = startTime.split(':').map(Number);
-    const [eh, em] = endTime.split(':').map(Number);
-    const hours = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
-    const total_amount = Math.round(rate * Math.max(hours, 1) * 100) / 100;
+    const total_amount = computeVenueTotal(facilityRow.rate, startTime, endTime, identity.item);
 
     const bookingStatus = isAdmin ? (status || 'Approved') : 'Pending';
 
@@ -141,13 +160,37 @@ export const updateFacilityBooking = async (req, res) => {
     if (!existing.length) return res.status(404).json({ message: 'Booking not found' });
 
     if (!ADMIN_ROLES.includes(role)) {
+      if (existing[0].user_id !== userId) {
+        return res.status(403).json({ message: 'Forbidden' });
+      }
       const { status } = req.body;
-      if (status !== 'Cancelled' || existing[0].status !== 'Pending') {
+      if (status !== 'Cancelled') {
         return res.status(403).json({ message: 'You can only cancel your own pending bookings' });
       }
+      const cancelError = assertCanCancelVenueBooking({
+        status: existing[0].status,
+        event_date: existing[0].event_date,
+        start_time: existing[0].start_time,
+        end_time: existing[0].end_time,
+        isAdmin: false,
+        cutoffDays: await getGuestCancellationCutoffDays(),
+      });
+      if (cancelError) return res.status(400).json({ message: cancelError });
       await pool.query('UPDATE facility_bookings SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
+      const [guestRows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
+      return res.status(200).json({ message: 'Booking cancelled', booking: guestRows[0] });
     } else {
       const { status, notes } = req.body;
+      if (status === 'Cancelled') {
+        const cancelError = assertCanCancelVenueBooking({
+          status: existing[0].status,
+          event_date: existing[0].event_date,
+          start_time: existing[0].start_time,
+          end_time: existing[0].end_time,
+          isAdmin: true,
+        });
+        if (cancelError) return res.status(400).json({ message: cancelError });
+      }
       await pool.query(
         `UPDATE facility_bookings SET
            status = COALESCE(?, status),
@@ -222,18 +265,23 @@ export const checkVenueSlotAvailability = async (req, res) => {
     });
 
     const { row: facilityRow } = identity;
-    const [sh, sm] = startTime.split(':').map(Number);
-    const [eh, em] = endTime.split(':').map(Number);
-    const hours = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
-    const estimatedTotal = Math.round(Number(facilityRow.rate) * Math.max(hours, 1) * 100) / 100;
+    const durationError = validateVenueDuration(startTime, endTime, identity.item);
+    const estimatedTotal = computeVenueTotal(facilityRow.rate, startTime, endTime, identity.item);
+    const rateMeta = venueRateMeta(identity.item, facilityRow.rate);
+    const hours = bookingDurationHours(startTime, endTime);
 
     res.status(200).json({
-      available: !overlap,
+      available: !overlap && !durationError,
       estimated_total: estimatedTotal,
       rate: Number(facilityRow.rate),
       season: facilityRow.season,
       calendar_season: identity.calendar_season || facilityRow.season,
-      message: overlap ? 'This time slot is already booked or pending approval.' : 'This time slot is available to request.',
+      duration_hours: hours,
+      capacity_min: facilityRow.capacity_min,
+      capacity_max: facilityRow.capacity_max,
+      ...rateMeta,
+      message: durationError
+        || (overlap ? 'This time slot is already booked or pending approval.' : 'This time slot is available to request.'),
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

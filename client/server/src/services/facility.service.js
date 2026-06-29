@@ -146,6 +146,82 @@ export async function resolveFacilityIdentity({ facility_id, category, item, eve
 }
 
 /** Group raw facility rows into unique physical spaces with all rate variants. */
+/** Parse minimum/package hours from facility item name (e.g. "Church 4 hrs", "Four Hour minimum"). */
+export function parsePackageHours(itemName) {
+  if (!itemName) return null;
+  const s = String(itemName);
+  const explicit = s.match(/(\d+)\s*hr/i);
+  if (explicit) return Number(explicit[1]);
+  const word = s.match(/(\d+)\s*[- ]?\s*hour/i);
+  if (/minimum|min\./i.test(s) && word) return Number(word[1]);
+  return null;
+}
+
+export function bookingDurationHours(startTime, endTime) {
+  const start = normalizeTimeValue(startTime);
+  const end = normalizeTimeValue(endTime);
+  if (!start || !end || end <= start) return 0;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  return ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+}
+
+/** Package items use a flat rate (minimum block); others bill hourly. */
+export function computeVenueTotal(rate, startTime, endTime, itemName) {
+  const hours = bookingDurationHours(startTime, endTime);
+  const packageHours = parsePackageHours(itemName);
+  const r = Number(rate);
+  if (packageHours) {
+    if (hours <= packageHours) return Math.round(r * 100) / 100;
+    const perHour = r / packageHours;
+    return Math.round(perHour * hours * 100) / 100;
+  }
+  return Math.round(r * Math.max(hours, 1) * 100) / 100;
+}
+
+export function validateVenueCapacity(facilityRow, guestCount) {
+  const count = Number(guestCount);
+  if (!Number.isFinite(count) || count < 1) {
+    return 'Guest count must be at least 1.';
+  }
+  const min = facilityRow?.capacity_min;
+  const max = facilityRow?.capacity_max;
+  if (min != null && count < min) {
+    return `This venue requires at least ${min} guest${min === 1 ? '' : 's'}.`;
+  }
+  if (max != null && count > max) {
+    return `This venue accommodates up to ${max} guests.`;
+  }
+  return null;
+}
+
+export function validateVenueDuration(startTime, endTime, itemName) {
+  const hours = bookingDurationHours(startTime, endTime);
+  if (hours <= 0) return 'End time must be after start time.';
+  const packageHours = parsePackageHours(itemName);
+  if (packageHours && hours < packageHours) {
+    return `This venue is booked in ${packageHours}-hour blocks. Please select at least ${packageHours} hours.`;
+  }
+  return null;
+}
+
+export function venueRateMeta(itemName, rate) {
+  const packageHours = parsePackageHours(itemName);
+  const fmt = (n) => Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
+  if (packageHours) {
+    return {
+      package_hours: packageHours,
+      rate_type: 'package',
+      rate_label: `${packageHours}-hr package · ₱${fmt(rate)}`,
+    };
+  }
+  return {
+    package_hours: null,
+    rate_type: 'hourly',
+    rate_label: `₱${fmt(rate)} / hour`,
+  };
+}
+
 export function groupVenueSpacesFromRows(rows) {
   const bySpace = new Map();
 

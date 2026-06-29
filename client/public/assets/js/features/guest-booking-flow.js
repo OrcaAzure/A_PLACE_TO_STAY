@@ -153,21 +153,87 @@ export function roomAllowedForGuest(room, isInternal = isInternalGuest()) {
   return EXTERNAL_ROOM_BUILDINGS.includes(building);
 }
 
+export function parsePackageHours(itemName) {
+  if (!itemName) return null;
+  const s = String(itemName);
+  const explicit = s.match(/(\d+)\s*hr/i);
+  if (explicit) return Number(explicit[1]);
+  const word = s.match(/(\d+)\s*[- ]?\s*hour/i);
+  if (/minimum|min\./i.test(s) && word) return Number(word[1]);
+  return null;
+}
+
+export function formatVenueRateLabel(space) {
+  const rate = space.regularRate ?? space.peakRate;
+  if (rate == null) return '—';
+  const pkg = parsePackageHours(space.item);
+  const fmt = (n) => `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
+  if (pkg) return `${pkg}-hr package · ${fmt(rate)}`;
+  if (space.regularRate != null && space.peakRate != null && space.peakRate !== space.regularRate) {
+    return `${fmt(space.regularRate)} / hr · Peak dates may differ`;
+  }
+  return `${fmt(rate)} / hr`;
+}
+
+export function venueCapacityLabel(space) {
+  const min = space.capacity_min ?? space.capacityMin;
+  const max = space.capacity_max ?? space.capacityMax;
+  if (min != null && max != null) return `${min}–${max} guests`;
+  if (max != null) return `Up to ${max} guests`;
+  if (min != null) return `From ${min} guests`;
+  return '';
+}
+
+/** Map DB facility category → guest browse tab(s). */
+const VENUE_BROWSE_BY_CATEGORY = {
+  GMC: 'conference-classrooms',
+  'Burdine Commons': 'conference-classrooms',
+  'GMC Chapel': 'chapel-garden',
+  Garden: 'chapel-garden',
+  'Prayer Mountain': 'prayer-mountain',
+  'Prayer Tower': 'prayer-mountain',
+  'Basketball Court': 'sports-rec',
+  'Childrens Playground': 'sports-rec',
+  'Rec Center': 'sports-rec',
+};
+
+/** Item keywords that also belong on the chapel & garden tab. */
+const CHAPEL_GARDEN_ITEM = /wedding|reception|church|chapel|baptism|aircon|garden|osgood/i;
+
+/** Item keywords that belong on conference tab even when category defaults elsewhere. */
+const CONFERENCE_ITEM = /conference|classroom|meeting|multi-purpose|seminar|educational|russ turney|commons/i;
+
+export function venueBrowseCategoryIds(space) {
+  const ids = new Set();
+  const dbCategory = String(space?.category || '').trim();
+  const item = String(space?.item || '');
+  const itemLower = item.toLowerCase();
+
+  const mapped = VENUE_BROWSE_BY_CATEGORY[dbCategory];
+  if (mapped) ids.add(mapped);
+
+  if (CHAPEL_GARDEN_ITEM.test(itemLower) || dbCategory === 'Garden' || dbCategory === 'GMC Chapel') {
+    ids.add('chapel-garden');
+  }
+  if (CONFERENCE_ITEM.test(itemLower) || dbCategory === 'GMC') {
+    ids.add('conference-classrooms');
+  }
+  if (/prayer mountain|prayer tower|retreat|baptism/i.test(`${dbCategory} ${item}`)) {
+    ids.add('prayer-mountain');
+  }
+  if (/sport|basketball|playground|rec center|court|gym/i.test(`${dbCategory} ${item}`)) {
+    ids.add('sports-rec');
+  }
+
+  if (ids.has('conference-classrooms') && /wedding|reception/i.test(itemLower)) {
+    ids.delete('conference-classrooms');
+  }
+
+  return [...ids];
+}
+
 export function venueMatchesBrowseCategory(space, categoryId) {
-  const haystack = `${space.category} ${space.item}`.toLowerCase();
-  if (categoryId === 'conference-classrooms') {
-    return /conference|classroom|russ turney|multi-purpose|meeting|seminar|hall/.test(haystack);
-  }
-  if (categoryId === 'chapel-garden') {
-    return /chapel|garden|osgood|gmc|outdoor|function/.test(haystack);
-  }
-  if (categoryId === 'prayer-mountain') {
-    return /prayer mountain|prayer tower|retreat/.test(haystack);
-  }
-  if (categoryId === 'sports-rec') {
-    return /sports|rec|basketball|playground|court|gym/.test(haystack);
-  }
-  return false;
+  return venueBrowseCategoryIds(space).includes(categoryId);
 }
 
 export function guestAccessNoticeHtml(isInternal = isInternalGuest()) {

@@ -81,6 +81,129 @@ export function statusBadge(status) {
   return `<span class="res-pill res-pill--${key}">${escapeHtml(labels[key] || status)}</span>`;
 }
 
+export function localDateStr(d = new Date()) {
+  return toLocalDateString(d);
+}
+
+export function combineDateTime(dateStr, timeStr) {
+  const date = String(dateStr).slice(0, 10);
+  const raw = String(timeStr || '00:00:00').trim();
+  const time = /^\d{1,2}:\d{2}$/.test(raw) ? `${raw}:00` : raw.slice(0, 8);
+  return new Date(`${date}T${time}`);
+}
+
+export function roomStayPhase(checkIn, checkOut, todayStr = localDateStr()) {
+  const ci = String(checkIn).slice(0, 10);
+  const co = String(checkOut).slice(0, 10);
+  if (todayStr > co) return 'past';
+  if (todayStr >= ci) return 'active';
+  return 'upcoming';
+}
+
+export function venueEventPhase(eventDate, startTime, endTime, now = new Date()) {
+  const start = combineDateTime(eventDate, startTime);
+  const end = combineDateTime(eventDate, endTime);
+  if (now > end) return 'past';
+  if (now >= start) return 'active';
+  return 'upcoming';
+}
+
+export function daysUntilDate(targetDateStr, todayStr = localDateStr()) {
+  const target = new Date(`${String(targetDateStr).slice(0, 10)}T00:00:00`);
+  const today = new Date(`${todayStr}T00:00:00`);
+  return Math.round((target - today) / 86400000);
+}
+
+export function cutoffDaysError(cutoffDays) {
+  const days = Number(cutoffDays);
+  if (days <= 0) return null;
+  if (days === 1) return 'Cancellations must be made at least 1 day before check-in or the event date.';
+  return `Cancellations must be made at least ${days} days before check-in or the event date.`;
+}
+
+export function canGuestCancelRoomBooking(booking, { todayStr = localDateStr(), cutoffDays = 1 } = {}) {
+  const status = normStatus(booking.status);
+  if (!['pending', 'approved'].includes(status)) return false;
+  if (roomStayPhase(booking.startDate || booking.check_in, booking.endDate || booking.check_out, todayStr) !== 'upcoming') {
+    return false;
+  }
+  return daysUntilDate(booking.startDate || booking.check_in, todayStr) >= Number(cutoffDays);
+}
+
+export function canGuestCancelVenueBooking(booking, { now = new Date(), cutoffDays = 1 } = {}) {
+  const status = normStatus(booking.status);
+  if (!['pending', 'approved'].includes(status)) return false;
+  if (venueEventPhase(
+    booking.eventDate || booking.startDate || booking.event_date,
+    booking.startTime || booking.start_time,
+    booking.endTime || booking.end_time,
+    now,
+  ) !== 'upcoming') {
+    return false;
+  }
+  const todayStr = localDateStr(now);
+  return daysUntilDate(booking.eventDate || booking.startDate || booking.event_date, todayStr) >= Number(cutoffDays);
+}
+
+export function canAdminCancelVenueBooking(booking, now = new Date()) {
+  const status = normStatus(booking.status);
+  if (!['pending', 'approved'].includes(status)) return false;
+  return venueEventPhase(
+    booking.eventDate || booking.event_date,
+    booking.startTime || booking.start_time,
+    booking.endTime || booking.end_time,
+    now,
+  ) === 'upcoming';
+}
+
+export function venuePhaseLabel(phase) {
+  if (phase === 'active') return 'In progress';
+  if (phase === 'past') return 'Completed';
+  return 'Upcoming';
+}
+
+export function roomStayPhaseLabel(phase) {
+  return venuePhaseLabel(phase);
+}
+
+export function lifecyclePhaseForBooking(booking, now = new Date()) {
+  const status = normStatus(booking.status);
+  if (['cancelled', 'rejected'].includes(status)) return null;
+  const isVenue = booking.kind === 'venue'
+    || booking.eventDate != null
+    || booking.event_date != null
+    || (booking.startTime != null && booking.endTime != null);
+  if (isVenue) {
+    return venueEventPhase(
+      booking.eventDate || booking.event_date || booking.startDate,
+      booking.startTime || booking.start_time,
+      booking.endTime || booking.end_time,
+      now,
+    );
+  }
+  return roomStayPhase(
+    booking.check_in || booking.checkIn || booking.startDate,
+    booking.check_out || booking.checkOut || booking.endDate,
+  );
+}
+
+export function lifecyclePhaseBadge(phase) {
+  if (!phase) return '';
+  const label = venuePhaseLabel(phase);
+  const cls = {
+    upcoming: 'res-pill--lifecycle-upcoming',
+    active: 'res-pill--lifecycle-active',
+    past: 'res-pill--lifecycle-completed',
+  }[phase] || '';
+  return `<span class="res-pill ${cls}">${escapeHtml(label)}</span>`;
+}
+
+export function lifecycleEventClass(phase) {
+  if (phase === 'past') return 'mac-event--completed';
+  if (phase === 'active') return 'mac-event--in-progress';
+  return '';
+}
+
 export function recommendRooms(rooms, guestCount, limit = 3) {
   const count = Math.max(1, Number(guestCount) || 1);
   const available = (rooms || []).filter((r) => r.availability_status === 'available');

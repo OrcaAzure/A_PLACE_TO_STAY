@@ -3,6 +3,7 @@
 import { getBookings, getGroups, deleteBooking, deleteGroup, formatGroupId } from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDisplayId, formatDateLong, statusBadge, debounce, normStatus, getReservationCategory,
+  lifecyclePhaseForBooking, lifecyclePhaseBadge,
 } from '/assets/js/features/reservation-shared.js';
 
 let initialized = false;
@@ -31,21 +32,7 @@ function typeLabel(isGroup) {
 }
 
 function categoryLabel(item) {
-  const cat = getReservationCategory(item);
-  const labels = {
-    active: 'Active now',
-    upcoming: 'Upcoming',
-    completed: 'Completed',
-    cancelled: 'Cancelled',
-  };
-  const classes = {
-    active: 'res-pill--approved',
-    upcoming: 'res-pill--single',
-    completed: 'res-pill--cancelled',
-    cancelled: 'res-pill--rejected',
-  };
-  const label = labels[cat] || cat;
-  return `<span class="res-pill ${classes[cat] || ''}">${escapeHtml(label)}</span>`;
+  return lifecyclePhaseBadge(lifecyclePhaseForBooking(item));
 }
 
 function reservationDetails(item) {

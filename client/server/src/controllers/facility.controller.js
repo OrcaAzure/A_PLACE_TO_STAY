@@ -1,7 +1,7 @@
 import { pool } from '../config/db.js';
 import Facility from '../models/Facility.js';
 import { isEmpty } from '../utils/helpers.js';
-import { resolveVenueFacilityRow } from '../services/facility.service.js';
+import { resolveVenueFacilityRow, venueRateMeta } from '../services/facility.service.js';
 
 const VALID_SEASONS = ['Regular', 'Peak', 'N/A'];
 
@@ -184,6 +184,9 @@ export const getVenueRateQuote = async (req, res) => {
       rate: row.rate,
       season: row.season,
       calendar_season: row.calendar_season,
+      capacity_min: row.capacity_min,
+      capacity_max: row.capacity_max,
+      ...venueRateMeta(row.item, row.rate),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

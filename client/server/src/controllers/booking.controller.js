@@ -17,6 +17,7 @@ import {
   getRoomById,
 } from '../services/booking.service.js';
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
+import { assertCanCancelRoomBooking, getGuestCancellationCutoffDays } from '../services/reservationLifecycle.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -191,12 +192,30 @@ export const updateBooking = async (req, res) => {
 
     if (!isAdmin) {
       const { status } = req.body;
-      if (status !== 'Cancelled' || existing.status !== 'Pending') {
+      if (status !== 'Cancelled') {
         return res.status(403).json({ message: 'You can only cancel your own pending bookings' });
       }
+      const cancelError = assertCanCancelRoomBooking({
+        status: existing.status,
+        check_in: existing.check_in,
+        check_out: existing.check_out,
+        isAdmin: false,
+        cutoffDays: await getGuestCancellationCutoffDays(),
+      });
+      if (cancelError) return res.status(400).json({ message: cancelError });
       await pool.query('UPDATE bookings SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
       const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
       return res.status(200).json({ message: 'Booking cancelled', booking: await enrichBooking(rows[0]) });
+    }
+
+    if (req.body.status === 'Cancelled') {
+      const cancelError = assertCanCancelRoomBooking({
+        status: existing.status,
+        check_in: existing.check_in,
+        check_out: existing.check_out,
+        isAdmin: true,
+      });
+      if (cancelError) return res.status(400).json({ message: cancelError });
     }
 
     const validated = await validateBookingUpdate(existing, req.body, true);

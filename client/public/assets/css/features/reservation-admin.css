@@ -61,6 +61,9 @@
 .res-pill--approved { background: #ECFDF5; color: #065F46; font-size: 0.8125rem; text-transform: none; padding: 0.3rem 0.75rem; }
 .res-pill--rejected { background: #FEF2F2; color: #991B1B; font-size: 0.8125rem; text-transform: none; padding: 0.3rem 0.75rem; }
 .res-pill--cancelled { background: #F1F5F9; color: #475569; font-size: 0.8125rem; text-transform: none; padding: 0.3rem 0.75rem; }
+.res-pill--lifecycle-upcoming { background: #EFF6FF; color: #1D4ED8; font-size: 0.8125rem; text-transform: none; padding: 0.3rem 0.75rem; }
+.res-pill--lifecycle-active { background: #ECFDF5; color: #047857; font-size: 0.8125rem; text-transform: none; padding: 0.3rem 0.75rem; }
+.res-pill--lifecycle-completed { background: #F1F5F9; color: #64748B; font-size: 0.8125rem; text-transform: none; padding: 0.3rem 0.75rem; }
 
 .res-steps { display: flex; gap: 0.25rem; padding: 0.75rem 1rem; overflow-x: auto; background: #F8FAFC; border-bottom: 1px solid #EDF2F7; }
 .res-step { display: flex; align-items: center; gap: 0.375rem; padding: 0.375rem 0.625rem; border-radius: 0.5rem; font-size: 0.8125rem; color: #718096; white-space: nowrap; }
@@ -499,6 +502,17 @@
 .mac-event--confirmed { background: #007AFF; }
 .mac-event--venue { background: #0E7490; }
 .mac-event--other { background: #8E8E93; }
+.mac-event--completed { background: #94A3B8; opacity: 0.92; }
+.mac-event--in-progress { background: #059669; }
+.mac-day-list-tag.mac-event--completed { background: #94A3B8; }
+.mac-day-list-tag.mac-event--in-progress { background: #059669; }
+.tl-bar-lifecycle {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.9;
+}
 
 .mac-event-more {
   display: block; width: 100%; text-align: left; padding: 0.125rem 0.375rem;

@@ -19,11 +19,13 @@
       <div class="res-field res-field--narrow">
         <label for="manage-venue-bookings-status-filter" class="res-field-label">Show</label>
         <select id="manage-venue-bookings-status-filter" class="res-input res-input--select">
+          <option value="active" selected>Active (pending &amp; upcoming)</option>
           <option value="all">All bookings</option>
           <option value="upcoming">Upcoming</option>
           <option value="today">Today</option>
           <option value="pending">Pending approval</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="past">Past / completed</option>
+          <option value="cancelled">Cancelled &amp; declined</option>
         </select>
       </div>
       <div class="res-toolbar-create">

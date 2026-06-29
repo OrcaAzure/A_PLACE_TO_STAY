@@ -135,6 +135,24 @@
   color: #b91c1c;
 }
 
+.venue-slot--completed {
+  opacity: 0.82;
+  background: #F8FAFC;
+}
+
+.venue-slot--completed .venue-slot__status {
+  color: #64748B;
+}
+
+.venue-slot--in-progress {
+  border-color: #6EE7B7;
+  background: #ECFDF5;
+}
+
+.venue-slot--in-progress .venue-slot__status {
+  color: #047857;
+}
+
 .venue-slot--free {
   display: flex;
   align-items: center;

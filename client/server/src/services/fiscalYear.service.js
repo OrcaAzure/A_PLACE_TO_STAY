@@ -5,6 +5,7 @@ const SETTING_KEYS = [
   'fiscal_year_start_month',
   'fiscal_year_start_day',
   'booking_advance_months',
+  'guest_cancellation_cutoff_days',
 ];
 
 function pad(n) {
@@ -85,17 +86,26 @@ export function getBookingDateBounds(settings = FISCAL_YEAR_DEFAULTS, { bypassAd
   };
 }
 
+function readSettingInt(stored, key, fallback, min, max) {
+  const raw = stored[key];
+  if (raw == null || raw === '') return fallback;
+  const n = Math.round(Number(raw));
+  if (Number.isNaN(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
 export async function getFiscalYearSettings() {
   try {
     const [rows] = await pool.query(
-      'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?)',
+      'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?, ?)',
       SETTING_KEYS
     );
     const stored = Object.fromEntries(rows.map((r) => [r.setting_key, r.setting_value]));
     return {
-      fiscal_year_start_month: Number(stored.fiscal_year_start_month) || FISCAL_YEAR_DEFAULTS.fiscal_year_start_month,
-      fiscal_year_start_day: Number(stored.fiscal_year_start_day) || FISCAL_YEAR_DEFAULTS.fiscal_year_start_day,
-      booking_advance_months: Number(stored.booking_advance_months) || FISCAL_YEAR_DEFAULTS.booking_advance_months,
+      fiscal_year_start_month: readSettingInt(stored, 'fiscal_year_start_month', FISCAL_YEAR_DEFAULTS.fiscal_year_start_month, 1, 12),
+      fiscal_year_start_day: readSettingInt(stored, 'fiscal_year_start_day', FISCAL_YEAR_DEFAULTS.fiscal_year_start_day, 1, 31),
+      booking_advance_months: readSettingInt(stored, 'booking_advance_months', FISCAL_YEAR_DEFAULTS.booking_advance_months, 1, 36),
+      guest_cancellation_cutoff_days: readSettingInt(stored, 'guest_cancellation_cutoff_days', FISCAL_YEAR_DEFAULTS.guest_cancellation_cutoff_days, 0, 90),
     };
   } catch {
     return { ...FISCAL_YEAR_DEFAULTS };
@@ -119,6 +129,11 @@ export async function updateFiscalYearSettings(updates = {}) {
       updates.booking_advance_months ?? current.booking_advance_months,
       1,
       36
+    ),
+    guest_cancellation_cutoff_days: clampInt(
+      updates.guest_cancellation_cutoff_days ?? current.guest_cancellation_cutoff_days,
+      0,
+      90
     ),
   };
 
@@ -154,7 +169,19 @@ export async function getPublicFiscalYearInfo({ bypassAdvanceLimit = false } = {
     advanceLimitLabel: bounds.maxCheckInDate
       ? `Reservations may be made up to ${bounds.bookingAdvanceMonths} month(s) in advance (latest check-in: ${formatDisplayDate(bounds.maxCheckInDate)}).`
       : 'No advance booking limit.',
+    cancellationPolicyLabel: formatCancellationPolicyLabel(settings.guest_cancellation_cutoff_days),
   };
+}
+
+export function formatCancellationPolicyLabel(cutoffDays) {
+  const days = Number(cutoffDays);
+  if (days <= 0) {
+    return 'Guests may cancel pending or approved reservations any time before check-in or the event starts.';
+  }
+  if (days === 1) {
+    return 'Guests may cancel pending or approved reservations at least 1 day before check-in or the event date.';
+  }
+  return `Guests may cancel pending or approved reservations at least ${days} days before check-in or the event date.`;
 }
 
 export async function validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit = false } = {}) {

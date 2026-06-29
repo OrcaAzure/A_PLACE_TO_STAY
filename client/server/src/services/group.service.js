@@ -15,6 +15,7 @@ import {
   getRoomById,
 } from './booking.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
+import { assertCanCancelRoomBooking, getGuestCancellationCutoffDays } from './reservationLifecycle.service.js';
 import { sendGroupModifiedEmail, sendGroupConfirmationEmail } from './email.service.js';
 
 const bookingSelect = `
@@ -299,9 +300,17 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
   if (!isAdmin && group.user_id !== userId) throw new Error('Forbidden');
 
   if (!isAdmin) {
-    if (body.status !== 'Cancelled' || group.status !== 'Pending') {
+    if (body.status !== 'Cancelled') {
       throw new Error('You can only cancel your own pending group requests');
     }
+    const cancelError = assertCanCancelRoomBooking({
+      status: group.status,
+      check_in: group.check_in,
+      check_out: group.check_out,
+      isAdmin: false,
+      cutoffDays: await getGuestCancellationCutoffDays(),
+    });
+    if (cancelError) throw new Error(cancelError);
     await pool.query('UPDATE reservation_groups SET status = ? WHERE id = ?', ['Cancelled', groupId]);
     return getGroupById(groupId);
   }
@@ -316,6 +325,16 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
   const nextCheckOut = check_out || group.check_out;
   const nextGuests = total_guests != null ? Math.max(1, Number(total_guests)) : group.total_guests;
   const nextStatus = status || group.status;
+
+  if (nextStatus === 'Cancelled') {
+    const cancelError = assertCanCancelRoomBooking({
+      status: group.status,
+      check_in: nextCheckIn,
+      check_out: nextCheckOut,
+      isAdmin: true,
+    });
+    if (cancelError) throw new Error(cancelError);
+  }
 
   await validateReservationDates(nextCheckIn, nextCheckOut, { bypassAdvanceLimit: isAdmin });
 

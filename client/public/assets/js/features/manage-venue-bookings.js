@@ -5,6 +5,7 @@ import {
 } from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDateLong, formatMoney, debounce, normStatus, statusBadge,
+  canAdminCancelVenueBooking, lifecyclePhaseForBooking, lifecyclePhaseBadge,
 } from '/assets/js/features/reservation-shared.js';
 import { closeVenueBookingWizard, openVenueBookingWizard } from '/assets/js/features/venue-booking-wizard.js';
 
@@ -12,7 +13,7 @@ let initialized = false;
 let isOpen = false;
 let list = [];
 let filtered = [];
-let filter = { search: '', category: 'all' };
+let filter = { search: '', category: 'active' };
 let loading = false;
 
 function $(id) { return document.getElementById(id); }
@@ -34,10 +35,13 @@ function applyFilter() {
   const q = filter.search.trim().toLowerCase();
   filtered = list.filter((item) => {
     const cat = bookingCategory(item);
-    if (filter.category === 'today' && cat !== 'today') return false;
-    if (filter.category === 'upcoming' && !['upcoming', 'today'].includes(cat)) return false;
-    if (filter.category === 'pending' && cat !== 'pending') return false;
-    if (filter.category === 'cancelled' && cat !== 'cancelled') return false;
+    if (filter.category === 'active') {
+      if (!['pending', 'today', 'upcoming'].includes(cat)) return false;
+    } else if (filter.category === 'today' && cat !== 'today') return false;
+    else if (filter.category === 'upcoming' && !['upcoming', 'today'].includes(cat)) return false;
+    else if (filter.category === 'pending' && cat !== 'pending') return false;
+    else if (filter.category === 'past' && cat !== 'past') return false;
+    else if (filter.category === 'cancelled' && cat !== 'cancelled') return false;
     if (!q) return true;
     return item._search.includes(q);
   });
@@ -57,13 +61,15 @@ function renderList() {
 
   mount.innerHTML = filtered.map((item) => {
     const pending = normStatus(item.status) === 'pending';
+    const canCancel = canAdminCancelVenueBooking(item);
+    const lifecycleBadge = lifecyclePhaseBadge(lifecyclePhaseForBooking(item));
     return `<article class="res-list-card" role="listitem">
       <div class="res-list-card-head">
         <div class="res-list-meta">
           <span class="res-list-id">VEN-${item.id}</span>
           <span class="res-pill res-pill--group">Venue</span>
         </div>
-        <div class="res-list-badges">${statusBadge(item.status)}</div>
+        <div class="res-list-badges">${lifecycleBadge}${statusBadge(item.status)}</div>
       </div>
       <h3 class="res-list-title">${escapeHtml(item.guestName || 'Guest')}</h3>
       <p class="res-list-detail">${escapeHtml(item.venueCategory)} — ${escapeHtml(item.venueName)}</p>
@@ -89,10 +95,11 @@ function renderList() {
           </button>
           <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vb-decline="${item.id}">
             <span class="material-symbols-outlined">close</span> Decline
-          </button>` : `
+          </button>` : ''}
+        ${canCancel ? `
           <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vb-cancel="${item.id}">
             <span class="material-symbols-outlined">cancel</span> Cancel booking
-          </button>`}
+          </button>` : ''}
       </div>
     </article>`;
   }).join('');

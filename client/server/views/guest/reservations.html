@@ -208,9 +208,30 @@
           </div><!-- /room-stays panel -->
 
           <div data-res-panel="venues" class="is-tab-hidden hidden" role="tabpanel">
-            <div id="venue-bookings-list" class="space-y-3 p-4">
-              <div class="text-body-sm text-on-surface-variant text-center py-8">Loading venue bookings…</div>
-            </div>
+
+        <div class="bg-white p-4 rounded-xl flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-2 mr-1 text-on-surface-variant">
+            <span class="material-symbols-outlined text-[20px]">filter_list</span>
+            <span class="text-label-sm uppercase tracking-wider font-bold">Filter</span>
+          </div>
+          <div id="venue-status-filter" class="flex flex-wrap gap-1.5">
+            <button data-venue-status="" class="venue-seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-primary text-on-primary">All</button>
+            <button data-venue-status="approved" class="venue-seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Approved</button>
+            <button data-venue-status="pending" class="venue-seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Pending</button>
+            <button data-venue-status="rejected" class="venue-seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Rejected</button>
+            <button data-venue-status="cancelled" class="venue-seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Cancelled</button>
+          </div>
+          <div class="flex items-center bg-surface-container-low px-3 py-2 rounded-full border border-outline-variant w-full sm:w-64 focus-within:border-primary focus-within:shadow-sm transition-all">
+            <span class="material-symbols-outlined text-outline text-[18px] shrink-0">search</span>
+            <input id="venue-bookings-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0" placeholder="Search venue bookings..." type="text" />
+          </div>
+        </div>
+
+        <div class="space-y-4 mt-4" id="venue-bookings-list">
+          <div class="skeleton h-28 rounded-2xl"></div>
+          <div class="skeleton h-28 rounded-2xl"></div>
+        </div>
+
           </div>
 
         </div><!-- /tab workspace -->
@@ -244,8 +265,8 @@
             <span class="material-symbols-outlined text-amber-600 mt-1">info</span>
             <div>
               <h5 class="font-label-md text-label-md font-bold text-on-surface mb-2">Reservation Policy</h5>
-              <p class="text-body-sm text-on-surface-variant leading-relaxed">
-                Cancellations must be made at least 24 hours prior to the event. Approved reservations that are no-shows for more than 30 minutes may be automatically released.
+              <p class="text-body-sm text-on-surface-variant leading-relaxed" id="res-policy-text">
+                Loading cancellation policy…
               </p>
             </div>
           </div>
@@ -408,9 +429,13 @@
   import {
     getBookings, getGroups, createBooking, updateBooking, updateGroup,
     getRoomAvailability, normalizeBooking, formatGroupId,
-    getFacilityBookings, cancelFacilityBooking,
+    getFacilityBookings, cancelFacilityBooking, normalizeFacilityBooking,
+    getFiscalYear,
   } from '/assets/js/services/api.js';
-  import { loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint } from '/assets/js/features/reservation-shared.js';
+  import {
+    loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint,
+    canGuestCancelRoomBooking, canGuestCancelVenueBooking, lifecyclePhaseForBooking, venuePhaseLabel, normStatus,
+  } from '/assets/js/features/reservation-shared.js';
   import { parseBookQuery, priceNoticeHtml, hasCompleteBookIntent } from '/assets/js/features/guest-booking-flow.js';
   import { createGuestBookingExtras } from '/assets/js/features/guest-booking-extras.js';
 
@@ -435,8 +460,23 @@
 
   const { readOnly } = applyRoleUI();
 
+  let cancellationCutoffDays = 1;
+  try {
+    const fyInfo = await getFiscalYear();
+    cancellationCutoffDays = Number(fyInfo.settings?.guest_cancellation_cutoff_days ?? 1);
+    const policyEl = document.getElementById('res-policy-text');
+    if (policyEl && fyInfo.cancellationPolicyLabel) {
+      policyEl.textContent = `${fyInfo.cancellationPolicyLabel} Events or stays that have already started cannot be cancelled online.`;
+    }
+  } catch (err) {
+    console.warn('Cancellation policy unavailable', err);
+  }
+
+  const cancelOpts = { todayStr: undefined, cutoffDays: cancellationCutoffDays };
+
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
+  cancelOpts.todayStr = todayStr;
   document.getElementById('current-month-label').textContent =
     now.toLocaleString('default', { month: 'long', year: 'numeric' });
   document.getElementById('timeline-month').textContent =
@@ -517,10 +557,22 @@
     wrap.classList.remove('hidden');
   }
 
+  function lifecycleGuestBadge(booking) {
+    const phase = lifecyclePhaseForBooking(booking);
+    if (!phase) return '';
+    const styles = {
+      upcoming: 'bg-blue-50 text-blue-800',
+      active: 'bg-emerald-50 text-emerald-800',
+      past: 'bg-slate-100 text-slate-600',
+    };
+    return `<span class="${styles[phase] || 'bg-surface-container text-on-surface-variant'} px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">${venuePhaseLabel(phase)}</span>`;
+  }
+
   function renderCard(b, index) {
     const isGroup = b.kind === 'group';
     const idLabel = isGroup ? formatGroupId(b.id) : `#APT-${b.id}`;
     const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
+    const lifecycleBadge = lifecycleGuestBadge(b);
     const typeBadge = isGroup
       ? '<span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">Group</span>'
       : '<span class="bg-surface-container text-on-surface-variant px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">Single</span>';
@@ -530,7 +582,7 @@
           <div class="flex-1">
             <div class="flex justify-between items-start mb-2">
               <div>
-                <h4 class="font-headline-sm text-headline-sm flex items-center">${typeBadge}${idLabel}</h4>
+                <h4 class="font-headline-sm text-headline-sm flex items-center flex-wrap gap-1">${typeBadge}${lifecycleBadge}${idLabel}</h4>
                 <p class="text-body-sm text-on-surface-variant mt-0.5">${b.facilityLabel || b.title}</p>
               </div>
               <span class="${statusBadge(b.status)} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${b.status}</span>
@@ -553,7 +605,7 @@
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
-          ${(!readOnly && b.status === 'pending') ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">Cancel request</button>` : ''}
+          ${(!readOnly && canGuestCancelRoomBooking(b, cancelOpts)) ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">${b.status === 'pending' ? 'Cancel request' : 'Cancel reservation'}</button>` : ''}
         </div>
       </div>`;
   }
@@ -648,7 +700,7 @@
   }
 
   async function cancelBooking(id, kind = 'single') {
-    if (!confirm('Cancel this pending request?')) return;
+    if (!confirm('Cancel this reservation? This cannot be undone.')) return;
     try {
       if (kind === 'group') await updateGroup(id, { status: 'Cancelled' });
       else await updateBooking(id, { status: 'Cancelled' });
@@ -1073,72 +1125,165 @@
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  const statusClass = {
-    Pending:   'res-pill--pending',
-    Approved:  'res-pill--approved',
-    Rejected:  'res-pill--rejected',
-    Cancelled: 'res-pill--cancelled',
-  };
+  let allVenueBookings = [];
+  let venueActiveStatus = '';
+  let venueSearchTerm = '';
+  let venueBookingsLoaded = false;
+
+  function renderVenueCard(b, index) {
+    const idLabel = `#VEN-${b.id}`;
+    const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
+    const phaseBadge = lifecycleGuestBadge(b);
+    const canCancel = !readOnly && canGuestCancelVenueBooking(b, { cutoffDays: cancellationCutoffDays });
+    return `
+      <div class="group bg-white p-5 rounded-2xl border border-outline-variant hover:border-primary/40 hover:shadow-lg lift reveal" style="animation-delay:${0.05 * index}s" data-venue-id="${b.id}">
+        <div class="flex flex-col sm:flex-row gap-6">
+          <div class="flex-1">
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <h4 class="font-headline-sm text-headline-sm flex items-center flex-wrap gap-1">
+                  <span class="bg-secondary/10 text-secondary px-2 py-0.5 rounded text-[10px] font-bold uppercase">Venue</span>
+                  ${phaseBadge}
+                  <span>${idLabel}</span>
+                </h4>
+                <p class="text-body-sm font-medium text-on-surface mt-1">${escapeHtml(b.venueName || b.title)}</p>
+                <p class="text-body-sm text-on-surface-variant mt-0.5">${escapeHtml(b.venueCategory || '')}</p>
+              </div>
+              <span class="${statusBadge(normStatus(b.status))} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0">${normStatus(b.status)}</span>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+              <div>
+                <p class="text-[11px] font-bold text-on-surface-variant uppercase">Event date</p>
+                <p class="text-body-sm font-medium">${fmtDate(b.eventDate)}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-bold text-on-surface-variant uppercase">Time</p>
+                <p class="text-body-sm font-medium">${escapeHtml(b.startLabel)} – ${escapeHtml(b.endLabel)}</p>
+              </div>
+              <div>
+                <p class="text-[11px] font-bold text-on-surface-variant uppercase">Guests</p>
+                <p class="text-body-sm font-medium">${b.guestCount || 1}</p>
+              </div>
+              ${amount ? `<div><p class="text-[11px] font-bold text-on-surface-variant uppercase">Est. total</p><p class="text-body-sm font-medium">${amount}</p></div>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
+          ${canCancel ? `<button type="button" class="cancel-fb-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-fb-id="${b.id}">${normStatus(b.status) === 'pending' ? 'Cancel request' : 'Cancel reservation'}</button>` : ''}
+        </div>
+      </div>`;
+  }
+
+  function applyAndRenderVenues() {
+    let items = allVenueBookings;
+    if (venueActiveStatus) items = items.filter((b) => normStatus(b.status) === venueActiveStatus);
+    if (venueSearchTerm) {
+      const q = venueSearchTerm.toLowerCase();
+      items = items.filter((b) =>
+        String(b.id).includes(q) ||
+        (b.venueName || '').toLowerCase().includes(q) ||
+        (b.venueCategory || '').toLowerCase().includes(q) ||
+        normStatus(b.status).includes(q));
+    }
+    renderVenueList(items);
+  }
+
+  function renderVenueList(bookings) {
+    const mount = document.getElementById('venue-bookings-list');
+    if (!mount) return;
+    if (!bookings.length) {
+      mount.innerHTML = `
+        <div class="text-center py-16 text-on-surface-variant animate-fade-in">
+          <span class="material-symbols-outlined text-[48px] mb-2 block">event_busy</span>
+          <p class="font-body-md text-body-md">No venue bookings found.</p>
+          ${readOnly ? '' : '<a href="/guest/facilities.html?focus=venues" class="mt-4 inline-flex items-center gap-1 text-primary font-label-md hover:underline no-underline"><span class="material-symbols-outlined text-[18px]">explore</span>Browse venues to book</a>'}
+        </div>`;
+      return;
+    }
+    mount.innerHTML = bookings.map((b, i) => renderVenueCard(b, i)).join('');
+  }
 
   async function loadVenueBookings() {
     const mount = document.getElementById('venue-bookings-list');
     if (!mount) return;
-    try {
-      const bookings = await getFacilityBookings();
-      if (!bookings.length) {
-        mount.innerHTML = '<div class="text-body-sm text-on-surface-variant text-center py-8">No venue bookings yet. Browse Facilities to book a venue.</div>';
-        return;
-      }
-      mount.innerHTML = bookings.map(b => `
-        <article class="res-list-card" data-fb-id="${b.id}">
-          <div class="res-list-card-head">
-            <span class="res-list-id">#VEN-${b.id}</span>
-            <span class="res-pill ${statusClass[b.status] || ''}">${b.status}</span>
-          </div>
-          <h3 class="res-list-title">${escapeHtml(b.facility_name || b.facility_category)}</h3>
-          <dl class="res-list-dates">
-            <div><dt>Date</dt><dd>${b.event_date}</dd></div>
-            <div><dt>Time</dt><dd>${b.start_time?.slice(0,5)} – ${b.end_time?.slice(0,5)}</dd></div>
-            <div><dt>Total</dt><dd>${b.total_amount != null ? '₱' + Number(b.total_amount).toLocaleString('en-PH') : '—'}</dd></div>
-          </dl>
-          ${b.status === 'Pending' ? `<button type="button" class="res-btn res-btn--ghost cancel-fb-btn" data-fb-id="${b.id}">Cancel request</button>` : ''}
-        </article>`).join('');
-
-      mount.addEventListener('click', async (e) => {
-        const btn = e.target.closest('.cancel-fb-btn');
-        if (!btn) return;
-        if (!confirm('Cancel this venue booking request?')) return;
-        try {
-          await cancelFacilityBooking(btn.dataset.fbId);
-          await loadVenueBookings();
-        } catch (err) {
-          alert(err.message);
-        }
-      });
-    } catch (err) {
-      mount.innerHTML = `<div class="text-body-sm text-error text-center py-8">${escapeHtml(err.message)}</div>`;
+    if (!venueBookingsLoaded) {
+      mount.innerHTML = `
+        <div class="skeleton h-28 rounded-2xl"></div>
+        <div class="skeleton h-28 rounded-2xl"></div>`;
     }
+    try {
+      const rows = await getFacilityBookings();
+      allVenueBookings = rows.map(normalizeFacilityBooking)
+        .sort((a, b) => `${b.eventDate}${b.startTime}`.localeCompare(`${a.eventDate}${a.startTime}`));
+      venueBookingsLoaded = true;
+      applyAndRenderVenues();
+    } catch (err) {
+      mount.innerHTML = `<div class="text-center py-12 text-error animate-fade-in"><span class="material-symbols-outlined text-[40px] mb-2 block">error</span><p>${escapeHtml(err.message)}</p></div>`;
+    }
+  }
+
+  document.getElementById('venue-bookings-list')?.addEventListener('click', async (e) => {
+    const btn = e.target.closest('.cancel-fb-btn');
+    if (!btn) return;
+    if (!confirm('Cancel this venue booking? This cannot be undone.')) return;
+    try {
+      await cancelFacilityBooking(btn.dataset.fbId);
+      await loadVenueBookings();
+    } catch (err) {
+      alert(err.message || 'Could not cancel');
+    }
+  });
+
+  document.getElementById('venue-status-filter')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-venue-status]');
+    if (!btn) return;
+    venueActiveStatus = btn.dataset.venueStatus;
+    document.querySelectorAll('#venue-status-filter button').forEach((b) => {
+      const on = b === btn;
+      b.classList.toggle('bg-primary', on);
+      b.classList.toggle('text-on-primary', on);
+      b.classList.toggle('bg-surface-container-low', !on);
+      b.classList.toggle('border', !on);
+      b.classList.toggle('border-outline-variant', !on);
+    });
+    applyAndRenderVenues();
+  });
+
+  let venueSearchTimer;
+  document.getElementById('venue-bookings-search')?.addEventListener('input', (e) => {
+    clearTimeout(venueSearchTimer);
+    venueSearchTimer = setTimeout(() => {
+      venueSearchTerm = e.target.value.trim();
+      applyAndRenderVenues();
+    }, 250);
+  });
+
+  function switchResTab(target) {
+    document.querySelectorAll('[data-res-tab]').forEach((b) => {
+      const on = b.dataset.resTab === target;
+      b.classList.toggle('app-tab-active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-res-panel]').forEach((panel) => {
+      const show = panel.dataset.resPanel === target;
+      panel.classList.toggle('hidden', !show);
+      panel.classList.toggle('is-tab-hidden', !show);
+    });
+    if (target === 'venues') loadVenueBookings();
   }
 
   /* Tab switching for room-stays / venues */
   document.querySelectorAll('[data-res-tab]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const target = btn.dataset.resTab;
-      document.querySelectorAll('[data-res-tab]').forEach(b => {
-        const on = b === btn;
-        b.classList.toggle('app-tab-active', on);
-        b.setAttribute('aria-selected', on ? 'true' : 'false');
-      });
-      document.querySelectorAll('[data-res-panel]').forEach(panel => {
-        const show = panel.dataset.resPanel === target;
-        panel.classList.toggle('hidden', !show);
-        panel.classList.toggle('is-tab-hidden', !show);
-      });
-      if (target === 'venues') loadVenueBookings();
+      switchResTab(btn.dataset.resTab);
     });
   });
 
   await loadBookings();
+
+  if (location.hash === '#venues') {
+    switchResTab('venues');
+  }
 
   async function applyBookingFromQuery() {
     const qp = parseBookQuery();

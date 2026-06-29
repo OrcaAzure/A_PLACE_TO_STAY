@@ -6,6 +6,8 @@ import { getProfile, updateProfile, getAdminSummary, getFiscalYear, updateFiscal
 import { initTabGroup } from '/assets/js/layout/tabs.js';
 import { formatDate } from '/assets/js/features/reservation-shared.js';
 
+let fiscalYearInfo = null;
+
 const ROLE_DESCRIPTIONS = {
   'Super Admin': 'Full system access',
   Admin: 'Manage bookings, rooms, and users',
@@ -63,7 +65,7 @@ export async function loadAdminSettings() {
     }
   });
 
-  document.getElementById('fy-settings-save-btn')?.addEventListener('click', saveFiscalYearSettings);
+  document.getElementById('system-settings-save-btn')?.addEventListener('click', saveSystemSettings);
 }
 
 function bindTabs() {
@@ -114,24 +116,42 @@ function renderFiscalYearSettings(info) {
   if (monthSelect && info.settings) monthSelect.value = String(info.settings.fiscal_year_start_month);
   if (dayInput && info.settings) dayInput.value = String(info.settings.fiscal_year_start_day);
   if (advanceInput && info.settings) advanceInput.value = String(info.settings.booking_advance_months);
+  const cutoffInput = document.getElementById('guest-cancel-cutoff-days');
+  const cancelSummary = document.getElementById('sys-cancellation-policy-summary');
+  if (cutoffInput && info.settings) cutoffInput.value = String(info.settings.guest_cancellation_cutoff_days ?? 1);
+  if (cancelSummary) {
+    cancelSummary.textContent = info.cancellationPolicyLabel || 'Guests may cancel before check-in or the event date within the configured window.';
+  }
 }
 
-async function saveFiscalYearSettings() {
-  const feedback = document.getElementById('fy-settings-feedback');
-  const btn = document.getElementById('fy-settings-save-btn');
+async function saveSystemSettings() {
+  const feedback = document.getElementById('system-settings-feedback');
+  const btn = document.getElementById('system-settings-save-btn');
+  if (!btn) return;
+
   btn.disabled = true;
   feedback?.classList.add('hidden');
 
   try {
+    const cutoffRaw = document.getElementById('guest-cancel-cutoff-days')?.value;
     const payload = {
       fiscal_year_start_month: Number(document.getElementById('fy-start-month')?.value),
       fiscal_year_start_day: Number(document.getElementById('fy-start-day')?.value),
       booking_advance_months: Number(document.getElementById('fy-advance-months')?.value),
+      guest_cancellation_cutoff_days: Number(cutoffRaw),
     };
+
+    if ([payload.fiscal_year_start_month, payload.fiscal_year_start_day, payload.booking_advance_months].some((n) => Number.isNaN(n))) {
+      throw new Error('Fiscal year and booking window fields must be valid numbers.');
+    }
+    if (Number.isNaN(payload.guest_cancellation_cutoff_days)) {
+      throw new Error('Guest cancellation days must be a valid number (0–90).');
+    }
+
     fiscalYearInfo = await updateFiscalYearSettings(payload);
     renderFiscalYearSettings(fiscalYearInfo);
     if (feedback) {
-      feedback.textContent = 'Fiscal year settings saved.';
+      feedback.textContent = 'System settings saved.';
       feedback.className = 'text-body-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2';
       feedback.classList.remove('hidden');
     }
