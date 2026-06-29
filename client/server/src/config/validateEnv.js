@@ -17,16 +17,17 @@ function warn(message) {
 }
 
 export function validateEnv() {
+  const secret = JWT_SECRET?.trim();
   const missing = [];
   if (!DB_HOST) missing.push('DB_HOST');
   if (!DB_USER) missing.push('DB_USER');
   if (!DB_NAME) missing.push('DB_NAME');
-  if (!JWT_SECRET) missing.push('JWT_SECRET');
+  if (!secret) missing.push('JWT_SECRET');
   if (missing.length) {
     fail(`Missing required env vars: ${missing.join(', ')}. Copy .env.example to client/server/.env`);
   }
 
-  if (JWT_SECRET.length < 32) {
+  if (secret.length < 32) {
     if (isProduction) {
       fail('JWT_SECRET must be at least 32 characters in production.');
     }
@@ -34,7 +35,7 @@ export function validateEnv() {
   }
 
   if (isProduction) {
-    if (WEAK_SECRETS.has(JWT_SECRET)) {
+    if (WEAK_SECRETS.has(secret.toLowerCase())) {
       fail('JWT_SECRET is still the example placeholder. Generate a strong random secret.');
     }
     if (!process.env.ALLOWED_ORIGIN) {

@@ -6,7 +6,7 @@ const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
 const paymentSelect = `
   SELECT p.*,
-         b.check_in, b.check_out, b.status AS booking_status,
+         b.user_id, b.check_in, b.check_out, b.status AS booking_status,
          u.full_name AS guest_name, u.email AS guest_email,
          r.room_number, r.room_type,
          bl.name AS building_name
@@ -39,6 +39,9 @@ export const getPaymentById = async (req, res) => {
   try {
     const [rows] = await pool.query(`${paymentSelect} WHERE p.id = ? LIMIT 1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Payment not found' });
+    if (!ADMIN_ROLES.includes(req.user.role) && rows[0].user_id !== req.user.id) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
     res.status(200).json({ payment: rows[0] });
   } catch (error) {
     res.status(500).json({ message: error.message });
