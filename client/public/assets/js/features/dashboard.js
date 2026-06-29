@@ -206,7 +206,6 @@ export async function loadDashboard() {
 
   await renderBuildingChart(buildingUsage);
   renderRecentActivity(recentActivity);
-  await renderQueue(kpis);
 
   setText('chart-period-label', 'Last 30 days · approved bookings');
   revealPageContent();

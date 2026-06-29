@@ -1,5 +1,10 @@
 /* Admin dashboard — reservation queue and quick links */
 
+/* No header divider inside Building Usage / Recent Activity panels */
+.admin-shell #page-content > .grid .admin-panel-header {
+  border-bottom: none;
+}
+
 .dashboard-quick-links {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
