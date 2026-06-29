@@ -329,22 +329,22 @@
 
         <input type="hidden" id="booking-room" />
 
-        <section id="booking-extras-panel" class="guest-booking-extras hidden space-y-4">
+        <section id="booking-extras-panel" class="guest-booking-extras hidden">
           <div class="guest-booking-extras__head">
             <div>
               <h4 class="guest-booking-extras__title">Meals & extras</h4>
-              <p class="guest-booking-extras__sub">Optional add-ons — tap to add meals or common fees.</p>
+              <p class="guest-booking-extras__sub">Optional add-ons for your stay.</p>
             </div>
-            <span class="material-symbols-outlined text-primary/70 text-[22px]" aria-hidden="true">restaurant</span>
           </div>
-          <div>
-            <p class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">Meals</p>
+          <div class="guest-extras-block">
+            <p class="guest-extras-block__label">Meals</p>
             <div id="booking-meals-grid" class="guest-meals-grid"></div>
           </div>
-          <div>
-            <p class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">Extra services</p>
-            <div id="booking-fee-chips" class="guest-fee-chips"></div>
-            <div id="booking-selected-fees" class="guest-selected-fees hidden"></div>
+          <div class="guest-extras-block">
+            <p class="guest-extras-block__label">Extra services</p>
+            <div id="booking-selected-fees" class="guest-added-extras hidden"></div>
+            <div id="booking-fee-chips" class="guest-service-grid"></div>
+            <div id="booking-fee-submenu" class="guest-service-drawer hidden" aria-live="polite"></div>
           </div>
         </section>
 
@@ -711,6 +711,7 @@
     panelEl: document.getElementById('booking-extras-panel'),
     mealsMount: document.getElementById('booking-meals-grid'),
     feeChipsMount: document.getElementById('booking-fee-chips'),
+    feeSubmenuMount: document.getElementById('booking-fee-submenu'),
     selectedFeesMount: document.getElementById('booking-selected-fees'),
     onChange: () => updateBookingTotals(),
   });
