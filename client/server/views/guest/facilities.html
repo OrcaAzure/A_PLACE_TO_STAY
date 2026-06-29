@@ -1,21 +1,24 @@
 <!DOCTYPE html>
-<html class="h-full" lang="en">
+<html class="scroll-smooth" lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Facilities | AptSpace Guest</title>
+<title>Browse | AptSpace Guest</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/config/tailwind-theme-base.js"></script>
-<script src="/assets/js/config/tailwind-admin.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="/assets/js/config/tailwind-guest.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/assets/css/global/landing.css"/>
+<link rel="stylesheet" href="/assets/css/global/guest-portal.css"/>
 <link rel="stylesheet" href="/assets/css/global/main.css" />
 <link rel="stylesheet" href="/assets/css/components/components.css" />
 <link rel="stylesheet" href="/assets/css/global/responsive.css" />
-<link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
-    <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
-<link rel="stylesheet" href="/assets/css/global/guest-layout.css" />
 <style>
+    .material-symbols-outlined {
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        vertical-align: middle;
+    }
     @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
     .reveal { opacity: 0; animation: fadeInUp .45s cubic-bezier(.22,.61,.36,1) forwards; }
     .skeleton { background: #eef2f7; border-radius: 16px; animation: pulse 1.3s ease-in-out infinite; }
@@ -27,70 +30,84 @@
 <body>
 
 <div id="page-content">
-<div class="max-w-container-max mx-auto flex flex-col gap-gutter">
+<div class="max-w-container-max mx-auto flex flex-col gap-6 sm:gap-8">
 
-  <div class="reveal">
-    <h2 class="font-headline-xl text-headline-xl text-on-surface">Browse Rooms</h2>
-    <p class="font-body-md text-body-md text-on-surface-variant">Check live availability and pricing for your dates, then reserve.</p>
-  </div>
+  <header class="browse-hero reveal">
+    <p class="browse-kicker">Browse</p>
+    <h2 class="font-headline-xl text-headline-xl text-on-surface" id="rooms">Find your space</h2>
+    <p id="browse-subtitle" class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Pick a category, set your dates, and reserve what is open for your account.</p>
+  </header>
 
-  <section class="bg-white rounded-2xl p-4 sm:p-6 border border-outline-variant shadow-sm reveal" style="animation-delay:.05s">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+  <div id="guest-access-notice" class="reveal"></div>
+
+  <section class="reveal space-y-3" style="animation-delay:.03s">
+    <div class="flex items-end justify-between gap-3">
       <div>
-        <label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Check-in</label>
-        <input id="filter-check-in" class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm" type="date">
-      </div>
-      <div>
-        <label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Check-out</label>
-        <input id="filter-check-out" class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm" type="date">
-      </div>
-      <div>
-        <label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Guests</label>
-        <input id="filter-guests" type="number" min="1" value="1" class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm">
-      </div>
-      <div class="flex items-end">
-        <button id="find-rooms" class="w-full bg-primary text-white px-6 py-3 rounded-xl font-label-md flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-md active:scale-[0.98]">
-          <span class="material-symbols-outlined text-xl">search</span>
-          Check availability
-        </button>
+        <p class="text-label-sm text-outline uppercase tracking-wider mb-1">Categories</p>
+        <p id="active-category-label" class="text-body-sm text-on-surface-variant"></p>
       </div>
     </div>
-    <div id="availability-note" class="hidden mt-4 flex items-center justify-between gap-3 text-body-sm">
-      <span id="availability-text" class="text-on-surface-variant"></span>
-      <button id="clear-dates" class="text-primary font-label-md hover:underline">Show all rooms</button>
-    </div>
+    <div id="browse-category-cards" class="browse-category-strip"></div>
   </section>
 
-  <div class="flex flex-col gap-3 reveal" style="animation-delay:.1s">
-    <div class="flex flex-wrap items-center gap-2 w-full">
-      <div class="flex items-center bg-surface-container-low px-4 py-2 rounded-full border border-outline-variant w-full sm:w-72 min-w-0 transition-all focus-within:border-primary focus-within:shadow-sm">
-        <span class="material-symbols-outlined text-outline text-[20px]">search</span>
-        <input id="room-search" class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full" placeholder="Search rooms..." type="text"/>
+  <div id="browse-price-notice" class="reveal" style="animation-delay:.05s"></div>
+
+  <div id="browse-room-tools" class="space-y-4 reveal" style="animation-delay:.08s">
+    <section class="browse-panel p-4 sm:p-6">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div>
+          <label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Check-in</label>
+          <input id="filter-check-in" class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm" type="date">
+        </div>
+        <div>
+          <label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Check-out</label>
+          <input id="filter-check-out" class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm" type="date">
+        </div>
+        <div>
+          <label class="block font-label-sm text-label-sm text-outline mb-2 uppercase tracking-wider">Guests</label>
+          <input id="filter-guests" type="number" min="1" value="1" class="w-full border-outline-variant rounded-xl focus:ring-primary focus:border-primary px-4 py-3 bg-surface-container-low text-body-sm">
+        </div>
+        <div class="flex items-end">
+          <button id="find-rooms" class="w-full bg-primary text-white px-6 py-3 rounded-xl font-label-md flex items-center justify-center gap-2 hover:brightness-110 transition-all shadow-md active:scale-[0.98]">
+            <span class="material-symbols-outlined text-xl">search</span>
+            Check availability
+          </button>
+        </div>
       </div>
-    </div>
-    <div class="flex flex-wrap gap-2" id="building-filters"></div>
-    <div class="flex flex-wrap items-center gap-2">
-      <span class="text-label-sm text-outline uppercase tracking-wider mr-1">Type:</span>
-      <div class="flex flex-wrap gap-2" id="type-filters"></div>
+      <div id="availability-note" class="hidden mt-4 flex items-center justify-between gap-3 text-body-sm">
+        <span id="availability-text" class="text-on-surface-variant"></span>
+        <button id="clear-dates" class="text-primary font-label-md hover:underline">Clear dates</button>
+      </div>
+    </section>
+
+    <section class="browse-panel p-4 sm:p-5 space-y-3">
+      <div class="flex items-center bg-surface-container-low px-4 py-2.5 rounded-full border border-outline-variant w-full sm:max-w-md transition-all focus-within:border-primary focus-within:shadow-sm">
+        <span class="material-symbols-outlined text-outline text-[20px]">search</span>
+        <input id="room-search" class="bg-transparent border-none focus:ring-0 text-body-sm font-body-sm w-full ml-2" placeholder="Search by room, building, or type…" type="text"/>
+      </div>
+      <div class="flex flex-wrap gap-2" id="building-filters"></div>
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="text-label-sm text-outline uppercase tracking-wider mr-1">Type</span>
+        <div class="flex flex-wrap gap-2" id="type-filters"></div>
+      </div>
+    </section>
+  </div>
+
+  <div id="rooms-mount" class="space-y-8">
+    <div class="grid grid-cols-1 gap-5">
+      <div class="skeleton h-56"></div>
+      <div class="skeleton h-56"></div>
     </div>
   </div>
 
-  <div id="rooms-mount" class="space-y-10">
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-      <div class="skeleton h-64"></div>
-      <div class="skeleton h-64"></div>
-      <div class="skeleton h-64"></div>
-    </div>
+  <div class="reveal pt-2" style="animation-delay:.12s" id="venues">
+    <p class="browse-kicker">Venues</p>
+    <h2 class="font-headline-xl text-headline-xl text-on-surface">Event spaces</h2>
+    <p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Hourly bookings with live slot checks before you submit.</p>
   </div>
 
-  <div class="reveal" style="animation-delay:.15s">
-    <h2 class="font-headline-xl text-headline-xl text-on-surface">Browse Venues</h2>
-    <p class="font-body-md text-body-md text-on-surface-variant">Book a seminar hall, chapel, or meeting space for your event.</p>
-  </div>
-
-  <div id="venues-mount" class="space-y-10 reveal" style="animation-delay:.2s">
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-      <div class="skeleton h-48"></div>
+  <div id="venues-mount" class="space-y-8 reveal" style="animation-delay:.15s">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
       <div class="skeleton h-48"></div>
       <div class="skeleton h-48"></div>
     </div>
@@ -139,6 +156,9 @@
 
     <div id="vbm-feedback" class="hidden text-body-sm rounded-lg px-3 py-2"></div>
 
+    <div id="vbm-slot-status" class="hidden text-body-sm rounded-lg px-3 py-2"></div>
+    <div id="vbm-price-notice"></div>
+
     <div class="flex gap-3 pt-1">
       <button type="button" id="vbm-cancel-btn"
         class="flex-1 border border-outline-variant rounded-lg py-2.5 text-body-sm text-on-surface hover:bg-surface-container-low">
@@ -152,33 +172,40 @@
   </div>
 </div>
 
-<footer class="border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter mt-10 w-full">
-<div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-<div class="flex items-center gap-2">
-<span class="font-headline-sm text-primary">AptSpace</span>
-<span class="text-on-surface-variant text-body-sm">© 2026 Asia Pacific Theological Seminary</span>
-</div>
-<div class="flex gap-6">
-<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
-<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
-<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact Support</a>
-</div>
-</div>
-</footer>
 </div>
 
 <script type="module">
   import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
   import { initAppLayout } from '/assets/js/layout/ui.js';
-  import { getRooms, getRoomAvailability, normalizeRoom, getVenueFacilities, getVenueRateQuote, createFacilityBooking } from '/assets/js/services/api.js';
+  import { getRooms, getRoomAvailability, normalizeRoom, getVenueFacilities, getVenueRateQuote, createFacilityBooking, checkVenueSlotAvailability } from '/assets/js/services/api.js';
+  import {
+    buildBookReservationUrl,
+    isAvailabilityBookable,
+    isDbStatusBookable,
+    priceNoticeHtml,
+    readBrowseQuery,
+    isInternalGuest,
+    getBrowseCategories,
+    resolveBrowseCategory,
+    getBrowseCategoryMeta,
+    categoryShowsRooms,
+    roomAllowedForGuest,
+    venueMatchesBrowseCategory,
+    guestAccessNoticeHtml,
+  } from '/assets/js/features/guest-booking-flow.js';
 
   requireAuth();
   await initAppLayout({
     portal: 'guest',
     activePage: 'facilities',
-    title: 'Facilities',
-    subtitle: 'Guest Portal',
   });
+
+  const isInternal = isInternalGuest();
+  const browseCategories = getBrowseCategories(isInternal);
+
+  document.getElementById('browse-price-notice').innerHTML = priceNoticeHtml();
+  document.getElementById('vbm-price-notice').innerHTML = priceNoticeHtml('mt-1');
+  document.getElementById('guest-access-notice').innerHTML = guestAccessNoticeHtml(isInternal);
 
   const BLOCKED_BUILDINGS = ['House'];
   const isBlocked = (n) => BLOCKED_BUILDINGS.includes(String(n || '').trim());
@@ -196,17 +223,28 @@
     'Deluxe 3 BR': 'meeting_room',
   };
 
-  let allRooms = [];          // normalized rooms (House excluded)
-  let availability = null;    // Map<roomId, availInfo> when a date search is active
+  const ROOM_IMAGE_BY_TYPE = {
+    'Dorm': 'https://images.unsplash.com/photo-1555854877-bab0e5b6b4f5?auto=format&fit=crop&w=1200&q=80',
+    'Superior Guest Room': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1200&q=80',
+    'Standard Apartment': 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
+    'Deluxe 2 BR': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
+    'Deluxe 3 BR': 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80',
+  };
+
+  const CATEGORY_DEFS = browseCategories;
+
+  let allRooms = [];
+  let availability = null;
   let filters = { building: '', type: '', search: '' };
+  let selectedCategory = resolveBrowseCategory(readBrowseQuery().category, isInternal);
 
   function statusInfo(room) {
-    // When a date range is searched, use availability_status; otherwise room.status.
     if (availability) {
       const a = availability.get(room.id);
       const map = {
         available: { label: 'Available', cls: 'bg-emerald-500 text-white', bookable: true },
         booked: { label: 'Booked', cls: 'bg-slate-600 text-white', bookable: false },
+        occupied: { label: 'Occupied', cls: 'bg-slate-600 text-white', bookable: false },
         too_small: { label: 'Too Small', cls: 'bg-amber-500 text-white', bookable: false },
         dirty: { label: 'Being cleaned', cls: 'bg-orange-500 text-white', bookable: false },
         maintenance: { label: 'Out of order', cls: 'bg-red-500 text-white', bookable: false },
@@ -220,6 +258,96 @@
       Maintenance: { label: 'Out of order', cls: 'bg-red-500 text-white', bookable: false },
     };
     return map[room.status] || map.Occupied;
+  }
+
+  function categoryMeta(id) {
+    return getBrowseCategoryMeta(id, isInternal);
+  }
+
+  function updateBrowseHeadings() {
+    const meta = categoryMeta(selectedCategory);
+    const subtitle = document.getElementById('browse-subtitle');
+    const roomsHeading = document.getElementById('rooms');
+    if (subtitle) {
+      subtitle.textContent = categoryShowsRooms(selectedCategory)
+        ? (isInternal
+          ? 'Set your dates to see bookable rooms across campus guest houses.'
+          : 'Set your dates to see bookable PCALM rooms for your stay.')
+        : `Browse ${meta.label.toLowerCase()} available to your account. Pick a space and submit a request.`;
+    }
+    if (roomsHeading) {
+      roomsHeading.textContent = categoryShowsRooms(selectedCategory) ? meta.label : 'Find your space';
+    }
+  }
+
+  function renderCategoryCards() {
+    const mount = document.getElementById('browse-category-cards');
+    const label = document.getElementById('active-category-label');
+    if (!mount) return;
+
+    mount.innerHTML = CATEGORY_DEFS.map((cat) => {
+      const meta = getBrowseCategoryMeta(cat.id, isInternal);
+      return `
+      <button
+        type="button"
+        data-category="${cat.id}"
+        class="browse-category-card ${selectedCategory === cat.id ? 'is-active' : ''}"
+        aria-pressed="${selectedCategory === cat.id ? 'true' : 'false'}"
+      >
+        <div class="browse-category-card__media">
+          <img src="${cat.image}" alt="${meta.label}" loading="lazy" />
+          <div class="browse-category-card__overlay"></div>
+          <div class="browse-category-card__text">
+            <strong>${meta.label}</strong>
+            <span>${meta.description}</span>
+          </div>
+        </div>
+      </button>`;
+    }).join('');
+
+    if (label) {
+      label.textContent = `Showing ${categoryMeta(selectedCategory).label}`;
+    }
+    updateBrowseHeadings();
+    applyCategoryVisibility();
+  }
+
+  function setSelectedCategory(categoryId, { scroll = false } = {}) {
+    selectedCategory = resolveBrowseCategory(categoryId, isInternal);
+    renderCategoryCards();
+    render();
+    renderVenues();
+    if (scroll) {
+      if (categoryShowsRooms(selectedCategory)) {
+        document.getElementById('rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        document.getElementById('venues')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+
+  function applyCategoryVisibility() {
+    const roomTools = document.getElementById('browse-room-tools');
+    const roomsBlock = document.getElementById('rooms-mount');
+    const venuesSection = document.getElementById('venues');
+    const venuesBlock = document.getElementById('venues-mount');
+    const showRooms = categoryShowsRooms(selectedCategory);
+    roomTools?.classList.toggle('hidden', !showRooms);
+    roomsBlock?.classList.toggle('hidden', !showRooms);
+    venuesSection?.classList.toggle('hidden', showRooms);
+    venuesBlock?.classList.toggle('hidden', showRooms);
+  }
+
+  function visibleRooms() {
+    const filtered = applyFilters().filter((room) => roomAllowedForGuest(room, isInternal));
+    if (!categoryShowsRooms(selectedCategory)) return [];
+    if (availability) {
+      return filtered.filter((r) => {
+        const a = availability.get(r.id);
+        return a && isAvailabilityBookable(a.availability_status);
+      });
+    }
+    return filtered.filter((r) => isDbStatusBookable(r.status));
   }
 
   function priceFor(room) {
@@ -259,9 +387,7 @@
     const st = statusInfo(room);
     const price = priceFor(room);
     const icon = TYPE_ICON[room.roomType] || 'meeting_room';
-    const priceBadge = price && price.total != null
-      ? `<div class="absolute top-3 right-3 bg-white/90 text-primary px-3 py-1 rounded-full text-[12px] font-bold shadow">${peso(price.total)}</div>`
-      : '';
+    const img = ROOM_IMAGE_BY_TYPE[room.roomType] || 'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=1200&q=80';
     const priceLine = price && price.perNight != null
       ? `<p class="text-body-sm text-on-surface-variant mb-4">${peso(price.perNight)} / night · ${price.nights} night(s)</p>`
       : '<div class="mb-4"></div>';
@@ -269,40 +395,58 @@
     if (readOnly) {
       reserveBtn = `<div class="mt-auto w-full py-3 text-center bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">visibility</span>View only</div>`;
     } else if (st.bookable) {
-      reserveBtn = `<a href="./reservations.html" class="mt-auto block text-center w-full py-3 bg-primary text-white rounded-xl font-bold text-label-md hover:brightness-110 transition-all shadow-md active:scale-95">Reserve</a>`;
+      const checkIn = document.getElementById('filter-check-in').value;
+      const checkOut = document.getElementById('filter-check-out').value;
+      const guests = document.getElementById('filter-guests').value || '1';
+      const href = availability
+        ? buildBookReservationUrl({ roomId: room.id, checkIn, checkOut, guests })
+        : buildBookReservationUrl({ roomId: room.id });
+      reserveBtn = `<a href="${href}" class="mt-auto block text-center w-full py-3 bg-primary text-white rounded-xl font-bold text-label-md hover:brightness-110 transition-all shadow-md active:scale-95 no-underline">Reserve</a>`;
     } else {
       reserveBtn = `<button disabled class="mt-auto w-full py-3 bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md cursor-not-allowed">${st.label}</button>`;
     }
     return `
-      <div class="group flex flex-col bg-white rounded-2xl overflow-hidden border border-outline-variant hover:border-primary/40 hover:shadow-xl transition-all duration-300 reveal">
-        <div class="relative h-28 bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center">
-          <span class="material-symbols-outlined text-[44px] text-primary/70">${icon}</span>
+      <article class="browse-room-card reveal">
+        <div class="browse-room-card__media">
+          <img src="${img}" alt="${room.roomType} room ${room.roomNumber}" loading="lazy" />
+          <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent"></div>
           <div class="absolute top-3 left-3">
             <span class="${st.cls} px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest shadow">${st.label}</span>
           </div>
-          ${priceBadge}
         </div>
-        <div class="p-5 flex flex-col flex-1">
-          <div class="flex justify-between items-start mb-1">
-            <h3 class="text-2xl font-bold text-on-surface">${room.roomNumber}</h3>
-            <div class="flex items-center gap-1.5 text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-lg">
+        <div class="browse-room-card__body">
+          <div class="flex justify-between items-start gap-3 mb-1">
+            <div>
+              <p class="text-label-sm text-primary font-semibold mb-0.5">${room.building}</p>
+              <h3 class="text-xl md:text-2xl font-bold text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary/80 text-[22px]">${icon}</span>
+                Room ${room.roomNumber}
+              </h3>
+            </div>
+            <div class="flex items-center gap-1.5 text-on-surface-variant bg-surface-container px-2.5 py-1 rounded-lg shrink-0">
               <span class="material-symbols-outlined text-[18px]">group</span>
               <span class="font-label-sm font-semibold">${room.capacityMin}-${room.capacityMax}</span>
             </div>
           </div>
-          <p class="text-body-sm text-on-surface-variant">${room.building}</p>
-          <p class="text-label-sm text-primary font-medium mb-3">${room.roomType}</p>
+          <p class="text-body-sm text-on-surface-variant mb-1">${room.roomType}</p>
           ${priceLine}
           ${reserveBtn}
         </div>
-      </div>`;
+      </article>`;
   }
 
   function render() {
     const mount = document.getElementById('rooms-mount');
-    const rooms = applyFilters();
+    applyCategoryVisibility();
+    const rooms = visibleRooms();
     if (!rooms.length) {
-      mount.innerHTML = `<div class="text-center py-16 text-on-surface-variant"><span class="material-symbols-outlined text-[48px] mb-2 block">search_off</span><p>No rooms match your filters.</p></div>`;
+      const hasFilters = filters.building || filters.type || filters.search.trim();
+      const msg = availability
+        ? 'No rooms are available for these dates and filters. Try different dates, fewer guests, or another building.'
+        : hasFilters
+          ? 'No bookable rooms match your filters right now. Clear filters or pick dates to check future availability.'
+          : 'No rooms are open for booking at the moment. Select check-in and check-out dates above to see what opens up for your stay.';
+      mount.innerHTML = `<div class="text-center py-16 text-on-surface-variant"><span class="material-symbols-outlined text-[48px] mb-2 block">search_off</span><p class="max-w-md mx-auto">${msg}</p></div>`;
       return;
     }
     // Group by building
@@ -315,7 +459,7 @@
           <span class="text-label-sm text-outline">${groups[building].length} room(s)</span>
           <div class="h-[1px] w-full bg-outline-variant/30"></div>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 gap-5">
           ${groups[building].map(roomCard).join('')}
         </div>
       </div>`).join('');
@@ -326,7 +470,9 @@
       const rooms = await getRooms();
       allRooms = rooms
         .map((r) => ({ ...normalizeRoom(r), capacityMin: r.capacity_min, capacityMax: r.capacity_max }))
-        .filter((r) => !isBlocked(r.building));
+        .filter((r) => !isBlocked(r.building))
+        .filter((r) => roomAllowedForGuest(r, isInternal));
+      renderCategoryCards();
       renderFilters();
       render();
     } catch (err) {
@@ -361,7 +507,7 @@
       availability = new Map((data.rooms || []).map((r) => [r.id, r]));
       const avail = (data.rooms || []).filter((r) => r.availability_status === 'available' && !isBlocked(r.building_name)).length;
       note.classList.remove('hidden');
-      noteText.textContent = `${avail} room(s) available for ${checkIn} → ${checkOut} · ${guests} guest(s). Pricing shown below.`;
+      noteText.textContent = `${avail} bookable room(s) for ${checkIn} → ${checkOut} · ${guests} guest(s). Occupied, booked, and out-of-order rooms are hidden.`;
       render();
     } catch (err) {
       note.classList.remove('hidden');
@@ -399,14 +545,17 @@
     renderFilters();
     render();
   });
+  document.getElementById('browse-category-cards').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-category]');
+    if (!btn) return;
+    setSelectedCategory(btn.dataset.category, { scroll: true });
+  });
 
   let searchTimer;
   document.getElementById('room-search').addEventListener('input', (e) => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => { filters.search = e.target.value; render(); }, 200);
   });
-
-  loadRooms();
 
   // ---- Venue section ----
   function escapeHtml(str) {
@@ -459,33 +608,44 @@
       </div>`;
   }
 
+  let allVenueSpaces = [];
+
+  function renderVenues() {
+    const mount = document.getElementById('venues-mount');
+    if (!mount) return;
+    const spaces = allVenueSpaces.filter((s) => venueMatchesBrowseCategory(s, selectedCategory));
+    if (!spaces.length) {
+      mount.innerHTML = '<p class="text-body-sm text-on-surface-variant">No venues available for this category.</p>';
+      return;
+    }
+    const groups = {};
+    spaces.forEach((s) => { (groups[s.category] = groups[s.category] || []).push(s); });
+    mount.innerHTML = Object.keys(groups).sort().map(cat => `
+      <div class="space-y-5">
+        <div class="flex items-center gap-4">
+          <h4 class="font-headline-sm text-on-surface-variant whitespace-nowrap">${escapeHtml(cat)}</h4>
+          <div class="h-[1px] w-full bg-outline-variant/30"></div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          ${groups[cat].map(venueCard).join('')}
+        </div>
+      </div>`).join('');
+  }
+
   async function loadVenues() {
     const mount = document.getElementById('venues-mount');
     try {
       const grouped = await getVenueFacilities();
-      const spaces = flattenVenueSpaces(grouped);
-      if (!spaces.length) {
+      allVenueSpaces = flattenVenueSpaces(grouped);
+      if (!allVenueSpaces.length) {
         mount.innerHTML = '<p class="text-body-sm text-on-surface-variant">No venues available.</p>';
         return;
       }
-      const groups = {};
-      spaces.forEach((s) => { (groups[s.category] = groups[s.category] || []).push(s); });
-      mount.innerHTML = Object.keys(groups).sort().map(cat => `
-        <div class="space-y-5">
-          <div class="flex items-center gap-4">
-            <h4 class="font-headline-sm text-on-surface-variant whitespace-nowrap">${escapeHtml(cat)}</h4>
-            <div class="h-[1px] w-full bg-outline-variant/30"></div>
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            ${groups[cat].map(venueCard).join('')}
-          </div>
-        </div>`).join('');
+      renderVenues();
     } catch (err) {
       mount.innerHTML = `<div class="text-center py-8 text-error"><p>${err.message}</p></div>`;
     }
   }
-
-  loadVenues();
 
   // ---- Venue booking modal ----
   const modal    = document.getElementById('venue-booking-modal');
@@ -520,7 +680,9 @@
     const dateEl = document.getElementById('vbm-date');
     if (dateEl) dateEl.min = new Date().toISOString().slice(0, 10);
     feedback?.classList.add('hidden');
-    if (rateHint) rateHint.textContent = 'Rate depends on the event date (Regular or Peak).';
+    document.getElementById('vbm-slot-status')?.classList.add('hidden');
+    if (submitBtn) submitBtn.disabled = false;
+    if (rateHint) rateHint.textContent = 'Pick a date and time — we check slot availability before you submit.';
     modal?.classList.remove('hidden');
   }
 
@@ -538,7 +700,49 @@
   document.getElementById('vbm-cancel-btn')?.addEventListener('click', closeVenueModal);
   modal?.addEventListener('click', (e) => { if (e.target === modal) closeVenueModal(); });
 
-  document.getElementById('vbm-date')?.addEventListener('change', () => updateVenueRateHint());
+  document.getElementById('vbm-date')?.addEventListener('change', () => { updateVenueRateHint(); checkVenueSlot(); });
+  document.getElementById('vbm-start')?.addEventListener('change', checkVenueSlot);
+  document.getElementById('vbm-end')?.addEventListener('change', checkVenueSlot);
+
+  let venueSlotTimer;
+  async function checkVenueSlot() {
+    clearTimeout(venueSlotTimer);
+    venueSlotTimer = setTimeout(async () => {
+      const slotEl = document.getElementById('vbm-slot-status');
+      if (!slotEl) return;
+      const category = catEl?.value;
+      const item = itemEl?.value;
+      const eventDate = document.getElementById('vbm-date')?.value;
+      const startTime = document.getElementById('vbm-start')?.value;
+      const endTime = document.getElementById('vbm-end')?.value;
+      if (!category || !item || !eventDate || !startTime || !endTime) {
+        slotEl.classList.add('hidden');
+        submitBtn.disabled = false;
+        return;
+      }
+      if (endTime <= startTime) {
+        slotEl.textContent = 'End time must be after start time.';
+        slotEl.className = 'text-body-sm rounded-lg px-3 py-2 bg-error/10 text-error';
+        slotEl.classList.remove('hidden');
+        submitBtn.disabled = true;
+        return;
+      }
+      try {
+        const result = await checkVenueSlotAvailability({ category, item, event_date: eventDate, start_time: startTime, end_time: endTime });
+        slotEl.textContent = result.available
+          ? `${result.message}${result.estimated_total != null ? ` Estimated: ₱${Number(result.estimated_total).toLocaleString('en-PH', { minimumFractionDigits: 2 })}.` : ''}`
+          : result.message;
+        slotEl.className = result.available
+          ? 'text-body-sm rounded-lg px-3 py-2 bg-emerald-50 text-emerald-800'
+          : 'text-body-sm rounded-lg px-3 py-2 bg-error/10 text-error';
+        slotEl.classList.remove('hidden');
+        submitBtn.disabled = !result.available;
+      } catch {
+        slotEl.classList.add('hidden');
+        submitBtn.disabled = false;
+      }
+    }, 350);
+  }
 
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('.book-venue-btn');
@@ -567,7 +771,23 @@
     if (!startTime || !endTime) return showMsg('Please set start and end times.', true);
     if (endTime <= startTime) return showMsg('End time must be after start time.', true);
 
-    submitBtn.disabled    = true;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Checking availability…';
+    try {
+      const slot = await checkVenueSlotAvailability({ category, item, event_date: eventDate, start_time: startTime, end_time: endTime });
+      if (!slot.available) {
+        showMsg(slot.message || 'This time slot is not available.', true);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Request';
+        return;
+      }
+    } catch (err) {
+      showMsg(err.message || 'Could not verify availability.', true);
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Request';
+      return;
+    }
+
     submitBtn.textContent = 'Submitting…';
 
     try {
@@ -582,5 +802,19 @@
       submitBtn.textContent = 'Submit Request';
     }
   });
+
+  const browseQ = readBrowseQuery();
+  selectedCategory = resolveBrowseCategory(browseQ.category, isInternal);
+  renderCategoryCards();
+  loadRooms();
+  loadVenues();
+  if (browseQ.checkIn) document.getElementById('filter-check-in').value = browseQ.checkIn;
+  if (browseQ.checkOut) document.getElementById('filter-check-out').value = browseQ.checkOut;
+  if (browseQ.guests) document.getElementById('filter-guests').value = browseQ.guests;
+  if (browseQ.checkIn && browseQ.checkOut) {
+    checkAvailability();
+  } else if (browseQ.focus === 'venues' || !categoryShowsRooms(selectedCategory)) {
+    document.getElementById('venues')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
 </script>
 </body></html>

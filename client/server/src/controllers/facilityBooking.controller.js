@@ -195,6 +195,51 @@ function formatTime(t) {
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
+export const checkVenueSlotAvailability = async (req, res) => {
+  try {
+    const { category, item, event_date, start_time, end_time } = req.query;
+    if (!category || !item || !event_date || !start_time || !end_time) {
+      return res.status(400).json({ message: 'category, item, event_date, start_time, and end_time are required' });
+    }
+
+    const startTime = normalizeTime(start_time);
+    const endTime = normalizeTime(end_time);
+    if (endTime <= startTime) {
+      return res.status(400).json({ message: 'End time must be after start time' });
+    }
+
+    const identity = await resolveFacilityIdentity({ category, item, event_date });
+    if (!identity) {
+      return res.status(404).json({ message: 'Venue space not found' });
+    }
+
+    const overlap = await findVenueBookingOverlap({
+      category: identity.category,
+      item: identity.item,
+      eventDate: event_date,
+      startTime,
+      endTime,
+    });
+
+    const { row: facilityRow } = identity;
+    const [sh, sm] = startTime.split(':').map(Number);
+    const [eh, em] = endTime.split(':').map(Number);
+    const hours = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+    const estimatedTotal = Math.round(Number(facilityRow.rate) * Math.max(hours, 1) * 100) / 100;
+
+    res.status(200).json({
+      available: !overlap,
+      estimated_total: estimatedTotal,
+      rate: Number(facilityRow.rate),
+      season: facilityRow.season,
+      calendar_season: identity.calendar_season || facilityRow.season,
+      message: overlap ? 'This time slot is already booked or pending approval.' : 'This time slot is available to request.',
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 /** Admin venue schedule — grouped bookable spaces with bookings for one date (optional time slot). */
 export const getVenueScheduleOverview = async (req, res) => {
   try {

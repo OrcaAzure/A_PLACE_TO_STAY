@@ -1,22 +1,25 @@
 <!DOCTYPE html>
-<html class="h-full" lang="en">
+<html class="scroll-smooth" lang="en">
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>Settings | AptSpace Guest</title>
+    <title>Account | AptSpace Guest</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="/assets/js/config/tailwind-theme-base.js"></script>
-    <script src="/assets/js/config/tailwind-admin.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <script src="/assets/js/config/tailwind-guest.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="/assets/css/global/landing.css"/>
+    <link rel="stylesheet" href="/assets/css/global/guest-portal.css"/>
     <link rel="stylesheet" href="/assets/css/global/main.css" />
     <link rel="stylesheet" href="/assets/css/components/components.css" />
     <link rel="stylesheet" href="/assets/css/global/responsive.css" />
-    <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
-    <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
-    <link rel="stylesheet" href="/assets/css/global/guest-layout.css" />
     <link rel="stylesheet" href="/assets/css/global/tabs-layout.css" />
     <style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
         .soft-shadow { box-shadow: 0px 1px 3px rgba(0,0,0,0.1); }
     </style>
 </head>
@@ -135,21 +138,6 @@
     </div>
 </div>
 
-<footer class="border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter mt-10">
-    <div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-        <div class="flex items-center gap-2">
-            <span class="font-headline-sm text-primary">AptSpace</span>
-            <span class="text-on-surface-variant text-body-sm">© 2026 Asia Pacific Theological Seminary</span>
-        </div>
-        <div class="flex gap-6">
-            <a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
-            <a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
-            <a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact Support</a>
-        </div>
-    </div>
-</footer>
-</div>
-
 <script type="module">
   import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
   import { initAppLayout } from '/assets/js/layout/ui.js';
@@ -160,8 +148,6 @@
   await initAppLayout({
     portal: 'guest',
     activePage: 'settings',
-    title: 'Settings',
-    subtitle: 'Guest Portal',
   });
 
   await loadGuestSettings();

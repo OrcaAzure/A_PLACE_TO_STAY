@@ -1,22 +1,25 @@
 <!DOCTYPE html>
-<html class="h-full" lang="en">
+<html class="scroll-smooth" lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Reservations | AptSpace Guest</title>
+<title>My Stays | AptSpace Guest</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="/assets/js/config/tailwind-theme-base.js"></script>
-<script src="/assets/js/config/tailwind-admin.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="/assets/js/config/tailwind-guest.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/assets/css/global/landing.css"/>
+<link rel="stylesheet" href="/assets/css/global/guest-portal.css"/>
 <link rel="stylesheet" href="/assets/css/global/main.css" />
 <link rel="stylesheet" href="/assets/css/components/components.css" />
 <link rel="stylesheet" href="/assets/css/global/responsive.css" />
-<link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
-    <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
-<link rel="stylesheet" href="/assets/css/global/guest-layout.css" />
 <link rel="stylesheet" href="/assets/css/global/tabs-layout.css" />
 <style>
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    vertical-align: middle;
+  }
   .glass-header {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -267,13 +270,14 @@
     <div class="p-6 border-b border-outline-variant flex items-center justify-between sticky top-0 bg-white z-10">
       <div>
         <h3 class="font-headline-md text-headline-md">New Reservation</h3>
-        <p class="text-body-sm text-on-surface-variant">Pick your dates, then choose an available room.</p>
+        <p class="text-body-sm text-on-surface-variant">Pick your dates, choose a room, and submit. Your selections carry through each step automatically.</p>
       </div>
       <button type="button" id="booking-modal-close" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-full p-1 transition-colors">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
     <form id="booking-form" class="p-6 space-y-5">
+      <div id="booking-price-notice"></div>
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-in">Check-in</label>
@@ -340,6 +344,7 @@
       </button>
     </div>
     <form id="group-form" class="p-6 space-y-4">
+      <div id="group-price-notice"></div>
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="group-name">Group / organization name</label>
         <input type="text" id="group-name" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="e.g. Youth Camp 2026" />
@@ -386,19 +391,6 @@
   </div>
 </div>
 
-<footer class="border-t border-outline-variant bg-surface-container-lowest py-8 px-margin-mobile md:px-gutter mt-10">
-<div class="max-w-container-max mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-<div class="flex items-center gap-2">
-<span class="font-headline-sm text-primary">AptSpace</span>
-<span class="text-on-surface-variant text-body-sm">© 2026 Asia Pacific Theological Seminary</span>
-</div>
-<div class="flex gap-6">
-<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a>
-<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a>
-<a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Contact Support</a>
-</div>
-</div>
-</footer>
 </div>
 
 <script type="module">
@@ -410,14 +402,16 @@
     getFacilityBookings, cancelFacilityBooking,
   } from '/assets/js/services/api.js';
   import { loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint } from '/assets/js/features/reservation-shared.js';
+  import { parseBookQuery, priceNoticeHtml } from '/assets/js/features/guest-booking-flow.js';
 
   requireAuth();
   await initAppLayout({
     portal: 'guest',
     activePage: 'reservations',
-    title: 'Reservations',
-    subtitle: 'Guest Portal',
   });
+
+  document.getElementById('booking-price-notice').innerHTML = priceNoticeHtml();
+  document.getElementById('group-price-notice').innerHTML = priceNoticeHtml();
 
   let fiscalBounds = null;
   try {
@@ -790,7 +784,7 @@
     document.getElementById('booking-summary-total').textContent =
       selectedRoom.estimated_total != null ? peso(selectedRoom.estimated_total) : '—';
     document.getElementById('booking-summary-meta').textContent =
-      `${selectedRoom.nights} night(s) · ${document.getElementById('booking-guests').value} guest(s) · estimate, subject to confirmation`;
+      `${selectedRoom.nights} night(s) · ${document.getElementById('booking-guests').value} guest(s) · estimate only, subject to staff confirmation`;
     box.classList.remove('hidden');
   }
 
@@ -991,7 +985,30 @@
   });
 
   await loadBookings();
-  if (location.hash === '#new-reservation') openBookingModal();
+
+  async function applyBookingFromQuery() {
+    const qp = parseBookQuery();
+    if (location.hash === '#new-reservation') qp.book = true;
+    if (!qp.book && !qp.roomId && !qp.checkIn) return;
+
+    openBookingModal();
+    if (qp.checkIn) document.getElementById('booking-check-in').value = qp.checkIn;
+    if (qp.checkOut) document.getElementById('booking-check-out').value = qp.checkOut;
+    if (qp.guests) document.getElementById('booking-guests').value = qp.guests;
+
+    if (qp.checkIn && qp.checkOut) {
+      await findRooms();
+      if (qp.roomId) {
+        document.querySelector(`.room-option[data-room-id="${qp.roomId}"]`)?.click();
+      }
+    }
+
+    if (window.history.replaceState) {
+      window.history.replaceState({}, '', `${window.location.pathname}${window.location.hash || ''}`);
+    }
+  }
+
+  await applyBookingFromQuery();
 </script>
 </body>
 </html>

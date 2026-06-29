@@ -14,7 +14,9 @@ import {
   resolveGuestUser,
   notifyBookingCreated,
   notifyBookingUpdated,
+  getRoomById,
 } from '../services/booking.service.js';
+import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -79,7 +81,7 @@ export const getRoomAvailability = async (req, res) => {
       return res.status(400).json({ message: 'check_in and check_out are required' });
     }
     const isAdmin = ADMIN_ROLES.includes(req.user.role);
-    const rooms = await getAvailableRooms({
+    let rooms = await getAvailableRooms({
       checkIn: check_in,
       checkOut: check_out,
       guestCount: guest_count || 1,
@@ -88,6 +90,9 @@ export const getRoomAvailability = async (req, res) => {
       groupPicker: group_picker === '1' || group_picker === 'true',
       bypassAdvanceLimit: isAdmin,
     });
+    if (!isAdmin) {
+      rooms = filterRoomsForGuestUser(rooms, req.user.email);
+    }
     const availableCount = rooms.filter((r) => r.availability_status === 'available').length;
     res.status(200).json({ rooms, available_count: availableCount });
   } catch (error) {
@@ -120,6 +125,13 @@ export const createBooking = async (req, res) => {
     }
 
     const isAdmin = ADMIN_ROLES.includes(role);
+    if (!isAdmin) {
+      const room = await getRoomById(room_id);
+      if (!room || !canGuestAccessBuilding(req.user.email, room.building_name)) {
+        return res.status(403).json({ message: 'You do not have access to book this room.' });
+      }
+    }
+
     const prepared = await prepareBookingInsert({
       roomId: room_id,
       checkIn: check_in,

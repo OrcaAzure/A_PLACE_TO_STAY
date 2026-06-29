@@ -1,6 +1,7 @@
 import { pool } from '../config/db.js';
 import Room from '../models/Room.js';
 import { isEmpty } from '../utils/helpers.js';
+import { filterRoomsForGuestUser, canGuestAccessBuilding } from '../utils/guestAccess.js';
 
 export const getAllBuildings = async (req, res) => {
   try {
@@ -43,7 +44,8 @@ export const getAllRooms = async (req, res) => {
        ORDER BY buildings.name ASC, rooms.room_number ASC`,
       params
     );
-    res.status(200).json({ rooms: rows.map((r) => new Room(r)) });
+    const scopedRows = filterRoomsForGuestUser(rows, req.user?.email);
+    res.status(200).json({ rooms: scopedRows.map((r) => new Room(r)) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -163,6 +165,11 @@ export const getRoomById = async (req, res) => {
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ message: 'Room not found' });
+    const ADMIN_ROLES = ['Super Admin', 'Admin'];
+    if (!ADMIN_ROLES.includes(req.user?.role)
+      && !canGuestAccessBuilding(req.user?.email, rows[0].building_name)) {
+      return res.status(403).json({ message: 'You do not have access to this room.' });
+    }
     res.status(200).json({ room: new Room(rows[0]) });
   } catch (error) {
     res.status(500).json({ message: error.message });
