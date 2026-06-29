@@ -56,7 +56,7 @@
       <div class="browse-stay-planner-top">
         <div>
           <h3 class="browse-stay-planner-title">Plan your stay</h3>
-          <p class="browse-stay-planner-desc">Pick your dates and guests below — you can adjust them anytime without losing your selections.</p>
+          <p class="browse-stay-planner-desc">Please select your dates and guests below first.</p>
         </div>
         <span id="browse-stay-status" class="browse-stay-status hidden" aria-live="polite"></span>
       </div>
@@ -111,6 +111,28 @@
 
       <div id="rooms-mount" class="space-y-8"></div>
     </div>
+  </div>
+
+  <div id="browse-venue-tools" class="space-y-5 reveal hidden" style="animation-delay:.08s">
+    <section class="browse-stay-planner browse-panel" id="browse-venue-planner">
+      <div class="browse-stay-planner-top">
+        <div>
+          <h3 class="browse-stay-planner-title">Plan your event</h3>
+          <p class="browse-stay-planner-desc">Facilities are booked for a single day — pick your event date and guest count below. You'll choose times when you reserve a space.</p>
+        </div>
+      </div>
+
+      <div class="browse-stay-bar browse-stay-bar--venue">
+        <div class="browse-stay-segment">
+          <label class="browse-stay-label" for="filter-event-date">Event date</label>
+          <input id="filter-event-date" class="browse-stay-input" type="date" autocomplete="off">
+        </div>
+        <div class="browse-stay-segment browse-stay-segment--guests">
+          <label class="browse-stay-label" for="filter-venue-guests">Guests</label>
+          <input id="filter-venue-guests" type="number" min="1" value="1" class="browse-stay-input" inputmode="numeric">
+        </div>
+      </div>
+    </section>
   </div>
 
   <div class="reveal pt-2" style="animation-delay:.12s" id="venues">
@@ -213,7 +235,7 @@
   });
 
   const isInternal = isInternalGuest();
-  const browseCategories = getBrowseCategories(isInternal);
+  const browseCategories = getBrowseCategories();
 
   document.getElementById('browse-price-notice').innerHTML = priceNoticeHtml();
   document.getElementById('vbm-price-notice').innerHTML = priceNoticeHtml('mt-1');
@@ -242,6 +264,13 @@
   const checkInEl = document.getElementById('filter-check-in');
   const checkOutEl = document.getElementById('filter-check-out');
   const guestsEl = document.getElementById('filter-guests');
+  const eventDateEl = document.getElementById('filter-event-date');
+  const venueGuestsEl = document.getElementById('filter-venue-guests');
+
+  const STAY_STORAGE_KEY = 'guest-browse-stay';
+  const VENUE_STORAGE_KEY = 'guest-browse-venue';
+  let restoringStayCriteria = false;
+  let restoringVenueCriteria = false;
 
   const TYPE_ICON = {
     'Dorm': 'bed',
@@ -259,9 +288,6 @@
     'Deluxe 3 BR': 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80',
   };
 
-  const STAY_STORAGE_KEY = 'guest-browse-stay';
-  let restoringStayCriteria = false;
-
   function readStayFields() {
     return {
       checkIn: checkInEl?.value || '',
@@ -274,6 +300,43 @@
     if (checkIn != null && checkInEl) checkInEl.value = checkIn;
     if (checkOut != null && checkOutEl) checkOutEl.value = checkOut;
     if (guests != null && guestsEl) guestsEl.value = guests;
+  }
+
+  function readVenueFields() {
+    return {
+      eventDate: eventDateEl?.value || '',
+      guests: venueGuestsEl?.value || '1',
+    };
+  }
+
+  function writeVenueFields({ eventDate, guests } = {}) {
+    if (eventDate != null && eventDateEl) eventDateEl.value = eventDate;
+    if (guests != null && venueGuestsEl) venueGuestsEl.value = guests;
+  }
+
+  function persistVenueCriteria() {
+    if (restoringVenueCriteria) return;
+    const venue = readVenueFields();
+    try {
+      sessionStorage.setItem(VENUE_STORAGE_KEY, JSON.stringify(venue));
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }
+
+  function restoreVenueCriteria() {
+    try {
+      const raw = sessionStorage.getItem(VENUE_STORAGE_KEY);
+      if (!raw) return false;
+      const venue = JSON.parse(raw);
+      restoringVenueCriteria = true;
+      writeVenueFields(venue);
+      return Boolean(venue.eventDate);
+    } catch {
+      return false;
+    } finally {
+      restoringVenueCriteria = false;
+    }
   }
 
   function persistStayCriteria() {
@@ -326,7 +389,7 @@
   let availability = null;
   let lastSearchedStay = null;
   let filters = { building: '', type: '', search: '' };
-  let selectedCategory = resolveBrowseCategory(readBrowseQuery().category, isInternal);
+  let selectedCategory = resolveBrowseCategory(readBrowseQuery().category);
 
   function hasValidStayDates() {
     const checkIn = checkInEl?.value;
@@ -383,24 +446,13 @@
     const showRooms = categoryShowsRooms(selectedCategory);
     const unlocked = isRoomBrowseUnlocked();
 
-    roomResults?.classList.toggle('hidden', !showRooms);
+    roomResults?.classList.toggle('hidden', !showRooms || !unlocked);
     refinePanel?.classList.toggle('hidden', !showRooms || !unlocked);
   }
 
   function focusStayPlanner() {
     document.getElementById('browse-stay-planner')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     checkInEl?.focus();
-  }
-
-  function renderRoomsPrompt() {
-    return `
-      <div class="browse-rooms-prompt browse-panel">
-        <div class="browse-rooms-prompt-icon">
-          <span class="material-symbols-outlined">calendar_month</span>
-        </div>
-        <h3 class="browse-rooms-prompt-title">Ready when you are</h3>
-        <p class="browse-rooms-prompt-desc">Choose check-in, check-out, and guest count above, then search to see rooms open for your dates.</p>
-      </div>`;
   }
 
   function setAvailabilityFeedback(message, isError = false) {
@@ -453,7 +505,7 @@
         ? (isInternal
           ? 'Set your stay dates above, then browse open rooms across campus guest houses.'
           : 'Set your stay dates above, then browse open PCALM rooms for your trip.')
-        : `Browse ${meta.label.toLowerCase()} available to your account. Pick a space and submit a request.`;
+        : `Pick your event date above, then browse ${meta.label.toLowerCase()} and submit a request.`;
     }
     if (roomsHeading) {
       roomsHeading.textContent = categoryShowsRooms(selectedCategory) ? meta.label : 'Find your space';
@@ -465,7 +517,7 @@
     const label = document.getElementById('active-category-label');
     if (!mount) return;
 
-    mount.innerHTML = CATEGORY_DEFS.map((cat) => {
+    mount.innerHTML = browseCategories.map((cat) => {
       const meta = getBrowseCategoryMeta(cat.id, isInternal);
       return `
       <button
@@ -494,7 +546,7 @@
   }
 
   function setSelectedCategory(categoryId, { scroll = false } = {}) {
-    selectedCategory = resolveBrowseCategory(categoryId, isInternal);
+    selectedCategory = resolveBrowseCategory(categoryId);
     renderCategoryCards();
     render();
     renderVenues();
@@ -509,10 +561,12 @@
 
   function applyCategoryVisibility() {
     const roomTools = document.getElementById('browse-room-tools');
+    const venueTools = document.getElementById('browse-venue-tools');
     const venuesSection = document.getElementById('venues');
     const venuesBlock = document.getElementById('venues-mount');
     const showRooms = categoryShowsRooms(selectedCategory);
     roomTools?.classList.toggle('hidden', !showRooms);
+    venueTools?.classList.toggle('hidden', showRooms);
     venuesSection?.classList.toggle('hidden', showRooms);
     venuesBlock?.classList.toggle('hidden', showRooms);
   }
@@ -652,7 +706,7 @@
     updateRoomBrowseVisibility();
 
     if (!isRoomBrowseUnlocked()) {
-      mount.innerHTML = renderRoomsPrompt();
+      mount.innerHTML = '';
       return;
     }
 
@@ -787,7 +841,14 @@
   guestsEl.addEventListener('change', onStayCriteriaChange);
   checkInEl.min = todayStr;
   checkOutEl.min = todayStr;
+  if (eventDateEl) eventDateEl.min = todayStr;
   updateStayFormState();
+
+  eventDateEl?.addEventListener('change', () => {
+    persistVenueCriteria();
+  });
+  venueGuestsEl?.addEventListener('input', persistVenueCriteria);
+  venueGuestsEl?.addEventListener('change', persistVenueCriteria);
 
   document.getElementById('building-select')?.addEventListener('change', (e) => {
     filters.building = e.target.value;
@@ -932,12 +993,23 @@
     if (catEl) catEl.value = category;
     if (itemEl) itemEl.value = item;
     if (titleEl) titleEl.textContent = `Book — ${item}`;
+    const browseVenue = readVenueFields();
     const dateEl = document.getElementById('vbm-date');
-    if (dateEl) dateEl.min = new Date().toISOString().slice(0, 10);
+    if (dateEl) {
+      dateEl.min = todayStr;
+      dateEl.value = browseVenue.eventDate || '';
+    }
+    const vbmGuests = document.getElementById('vbm-guests');
+    if (vbmGuests) vbmGuests.value = browseVenue.guests || '1';
     feedback?.classList.add('hidden');
     document.getElementById('vbm-slot-status')?.classList.add('hidden');
     if (submitBtn) submitBtn.disabled = false;
-    if (rateHint) rateHint.textContent = 'Pick a date and time — we check slot availability before you submit.';
+    if (rateHint) {
+      rateHint.textContent = browseVenue.eventDate
+        ? 'Pick start and end times — we check slot availability before you submit.'
+        : 'Pick a date and time — we check slot availability before you submit.';
+    }
+    updateVenueRateHint();
     modal?.classList.remove('hidden');
   }
 
@@ -1059,7 +1131,7 @@
   });
 
   const browseQ = readBrowseQuery();
-  selectedCategory = resolveBrowseCategory(browseQ.category, isInternal);
+  selectedCategory = resolveBrowseCategory(browseQ.category);
   renderCategoryCards();
   loadRooms();
   loadVenues();
@@ -1072,7 +1144,16 @@
   } else {
     restoreStayCriteria();
   }
+  if (browseQ.eventDate) {
+    writeVenueFields({
+      eventDate: browseQ.eventDate,
+      guests: browseQ.guests || '1',
+    });
+  } else {
+    restoreVenueCriteria();
+  }
   persistStayCriteria();
+  persistVenueCriteria();
   updateStayFormState();
   updateRoomBrowseVisibility();
   render();

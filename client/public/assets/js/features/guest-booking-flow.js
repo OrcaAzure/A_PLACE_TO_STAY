@@ -39,7 +39,6 @@ export const BROWSE_CATEGORIES = [
     description: 'Retreat spaces',
     image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80',
     showsRooms: false,
-    internalOnly: true,
   },
   {
     id: 'sports-rec',
@@ -47,7 +46,6 @@ export const BROWSE_CATEGORIES = [
     description: 'Courts and recreation',
     image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80',
     showsRooms: false,
-    internalOnly: true,
   },
 ];
 
@@ -74,6 +72,7 @@ export function buildBrowseUrl(category, extra = {}) {
   if (category) params.set('category', category);
   if (extra.checkIn) params.set('check_in', extra.checkIn);
   if (extra.checkOut) params.set('check_out', extra.checkOut);
+  if (extra.eventDate) params.set('event_date', extra.eventDate);
   if (extra.guests) params.set('guests', String(extra.guests));
   const qs = params.toString();
   return `/guest/facilities.html${qs ? `?${qs}` : ''}`;
@@ -108,6 +107,7 @@ export function readBrowseQuery() {
   return {
     checkIn: params.get('check_in') || '',
     checkOut: params.get('check_out') || '',
+    eventDate: params.get('event_date') || '',
     guests: params.get('guests') || '1',
     category: params.get('category') || '',
     focus: params.get('focus') || '',
@@ -117,19 +117,19 @@ export function readBrowseQuery() {
 const BLOCKED_BUILDINGS = ['House'];
 const EXTERNAL_ROOM_BUILDINGS = ['PCALM'];
 
-export function getBrowseCategories(isInternal = isInternalGuest()) {
-  return BROWSE_CATEGORIES.filter((cat) => isInternal || !cat.internalOnly);
+export function getBrowseCategories() {
+  return BROWSE_CATEGORIES;
 }
 
-export function resolveBrowseCategory(categoryId, isInternal = isInternalGuest()) {
-  const categories = getBrowseCategories(isInternal);
+export function resolveBrowseCategory(categoryId) {
+  const categories = getBrowseCategories();
   if (categories.some((cat) => cat.id === categoryId)) return categoryId;
   return categories[0]?.id || 'guest-houses';
 }
 
 export function getBrowseCategoryMeta(categoryId, isInternal = isInternalGuest()) {
   const cat = BROWSE_CATEGORIES.find((c) => c.id === categoryId)
-    || getBrowseCategories(isInternal)[0];
+    || getBrowseCategories()[0];
   if (!cat) return { id: 'guest-houses', label: 'Guest Houses', description: '', showsRooms: true };
   return {
     ...cat,
@@ -140,6 +140,10 @@ export function getBrowseCategoryMeta(categoryId, isInternal = isInternalGuest()
 
 export function categoryShowsRooms(categoryId) {
   return BROWSE_CATEGORIES.find((c) => c.id === categoryId)?.showsRooms === true;
+}
+
+export function categoryUsesEventDate(categoryId) {
+  return !categoryShowsRooms(categoryId);
 }
 
 export function roomAllowedForGuest(room, isInternal = isInternalGuest()) {
@@ -173,18 +177,14 @@ export function guestAccessNoticeHtml(isInternal = isInternalGuest()) {
       <span class="material-symbols-outlined text-primary text-[20px] shrink-0">verified_user</span>
       <p class="m-0 leading-relaxed">
         <strong class="text-primary">External guest access.</strong>
-        You can browse PCALM guest rooms, conference spaces, and selected campus facilities.
-        Full campus housing (Thesda, Sampaguita, Peranza) is reserved for APTS community members.
+        You can browse and request all campus facilities. Overnight guest rooms are limited to PCALM;
+        campus housing in Thesda, Sampaguita, and Peranza is reserved for APTS community members.
       </p>
     </div>`;
 }
 
-/** Hide internal-only facility cards on guest home landing. */
+/** Update PCALM-focused copy on guest home for external users. */
 export function applyGuestLandingAccess(root = document, isInternal = isInternalGuest()) {
-  root.querySelectorAll('[data-internal-only]').forEach((el) => {
-    el.classList.toggle('hidden', !isInternal);
-  });
-
   const guestHouseCard = root.querySelector('[data-browse-category="guest-houses"]');
   if (guestHouseCard && !isInternal) {
     const tag = guestHouseCard.querySelector('.lp-facility-body span.inline-block');

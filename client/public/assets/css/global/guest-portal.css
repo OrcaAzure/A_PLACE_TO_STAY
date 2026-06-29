@@ -413,12 +413,20 @@ body.guest-shell {
   border-color: rgba(248, 113, 113, 0.35);
 }
 
+.browse-stay-bar--venue {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.55fr);
+}
+
 .browse-rooms-prompt {
   padding: 2.75rem 1.5rem;
   text-align: center;
   border-style: dashed;
   border-color: rgba(203, 213, 224, 0.9);
   background: linear-gradient(180deg, #fafbfc 0%, #fff 100%);
+}
+
+.browse-rooms-prompt--compact {
+  padding: 1.25rem 1.5rem;
 }
 
 .browse-rooms-prompt-icon {
