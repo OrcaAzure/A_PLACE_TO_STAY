@@ -256,7 +256,7 @@
 
 <!-- ============ Booking modal ============ -->
 <div id="booking-modal-overlay" class="modal-overlay is-hidden fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
-  <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-xl max-h-[92vh] overflow-y-auto nice-scroll">
+  <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[92vh] overflow-y-auto nice-scroll">
     <div class="p-6 border-b border-outline-variant flex items-center justify-between sticky top-0 bg-white z-10">
       <div>
         <h3 id="booking-modal-title" class="font-headline-md text-headline-md">Confirm your reservation</h3>
@@ -329,17 +329,50 @@
 
         <input type="hidden" id="booking-room" />
 
+        <section id="booking-extras-panel" class="guest-booking-extras hidden space-y-4">
+          <div class="guest-booking-extras__head">
+            <div>
+              <h4 class="guest-booking-extras__title">Meals & extras</h4>
+              <p class="guest-booking-extras__sub">Optional add-ons — tap to add meals or common fees.</p>
+            </div>
+            <span class="material-symbols-outlined text-primary/70 text-[22px]" aria-hidden="true">restaurant</span>
+          </div>
+          <div>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">Meals</p>
+            <div id="booking-meals-grid" class="guest-meals-grid"></div>
+          </div>
+          <div>
+            <p class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant mb-2">Extra services</p>
+            <div id="booking-fee-chips" class="guest-fee-chips"></div>
+            <div id="booking-selected-fees" class="guest-selected-fees hidden"></div>
+          </div>
+        </section>
+
         <div>
           <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-notes">Notes (optional)</label>
           <textarea id="booking-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Special requests, arrival time, etc."></textarea>
         </div>
 
         <div id="booking-summary" class="hidden bg-surface-container-low rounded-xl p-4 border border-outline-variant animate-scale-in">
-          <div class="flex items-center justify-between text-body-sm">
-            <span class="text-on-surface-variant" id="booking-summary-room">—</span>
-            <span class="font-bold text-primary text-headline-sm" id="booking-summary-total">—</span>
+          <div class="guest-total-breakdown">
+            <div class="guest-total-line">
+              <span>Room</span>
+              <span id="booking-line-room">—</span>
+            </div>
+            <div class="guest-total-line hidden" id="booking-line-meals-wrap">
+              <span>Meals</span>
+              <span id="booking-line-meals">—</span>
+            </div>
+            <div class="guest-total-line hidden" id="booking-line-fees-wrap">
+              <span>Extras</span>
+              <span id="booking-line-fees">—</span>
+            </div>
+            <div class="guest-total-line guest-total-line--grand">
+              <span>Estimated total</span>
+              <span id="booking-summary-total">—</span>
+            </div>
           </div>
-          <p class="text-[11px] text-on-surface-variant mt-1" id="booking-summary-meta"></p>
+          <p class="text-[11px] text-on-surface-variant mt-2" id="booking-summary-meta"></p>
         </div>
 
         <div id="booking-form-error" class="hidden text-body-sm text-error bg-error-container rounded-lg px-3 py-2"></div>
@@ -379,6 +412,7 @@
   } from '/assets/js/services/api.js';
   import { loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint } from '/assets/js/features/reservation-shared.js';
   import { parseBookQuery, priceNoticeHtml, hasCompleteBookIntent } from '/assets/js/features/guest-booking-flow.js';
+  import { createGuestBookingExtras } from '/assets/js/features/guest-booking-extras.js';
 
   requireAuth();
   await initAppLayout({
@@ -673,6 +707,48 @@
   let bookingMode = 'search';
   let savedTrip = null;
 
+  const bookingExtras = createGuestBookingExtras({
+    panelEl: document.getElementById('booking-extras-panel'),
+    mealsMount: document.getElementById('booking-meals-grid'),
+    feeChipsMount: document.getElementById('booking-fee-chips'),
+    selectedFeesMount: document.getElementById('booking-selected-fees'),
+    onChange: () => updateBookingTotals(),
+  });
+  await bookingExtras.init();
+
+  function updateBookingTotals() {
+    const summary = document.getElementById('booking-summary');
+    if (!selectedRoom) {
+      summary.classList.add('hidden');
+      bookingExtras.setRoomSelected(false);
+      return;
+    }
+
+    bookingExtras.setRoomSelected(true);
+    const roomTotal = Number(selectedRoom.estimated_total) || 0;
+    const mealsTotal = bookingExtras.mealsSubtotal();
+    const feesTotal = bookingExtras.feesSubtotal();
+    const grand = bookingExtras.grandTotal(roomTotal);
+
+    document.getElementById('booking-line-room').textContent = peso(roomTotal);
+    document.getElementById('booking-line-meals-wrap').classList.toggle('hidden', mealsTotal <= 0);
+    document.getElementById('booking-line-meals').textContent = peso(mealsTotal);
+    document.getElementById('booking-line-fees-wrap').classList.toggle('hidden', feesTotal <= 0);
+    document.getElementById('booking-line-fees').textContent = peso(feesTotal);
+    document.getElementById('booking-summary-total').textContent = peso(grand);
+    document.getElementById('booking-summary-meta').textContent =
+      `${selectedRoom.building_name} ${selectedRoom.room_number} · ${selectedRoom.nights} night(s) · ${document.getElementById('booking-guests').value} guest(s) · estimate only`;
+
+    summary.classList.remove('hidden');
+
+    if (bookingMode === 'confirm') {
+      const extrasNote = bookingExtras.hasExtras()
+        ? `<p class="text-body-sm text-on-surface-variant mt-3 pt-3 border-t border-outline-variant/60">Includes ${peso(mealsTotal + feesTotal)} in meals & extras · <strong class="text-primary">${peso(grand)}</strong> estimated total</p>`
+        : '';
+      renderSelectedRoomCard(selectedRoom, extrasNote);
+    }
+  }
+
   function setModalCopy({ title, subtitle }) {
     document.getElementById('booking-modal-title').textContent = title;
     document.getElementById('booking-modal-subtitle').textContent = subtitle;
@@ -685,6 +761,7 @@
     submitBtn.disabled = true;
     document.getElementById('room-results-wrap').classList.add('hidden');
     document.getElementById('booking-summary').classList.add('hidden');
+    bookingExtras.reset();
   }
 
   function setBookingMode(mode) {
@@ -692,7 +769,6 @@
     const isConfirm = mode === 'confirm';
     confirmPanel.classList.toggle('hidden', !isConfirm);
     searchPanel.classList.toggle('hidden', isConfirm);
-    document.getElementById('booking-summary').classList.toggle('hidden', isConfirm);
     if (isConfirm) {
       setModalCopy({
         title: 'Confirm your reservation',
@@ -715,7 +791,7 @@
       document.getElementById('booking-guests').value || '1';
   }
 
-  function renderSelectedRoomCard(room) {
+  function renderSelectedRoomCard(room, extrasNote = '') {
     const mount = document.getElementById('booking-selected-room');
     if (!room) {
       mount.innerHTML = '<p class="text-body-sm text-error">This room is no longer available for the selected dates.</p>';
@@ -730,20 +806,16 @@
         </div>
         <div class="text-right shrink-0">
           <p class="font-bold text-primary text-headline-sm">${room.estimated_total != null ? peso(room.estimated_total) : '—'}</p>
-          <p class="text-[11px] text-on-surface-variant uppercase">${room.nights} night(s) · estimate</p>
+          <p class="text-[11px] text-on-surface-variant uppercase">${room.nights} night(s) · room only</p>
         </div>
-      </div>`;
+      </div>${extrasNote}`;
   }
 
   function selectRoom(room) {
     selectedRoom = room;
     roomInput.value = room?.id ?? '';
     submitBtn.disabled = !room;
-    if (bookingMode === 'confirm') {
-      renderSelectedRoomCard(room);
-    } else {
-      showBookingSummary();
-    }
+    updateBookingTotals();
   }
 
   function hideSuccessPanel() {
@@ -760,6 +832,7 @@
     savedTrip = null;
     document.getElementById('booking-form-error').classList.add('hidden');
     document.getElementById('booking-notes').value = '';
+    bookingExtras.reset();
   }
 
   function applyFiscalDateLimits() {
@@ -880,15 +953,7 @@
   }
 
   function showBookingSummary() {
-    if (!selectedRoom) return;
-    const box = document.getElementById('booking-summary');
-    document.getElementById('booking-summary-room').textContent =
-      `${selectedRoom.building_name} ${selectedRoom.room_number} · ${selectedRoom.room_type}`;
-    document.getElementById('booking-summary-total').textContent =
-      selectedRoom.estimated_total != null ? peso(selectedRoom.estimated_total) : '—';
-    document.getElementById('booking-summary-meta').textContent =
-      `${selectedRoom.nights} night(s) · ${document.getElementById('booking-guests').value} guest(s) · estimate only, subject to staff confirmation`;
-    box.classList.remove('hidden');
+    updateBookingTotals();
   }
 
   async function findRooms(preferredRoomId = '') {
@@ -975,6 +1040,7 @@
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
     const bookedRoom = selectedRoom;
+    const { meals, fees } = bookingExtras.getPayload();
     try {
       await createBooking({
         room_id: Number(roomInput.value),
@@ -982,6 +1048,8 @@
         check_out: document.getElementById('booking-check-out').value,
         guest_count: Number(document.getElementById('booking-guests').value) || 1,
         notes: document.getElementById('booking-notes').value.trim() || null,
+        meals,
+        fees,
       });
       await loadBookings();
       showBookingSuccess(bookedRoom);
