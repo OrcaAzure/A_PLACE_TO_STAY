@@ -8,6 +8,7 @@ import { initVenueBookingWizard, isVenueBookingWizardOpen, closeVenueBookingWiza
 import { initTabGroup, switchTabPanel } from '/assets/js/layout/tabs.js';
 import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDrawerOpen, animateModalOpen, animateNotificationsPanel } from '/assets/js/layout/animations.js';
 import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
+import { initGuestPortalChrome } from '/assets/js/layout/guest-portal.js';
 import {
   isDesktopSidebar,
   closeMobileSidebar,
@@ -35,10 +36,10 @@ export const ADMIN_MOBILE_NAV = [
 ];
 
 export const GUEST_NAV = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/guest/dashboard.html' },
-  { id: 'reservations', label: 'Reservations', icon: 'event_available', href: '/guest/reservations.html' },
-  { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/guest/facilities.html' },
-  { id: 'settings', label: 'Settings', icon: 'settings', href: '/guest/settings.html' },
+  { id: 'dashboard', label: 'Home', icon: 'home', href: '/guest/dashboard.html' },
+  { id: 'reservations', label: 'My Stays', icon: 'event_available', href: '/guest/reservations.html' },
+  { id: 'facilities', label: 'Browse', icon: 'explore', href: '/guest/facilities.html' },
+  { id: 'settings', label: 'Account', icon: 'person', href: '/guest/settings.html' },
 ];
 
 export const GUEST_NEW_RESERVATION_FOOTER = `
@@ -129,10 +130,16 @@ let guestTemplatesPromise = null;
 async function loadGuestTemplates() {
   if (!guestTemplatesPromise) {
     guestTemplatesPromise = Promise.all([
-      loadComponent('/components/sidebar.html'),
-      loadComponent('/components/header.html'),
+      loadComponent('/components/guest-nav.html'),
+      loadComponent('/components/guest-footer.html'),
+      loadComponent('/components/guest-landing-body.html'),
       loadComponent('/components/notifications.html'),
-    ]).then(([sidebar, header, notifications]) => ({ sidebar, header, notifications }));
+    ]).then(([guestNav, guestFooter, guestLandingBody, notifications]) => ({
+      guestNav,
+      guestFooter,
+      guestLandingBody,
+      notifications,
+    }));
   }
   return guestTemplatesPromise;
 }
@@ -246,26 +253,106 @@ function renderGuestBottomNav(items, active) {
     </nav>`;
 }
 
-function buildGuestShell(options) {
-  const shell = buildAdminShell({
-    ...options,
-    navItems: GUEST_NAV,
-    brandHref: '/guest/dashboard.html',
-    sidebarFooter: GUEST_NEW_RESERVATION_FOOTER,
-    templates: {
-      sidebar: options.templates.sidebar,
-      header: options.templates.header,
-      notifications: options.templates.notifications,
-    },
-  });
-  return `${shell}${renderGuestBottomNav(GUEST_NAV, options.activePage)}`;
+function guestTopNavLinkClass(active, id) {
+  const base = 'text-label-md transition-colors no-underline';
+  return active === id
+    ? `${base} text-primary font-semibold`
+    : `${base} text-on-surface-variant hover:text-primary`;
+}
+
+function guestMobileNavLinkClass(active, id) {
+  const base = 'lp-mobile-link';
+  return active === id ? `${base} text-primary font-semibold` : base;
+}
+
+function renderGuestTopNavLinks(items, active) {
+  return items.map((item) => `
+    <a class="${guestTopNavLinkClass(active, item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}">${item.label}</a>
+  `).join('');
+}
+
+function guestPortalNavLinkClass(active) {
+  const base = 'text-label-md transition-colors no-underline';
+  return active
+    ? `${base} text-primary font-semibold`
+    : `${base} text-on-surface-variant hover:text-primary`;
+}
+
+function renderGuestPortalNavLinks(activePage) {
+  const items = [
+    { id: 'dashboard', label: 'Home', href: '/guest/dashboard.html' },
+    { id: 'facilities', label: 'Browse', href: '/guest/facilities.html' },
+    { id: 'reservations', label: 'My Stays', href: '/guest/reservations.html' },
+  ];
+  return items.map((item) => `
+    <a class="${guestPortalNavLinkClass(activePage === item.id)}" href="${item.href}" aria-current="${activePage === item.id ? 'page' : 'false'}">${item.label}</a>
+  `).join('');
+}
+
+function renderGuestMobileNavLinks(activePage) {
+  const items = [
+    { id: 'dashboard', label: 'Home', href: '/guest/dashboard.html' },
+    { id: 'facilities', label: 'Browse', href: '/guest/facilities.html' },
+    { id: 'reservations', label: 'My Stays', href: '/guest/reservations.html' },
+    { id: 'settings', label: 'Account', href: '/guest/settings.html' },
+  ];
+  return items.map((item) => {
+    const base = 'lp-mobile-link';
+    const cls = activePage === item.id ? `${base} text-primary font-semibold` : base;
+    return `<a class="${cls}" href="${item.href}" aria-current="${activePage === item.id ? 'page' : 'false'}">${item.label}</a>`;
+  }).join('');
+}
+
+function buildGuestShell({
+  templates,
+  pageContent,
+  activePage,
+  userName,
+  userRole,
+  userInitial,
+  landingHome = false,
+}) {
+  const homeHref = '/guest/dashboard.html';
+  const firstName = userName.split(' ')[0] || 'Guest';
+  let content = pageContent;
+  if (landingHome && templates.guestLandingBody) {
+    content = templates.guestLandingBody.replace(/\{\{FIRST_NAME\}\}/g, firstName);
+  }
+  const pageClass = landingHome ? 'guest-landing' : 'guest-app-page';
+
+  const nav = templates.guestNav
+    .replace(/\{\{BRAND_HREF\}\}/g, homeHref)
+    .replace(/\{\{HOME_HREF\}\}/g, homeHref)
+    .replace(/\{\{PORTAL_NAV_LINKS\}\}/g, renderGuestPortalNavLinks(activePage))
+    .replace(/\{\{MOBILE_NAV_LINKS\}\}/g, renderGuestMobileNavLinks(activePage))
+    .replace(/\{\{USER_NAME\}\}/g, userName)
+    .replace(/\{\{USER_ROLE\}\}/g, userRole)
+    .replace(/\{\{USER_INITIAL\}\}/g, userInitial);
+
+  const footer = templates.guestFooter.replace(/\{\{HOME_HREF\}\}/g, homeHref);
+
+  return `
+    ${nav}
+    <main class="guest-main lp-main">
+      <div id="page-content" class="${pageClass}">${content}</div>
+    </main>
+    ${footer}
+    ${templates.notifications}
+  `;
+}
+
+function updateGuestChrome({ userName, userRole, userInitial }) {
+  document.querySelectorAll('.guest-user-name').forEach((el) => { el.textContent = userName; });
+  document.querySelectorAll('.guest-user-role').forEach((el) => { el.textContent = userRole; });
+  document.querySelectorAll('.guest-user-initial').forEach((el) => { el.textContent = userInitial; });
 }
 
 function updateActiveNav(activePage, navItems = ADMIN_NAV) {
   const mobileNavItems = navItems === ADMIN_NAV ? ADMIN_MOBILE_NAV : navItems;
-  document.querySelectorAll('#app-sidebar nav a, .guest-bottom-nav a, .admin-bottom-nav a').forEach((link) => {
+  document.querySelectorAll('#app-sidebar nav a, .guest-bottom-nav a, .admin-bottom-nav a, .guest-top-nav-links a, #lp-mobile-menu nav a[href]').forEach((link) => {
     const href = link.getAttribute('href') || '';
-    const page = href.split('/').pop() || '';
+    if (!href || href.startsWith('#') || href.startsWith('mailto:')) return;
+    const page = href.split('/').pop()?.split('#')[0] || '';
     const pool = link.closest('.admin-bottom-nav') ? mobileNavItems : navItems;
     const id = pool.find((item) => item.href.endsWith(page))?.id
       ?? navItems.find((item) => item.href.endsWith(page))?.id;
@@ -274,6 +361,10 @@ function updateActiveNav(activePage, navItems = ADMIN_NAV) {
       link.className = guestBottomNavLinkClass(active, id || '');
     } else if (link.closest('.admin-bottom-nav')) {
       link.className = adminBottomNavLinkClass(active, id || '');
+    } else if (link.closest('.guest-top-nav-links')) {
+      link.className = guestTopNavLinkClass(active, id || '');
+    } else if (link.closest('#lp-mobile-menu')) {
+      link.className = guestMobileNavLinkClass(active, id || '');
     } else {
       link.className = navLinkClass(active, id || '');
     }
@@ -327,6 +418,7 @@ export async function initAppLayout(config = {}) {
     subtitle = 'Operations Center',
     portalLabel = portal === 'admin' ? 'Seminary Admin' : 'Guest Portal',
     deferEnhancements = false,
+    landingHome = false,
   } = config;
 
   const isGuest = portal === 'guest';
@@ -343,6 +435,15 @@ export async function initAppLayout(config = {}) {
   const savedContent = document.getElementById('page-content')?.innerHTML || '';
   const preservedNodes = extractPreservedLayoutNodes();
   const existingSidebar = document.getElementById('app-sidebar');
+  const existingGuestNav = document.querySelector('.guest-top-nav');
+
+  if (existingGuestNav && isGuest) {
+    document.body.className = 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen';
+    updateActiveNav(activePage, navItems);
+    updateGuestChrome({ userName, userRole, userInitial });
+    releaseChromeBoot();
+    return;
+  }
 
   if (existingSidebar) {
     document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${isGuest ? ' guest-portal' : ''}${collapsed ? ' sidebar-collapsed' : ''}`;
@@ -361,13 +462,10 @@ export async function initAppLayout(config = {}) {
         templates,
         pageContent: savedContent,
         activePage,
-        title,
-        subtitle,
-        portalLabel,
         userName,
         userRole,
         userInitial,
-        collapsed,
+        landingHome,
       })
     : buildAdminShell({
         templates,
@@ -387,11 +485,17 @@ export async function initAppLayout(config = {}) {
   if (preservedNodes.childNodes.length) {
     document.body.appendChild(preservedNodes);
   }
-  document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${isGuest ? ' guest-portal' : ''}${collapsed ? ' sidebar-collapsed' : ''}`;
+  document.body.className = isGuest
+    ? 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen'
+    : `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
 
   bindLayoutEvents({ isGuest });
-  ensureSidebarUi();
-  if (!isGuest) {
+  if (isGuest) {
+    initGuestPortalChrome().catch(() => {});
+    initGuestPageNavTransitions();
+    releaseChromeBoot();
+  } else {
+    ensureSidebarUi();
     initManageRequestsModal();
     initManageReservationsModal();
     initManageVenueBookingsModal();
@@ -403,9 +507,6 @@ export async function initAppLayout(config = {}) {
     initAdminPageNavTransitions();
     lockStaticChrome();
     if (!deferEnhancements) initAdminEnhancements().catch(() => releaseChromeBoot());
-  } else {
-    initGuestPageNavTransitions();
-    releaseChromeBoot();
   }
 }
 

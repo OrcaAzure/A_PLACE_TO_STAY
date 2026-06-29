@@ -168,6 +168,11 @@ export async function getRoomById(id) {
   return data.room;
 }
 
+export async function checkVenueSlotAvailability({ category, item, event_date, start_time, end_time }) {
+  const params = new URLSearchParams({ category, item, event_date, start_time, end_time });
+  return apiRequest(`/facility-bookings/check-slot?${params}`);
+}
+
 export async function getVenueRateQuote(category, item, date) {
   const params = new URLSearchParams({ category, item, date });
   return apiRequest(`/facilities/venue-rate?${params}`);

@@ -49,6 +49,13 @@ export function getCurrentUser() {
   }
 }
 
+/** APTS community members use @apts.edu / @apts.edu.ph addresses. */
+export function isInternalGuest(userOrEmail = getCurrentUser()) {
+  const email = typeof userOrEmail === 'string' ? userOrEmail : userOrEmail?.email;
+  const normalized = String(email || '').trim().toLowerCase();
+  return normalized.endsWith('@apts.edu.ph') || normalized.endsWith('@apts.edu');
+}
+
 /* Roles that use the admin portal. Everyone else lands in the guest portal. */
 export const ADMIN_ROLES = ['Super Admin', 'Admin'];
 /* Guest-portal roles that may only view — no creating/editing/cancelling. */

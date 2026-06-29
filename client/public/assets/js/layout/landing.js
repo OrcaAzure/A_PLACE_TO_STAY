@@ -52,7 +52,7 @@ function revealStatic() {
   }
 }
 
-function initMobileMenu() {
+export function initMobileMenu() {
   const toggle = document.getElementById('lp-menu-toggle');
   const menu   = document.getElementById('lp-mobile-menu');
   if (!toggle || !menu) return;
@@ -66,7 +66,7 @@ function initMobileMenu() {
 
   toggle.addEventListener('click', () => setOpen(menu.classList.contains('hidden')));
 
-  menu.querySelectorAll('a[href^="#"]').forEach((link) => {
+  menu.querySelectorAll('a, button[data-action="logout"]').forEach((link) => {
     link.addEventListener('click', () => setOpen(false));
   });
 
@@ -115,7 +115,7 @@ function initLandingSearch() {
   });
 }
 
-function initNavScroll(nav) {
+export function initNavScroll(nav) {
   if (!nav) return;
   const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 24);
   onScroll();

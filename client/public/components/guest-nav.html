@@ -1,0 +1,78 @@
+<header class="lp-nav guest-top-nav fixed top-0 inset-x-0 z-50 bg-white/90 border-b border-outline-variant/20">
+  <div class="lp-nav-inner flex items-center justify-between gap-3 w-full px-4 sm:px-6 max-w-[1280px] mx-auto min-h-[4rem] h-16">
+    <a href="{{BRAND_HREF}}" class="lp-nav-brand flex items-center gap-2 min-w-0 shrink">
+      <span class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-sm shrink-0">
+        <span class="material-symbols-outlined text-white text-[18px]">apartment</span>
+      </span>
+      <span class="text-headline-sm font-bold text-primary tracking-tight truncate">AptSpace</span>
+    </a>
+
+    <nav class="lp-nav-links guest-top-nav-links hidden md:flex items-center gap-6 shrink-0" aria-label="Primary">
+      {{PORTAL_NAV_LINKS}}
+    </nav>
+
+    <div class="lp-nav-actions flex items-center gap-2 shrink-0 ml-auto">
+      <div class="lp-nav-desktop-extras hidden lg:flex items-center gap-2">
+        <button type="button" id="notifications-btn" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all" aria-label="Notifications">notifications</button>
+        <a href="/guest/settings.html" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all no-underline" aria-label="Account settings">settings</a>
+        <div class="h-8 w-px bg-outline-variant/40"></div>
+      </div>
+
+      <a href="/guest/reservations.html?book=1" class="js-requires-write hidden sm:inline-flex items-center gap-1.5 px-4 py-2.5 bg-primary text-white rounded-xl text-label-md font-semibold hover:bg-primary/90 transition-colors shadow-sm whitespace-nowrap no-underline">
+        <span class="material-symbols-outlined text-[18px]">add</span>
+        Book now
+      </a>
+
+      <div class="guest-user-menu relative hidden sm:block">
+        <button type="button" id="guest-user-menu-btn" class="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full hover:bg-surface-container-low transition-colors border border-outline-variant/30" aria-expanded="false" aria-haspopup="true" aria-controls="guest-user-dropdown">
+          <span class="guest-user-initial w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm flex items-center justify-center shrink-0">{{USER_INITIAL}}</span>
+          <span class="guest-user-name text-label-md font-medium text-on-surface max-w-[7rem] truncate hidden lg:block">{{USER_NAME}}</span>
+          <span class="material-symbols-outlined text-on-surface-variant text-[20px] hidden lg:block">expand_more</span>
+        </button>
+        <div id="guest-user-dropdown" class="guest-user-dropdown hidden absolute right-0 top-full mt-2 w-56 bg-white border border-outline-variant/40 rounded-xl shadow-xl py-2 z-50" role="menu">
+          <div class="px-4 py-3 border-b border-outline-variant/30">
+            <p class="guest-user-name text-body-sm font-semibold text-on-surface truncate">{{USER_NAME}}</p>
+            <p class="guest-user-role text-label-sm text-on-surface-variant truncate">{{USER_ROLE}}</p>
+          </div>
+          <a href="/guest/facilities.html" class="flex items-center gap-3 px-4 py-2.5 text-body-sm text-on-surface hover:bg-surface-container-low transition-colors no-underline" role="menuitem">
+            <span class="material-symbols-outlined text-[18px] text-on-surface-variant">explore</span>
+            Browse rooms & venues
+          </a>
+          <a href="/guest/reservations.html" class="flex items-center gap-3 px-4 py-2.5 text-body-sm text-on-surface hover:bg-surface-container-low transition-colors no-underline" role="menuitem">
+            <span class="material-symbols-outlined text-[18px] text-on-surface-variant">event_available</span>
+            My Stays
+          </a>
+          <a href="/guest/settings.html" class="flex items-center gap-3 px-4 py-2.5 text-body-sm text-on-surface hover:bg-surface-container-low transition-colors no-underline" role="menuitem">
+            <span class="material-symbols-outlined text-[18px] text-on-surface-variant">person</span>
+            Account
+          </a>
+          <button type="button" data-action="logout" class="w-full flex items-center gap-3 px-4 py-2.5 text-body-sm text-on-surface hover:bg-surface-container-low transition-colors border-0 bg-transparent cursor-pointer text-left" role="menuitem">
+            <span class="material-symbols-outlined text-[18px] text-on-surface-variant">logout</span>
+            Log out
+          </button>
+        </div>
+      </div>
+
+      <button type="button" id="lp-menu-toggle" class="lp-menu-btn md:hidden" aria-label="Open menu" aria-expanded="false" aria-controls="lp-mobile-menu">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+    </div>
+  </div>
+
+  <div id="lp-mobile-menu" class="lp-mobile-menu hidden md:hidden" aria-hidden="true">
+    <nav class="flex flex-col gap-1 p-4" aria-label="Mobile">
+      {{MOBILE_NAV_LINKS}}
+      <a class="lp-mobile-link js-requires-write text-primary font-semibold flex items-center gap-2" href="/guest/reservations.html?book=1">
+        <span class="material-symbols-outlined text-[20px]">add</span>
+        Book now
+      </a>
+      <div class="pt-3 mt-2 border-t border-outline-variant/30">
+        <p class="px-4 py-1 text-label-sm text-on-surface-variant">{{USER_NAME}}</p>
+        <button type="button" data-action="logout" class="lp-mobile-link w-full text-left flex items-center gap-2 text-error border-0 bg-transparent cursor-pointer">
+          <span class="material-symbols-outlined text-[20px]">logout</span>
+          Log out
+        </button>
+      </div>
+    </nav>
+  </div>
+</header>

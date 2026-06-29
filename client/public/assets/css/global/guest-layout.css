@@ -1,47 +1,4 @@
 /**
- * Guest portal — safe-area polish (shared mobile chrome in portal-mobile.css).
+ * Guest portal layout overrides — landing-style shell (see guest-portal.css).
+ * Legacy admin-shell guest rules removed in Phase 1 shell swap.
  */
-
-:root {
-  --guest-safe-top: env(safe-area-inset-top, 0px);
-  --guest-safe-bottom: env(safe-area-inset-bottom, 0px);
-  --guest-safe-left: env(safe-area-inset-left, 0px);
-  --guest-safe-right: env(safe-area-inset-right, 0px);
-}
-
-.admin-shell.guest-portal .admin-status-badge {
-  display: none !important;
-}
-
-@media (max-width: 1023px) {
-  .admin-shell.guest-portal #page-content .bg-white.p-6,
-  .admin-shell.guest-portal #page-content section.p-6 {
-    padding: 1rem;
-  }
-
-  .admin-shell.guest-portal #page-content > .max-w-container-max {
-    padding-left: 0;
-    padding-right: 0;
-  }
-}
-
-/* ── Page navigation — static (no fade/slide) ── */
-.guest-main,
-.guest-header,
-.admin-shell.guest-portal #page-content,
-.admin-shell.guest-portal main > header.admin-app-header,
-.admin-shell.guest-portal main > header.anim-static {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .guest-main,
-  .guest-header,
-  .admin-shell.guest-portal #page-content,
-  .admin-shell.guest-portal main > header,
-  .portal-bottom-nav a {
-    transition: none !important;
-    transform: none !important;
-  }
-}
