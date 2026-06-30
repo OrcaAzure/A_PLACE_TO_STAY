@@ -135,8 +135,10 @@
   <script type="module">
     import { requireAuth }   from '/assets/js/services/auth.js';
     import { initAppLayout } from '/assets/js/layout/ui.js';
+    import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
     import { loadDashboard } from '/assets/js/features/dashboard.js';
 
+    initSplashIdle({ portal: 'admin' });
     if (!requireAuth()) throw new Error('Not authenticated');
 
     await initAppLayout({

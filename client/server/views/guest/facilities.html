@@ -213,6 +213,7 @@
 <script type="module">
   import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
   import { initAppLayout } from '/assets/js/layout/ui.js';
+  import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
   import { getRooms, getRoomAvailability, normalizeRoom, getVenueFacilities, getVenueRateQuote, createFacilityBooking, checkVenueSlotAvailability } from '/assets/js/services/api.js';
   import {
     buildBookReservationUrl,
@@ -232,6 +233,7 @@
     venueCapacityLabel,
   } from '/assets/js/features/guest-booking-flow.js';
 
+  initSplashIdle({ portal: 'guest' });
   requireAuth();
   await initAppLayout({
     portal: 'guest',

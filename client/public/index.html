@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/assets/css/global/landing.css"/>
+  <link rel="stylesheet" href="/assets/css/global/splash-idle.css"/>
   <style>
     .material-symbols-outlined {
       font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -429,8 +430,10 @@
 <script type="module">
   import { redirectIfLoggedIn } from '/assets/js/services/auth.js';
   import { initLandingPage } from '/assets/js/layout/landing.js';
+  import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
 
   redirectIfLoggedIn();
+  initSplashIdle({ portal: 'guest', forceSplash: true });
   initLandingPage();
 </script>
 

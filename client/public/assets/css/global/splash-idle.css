@@ -1,0 +1,625 @@
+/**
+ * AptSpace splash (initial load) + idle (screensaver) overlays — admin & guest.
+ */
+
+:root {
+  --apt-splash-idle-z: 99990;
+  --apt-kiosk-modal-z: 100000;
+  --apt-overlay-fade: 0.55s;
+  --apt-overlay-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Shared overlay shell ───────────────────────────────────────────── */
+
+.apt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--apt-splash-idle-z);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity var(--apt-overlay-fade) var(--apt-overlay-ease),
+    visibility var(--apt-overlay-fade) var(--apt-overlay-ease);
+}
+
+.apt-overlay.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.apt-overlay[aria-hidden='true'] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ── Guest splash ─────────────────────────────────────────────────── */
+
+.apt-splash--guest {
+  background: #f8fafc;
+}
+
+.apt-splash--guest__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.75rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+/* ── Cloud cat mascot (inline SVG) ────────────────────────────────── */
+
+.apt-cloud-cat {
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.apt-cloud-cat--splash .apt-cloud-cat__scene {
+  width: min(16rem, 72vw);
+  animation:
+    apt-cloud-cat-enter 0.6s var(--apt-overlay-ease) both,
+    apt-cloud-cat-float 2.8s ease-in-out 0.6s infinite;
+}
+
+.apt-cloud-cat--compact .apt-cloud-cat__scene {
+  width: 5.5rem;
+  margin: 0 auto 0.75rem;
+  animation: apt-cloud-cat-float 3.2s ease-in-out infinite;
+}
+
+.apt-cloud-cat__scene {
+  position: relative;
+  transform-origin: center bottom;
+}
+
+.apt-cloud-cat__sign {
+  position: absolute;
+  top: -0.15rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 0.35rem 0.85rem;
+  border-radius: 0.65rem;
+  background: linear-gradient(135deg, var(--color-primary, #1a365d), #2c5282);
+  box-shadow: 0 6px 18px rgba(26, 54, 93, 0.22);
+  animation: apt-cloud-cat-sign-bob 2.8s ease-in-out 0.6s infinite;
+}
+
+.apt-cloud-cat--compact .apt-cloud-cat__sign {
+  top: -0.05rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 0.4rem;
+  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.apt-cloud-cat--compact .apt-cloud-cat__brand {
+  font-size: 0.5625rem;
+  color: var(--color-primary, #1a365d);
+}
+
+.apt-cloud-cat__brand {
+  display: block;
+  font-size: 1.125rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.apt-cloud-cat__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.apt-cloud-cat__tail {
+  transform-origin: 160px 95px;
+  animation: apt-cloud-cat-tail 2.8s ease-in-out 0.6s infinite;
+}
+
+.apt-cloud-cat__paws {
+  animation: apt-cloud-cat-paws 0.55s ease-in-out 0.6s infinite;
+}
+
+@keyframes apt-cloud-cat-enter {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes apt-cloud-cat-float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  35% {
+    transform: translateY(-9px) rotate(-1.5deg);
+  }
+  70% {
+    transform: translateY(-4px) rotate(1.5deg);
+  }
+}
+
+@keyframes apt-cloud-cat-sign-bob {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-5px); }
+}
+
+@keyframes apt-cloud-cat-tail {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(8deg); }
+}
+
+@keyframes apt-cloud-cat-paws {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+.apt-splash--guest__bar {
+  width: min(12rem, 60vw);
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(26, 54, 93, 0.12);
+  overflow: hidden;
+}
+
+.apt-splash--guest__bar-fill {
+  display: block;
+  height: 100%;
+  width: 35%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--color-primary, #1a365d), #2c5282);
+  animation: apt-splash-pulse-bar 1.1s ease-in-out infinite;
+}
+
+@keyframes apt-splash-pulse-bar {
+  0% { transform: translateX(-120%); opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { transform: translateX(320%); opacity: 0.5; }
+}
+
+/* ── Admin splash (secure boot) ───────────────────────────────────── */
+
+.apt-splash--admin {
+  background:
+    linear-gradient(165deg, #0f172a 0%, #1e293b 42%, #0f172a 100%);
+  color: #e2e8f0;
+}
+
+.apt-splash--admin__grid {
+  position: absolute;
+  inset: 0;
+  opacity: 0.08;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.35) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.35) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+}
+
+.apt-splash--admin__inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.apt-splash--admin__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: rgba(15, 23, 42, 0.65);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.apt-splash--admin__badge-dot {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.75);
+  animation: apt-boot-blink 1.4s ease-in-out infinite;
+}
+
+@keyframes apt-boot-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.apt-splash--admin__clock {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: clamp(2.75rem, 10vw, 5.5rem);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+  color: #f8fafc;
+  text-shadow: 0 0 40px rgba(56, 189, 248, 0.15);
+}
+
+.apt-splash--admin__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.apt-splash--admin__progress {
+  width: min(14rem, 70vw);
+  height: 2px;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+
+.apt-splash--admin__progress span {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  animation: apt-boot-progress 1.5s ease-out forwards;
+}
+
+@keyframes apt-boot-progress {
+  to { width: 100%; }
+}
+
+/* ── Guest idle (cinematic slideshow) ─────────────────────────────── */
+
+.apt-idle--guest {
+  background: #0b1220;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.apt-idle--guest__slides {
+  position: absolute;
+  inset: 0;
+}
+
+.apt-idle--guest__slide {
+  position: absolute;
+  inset: -8%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transform: scale(1.08);
+  transition: opacity 1.8s var(--apt-overlay-ease), transform 12s linear;
+}
+
+.apt-idle--guest__slide.is-active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.apt-idle--guest__vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at center, transparent 30%, rgba(11, 18, 32, 0.75) 100%),
+    linear-gradient(to top, rgba(11, 18, 32, 0.85), transparent 45%);
+  pointer-events: none;
+}
+
+.apt-idle--guest__cards {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.apt-idle--guest__card {
+  position: absolute;
+  width: clamp(9rem, 22vw, 14rem);
+  aspect-ratio: 4 / 5;
+  border-radius: 1.25rem;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(12px);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  opacity: 0.55;
+  animation: apt-idle-drift 18s ease-in-out infinite alternate;
+}
+
+.apt-idle--guest__card:nth-child(1) { top: 12%; left: 8%; animation-delay: 0s; }
+.apt-idle--guest__card:nth-child(2) { top: 55%; left: 18%; animation-delay: -4s; }
+.apt-idle--guest__card:nth-child(3) { top: 20%; right: 10%; animation-delay: -8s; }
+.apt-idle--guest__card:nth-child(4) { bottom: 14%; right: 22%; animation-delay: -12s; }
+
+@keyframes apt-idle-drift {
+  from { transform: translate(0, 0) rotate(-2deg); }
+  to { transform: translate(18px, -22px) rotate(3deg); }
+}
+
+.apt-idle--guest__message {
+  position: relative;
+  z-index: 2;
+  margin: auto;
+  padding: 2rem;
+  text-align: center;
+  color: #f8fafc;
+  max-width: 36rem;
+}
+
+.apt-idle--guest__message .apt-cloud-cat--compact {
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.35));
+}
+
+.apt-idle--guest__message h2 {
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  animation: apt-idle-pulse-text 2.4s ease-in-out infinite;
+}
+
+@keyframes apt-idle-pulse-text {
+  0%, 100% { opacity: 0.72; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+}
+
+.apt-idle--guest__hint {
+  margin-top: 0.75rem;
+  font-size: 0.875rem;
+  color: rgba(248, 250, 252, 0.55);
+}
+
+.apt-idle--guest__kiosk-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 72px;
+  height: 72px;
+  z-index: 3;
+  /* invisible staff trigger — top-left corner */
+}
+
+/* ── Admin idle ───────────────────────────────────────────────────── */
+
+.apt-idle--admin {
+  background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
+  color: #e2e8f0;
+}
+
+.apt-idle--admin__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+}
+
+.apt-idle--admin__clock {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: clamp(3rem, 12vw, 6rem);
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+  color: #f1f5f9;
+}
+
+.apt-idle--admin__sub {
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+/* ── Admin portal tabs (post-splash navigation) ───────────────────── */
+
+.admin-portal-tabs {
+  display: none;
+  flex-shrink: 0;
+  gap: 0.125rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid var(--color-outline-variant, #cbd5e0);
+  background: #fff;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+@media (min-width: 1024px) {
+  .admin-portal-tabs {
+    display: flex;
+  }
+}
+
+.admin-portal-tab {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.7rem 1rem;
+  min-height: 2.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-neutral, #4a5568);
+  text-decoration: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  white-space: nowrap;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease;
+}
+
+.admin-portal-tab:hover {
+  color: var(--color-primary, #1a365d);
+  background: rgba(26, 54, 93, 0.05);
+}
+
+.admin-portal-tab.is-active {
+  color: var(--color-primary, #1a365d);
+  border-bottom-color: var(--color-primary, #1a365d);
+  font-weight: 700;
+}
+
+.admin-portal-tab .material-symbols-outlined {
+  font-size: 1.125rem;
+}
+
+.admin-shell.is-splash-active .admin-portal-tabs,
+.admin-shell.is-splash-active #app-sidebar,
+.admin-shell.is-splash-active .admin-app-header,
+.admin-shell.is-splash-active .portal-bottom-nav {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.admin-shell:not(.is-splash-active) .admin-portal-tabs,
+.admin-shell:not(.is-splash-active) #app-sidebar,
+.admin-shell:not(.is-splash-active) .admin-app-header,
+.admin-shell:not(.is-splash-active) .portal-bottom-nav {
+  opacity: 1;
+  transition: opacity var(--apt-overlay-fade) var(--apt-overlay-ease);
+}
+
+/* ── Kiosk admin modal ────────────────────────────────────────────── */
+
+.apt-kiosk-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--apt-kiosk-modal-z);
+  background: rgba(2, 6, 23, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 0.35s var(--apt-overlay-ease),
+    visibility 0.35s var(--apt-overlay-ease);
+}
+
+.apt-kiosk-modal-overlay.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.apt-kiosk-modal {
+  width: 100%;
+  max-width: 22rem;
+  background: #fff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}
+
+.apt-kiosk-modal h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: var(--color-primary, #1a365d);
+  margin-bottom: 0.25rem;
+}
+
+.apt-kiosk-modal p {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin-bottom: 1rem;
+}
+
+.apt-kiosk-modal label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 0.35rem;
+}
+
+.apt-kiosk-modal input {
+  width: 100%;
+  border: 1px solid var(--color-outline-variant, #cbd5e0);
+  border-radius: 0.5rem;
+  padding: 0.65rem 0.75rem;
+  font-size: 0.9375rem;
+  margin-bottom: 0.85rem;
+}
+
+.apt-kiosk-modal input[type='password'] {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  letter-spacing: 0.15em;
+}
+
+.apt-kiosk-modal__error {
+  font-size: 0.8125rem;
+  color: #b91c1c;
+  background: #fef2f2;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.apt-kiosk-modal__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.apt-kiosk-modal__btn {
+  flex: 1;
+  padding: 0.65rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.apt-kiosk-modal__btn--ghost {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.apt-kiosk-modal__btn--primary {
+  background: var(--color-primary, #1a365d);
+  color: #fff;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apt-overlay,
+  .apt-kiosk-modal-overlay,
+  .apt-splash--guest__bar-fill,
+  .apt-cloud-cat__scene,
+  .apt-cloud-cat__sign,
+  .apt-cloud-cat__tail,
+  .apt-cloud-cat__paws,
+  .apt-splash--admin__badge-dot,
+  .apt-splash--admin__progress span,
+  .apt-idle--guest__slide,
+  .apt-idle--guest__card,
+  .apt-idle--guest__message h2 {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}

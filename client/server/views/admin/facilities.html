@@ -225,6 +225,7 @@
   <script type="module">
     import { requireAuth } from '/assets/js/services/auth.js';
     import { initAppLayout } from '/assets/js/layout/ui.js';
+    import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
     import { getFacilitiesOverview } from '/assets/js/services/api.js';
     import { bootstrapRoomsBoard } from '/assets/js/features/admin-rooms-board.js';
     import { bootstrapVenueScheduleBoard } from '/assets/js/features/admin-venue-board.js';
@@ -236,6 +237,8 @@
     } from '/assets/js/features/admin-facility-catalog.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
+
+    initSplashIdle({ portal: 'admin' });
 
     await initAppLayout({
       portal:     'admin',

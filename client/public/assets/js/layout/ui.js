@@ -9,6 +9,7 @@ import { initTabGroup, switchTabPanel } from '/assets/js/layout/tabs.js';
 import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDrawerOpen, animateModalOpen, animateNotificationsPanel } from '/assets/js/layout/animations.js';
 import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
 import { initGuestPortalChrome } from '/assets/js/layout/guest-portal.js';
+import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
 import {
   isDesktopSidebar,
   closeMobileSidebar,
@@ -191,6 +192,7 @@ function buildAdminShell({
     ${sidebar}
     <main class="flex-1 flex flex-col overflow-hidden h-full min-w-0">
       ${header}
+      ${renderAdminPortalTabs(navItems, activePage)}
       <div id="page-content" class="flex-1 overflow-y-auto min-h-0">${pageContent}</div>
     </main>
     ${templates.drawer || ''}
@@ -404,6 +406,22 @@ function renderSidebarNav(items, active) {
   `).join('');
 }
 
+function renderAdminPortalTabs(items, active) {
+  return `
+    <nav class="admin-portal-tabs anim-static" aria-label="Admin sections">
+      ${items.map((item) => `
+        <a
+          class="admin-portal-tab${active === item.id ? ' is-active' : ''}"
+          href="${item.href}"
+          aria-current="${active === item.id ? 'page' : 'false'}"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">${item.icon}</span>
+          <span>${item.label}</span>
+        </a>
+      `).join('')}
+    </nav>`;
+}
+
 function extractPreservedLayoutNodes() {
   const fragment = document.createDocumentFragment();
   document.querySelectorAll('[data-layout-preserve]').forEach((el) => {
@@ -425,6 +443,8 @@ export async function initAppLayout(config = {}) {
 
   const isGuest = portal === 'guest';
   const navItems = isGuest ? GUEST_NAV : ADMIN_NAV;
+
+  initSplashIdle({ portal: isGuest ? 'guest' : 'admin' });
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userName = user.full_name || user.name || (isGuest ? 'Guest User' : 'Admin User');
@@ -480,6 +500,7 @@ export async function initAppLayout(config = {}) {
         userRole,
         userInitial,
         collapsed,
+        navItems: ADMIN_NAV,
         brandHref: '/admin/dashboard.html',
       }) + renderAdminBottomNav(ADMIN_MOBILE_NAV, activePage);
 
