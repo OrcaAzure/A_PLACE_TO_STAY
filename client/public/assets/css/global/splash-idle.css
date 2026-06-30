@@ -48,12 +48,37 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.75rem;
+  gap: 1.25rem;
   padding: 2rem;
   text-align: center;
 }
 
-/* ── Cloud cat mascot (inline SVG) ────────────────────────────────── */
+.apt-splash--guest__lottie-wrap {
+  width: min(18rem, 78vw);
+  max-height: min(20rem, 52vh);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apt-splash--guest__lottie {
+  display: block;
+  width: min(18rem, 78vw);
+  height: min(18rem, 52vh);
+  background: transparent !important;
+  --lottie-player-background: transparent;
+}
+
+.apt-splash--guest__brand {
+  margin: 0;
+  font-size: clamp(1.5rem, 5vw, 1.875rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--color-primary, #1a365d);
+  line-height: 1.1;
+}
+
+/* ── Cloud cat mascot (idle screen compact) ───────────────────────── */
 
 .apt-cloud-cat {
   user-select: none;

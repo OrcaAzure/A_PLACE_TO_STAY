@@ -8,6 +8,85 @@ const IDLE_TIMEOUT_MS = 60_000;
 const KIOSK_CORNER_CLICKS = 3;
 const KIOSK_LONG_PRESS_MS = 900;
 const KIOSK_PIN = '2468';
+const GUEST_LOTTIE_SRC = '/assets/animations/splash-animation.lottie';
+const DOTLOTTIE_PLAYER_CDN = 'https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs';
+const DOTLOTTIE_LOAD_TIMEOUT_MS = 8000;
+
+/** @type {Promise<void> | null} */
+let dotLottiePromise = null;
+
+function ensureDotLottiePlayer() {
+  if (customElements.get('dotlottie-player')) return Promise.resolve();
+  if (dotLottiePromise) return dotLottiePromise;
+
+  dotLottiePromise = new Promise((resolve, reject) => {
+    const timer = window.setTimeout(() => {
+      reject(new Error('dotLottie player load timed out'));
+    }, DOTLOTTIE_LOAD_TIMEOUT_MS);
+
+    const done = () => {
+      window.clearTimeout(timer);
+      resolve();
+    };
+
+    const fail = (err) => {
+      window.clearTimeout(timer);
+      reject(err);
+    };
+
+    const waitForElement = () => {
+      customElements.whenDefined('dotlottie-player').then(done).catch(fail);
+    };
+
+    if (document.querySelector('script[data-apt-dotlottie]')) {
+      waitForElement();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = DOTLOTTIE_PLAYER_CDN;
+    script.setAttribute('data-apt-dotlottie', '1');
+    script.addEventListener('load', waitForElement);
+    script.addEventListener('error', () => fail(new Error('Failed to load dotLottie player')));
+    document.head.appendChild(script);
+  }).catch((err) => {
+    dotLottiePromise = null;
+    console.warn('[splash-idle] dotLottie unavailable:', err.message);
+    throw err;
+  });
+
+  return dotLottiePromise;
+}
+
+function guestSplashLottieMarkup() {
+  return `
+    <div class="apt-splash--guest__lottie-wrap">
+      <dotlottie-player
+        class="apt-splash--guest__lottie"
+        src="${GUEST_LOTTIE_SRC}"
+        autoplay
+        loop
+        mode="normal"
+        background="transparent"
+        style="width: min(18rem, 78vw); height: min(18rem, 52vh);"
+      ></dotlottie-player>
+    </div>
+    <p class="apt-splash--guest__brand" data-apt-kiosk-logo>AptSpace</p>`;
+}
+
+function startGuestLottiePlayer(splash) {
+  const player = splash?.querySelector('dotlottie-player');
+  if (!player) return;
+  requestAnimationFrame(() => {
+    try {
+      if (typeof player.play === 'function') player.play();
+      else if (typeof player.setAttribute === 'function') player.setAttribute('autoplay', '');
+    } catch {
+      /* player may upgrade asynchronously */
+    }
+  });
+}
 
 function guestCloudCatMarkup({ compact = false } = {}) {
   const uid = compact ? 'compact' : 'splash';
@@ -122,7 +201,7 @@ function buildGuestSplash() {
   overlay.setAttribute('aria-label', 'Loading AptSpace');
   overlay.innerHTML = `
     <div class="apt-splash--guest__inner">
-      ${guestCloudCatMarkup()}
+      ${guestSplashLottieMarkup()}
       <div class="apt-splash--guest__bar" aria-hidden="true">
         <span class="apt-splash--guest__bar-fill"></span>
       </div>
@@ -401,7 +480,7 @@ function shouldShowSplash(portal) {
 /**
  * @param {{ portal: 'admin'|'guest', forceSplash?: boolean, skipIdle?: boolean }} options
  */
-export function initSplashIdle({ portal = 'guest', forceSplash = false, skipIdle = false } = {}) {
+export async function initSplashIdle({ portal = 'guest', forceSplash = false, skipIdle = false } = {}) {
   ensureStylesheet();
 
   const isAdmin = portal === 'admin';
@@ -416,10 +495,14 @@ export function initSplashIdle({ portal = 'guest', forceSplash = false, skipIdle
   const showSplash = forceSplash || shouldShowSplash(portal);
 
   if (showSplash && !splash) {
+    if (isGuest) await ensureDotLottiePlayer().catch(() => {});
     splash = isAdmin ? buildAdminSplash() : buildGuestSplash();
     document.body.appendChild(splash);
     bindLiveClock(splash.querySelector('[data-apt-clock]'));
-    if (isGuest) bindKioskLongPress(splash.querySelector('[data-apt-kiosk-logo]'));
+    if (isGuest) {
+      bindKioskLongPress(splash.querySelector('[data-apt-kiosk-logo]'));
+      startGuestLottiePlayer(splash);
+    }
   } else if (!showSplash && splash) {
     splash.remove();
     splash = null;

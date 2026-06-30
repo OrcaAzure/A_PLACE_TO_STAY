@@ -444,7 +444,7 @@ export async function initAppLayout(config = {}) {
   const isGuest = portal === 'guest';
   const navItems = isGuest ? GUEST_NAV : ADMIN_NAV;
 
-  initSplashIdle({ portal: isGuest ? 'guest' : 'admin' });
+  await initSplashIdle({ portal: isGuest ? 'guest' : 'admin' });
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userName = user.full_name || user.name || (isGuest ? 'Guest User' : 'Admin User');

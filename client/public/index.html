@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/assets/css/global/landing.css"/>
   <link rel="stylesheet" href="/assets/css/global/splash-idle.css"/>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" data-apt-dotlottie></script>
   <style>
     .material-symbols-outlined {
       font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -240,7 +241,7 @@
           <img src="https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80" alt="Basketball court" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
             <h3 class="text-white text-xl font-bold mb-2">Sports & Rec</h3>
-            <p class="text-white/75 text-body-sm mb-3">Basketball court, playground, and Recreational Center — bookable by 4-hour block.</p>
+            <p class="text-white/75 text-body-sm mb-3">Basketball court, playground, and Rec Center — bookable by 4-hour block.</p>
             <span class="inline-flex items-center gap-1 text-white font-label-md group-hover:gap-3 transition-all">
               Reserve <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
             </span>
@@ -433,7 +434,7 @@
   import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
 
   redirectIfLoggedIn();
-  initSplashIdle({ portal: 'guest', forceSplash: true });
+  await initSplashIdle({ portal: 'guest', forceSplash: true });
   initLandingPage();
 </script>
 
