@@ -16,6 +16,7 @@ import facilityBookingRoutes from './routes/facilityBooking.routes.js';
 import ancillaryRoutes       from './routes/ancillary.routes.js';
 import settingsRoutes  from './routes/settings.routes.js';
 import pageRoutes      from './routes/pages.routes.js';
+import { requestLogger } from './middleware/requestLogger.js';
 import { pool }        from './config/db.js';
 import { getAllowedOrigins, isProduction } from './config/env.js';
 
@@ -28,19 +29,29 @@ if (isProduction) {
   app.set('trust proxy', 1);
 }
 
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc:     ["'self'"],
-      scriptSrc:      ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdn.tailwindcss.com', 'https://cdn.jsdelivr.net', 'https://unpkg.com'],
-      styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-      fontSrc:        ["'self'", 'https://fonts.gstatic.com'],
-      imgSrc:         ["'self'", 'data:', 'https:'],
-      connectSrc:     ["'self'", 'https://cdn.jsdelivr.net', 'https://unpkg.com'],
-      workerSrc:      ["'self'", 'blob:'],
-    },
-  },
-}));
+const helmetOptions = isProduction
+  ? {
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc:     ["'self'"],
+          scriptSrc:      ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://cdn.tailwindcss.com', 'https://cdn.jsdelivr.net', 'https://unpkg.com'],
+          styleSrc:       ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+          fontSrc:        ["'self'", 'https://fonts.gstatic.com'],
+          imgSrc:         ["'self'", 'data:', 'https:'],
+          connectSrc:     ["'self'", 'https://cdn.jsdelivr.net', 'https://unpkg.com'],
+          workerSrc:      ["'self'", 'blob:'],
+        },
+      },
+    }
+  : {
+      contentSecurityPolicy: false,
+      crossOriginEmbedderPolicy: false,
+      crossOriginOpenerPolicy: false,
+      crossOriginResourcePolicy: false,
+      strictTransportSecurity: false,
+    };
+
+app.use(helmet(helmetOptions));
 
 app.use(cors({
   origin: getAllowedOrigins(),
@@ -51,6 +62,7 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(requestLogger);
 
 app.get('/api', (req, res) => {
   res.json({ message: 'AptSpace API is running' });
@@ -104,7 +116,10 @@ app.use((req, res) => {
 });
 
 app.use((err, req, res, next) => {
-  console.error(err.stack || err);
+  const target = req.originalUrl || req.url;
+  const who = req.user?.email ? ` user=${req.user.email}` : '';
+  console.error(`[api] ✗ ERROR ${req.method} ${target}${who} — ${err.message}`);
+  if (!isProduction && err.stack) console.error(err.stack);
   const status = err.statusCode || 500;
   const expose = status < 500 || !isProduction;
   res.status(status).json({

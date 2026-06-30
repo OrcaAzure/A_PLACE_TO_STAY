@@ -11,12 +11,26 @@
 }
 
 /* Hide raw page HTML until the admin shell is mounted (prevents sidebar flash). */
-body:not(.admin-shell) {
+body:not(.admin-shell) #page-content {
   visibility: hidden;
 }
 
-body.admin-shell {
-  visibility: visible;
+body:not(.admin-shell)::before {
+  content: 'Loading AptSpace…';
+  position: fixed;
+  inset: 0;
+  z-index: 99980;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 600 1.125rem/1.4 Inter, system-ui, sans-serif;
+  color: var(--color-primary, #1a365d);
+  background: var(--color-background, #f8fafc);
+}
+
+body.admin-shell::before {
+  content: none;
+  display: none;
 }
 
 @media (min-width: 1024px) {

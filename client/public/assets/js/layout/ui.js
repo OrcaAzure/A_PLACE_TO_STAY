@@ -454,6 +454,24 @@ export async function initAppLayout(config = {}) {
 
   document.documentElement.classList.add('admin-chrome-boot');
 
+  let adminBootFallbackTimer = null;
+  if (!isGuest) {
+    adminBootFallbackTimer = window.setTimeout(() => {
+      if (!document.body.classList.contains('admin-shell')) {
+        document.body.classList.add('admin-shell');
+        document.documentElement.classList.remove('admin-chrome-boot');
+        console.warn('[ui] Admin shell bootstrap timed out — forced page visibility');
+      }
+    }, 10000);
+  }
+
+  const clearAdminBootFallback = () => {
+    if (adminBootFallbackTimer) {
+      clearTimeout(adminBootFallbackTimer);
+      adminBootFallbackTimer = null;
+    }
+  };
+
   const savedContent = document.getElementById('page-content')?.innerHTML || '';
   const preservedNodes = extractPreservedLayoutNodes();
   const existingSidebar = document.getElementById('app-sidebar');
@@ -463,6 +481,7 @@ export async function initAppLayout(config = {}) {
     document.body.className = 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen';
     updateActiveNav(activePage, navItems);
     updateGuestChrome({ userName, userRole, userInitial });
+    clearAdminBootFallback();
     releaseChromeBoot();
     return;
   }
@@ -473,6 +492,7 @@ export async function initAppLayout(config = {}) {
     updateAdminHeader({ title, subtitle, userName, userRole, userInitial });
     ensureSidebarUi();
     lockStaticChrome();
+    clearAdminBootFallback();
     if (!deferEnhancements && !isGuest) initAdminEnhancements().catch(() => releaseChromeBoot());
     else releaseChromeBoot();
     return;
@@ -513,6 +533,7 @@ export async function initAppLayout(config = {}) {
     : `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
 
   bindLayoutEvents({ isGuest });
+  clearAdminBootFallback();
   if (isGuest) {
     initGuestPortalChrome().catch(() => {});
     initGuestPageNavTransitions();

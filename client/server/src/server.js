@@ -29,6 +29,7 @@ async function start() {
   const server = app.listen(port, host, () => {
     console.log(`[server] ${isProduction ? 'Production' : 'Development'} mode`);
     console.log(`[server] Listening on http://${host}:${port}`);
+    console.log(`[server] Request logging enabled (API +${isProduction ? '' : ' page hits in dev'})`);
   });
 
   const shutdown = async (signal) => {

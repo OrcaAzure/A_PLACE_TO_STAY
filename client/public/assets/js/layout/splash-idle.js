@@ -191,7 +191,7 @@ function bindLiveClock(el) {
   clockInterval = setInterval(tick, 1000);
 }
 
-function buildGuestSplash() {
+function buildGuestSplash({ useLottie = true } = {}) {
   const overlay = document.createElement('div');
   overlay.id = 'apt-splash';
   overlay.className = 'apt-overlay apt-splash apt-splash--guest';
@@ -199,9 +199,12 @@ function buildGuestSplash() {
   overlay.setAttribute('role', 'status');
   overlay.setAttribute('aria-live', 'polite');
   overlay.setAttribute('aria-label', 'Loading AptSpace');
+  const mascot = useLottie
+    ? guestSplashLottieMarkup()
+    : `${guestCloudCatMarkup()}<p class="apt-splash--guest__brand" data-apt-kiosk-logo>AptSpace</p>`;
   overlay.innerHTML = `
     <div class="apt-splash--guest__inner">
-      ${guestSplashLottieMarkup()}
+      ${mascot}
       <div class="apt-splash--guest__bar" aria-hidden="true">
         <span class="apt-splash--guest__bar-fill"></span>
       </div>
@@ -495,13 +498,16 @@ export async function initSplashIdle({ portal = 'guest', forceSplash = false, sk
   const showSplash = forceSplash || shouldShowSplash(portal);
 
   if (showSplash && !splash) {
-    if (isGuest) await ensureDotLottiePlayer().catch(() => {});
-    splash = isAdmin ? buildAdminSplash() : buildGuestSplash();
+    let guestUseLottie = false;
+    if (isGuest) {
+      guestUseLottie = await ensureDotLottiePlayer().then(() => true).catch(() => false);
+    }
+    splash = isAdmin ? buildAdminSplash() : buildGuestSplash({ useLottie: guestUseLottie });
     document.body.appendChild(splash);
     bindLiveClock(splash.querySelector('[data-apt-clock]'));
     if (isGuest) {
       bindKioskLongPress(splash.querySelector('[data-apt-kiosk-logo]'));
-      startGuestLottiePlayer(splash);
+      if (guestUseLottie) startGuestLottiePlayer(splash);
     }
   } else if (!showSplash && splash) {
     splash.remove();

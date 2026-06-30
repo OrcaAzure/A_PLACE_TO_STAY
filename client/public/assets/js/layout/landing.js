@@ -170,6 +170,9 @@ export async function initLandingPage() {
     return;
   }
 
+  // Safety net — never leave hero/nav invisible if GSAP stalls or CDN is blocked.
+  window.setTimeout(revealStatic, 4500);
+
   let gsap;
   try {
     gsap = await loadGsapWithScrollTrigger();
