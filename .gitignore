@@ -1,6 +1,7 @@
 node_modules
 .env
 client/server/.env
+client/server/.env.staging
 dist
 .DS_Store
 *.log

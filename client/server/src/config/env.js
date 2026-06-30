@@ -3,7 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const serverRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-dotenv.config({ path: path.join(serverRoot, '.env') });
+const envFile = process.env.ENV_FILE || '.env';
+dotenv.config({ path: path.join(serverRoot, envFile) });
 
 export const NODE_ENV = process.env.NODE_ENV || 'development';
 export const isProduction = NODE_ENV === 'production';

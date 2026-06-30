@@ -26,9 +26,22 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-**Health check:** [http://localhost:3000/api/health](http://localhost:3000/api/health) — returns `{ status: "ok", db: "connected" }` when MySQL is reachable.
+**Verify local setup:** `npm run verify`
 
 **Admin login:** `admin@aptspace.com` / `password` (or your `DEFAULT_PASSWORD`)
+
+## Local dev vs staging prep (both at once)
+
+You can develop locally **and** prepare staging in parallel — they use **separate env files**:
+
+| Command | Env file | When |
+|---------|----------|------|
+| `npm run dev` | `client/server/.env` | Daily coding |
+| `npm run setup:staging` | creates `.env.staging` | Start staging prep |
+| `npm run verify:staging` | checks `.env.staging` | Before deploy |
+| `npm run start:staging` | `.env.staging` | Optional: test production mode locally |
+
+Full staging workflow: [deploy/STAGING.md](deploy/STAGING.md)
 
 ## Configuration
 

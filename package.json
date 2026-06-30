@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "npm run dev --prefix client/server",
     "start": "npm start --prefix client/server",
+    "start:staging": "node scripts/run-server.mjs .env.staging",
     "install:server": "npm install --prefix client/server",
-    "setup": "node scripts/setup.mjs"
+    "setup": "node scripts/setup.mjs",
+    "setup:staging": "node scripts/setup-staging.mjs",
+    "verify": "node scripts/verify-local.mjs",
+    "verify:staging": "node scripts/verify-staging.mjs"
   }
 }
