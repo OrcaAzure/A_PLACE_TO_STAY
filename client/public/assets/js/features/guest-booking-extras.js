@@ -5,7 +5,6 @@
 import { getMealRates, getFacilitiesOverview } from '/assets/js/services/api.js';
 import {
   MEAL_TYPE_LIST,
-  QUICK_FEES,
   calcMealsSubtotal,
   calcFeesSubtotal,
   calcGrandTotal,
@@ -39,10 +38,6 @@ const GROUP_ICONS = {
 };
 
 const FEE_ICONS = {
-  'Extra Mattress': 'bed',
-  'Extra Bed': 'single_bed',
-  'Extra Chair': 'chair',
-  'Cleaning Fee': 'cleaning_services',
   Laundry: 'local_laundry_service',
   Corkage: 'wine_bar',
 };
@@ -115,16 +110,6 @@ function buildFeeGroups(services = []) {
   return [...singles, ...expandables];
 }
 
-function fallbackFeeGroups() {
-  return QUICK_FEES.map((f) => ({
-    id: f.name,
-    label: f.name,
-    icon: feeIcon(f.name),
-    type: 'single',
-    item: { name: f.name, amount: f.amount, category: '' },
-  }));
-}
-
 export function createGuestBookingExtras({
   panelEl,
   mealsMount,
@@ -134,7 +119,7 @@ export function createGuestBookingExtras({
   onChange = () => {},
 } = {}) {
   let mealRates = { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 };
-  let feeGroups = fallbackFeeGroups();
+  let feeGroups = [];
   let expandedGroupId = null;
   let meals = emptyMeals();
   let fees = [];
@@ -211,6 +196,10 @@ export function createGuestBookingExtras({
 
   function renderFeeChips() {
     if (!feeChipsMount) return;
+    if (!feeGroups.length) {
+      feeChipsMount.innerHTML = '<p class="guest-service-empty text-body-sm text-on-surface-variant">No extra services are configured in the catalog yet.</p>';
+      return;
+    }
     feeChipsMount.innerHTML = feeGroups.map((group) => {
       const isExpanded = expandedGroupId === group.id;
       if (group.type === 'single') {
@@ -395,10 +384,9 @@ export function createGuestBookingExtras({
         getFacilitiesOverview().catch(() => ({ services: [] })),
       ]);
       mealRates = { ...mealRates, ...rates };
-      const groups = buildFeeGroups(catalog.services || []);
-      feeGroups = groups.length ? groups : fallbackFeeGroups();
+      feeGroups = buildFeeGroups(catalog.services || []);
     } catch {
-      feeGroups = fallbackFeeGroups();
+      feeGroups = [];
     }
     render();
   }

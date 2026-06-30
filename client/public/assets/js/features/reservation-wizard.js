@@ -6,7 +6,7 @@ import {
   createBooking, updateBooking, getMealRates, getRoomAvailability, getUsers, getBookingById, getFacilitiesOverview,
 } from '/assets/js/services/api.js';
 import {
-  WIZARD_STEPS, QUICK_FEES, escapeHtml, formatDateLong, formatMoney,
+  WIZARD_STEPS, escapeHtml, formatDateLong, formatMoney,
   emptyWizardState, mealsFromBooking, calcGrandTotal, calcMealsSubtotal, calcFeesSubtotal, availLabel, debounce,
   loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint,
   recommendRooms, recommendationReason, servicesToQuickFees, filterRoomsList,
@@ -17,7 +17,7 @@ let isOpen = false;
 let state = emptyWizardState();
 let users = [];
 let fiscalBounds = null;
-let quickFees = QUICK_FEES;
+let quickFees = [];
 
 function $(id) { return document.getElementById(id); }
 
@@ -188,6 +188,9 @@ function renderStep4() {
   const quickBtns = quickFees.map((f) =>
     `<button type="button" class="res-quick-fee" data-quick-fee="${escapeHtml(f.name)}" data-quick-amt="${f.amount}">${escapeHtml(f.name)} (${formatMoney(f.amount)})</button>`
   ).join('');
+  const quickFeesBlock = quickFees.length
+    ? `<div class="res-quick-fees">${quickBtns}</div>`
+    : '<p class="res-hint">No extra services in the catalog yet — add a custom line below or configure fees under Facilities → Extra fees.</p>';
   return `
     <p class="res-lead">Add meals if needed. Set a different quantity for each meal.</p>
     <div class="res-meals-box">
@@ -198,8 +201,8 @@ function renderStep4() {
       <p class="res-meal-total">Meals subtotal: <strong>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
     </div>
     <h3 class="res-subhead">Additional fees (optional)</h3>
-    <p class="res-hint">Tap a common fee or add your own.</p>
-    <div class="res-quick-fees">${quickBtns}</div>
+    <p class="res-hint">Tap a catalog fee or add your own.</p>
+    ${quickFeesBlock}
     <div class="res-row">
       <div><label class="res-label">Fee name</label><input id="wiz-fee-name" class="res-input" placeholder="e.g. Extra mattress" /></div>
       <div><label class="res-label">Amount (₱)</label><input id="wiz-fee-amt" class="res-input" type="number" min="0" step="1" placeholder="0" /></div>
@@ -520,7 +523,7 @@ export async function openReservationWizard(options = {}) {
     quickFees = servicesToQuickFees(catalogResult.services || []);
   } catch {
     users = [];
-    quickFees = QUICK_FEES;
+    quickFees = [];
   }
 
   if (bookingId) {

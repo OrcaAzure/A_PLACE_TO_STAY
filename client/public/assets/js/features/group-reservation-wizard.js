@@ -3,12 +3,12 @@
  */
 
 import {
-  createGroup, updateGroup, getGroupById, getMealRates, getUsers, suggestGroupRooms,
+  createGroup, updateGroup, getGroupById, getMealRates, getUsers, suggestGroupRooms, getFacilitiesOverview,
 } from '/assets/js/services/api.js';
 import {
-  GROUP_WIZARD_STEPS, QUICK_FEES, escapeHtml, formatDateLong, formatMoney,
+  GROUP_WIZARD_STEPS, escapeHtml, formatDateLong, formatMoney,
   emptyGroupWizardState, mealsFromBooking, calcMealsSubtotal, calcFeesSubtotal, calcGroupGrandTotal,
-  assignedGuestTotal, debounce,
+  assignedGuestTotal, debounce, servicesToQuickFees,
   loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint,
 } from '/assets/js/features/reservation-shared.js';
 
@@ -17,6 +17,7 @@ let isOpen = false;
 let state = emptyGroupWizardState();
 let users = [];
 let fiscalBounds = null;
+let quickFees = [];
 
 function $(id) { return document.getElementById(id); }
 
@@ -194,9 +195,12 @@ function renderStep4() {
   const feeRows = state.fees.map((f, i) =>
     `<tr><td>${escapeHtml(f.fee_name)}</td><td>${formatMoney(f.amount)}</td>
      <td><button type="button" class="res-btn-sm res-btn-sm--danger" data-fee-rm="${i}">Remove</button></td></tr>`).join('');
-  const quickBtns = QUICK_FEES.map((f) =>
+  const quickBtns = quickFees.map((f) =>
     `<button type="button" class="res-quick-fee" data-quick-fee="${escapeHtml(f.name)}" data-quick-amt="${f.amount}">${escapeHtml(f.name)} (${formatMoney(f.amount)})</button>`
   ).join('');
+  const quickFeesBlock = quickFees.length
+    ? `<div class="res-quick-fees">${quickBtns}</div>`
+    : '<p class="res-hint">No extra services in the catalog yet — add a custom line below or configure fees under Facilities → Extra fees.</p>';
   return `
     <p class="res-lead">Meals and fees apply to the whole group.</p>
     <div class="res-meals-box">
@@ -207,7 +211,7 @@ function renderStep4() {
       <p class="res-meal-total">Meals subtotal: <strong>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
     </div>
     <h3 class="res-subhead">Additional fees (optional)</h3>
-    <div class="res-quick-fees">${quickBtns}</div>
+    ${quickFeesBlock}
     <div class="res-row">
       <div><label class="res-label">Fee name</label><input id="gw-fee-name" class="res-input" placeholder="e.g. Extra mattress" /></div>
       <div><label class="res-label">Amount (₱)</label><input id="gw-fee-amt" class="res-input" type="number" min="0" /></div>
@@ -573,12 +577,20 @@ export async function openGroupWizard(options = {}) {
   state.groupId = groupId;
 
   try {
-    [users, state.mealRates, fiscalBounds] = await Promise.all([
+    const [usersResult, mealRatesResult, fiscalResult, catalogResult] = await Promise.all([
       getUsers(),
       getMealRates(),
       loadFiscalYearBounds(),
+      getFacilitiesOverview().catch(() => ({ services: [] })),
     ]);
-  } catch { users = []; }
+    users = usersResult;
+    state.mealRates = mealRatesResult;
+    fiscalBounds = fiscalResult;
+    quickFees = servicesToQuickFees(catalogResult.services || []);
+  } catch {
+    users = [];
+    quickFees = [];
+  }
 
   if (groupId) {
     const group = await getGroupById(groupId);
