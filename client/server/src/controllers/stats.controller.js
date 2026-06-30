@@ -45,7 +45,8 @@ export const getAdminSummary = async (req, res) => {
       [groupCounts],
       [roomRows],
       [revenueRows],
-      [buildingUsage],
+      [facilityUsageRows],
+      [roomUsageRows],
       [recentRoomRows],
       [recentVenueRows],
       [usersByRole],
@@ -78,15 +79,23 @@ export const getAdminSummary = async (req, res) => {
         FROM payments WHERE status = 'Paid'
       `),
       pool.query(`
-        SELECT b.name AS building_name,
+        SELECT COALESCE(NULLIF(f.facility_group, ''), f.name) AS label,
+               COUNT(fb.id) AS booking_count
+        FROM bookings_facilities fb
+        JOIN facilities f ON f.id = fb.facility_id
+        WHERE fb.status = 'Approved'
+          AND fb.event_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+        GROUP BY COALESCE(NULLIF(f.facility_group, ''), f.name)
+      `),
+      pool.query(`
+        SELECT b.name AS label,
                COUNT(bk.id) AS booking_count
-        FROM buildings b
-        LEFT JOIN rooms r ON r.building_id = b.id
-        LEFT JOIN bookings_rooms bk ON bk.room_id = r.id
-          AND bk.status = 'Approved'
+        FROM bookings_rooms bk
+        JOIN rooms r ON bk.room_id = r.id
+        JOIN buildings b ON r.building_id = b.id
+        WHERE bk.status = 'Approved'
           AND bk.check_in >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
         GROUP BY b.id, b.name
-        ORDER BY b.name
       `),
       pool.query(`${bookingSelect} ORDER BY bk.updated_at DESC LIMIT 12`),
       pool.query(`${venueBookingSelect} ORDER BY fb.updated_at DESC LIMIT 12`),
@@ -121,6 +130,22 @@ export const getAdminSummary = async (req, res) => {
       .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
       .slice(0, 10);
 
+    const bookingUsage = [
+      ...roomUsageRows.map((row) => ({
+        label: row.label,
+        booking_count: Number(row.booking_count),
+        kind: 'room',
+      })),
+      ...facilityUsageRows.map((row) => ({
+        label: row.label,
+        booking_count: Number(row.booking_count),
+        kind: 'venue',
+      })),
+    ]
+      .filter((row) => row.booking_count > 0)
+      .sort((a, b) => b.booking_count - a.booking_count || a.label.localeCompare(b.label))
+      .slice(0, 10);
+
     res.status(200).json({
       kpis: {
         upcoming: Number(upcomingRows[0].count),
@@ -139,7 +164,7 @@ export const getAdminSummary = async (req, res) => {
         occupancyPct,
         paidRevenue: Number(revenueRows[0].paid_revenue),
       },
-      buildingUsage,
+      bookingUsage,
       recentActivity,
       usersByRole,
     });

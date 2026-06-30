@@ -212,7 +212,7 @@ function renderQueueItem(item) {
 
 export async function loadDashboard() {
   const summary = await getAdminSummary();
-  const { kpis, buildingUsage, recentActivity } = summary;
+  const { kpis, bookingUsage, recentActivity } = summary;
 
   setText('kpi-upcoming-label', 'Approved');
   setText('kpi-rooms-available-label', `${kpis.availableRooms} ready`);
@@ -230,34 +230,37 @@ export async function loadDashboard() {
     animateCountUp(document.getElementById('kpi-revenue'), formatPHP(kpis.paidRevenue)),
   ]);
 
-  await renderBuildingChart(buildingUsage);
+  await renderBookingUsageChart(bookingUsage);
   renderRecentActivity(recentActivity);
 
-  setText('chart-period-label', 'Last 30 days · approved bookings');
+  setText('chart-period-label', 'Last 30 days · rooms & venues');
   revealPageContent();
 }
 
-async function renderBuildingChart(buildingUsage) {
-  const mount = document.getElementById('building-chart-mount');
+async function renderBookingUsageChart(bookingUsage) {
+  const mount = document.getElementById('booking-usage-chart-mount');
   if (!mount) return;
 
-  if (!buildingUsage?.length) {
-    mount.innerHTML = '<p class="text-body-sm text-on-surface-variant absolute inset-0 flex items-center justify-center">No room usage data yet.</p>';
+  if (!bookingUsage?.length) {
+    mount.innerHTML = '<p class="text-body-sm text-on-surface-variant absolute inset-0 flex items-center justify-center px-6 text-center">No room or facility bookings in the last 30 days yet.</p>';
     return;
   }
 
-  const max = Math.max(...buildingUsage.map((b) => Number(b.booking_count)), 1);
-  const colors = ['bg-primary', 'bg-primary-container', 'bg-secondary', 'bg-blue-400', 'bg-emerald-600', 'bg-neutral'];
+  const max = Math.max(...bookingUsage.map((b) => Number(b.booking_count)), 1);
 
-  mount.innerHTML = buildingUsage.map((row, i) => {
+  mount.innerHTML = bookingUsage.map((row) => {
     const height = Math.round((Number(row.booking_count) / max) * 140);
-    const color = colors[i % colors.length];
+    const isRoom = row.kind === 'room';
+    const color = isRoom ? 'bg-primary' : 'bg-emerald-600';
+    const kindLabel = isRoom ? 'Rooms' : 'Venue';
+    const label = row.label || (isRoom ? 'Lodging' : 'Facility');
     return `
-      <div class="flex-1 flex flex-col items-center gap-2 group relative z-10 min-w-0">
+      <div class="flex-none w-[5.5rem] sm:flex-1 sm:min-w-0 flex flex-col items-center gap-2 group relative z-10">
         <div class="w-full bg-surface-container rounded-t-lg relative overflow-hidden h-[180px]">
           <div class="chart-bar absolute bottom-0 w-full ${color} rounded-t-lg" style="height: 0px;" data-height="${height}px" title="${row.booking_count} approved (30d)"></div>
         </div>
-        <span class="text-body-sm font-semibold text-on-surface-variant truncate max-w-full px-1">${escapeHtml(row.building_name)}</span>
+        <span class="text-[0.6875rem] font-bold uppercase tracking-wide ${isRoom ? 'text-primary' : 'text-emerald-700'}">${kindLabel}</span>
+        <span class="text-body-sm font-semibold text-on-surface-variant truncate max-w-full px-1 text-center" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
         <span class="text-body-sm text-on-surface-variant">${row.booking_count}</span>
       </div>`;
   }).join('');

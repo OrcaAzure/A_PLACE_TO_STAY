@@ -85,36 +85,17 @@
       </article>
     </section>
 
-    <nav class="dashboard-quick-links" aria-label="Quick admin actions" data-no-page-enter>
-      <a href="calendar.html" class="dashboard-quick-link">
-        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
-        <span>Reservation calendar</span>
-      </a>
-      <a href="facilities.html" class="dashboard-quick-link">
-        <span class="material-symbols-outlined" aria-hidden="true">domain</span>
-        <span>Rooms &amp; facilities</span>
-      </a>
-      <a href="payments.html" class="dashboard-quick-link">
-        <span class="material-symbols-outlined" aria-hidden="true">payments</span>
-        <span>Billing</span>
-      </a>
-      <a href="residents.html" class="dashboard-quick-link">
-        <span class="material-symbols-outlined" aria-hidden="true">badge</span>
-        <span>Guest Access</span>
-      </a>
-    </nav>
-
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start" data-no-page-enter>
       <section class="lg:col-span-2 admin-panel">
         <div class="admin-panel-header">
           <div>
-            <h2>GMC Room Usage</h2>
-            <p>Approved room bookings (last 30 days)</p>
+            <h2>Rooms &amp; Facilities Booked</h2>
+            <p>Approved lodging and venue bookings (last 30 days)</p>
           </div>
           <span class="text-body-sm text-on-surface-variant font-medium px-3 py-2 bg-surface-container-low rounded-lg border border-outline-variant" id="chart-period-label">Loading…</span>
         </div>
-        <div class="admin-panel-body h-[340px] relative flex items-end justify-between gap-4" id="building-chart-mount">
-          <p class="text-body-sm text-on-surface-variant absolute inset-0 flex items-center justify-center">Loading utilization data…</p>
+        <div class="admin-panel-body h-[340px] relative flex items-end justify-between gap-3 overflow-x-auto" id="booking-usage-chart-mount">
+          <p class="text-body-sm text-on-surface-variant absolute inset-0 flex items-center justify-center">Loading bookings…</p>
         </div>
       </section>
       <section class="admin-panel flex flex-col">
