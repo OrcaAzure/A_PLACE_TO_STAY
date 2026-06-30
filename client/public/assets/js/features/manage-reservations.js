@@ -1,8 +1,8 @@
 /** Confirmed reservations — singles + groups. */
 
-import { getBookings, getGroups, deleteBooking, deleteGroup, formatGroupId } from '/assets/js/services/api.js';
+import { getBookings, getGroups, deleteBooking, deleteGroup } from '/assets/js/services/api.js';
 import {
-  escapeHtml, formatDisplayId, formatDateLong, statusBadge, debounce, normStatus, getReservationCategory,
+  escapeHtml, formatDateLong, statusBadge, debounce, normStatus, getReservationCategory,
   lifecyclePhaseForBooking, lifecyclePhaseBadge,
 } from '/assets/js/features/reservation-shared.js';
 
@@ -23,12 +23,6 @@ function applyFilter() {
     if (!q) return true;
     return item._search.includes(q);
   });
-}
-
-function typeLabel(isGroup) {
-  return isGroup
-    ? '<span class="res-pill res-pill--group">Group</span>'
-    : '<span class="res-pill res-pill--single">Single room</span>';
 }
 
 function categoryLabel(item) {
@@ -64,24 +58,19 @@ function renderList() {
   }
   mount.innerHTML = filtered.map((item) => {
     const isGroup = item.kind === 'group';
-    const idLabel = isGroup ? formatGroupId(item.id) : formatDisplayId(item.id);
     const guest = isGroup
       ? escapeHtml(item.group_name || item.contact_name || 'Unnamed group')
       : escapeHtml(item.guest_name || 'Unknown guest');
     const key = isGroup ? `g-${item.id}` : `b-${item.id}`;
 
     return `<article class="res-list-card" role="listitem">
-      <div class="res-list-card-head">
-        <div class="res-list-meta">
-          <span class="res-list-id">${idLabel}</span>
-          ${typeLabel(isGroup)}
-        </div>
+      <div class="res-list-card-top">
+        <h3 class="res-list-title">${guest}</h3>
         <div class="res-list-badges">
           ${categoryLabel(item)}
           ${statusBadge(item.status)}
         </div>
       </div>
-      <h3 class="res-list-title">${guest}</h3>
       <p class="res-list-detail">${escapeHtml(reservationDetails(item))}</p>
       <dl class="res-list-dates res-list-dates--triple">
         <div>
@@ -122,7 +111,7 @@ async function load() {
       .map((b) => ({
         kind: 'single',
         ...b,
-        _search: [b.id, formatDisplayId(b.id), b.guest_name, b.room_number, b.building_name].join(' ').toLowerCase(),
+        _search: [b.guest_name, b.room_number, b.building_name].join(' ').toLowerCase(),
       }));
     const groupRows = groups
       .filter((g) => ['approved', 'cancelled'].includes(normStatus(g.status)))
@@ -131,7 +120,7 @@ async function load() {
         ...g,
         check_in: g.check_in,
         check_out: g.check_out,
-        _search: [g.id, formatGroupId(g.id), g.group_name, g.contact_name].join(' ').toLowerCase(),
+        _search: [g.group_name, g.contact_name].join(' ').toLowerCase(),
       }));
     list = [...singles, ...groupRows].sort((a, b) => String(a.check_in).localeCompare(String(b.check_in)));
     applyFilter();
@@ -180,9 +169,8 @@ async function remove(key) {
   const { kind, id } = parseKey(key);
   const item = list.find((x) => x.kind === kind && String(x.id) === String(id));
   if (!item) return;
-  const label = kind === 'group' ? formatGroupId(id) : formatDisplayId(id);
   const name = kind === 'group' ? item.group_name : item.guest_name;
-  if (!window.confirm(`Delete ${label} (${name})? This cannot be undone.`)) return;
+  if (!window.confirm(`Delete reservation for ${name}? This cannot be undone.`)) return;
   if (kind === 'group') await deleteGroup(id);
   else await deleteBooking(id);
   window.dispatchEvent(new CustomEvent('booking:updated'));

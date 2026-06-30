@@ -192,7 +192,6 @@ function buildAdminShell({
     ${sidebar}
     <main class="flex-1 flex flex-col overflow-hidden h-full min-w-0">
       ${header}
-      ${renderAdminPortalTabs(navItems, activePage)}
       <div id="page-content" class="flex-1 overflow-y-auto min-h-0">${pageContent}</div>
     </main>
     ${templates.drawer || ''}
@@ -404,22 +403,6 @@ function renderSidebarNav(items, active) {
       <span class="font-body-md admin-nav-label">${item.label}</span>
     </a>
   `).join('');
-}
-
-function renderAdminPortalTabs(items, active) {
-  return `
-    <nav class="admin-portal-tabs anim-static" aria-label="Admin sections">
-      ${items.map((item) => `
-        <a
-          class="admin-portal-tab${active === item.id ? ' is-active' : ''}"
-          href="${item.href}"
-          aria-current="${active === item.id ? 'page' : 'false'}"
-        >
-          <span class="material-symbols-outlined" aria-hidden="true">${item.icon}</span>
-          <span>${item.label}</span>
-        </a>
-      `).join('')}
-    </nav>`;
 }
 
 function extractPreservedLayoutNodes() {

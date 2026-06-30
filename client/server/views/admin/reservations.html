@@ -14,64 +14,71 @@
   <link rel="stylesheet" href="/assets/css/global/responsive.css" />
   <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
   <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
+  <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
   <link rel="stylesheet" href="/assets/css/features/reservation-admin.css" />
 </head>
 <body>
-  <div id="page-content" class="p-6 space-y-6 max-w-[1600px] mx-auto w-full">
-    <div class="res-manage-intro">
-      <div>
-        <h2 class="res-manage-intro-title">Manage reservations</h2>
-        <p class="res-manage-intro-text">Review guest requests, create room stays, and book venue spaces. Open the <a href="calendar.html" class="text-primary font-semibold hover:underline">calendar</a> for a full schedule view.</p>
+  <div id="page-content" class="res-hub-page p-6 space-y-5 max-w-[1600px] mx-auto w-full">
+
+    <nav class="res-hub-tabs" aria-label="Reservation sections">
+      <button type="button" data-res-tab="pending" class="res-hub-tab is-active">
+        Pending
+        <span class="res-hub-tab-badge" data-res-tab-badge="pending">0</span>
+      </button>
+      <button type="button" data-res-tab="rooms" class="res-hub-tab">Room stays</button>
+      <button type="button" data-res-tab="groups" class="res-hub-tab">Group stays</button>
+      <button type="button" data-res-tab="venues" class="res-hub-tab">
+        Venues
+        <span class="res-hub-tab-badge hidden" data-res-tab-badge="venues">0</span>
+      </button>
+    </nav>
+
+    <section id="res-hub-panel" class="res-hub-panel">
+      <div class="res-hub-toolbar">
+        <div class="res-hub-toolbar__search">
+          <span class="material-symbols-outlined" aria-hidden="true">search</span>
+          <input id="res-hub-search" type="search" class="res-input" placeholder="Search guest, room, venue, or ID…" autocomplete="off" />
+        </div>
+        <select id="res-hub-filter" class="res-input res-input--select hidden" aria-label="Filter list"></select>
+        <div class="res-hub-toolbar__actions">
+          <button type="button" id="res-hub-create-room" class="res-btn res-btn--primary hidden">
+            <span class="material-symbols-outlined">add</span> New room stay
+          </button>
+          <button type="button" id="res-hub-create-group" class="res-btn res-btn--primary hidden">
+            <span class="material-symbols-outlined">groups</span> New group stay
+          </button>
+          <button type="button" id="res-hub-create-venue" class="res-btn res-btn--primary hidden">
+            <span class="material-symbols-outlined">event</span> Book venue
+          </button>
+        </div>
       </div>
-      <a href="calendar.html" class="res-manage-cal-link">
-        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
-        Open calendar
-      </a>
-    </div>
-    <div id="action-cards-mount"></div>
+      <p id="res-hub-count" class="res-hub-count">Loading…</p>
+      <div id="res-hub-list" class="res-hub-list">
+        <div class="res-empty-box">Loading reservations…</div>
+      </div>
+    </section>
+
   </div>
 
   <script type="module">
-    import { requireAuth }   from '/assets/js/services/auth.js';
+    import { requireAuth } from '/assets/js/services/auth.js';
     import { initAppLayout } from '/assets/js/layout/ui.js';
-    import { getBookings, getGroups, getFacilityBookings } from '/assets/js/services/api.js';
+    import { bootstrapReservationsHub } from '/assets/js/features/admin-reservations-hub.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
-
-    async function syncPendingBadge() {
-      const [bookings, groups, venues] = await Promise.all([
-        getBookings(), getGroups(), getFacilityBookings(),
-      ]);
-      const roomPending = bookings.filter((b) => !b.group_id && String(b.status).toLowerCase() === 'pending').length
-        + groups.filter((g) => String(g.status).toLowerCase() === 'pending').length;
-      const venuePending = venues.filter((v) => String(v.status).toLowerCase() === 'pending').length;
-
-      const countEl = document.getElementById('pending-count');
-      if (countEl) countEl.textContent = `${roomPending} PENDING`;
-
-      const venueEl = document.getElementById('venue-pending-count');
-      if (venueEl) {
-        venueEl.textContent = `${venuePending} PENDING`;
-        venueEl.classList.toggle('hidden', venuePending === 0);
-      }
-    }
-
-    const actionCards = await fetch('/components/action-cards-reservations.html').then(r => r.text());
-    document.getElementById('action-cards-mount').innerHTML = actionCards;
 
     await initAppLayout({
       portal:     'admin',
       activePage: 'reservations',
       title:      'Reservations',
-      subtitle:   'Rooms, groups & venue spaces',
+      subtitle:   'Approve and manage guest bookings',
       deferEnhancements: true,
     });
 
+    await bootstrapReservationsHub();
+
     const { initAdminEnhancements } = await import('/assets/js/layout/animations.js');
     await initAdminEnhancements();
-
-    window.addEventListener('booking:updated', syncPendingBadge);
-    syncPendingBadge();
   </script>
 </body>
 </html>

@@ -468,3 +468,7 @@
 }
 
 .fac-panel .rooms-board-message { padding: 2.5rem 1.5rem; font-size: 1rem; }
+
+.fac-panel .fac-board-sections {
+  margin-top: 0.25rem;
+}

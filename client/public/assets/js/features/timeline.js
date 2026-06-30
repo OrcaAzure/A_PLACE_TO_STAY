@@ -557,7 +557,6 @@ function renderUnassignedStrip(unassigned, onOpen) {
       <div class="tl-unassigned-list">
         ${unassigned.map((b) => `
           <button type="button" class="tl-unassigned-chip" data-unassigned-id="${b.id}">
-            <span class="tl-unassigned-id">#APT-${b.id}</span>
             <span>${escapeHtml(b.guestName || 'Guest')}</span>
             <span class="tl-unassigned-dates">${formatDate(b.startDate)} – ${formatDate(b.endDate)}</span>
           </button>`).join('')}
@@ -629,7 +628,7 @@ function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', 
     return `
       <div class="tl-reject-panel">
         <div class="tl-reject-icon" aria-hidden="true"><span class="material-symbols-outlined">warning</span></div>
-        <h4 class="tl-reject-title">Decline ${escapeHtml(booking.displayId)}?</h4>
+        <h4 class="tl-reject-title">Decline request from ${escapeHtml(booking.requester?.name || booking.title || 'this guest')}?</h4>
         <p class="tl-reject-lead">${escapeHtml(booking.requester.name)} · ${formatDateLong(booking.schedule.checkIn)} → ${formatDateLong(booking.schedule.checkOut)}</p>
         <label class="tl-field-label" for="tl-reject-note">Reason (optional — saved in notes)</label>
         <textarea id="tl-reject-note" class="tl-input tl-textarea" rows="3" placeholder="e.g. Dates unavailable, room conflict…"></textarea>
@@ -750,8 +749,10 @@ export function openBookingModal(rawBooking, { onRefresh } = {}) {
   if (!rawBooking) return;
   const booking = normalizeManageRequest(rawBooking);
   detailState = { raw: rawBooking, mode: 'view', busy: false, error: '' };
-  const title = booking.requester.name || booking.title || `Booking #${booking.id}`;
-  openModal(title, renderBookingDetailBody(rawBooking, detailState), { subtitle: booking.displayId });
+  const title = booking.requester.name || booking.title || 'Booking';
+  const subtitle = [booking.facility?.building, booking.facility?.roomNumber].filter(Boolean).join(' ')
+    || formatDateLong(booking.schedule?.checkIn);
+  openModal(title, renderBookingDetailBody(rawBooking, detailState), { subtitle });
   bindDetailActions(onRefresh || (() => {}));
 }
 
@@ -794,7 +795,9 @@ function renderVenueDetailBody(raw, { busy = false, error = '' } = {}) {
 export function openVenueBookingModal(rawBooking, { onRefresh } = {}) {
   if (!rawBooking) return;
   const b = normalizeFacilityBooking(rawBooking);
-  openModal(b.guestName || 'Venue booking', renderVenueDetailBody(rawBooking), { subtitle: `VEN-${b.id}` });
+  openModal(b.guestName || 'Venue booking', renderVenueDetailBody(rawBooking), {
+    subtitle: `${b.venueCategory} — ${b.venueName}`,
+  });
 
   const body = document.getElementById('modalBody');
   body?.querySelector('[data-vd-approve]')?.addEventListener('click', async () => {
@@ -826,7 +829,17 @@ const DEFAULT_CAL_FILTERS = {
   showPending: true,
   showApproved: true,
   showCancelled: false,
+  searchQuery: '',
 };
+
+function parseCalendarDeepLink() {
+  const p = new URLSearchParams(window.location.search);
+  return {
+    date: p.get('date'),
+    pending: p.get('pending') === '1',
+    searchQuery: (p.get('q') || '').trim(),
+  };
+}
 
 function applyCalendarFilters(bookings, filters) {
   return bookings.filter((b) => {
@@ -839,6 +852,14 @@ function applyCalendarFilters(bookings, filters) {
     if (st === 'pending' && !filters.showPending) return false;
     if (st === 'approved' && !filters.showApproved) return false;
     if (st === 'cancelled' && !filters.showCancelled) return false;
+    if (filters.searchQuery) {
+      const q = filters.searchQuery.toLowerCase();
+      const hay = [
+        b.title, b.guestName, b.facilityLabel, b.roomNumber, b.buildingName,
+        b.venueName, b.venueCategory, String(b.id),
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
     return true;
   });
 }
@@ -931,11 +952,12 @@ function renderCalendarFilterSidebar(filters) {
     </aside>`;
 }
 
-function renderCalendarPageShell({ title }) {
+function renderCalendarPageShell({ title, deepLinkNote = '' }) {
   return `
     <div class="cal-page">
       ${renderCalendarFilterSidebar(DEFAULT_CAL_FILTERS)}
       <div class="cal-main">
+        ${deepLinkNote}
         ${renderTimelineShell({ title, compactLegend: true })}
       </div>
     </div>`;
@@ -944,15 +966,41 @@ function renderCalendarPageShell({ title }) {
 function createCalendarController({ mountEl, title, onData, withFilters = false }) {
   if (!mountEl) return null;
 
+  const deepLink = withFilters ? parseCalendarDeepLink() : { date: null, pending: false, searchQuery: '' };
   const now = new Date();
   const todayStr = toLocalDateString(now);
   let viewYear = now.getFullYear();
   let viewMonth = now.getMonth();
 
+  if (deepLink.date && /^\d{4}-\d{2}-\d{2}$/.test(deepLink.date)) {
+    const d = new Date(`${deepLink.date}T12:00:00`);
+    if (!Number.isNaN(d.getTime())) {
+      viewYear = d.getFullYear();
+      viewMonth = d.getMonth();
+    }
+  }
+
   let allBookings = [];
   let rawBookingsById = {};
   let rawVenueById = {};
   let filters = structuredClone(DEFAULT_CAL_FILTERS);
+  if (deepLink.pending) {
+    filters.showPending = true;
+    filters.showApproved = false;
+    filters.showCancelled = false;
+  }
+  if (deepLink.searchQuery) {
+    filters.searchQuery = deepLink.searchQuery;
+  }
+
+  const deepLinkNote = (deepLink.date || deepLink.searchQuery || deepLink.pending)
+    ? `<div class="cal-deep-link-notice" id="cal-deep-link-notice">
+        ${deepLink.searchQuery ? `Filtered to “${escapeHtml(deepLink.searchQuery)}”` : 'Filtered view'}
+        ${deepLink.date ? ` · ${escapeHtml(formatDateLong(deepLink.date))}` : ''}
+        ${deepLink.pending ? ' · pending only' : ''}
+        <a href="calendar.html" class="cal-deep-link-notice__clear">Clear filters</a>
+      </div>`
+    : '';
 
   function filteredBookings() {
     return withFilters ? applyCalendarFilters(allBookings, filters) : allBookings;
@@ -1063,7 +1111,7 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
   }
 
   mountEl.innerHTML = withFilters
-    ? renderCalendarPageShell({ title })
+    ? renderCalendarPageShell({ title, deepLinkNote })
     : renderTimelineShell({ title });
 
   document.getElementById('timeline-prev')?.addEventListener('click', () => shiftMonth(-1));

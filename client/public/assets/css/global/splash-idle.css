@@ -455,64 +455,6 @@
   color: #475569;
 }
 
-/* ── Admin portal tabs (post-splash navigation) ───────────────────── */
-
-.admin-portal-tabs {
-  display: none;
-  flex-shrink: 0;
-  gap: 0.125rem;
-  padding: 0 1rem;
-  border-bottom: 1px solid var(--color-outline-variant, #cbd5e0);
-  background: #fff;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-}
-
-@media (min-width: 1024px) {
-  .admin-portal-tabs {
-    display: flex;
-  }
-}
-
-.admin-portal-tab {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.7rem 1rem;
-  min-height: 2.75rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-neutral, #4a5568);
-  text-decoration: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  background: transparent;
-  white-space: nowrap;
-  transition:
-    color 0.2s ease,
-    border-color 0.2s ease,
-    background 0.2s ease;
-}
-
-.admin-portal-tab:hover {
-  color: var(--color-primary, #1a365d);
-  background: rgba(26, 54, 93, 0.05);
-}
-
-.admin-portal-tab.is-active {
-  color: var(--color-primary, #1a365d);
-  border-bottom-color: var(--color-primary, #1a365d);
-  font-weight: 700;
-}
-
-.admin-portal-tab .material-symbols-outlined {
-  font-size: 1.125rem;
-}
-
-.admin-shell.is-splash-active .admin-portal-tabs,
 .admin-shell.is-splash-active #app-sidebar,
 .admin-shell.is-splash-active .admin-app-header,
 .admin-shell.is-splash-active .portal-bottom-nav {
@@ -520,7 +462,6 @@
   pointer-events: none;
 }
 
-.admin-shell:not(.is-splash-active) .admin-portal-tabs,
 .admin-shell:not(.is-splash-active) #app-sidebar,
 .admin-shell:not(.is-splash-active) .admin-app-header,
 .admin-shell:not(.is-splash-active) .portal-bottom-nav {

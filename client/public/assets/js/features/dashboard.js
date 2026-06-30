@@ -170,8 +170,6 @@ function buildQueueItems(bookingsRaw, groupsRaw) {
 
 function renderQueueItem(item) {
   const nights = stayNights(item.checkIn, item.checkOut);
-  const idLabel = item.type === 'group' ? `#GRP-${item.raw.id}` : `#APT-${item.raw.id}`;
-  const typeLabel = item.type === 'group' ? 'Group stay' : 'Single room';
 
   return `
     <article class="dashboard-queue-item${item.pending ? ' is-pending' : ''}" data-queue-key="${escapeHtml(item.key)}">
@@ -189,8 +187,7 @@ function renderQueueItem(item) {
           <div class="dashboard-queue-item__meta">
             <span><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>${escapeHtml(formatDateRange(item.checkIn, item.checkOut))}</span>
             <span><span class="material-symbols-outlined" aria-hidden="true">group</span>${escapeHtml(String(item.guests))} guest${item.guests === 1 ? '' : 's'}${nights ? ` · ${nights} night${nights === 1 ? '' : 's'}` : ''}</span>
-            <span><span class="material-symbols-outlined" aria-hidden="true">badge</span>${escapeHtml(typeLabel)} · ${escapeHtml(item.role)}</span>
-            <span class="dashboard-queue-item__id">${escapeHtml(idLabel)}</span>
+            <span><span class="material-symbols-outlined" aria-hidden="true">badge</span>${escapeHtml(item.role)}</span>
           </div>
         </div>
       </div>

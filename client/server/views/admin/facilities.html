@@ -18,6 +18,7 @@
   <link rel="stylesheet" href="/assets/css/features/admin-crud-modal.css" />
   <link rel="stylesheet" href="/assets/css/features/admin-rooms-board.css" />
   <link rel="stylesheet" href="/assets/css/features/admin-venue-board.css" />
+  <link rel="stylesheet" href="/assets/css/features/facility-cards.css" />
   <link rel="stylesheet" href="/assets/css/features/admin-facilities-page.css" />
 </head>
 <body class="h-full bg-slate-50/50">
@@ -37,8 +38,8 @@
 
       <header class="fac-panel-head">
         <div class="fac-panel-head__text">
-          <h2>Room status</h2>
-          <p>Current status for every guest room, grouped by building. Use <strong>Live</strong> for today’s housekeeping view, or switch to <strong>Dates</strong> to check availability for a stay.</p>
+          <h2>Rooms</h2>
+          <p>Today’s housekeeping view — vacant, occupied, dirty, or out of order. Tap a room to update its setup or status.</p>
         </div>
         <div class="fac-panel-head__actions">
           <button type="button" data-open-manage-facilities class="admin-crud-btn-primary shadow-sm">
@@ -54,36 +55,19 @@
 
       <div class="rooms-board-toolbar">
         <div class="rooms-toolbar-head">
-          <div class="rooms-view-switch" role="tablist" aria-label="Room view">
-            <button type="button" id="rooms-view-live" class="rooms-view-switch__btn is-active" role="tab" aria-selected="true">Live</button>
-            <button type="button" id="rooms-view-dates" class="rooms-view-switch__btn" role="tab" aria-selected="false">Dates</button>
-          </div>
-          <div id="rooms-date-bar" class="rooms-date-bar hidden">
-            <input id="rooms-avail-check-in" type="date" class="rooms-board-search rooms-board-search--date" aria-label="Check-in" />
-            <span class="rooms-date-sep" aria-hidden="true">→</span>
-            <input id="rooms-avail-check-out" type="date" class="rooms-board-search rooms-board-search--date" aria-label="Check-out" />
-            <button type="button" id="rooms-avail-check-btn" class="rooms-toolbar-go">Go</button>
-            <button type="button" id="rooms-avail-today-btn" class="rooms-toolbar-text-btn">Today</button>
-          </div>
           <div class="rooms-board-search-wrap">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
             <input id="rooms-board-search" type="search" class="rooms-board-search" placeholder="Search room, building, or type…" autocomplete="off" enterkeyhint="search" />
           </div>
         </div>
         <div class="rooms-toolbar-filters">
-          <div id="rooms-live-filters" class="rooms-filter-group" role="group" aria-label="Filter by status">
+          <div class="rooms-filter-group" role="group" aria-label="Filter by status">
             <span class="rooms-filter-label">Status</span>
             <button type="button" class="rooms-filter-chip is-active" data-rooms-status="" aria-pressed="true">All</button>
             <button type="button" class="rooms-filter-chip" data-rooms-status="Available" aria-pressed="false">Vacant</button>
             <button type="button" class="rooms-filter-chip" data-rooms-status="Occupied" aria-pressed="false">Occupied</button>
             <button type="button" class="rooms-filter-chip" data-rooms-status="Dirty" aria-pressed="false">Dirty</button>
             <button type="button" class="rooms-filter-chip" data-rooms-status="Maintenance" aria-pressed="false">Out of order</button>
-          </div>
-          <div id="rooms-date-filters" class="rooms-filter-group hidden" role="group" aria-label="Filter by availability">
-            <span class="rooms-filter-label">Show</span>
-            <button type="button" class="rooms-filter-chip is-active" data-rooms-avail-filter="all" aria-pressed="true">All</button>
-            <button type="button" class="rooms-filter-chip" data-rooms-avail-filter="available" aria-pressed="false">Available</button>
-            <button type="button" class="rooms-filter-chip" data-rooms-avail-filter="booked" aria-pressed="false">Booked</button>
           </div>
           <div class="rooms-filter-group" role="group" aria-label="Filter by setup">
             <span class="rooms-filter-label">Setup</span>
@@ -95,10 +79,6 @@
         </div>
         <div class="rooms-board-meta">
           <span id="rooms-board-result-count">Loading rooms…</span>
-          <div class="rooms-board-meta__links">
-            <button type="button" class="rooms-board-link" id="rooms-board-expand-all">Expand all</button>
-            <button type="button" class="rooms-board-link" id="rooms-board-collapse-all">Collapse all</button>
-          </div>
         </div>
       </div>
 
@@ -112,8 +92,8 @@
 
       <header class="fac-panel-head">
         <div class="fac-panel-head__text">
-          <h2>Venue schedule</h2>
-          <p>See bookings by date and time — venues are rented in time blocks, not always for the whole day. Pick a date and time range below to check what is free for that slot.</p>
+          <h2>Venue spaces</h2>
+          <p>Read-only snapshot — pick a date and time to see what’s booked. To approve or create bookings, go to <a href="reservations.html" class="text-primary font-semibold hover:underline">Reservations</a>.</p>
         </div>
       </header>
 
@@ -142,12 +122,6 @@
             <button type="button" class="rooms-filter-chip is-active" data-venue-show="all" aria-pressed="true">All</button>
             <button type="button" class="rooms-filter-chip" data-venue-show="open" aria-pressed="false">Free for slot</button>
           </div>
-          <div class="rooms-filter-group" role="group" aria-label="Booking list mode">
-            <span class="rooms-filter-label">Bookings</span>
-            <button type="button" class="rooms-filter-chip is-active" data-venue-bookings="operations" aria-pressed="true">Active</button>
-            <button type="button" class="rooms-filter-chip" data-venue-bookings="history" aria-pressed="false">Full history</button>
-          </div>
-          <a href="#" id="venue-open-history" class="rooms-toolbar-text-btn no-underline">All venue bookings →</a>
         </div>
         <div class="rooms-board-meta">
           <span id="venue-schedule-summary">Loading venue schedule…</span>
@@ -244,7 +218,7 @@
       portal:     'admin',
       activePage: 'facilities',
       title:      'Facilities',
-      subtitle:   'Rooms, venues, meals & extras',
+      subtitle:   'Room status, spaces & pricing',
       deferEnhancements: true,
     });
 
@@ -274,6 +248,22 @@
       } else {
         setCatalogToolbarTab(tab);
       }
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tab);
+      window.history.replaceState({}, '', url);
+    }
+
+    function applyFacDeepLinks() {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['rooms', 'venue-spaces', 'meals', 'extras'].includes(tab)) {
+        switchFacTab(tab);
+      }
+      const date = params.get('date');
+      if (date && tab === 'venue-spaces') {
+        const dateInput = document.getElementById('venue-schedule-date');
+        if (dateInput) dateInput.value = date;
+      }
     }
 
     initFacilityCatalog({ refresh: reloadCatalog });
@@ -285,6 +275,8 @@
       renderMealsCatalog(allMeals);
       renderExtrasCatalog(allExtras);
       setCatalogToolbarTab(activeFacTab);
+
+      applyFacDeepLinks();
 
       await bootstrapRoomsBoard();
       await bootstrapVenueScheduleBoard();

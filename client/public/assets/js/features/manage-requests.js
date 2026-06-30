@@ -33,8 +33,8 @@ function applyFilter() {
     if (filter.status !== 'all' && normStatus(r.status) !== filter.status) return false;
     if (!q) return true;
     const hay = [
-      r.displayId, r.requester?.name, r.requester?.email, r.requester?.role,
-      r.contactPhone, r.id, r.groupName, r.kind, r.notes,
+      r.requester?.name, r.requester?.email, r.requester?.role,
+      r.contactPhone, r.groupName, r.kind, r.notes,
       r.facility?.building, r.facility?.roomNumber, r.facility?.roomType,
     ].join(' ').toLowerCase();
     return hay.includes(q);
@@ -49,10 +49,10 @@ function syncBadge() {
   if (b) b.textContent = n === 1 ? '1 waiting' : `${n} waiting`;
 }
 
-function typeLabel(r) {
-  return r.kind === 'group'
-    ? '<span class="res-pill res-pill--group">Group stay</span>'
-    : '<span class="res-pill res-pill--single">Single room</span>';
+function requestLabel(r) {
+  if (!r) return 'this request';
+  if (r.kind === 'group') return r.groupName || r.requester?.name || 'this group';
+  return r.requester?.name || 'this guest';
 }
 
 function formatMealsSummary(meals) {
@@ -215,18 +215,12 @@ function renderRequestCard(r) {
   const body = isGroup ? renderGroupRequest(r) : renderSingleRequest(r);
 
   return `<article class="res-list-card res-request-card" role="listitem">
-    <div class="res-list-card-head">
-      <div class="res-list-meta">
-        <span class="res-list-id">${escapeHtml(r.displayId)}</span>
-        ${typeLabel(r)}
-      </div>
+    <div class="res-list-card-top">
+      <h3 class="res-list-title">${title}</h3>
       ${statusBadge(r.status)}
     </div>
-    <div class="res-request-head">
-      <h3 class="res-list-title">${title}</h3>
-      <p class="res-request-subtitle">${subtitle}</p>
-      <p class="res-request-submitted">Submitted ${formatSubmittedAt(r.submittedAt)}</p>
-    </div>
+    <p class="res-request-subtitle">${subtitle}</p>
+    <p class="res-request-submitted">Submitted ${formatSubmittedAt(r.submittedAt)}</p>
     <div class="res-request-body">${body}</div>
     ${actions}
   </article>`;
@@ -274,7 +268,7 @@ function renderReject() {
   $('manage-requests-reject-view').innerHTML = `
     <div class="res-reject-box">
       <div class="res-reject-icon" aria-hidden="true"><span class="material-symbols-outlined">warning</span></div>
-      <h3 class="res-subhead">Decline ${escapeHtml(r?.displayId || 'this request')}?</h3>
+      <h3 class="res-subhead">Decline request from ${escapeHtml(requestLabel(r))}?</h3>
       ${renderRejectSummary(r)}
       <label class="res-label" for="reject-note">Reason for declining (optional — saved in notes)</label>
       <textarea id="reject-note" class="res-input" rows="4" placeholder="e.g. Dates unavailable, room capacity exceeded, missing information…"></textarea>
@@ -352,7 +346,7 @@ async function approve(key) {
 
   try {
     await approveRequest(r);
-    message = `${r.displayId} approved. The guest will be notified by email.`;
+    message = `Request from ${requestLabel(r)} approved. The guest will be notified by email.`;
     notifyBookingUpdated();
     await load();
   } catch (err) {

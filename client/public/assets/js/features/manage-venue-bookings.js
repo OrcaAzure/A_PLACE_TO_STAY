@@ -64,14 +64,10 @@ function renderList() {
     const canCancel = canAdminCancelVenueBooking(item);
     const lifecycleBadge = lifecyclePhaseBadge(lifecyclePhaseForBooking(item));
     return `<article class="res-list-card" role="listitem">
-      <div class="res-list-card-head">
-        <div class="res-list-meta">
-          <span class="res-list-id">VEN-${item.id}</span>
-          <span class="res-pill res-pill--group">Venue</span>
-        </div>
+      <div class="res-list-card-top">
+        <h3 class="res-list-title">${escapeHtml(item.guestName || 'Guest')}</h3>
         <div class="res-list-badges">${lifecycleBadge}${statusBadge(item.status)}</div>
       </div>
-      <h3 class="res-list-title">${escapeHtml(item.guestName || 'Guest')}</h3>
       <p class="res-list-detail">${escapeHtml(item.venueCategory)} — ${escapeHtml(item.venueName)}</p>
       <dl class="res-list-dates res-list-dates--triple">
         <div>
