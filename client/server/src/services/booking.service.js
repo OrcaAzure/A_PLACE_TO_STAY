@@ -7,7 +7,11 @@ import { validateReservationDates } from './fiscalYear.service.js';
 import { DEFAULT_MEAL_RATES } from '../constants/ancillary.js';
 import { getMealRatesMap } from './ancillary.service.js';
 import { resolveRateRoomType, formatRoomTypeLabel } from '../constants/rooms.js';
-import { getActiveLodgingSeason } from './season.service.js';
+import {
+  resolveLodgingSeasonForDate,
+  addDaysISO,
+  resolveStaySeasons,
+} from './season.service.js';
 
 const ACTIVE_STATUSES = ['Pending', 'Approved'];
 
@@ -22,9 +26,38 @@ export async function getRoomById(roomId) {
   return rows[0] || null;
 }
 
-/** Returns the admin-selected lodging season (check-in date is ignored). */
-export async function resolveSeason(_checkIn) {
-  return getActiveLodgingSeason();
+/** Lodging season for the check-in date (from admin-configured calendar periods). */
+export async function resolveSeason(checkIn) {
+  return resolveLodgingSeasonForDate(checkIn);
+}
+
+/** Sum nightly room charges — each night uses the season for that calendar date. */
+export async function calculateStayTotalAmount({
+  roomType,
+  occupancyItem,
+  guestCount,
+  checkIn,
+  checkOut,
+}) {
+  const nights = calcNights(checkIn, checkOut);
+  if (!nights) return null;
+
+  let total = 0;
+  for (let i = 0; i < nights; i += 1) {
+    const nightDate = addDaysISO(checkIn, i);
+    const season = await resolveLodgingSeasonForDate(nightDate);
+    const nightTotal = await calculateTotalAmount({
+      roomType,
+      occupancyItem,
+      season,
+      guestCount,
+      nights: 1,
+    });
+    if (nightTotal == null) return null;
+    total += nightTotal;
+  }
+
+  return Math.round(total * 100) / 100;
 }
 
 export async function getRate(roomType, occupancyItem, season) {
@@ -166,12 +199,12 @@ export async function prepareBookingInsert({
   const resolvedOccupancy = occupancyItem || defaultOccupancyItem(room.room_type);
   const rateRoomType = resolveRateRoomType(room);
   const nights = calcNights(checkIn, checkOut);
-  const totalAmount = await calculateTotalAmount({
+  const totalAmount = await calculateStayTotalAmount({
     roomType: rateRoomType,
     occupancyItem: resolvedOccupancy,
-    season: resolvedSeason,
     guestCount,
-    nights,
+    checkIn,
+    checkOut,
   });
 
   return {
@@ -219,12 +252,12 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
   if (!isEmpty(body.check_in) || !isEmpty(body.check_out) || body.guest_count != null || body.room_id != null) {
     season = await resolveSeason(checkIn);
     occupancyItem = occupancyItem || defaultOccupancyItem(room.room_type);
-    totalAmount = await calculateTotalAmount({
+    totalAmount = await calculateStayTotalAmount({
       roomType: resolveRateRoomType(room),
       occupancyItem,
-      season,
       guestCount,
-      nights: calcNights(checkIn, checkOut),
+      checkIn,
+      checkOut,
     });
   }
 
@@ -323,7 +356,8 @@ export async function getAvailableRooms({
      ORDER BY buildings.name, rooms.room_number`
   );
 
-  const season = await resolveSeason(checkIn);
+  const checkInSeason = await resolveSeason(checkIn);
+  const staySeasons = await resolveStaySeasons(checkIn, checkOut);
   const nights = calcNights(checkIn, checkOut);
   const count = Number(guestCount) || 1;
   const results = [];
@@ -351,15 +385,15 @@ export async function getAvailableRooms({
     if (availabilityStatus !== 'maintenance' && availabilityStatus !== 'booked'
       && availabilityStatus !== 'occupied' && availabilityStatus !== 'dirty') {
       const rateRoomType = resolveRateRoomType(room);
-      pricePerNight = await getRate(rateRoomType, occupancyItem, season);
-      if (pricePerNight != null) {
-        estimatedTotal = await calculateTotalAmount({
-          roomType: rateRoomType,
-          occupancyItem,
-          season,
-          guestCount: pricingGuests,
-          nights,
-        });
+      estimatedTotal = await calculateStayTotalAmount({
+        roomType: rateRoomType,
+        occupancyItem,
+        guestCount: pricingGuests,
+        checkIn,
+        checkOut,
+      });
+      if (estimatedTotal != null && nights > 0) {
+        pricePerNight = Math.round((estimatedTotal / nights) * 100) / 100;
       }
     }
 
@@ -378,6 +412,9 @@ export async function getAvailableRooms({
       price_per_night: pricePerNight,
       estimated_total: estimatedTotal,
       nights,
+      season: checkInSeason,
+      seasons_in_stay: staySeasons,
+      mixed_season_pricing: staySeasons.length > 1,
     });
   }
 

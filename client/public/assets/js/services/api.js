@@ -434,7 +434,11 @@ export function normalizeBooking(booking) {
   const status = (booking.status || 'Pending').toLowerCase();
   const building = booking.building_name || booking.building || '';
   const roomNumber = booking.room_number || '';
-  const facilityLabel = [building, roomNumber].filter(Boolean).join(' ') || `Booking #${booking.id}`;
+  const roomType = booking.room_type || '';
+  const roomPart = roomNumber ? `Room ${roomNumber}` : '';
+  const facilityLabel = [roomPart, roomType].filter(Boolean).join(' · ')
+    || [building, roomNumber].filter(Boolean).join(' ')
+    || `Booking #${booking.id}`;
 
   return {
     id: booking.id,

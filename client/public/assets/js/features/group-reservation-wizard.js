@@ -78,16 +78,11 @@ function getFilteredRooms() {
   const q = state.roomSearch.trim().toLowerCase();
   return state.availableRooms
     .filter((r) => r.availability_status === 'available')
-    .filter((r) => !state.buildingFilter || r.building_name === state.buildingFilter)
     .filter((r) => {
       if (!q) return true;
-      return [r.room_number, r.building_name, r.room_type].join(' ').toLowerCase().includes(q);
+      return [r.room_number, r.room_type].join(' ').toLowerCase().includes(q);
     })
-    .sort((a, b) => {
-      const ba = (a.building_name || '').localeCompare(b.building_name || '');
-      if (ba !== 0) return ba;
-      return String(a.room_number).localeCompare(String(b.room_number), undefined, { numeric: true });
-    });
+    .sort((a, b) => String(a.room_number).localeCompare(String(b.room_number), undefined, { numeric: true }));
 }
 
 function renderSelectedSummary() {
@@ -128,7 +123,7 @@ function renderGroupRoomRow(room) {
           <span class="material-symbols-outlined res-room-icon">meeting_room</span>
           <div>
             <strong class="res-room-row-num">Room ${escapeHtml(room.room_number)}</strong>
-            <span class="res-room-meta">${escapeHtml(room.building_name)} · ${escapeHtml(room.room_type_label || room.room_type)}</span>
+            <span class="res-room-meta">${escapeHtml(room.room_type_label || room.room_type)}</span>
           </div>
         </div>
         <div class="res-room-row-cap">Fits ${room.capacity_min}–${room.capacity_max} guests</div>
@@ -151,13 +146,6 @@ function renderGroupRoomRow(room) {
 
 function renderStep3() {
   const eligible = getFilteredRooms();
-  const buildings = [...new Set(state.availableRooms
-    .filter((r) => r.availability_status === 'available')
-    .map((r) => r.building_name).filter(Boolean))].sort();
-
-  const buildingOpts = buildings.map((b) =>
-    `<option value="${escapeHtml(b)}"${state.buildingFilter === b ? ' selected' : ''}>${escapeHtml(b)}</option>`
-  ).join('');
 
   return `
     <p class="res-lead">Tap <strong>Add Room</strong> for each room you need. Use the +/− buttons to set guests per room.</p>
@@ -166,11 +154,7 @@ function renderStep3() {
       <button type="button" id="gw-use-suggested" class="res-btn res-btn--primary" ${state.suggestion ? '' : 'disabled'}>
         <span class="material-symbols-outlined">auto_awesome</span> Auto-pick rooms
       </button>
-      <input id="gw-room-search" type="search" class="res-input" placeholder="Search room number or building…" value="${escapeHtml(state.roomSearch)}" />
-      <select id="gw-building-filter" class="res-input res-input--select">
-        <option value="">All buildings</option>
-        ${buildingOpts}
-      </select>
+      <input id="gw-room-search" type="search" class="res-input" placeholder="Search room number or type…" value="${escapeHtml(state.roomSearch)}" />
     </div>
     ${state.loadingRooms ? '<p class="res-hint">Loading rooms…</p>' : ''}
     <div class="res-room-list">
@@ -294,7 +278,6 @@ function readAllFields() {
   state.guestMessage = $('gw-guest-message')?.value?.trim() ?? state.guestMessage;
   if ($('gw-meal-allergens')) state.mealAllergenNotes = $('gw-meal-allergens').value?.trim() || '';
   if ($('gw-room-search')) state.roomSearch = $('gw-room-search').value;
-  if ($('gw-building-filter')) state.buildingFilter = $('gw-building-filter').value;
 }
 
 function readStepFields() {
@@ -402,10 +385,6 @@ function bindEvents() {
     renderBody();
   }, 200);
   $('gw-room-search')?.addEventListener('input', debouncedSearch);
-  $('gw-building-filter')?.addEventListener('change', (e) => {
-    state.buildingFilter = e.target.value;
-    renderBody();
-  });
 
   $('group-wizard-body')?.querySelectorAll('[data-room-toggle]').forEach((btn) => {
     btn.addEventListener('click', () => toggleRoom(btn.getAttribute('data-room-toggle')));

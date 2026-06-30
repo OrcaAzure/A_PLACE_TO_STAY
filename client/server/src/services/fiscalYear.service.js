@@ -1,13 +1,21 @@
 import { pool } from '../config/db.js';
 import { FISCAL_YEAR_DEFAULTS } from '../utils/constants.js';
-import { LODGING_SEASONS, normalizeLodgingSeason } from './season.service.js';
+import {
+  LODGING_SEASONS,
+  DEFAULT_SEASON_PERIODS,
+  normalizeSeasonPeriods,
+  setSeasonPeriods,
+  getSeasonPeriods,
+  resolveLodgingSeasonForDate,
+  describeSeasonPeriods,
+  formatSeasonPeriodLabel,
+} from './season.service.js';
 
 const SETTING_KEYS = [
   'fiscal_year_start_month',
   'fiscal_year_start_day',
   'booking_advance_months',
   'guest_cancellation_cutoff_days',
-  'active_lodging_season',
 ];
 
 function pad(n) {
@@ -99,19 +107,23 @@ function readSettingInt(stored, key, fallback, min, max) {
 export async function getFiscalYearSettings() {
   try {
     const [rows] = await pool.query(
-      'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?, ?, ?)',
+      'SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN (?, ?, ?, ?)',
       SETTING_KEYS
     );
     const stored = Object.fromEntries(rows.map((r) => [r.setting_key, r.setting_value]));
+    const season_periods = await getSeasonPeriods();
     return {
       fiscal_year_start_month: readSettingInt(stored, 'fiscal_year_start_month', FISCAL_YEAR_DEFAULTS.fiscal_year_start_month, 1, 12),
       fiscal_year_start_day: readSettingInt(stored, 'fiscal_year_start_day', FISCAL_YEAR_DEFAULTS.fiscal_year_start_day, 1, 31),
       booking_advance_months: readSettingInt(stored, 'booking_advance_months', FISCAL_YEAR_DEFAULTS.booking_advance_months, 1, 36),
       guest_cancellation_cutoff_days: readSettingInt(stored, 'guest_cancellation_cutoff_days', FISCAL_YEAR_DEFAULTS.guest_cancellation_cutoff_days, 0, 90),
-      active_lodging_season: normalizeLodgingSeason(stored.active_lodging_season ?? FISCAL_YEAR_DEFAULTS.active_lodging_season),
+      season_periods,
     };
   } catch {
-    return { ...FISCAL_YEAR_DEFAULTS };
+    return {
+      ...FISCAL_YEAR_DEFAULTS,
+      season_periods: DEFAULT_SEASON_PERIODS.map((p) => ({ ...p })),
+    };
   }
 }
 
@@ -138,10 +150,13 @@ export async function updateFiscalYearSettings(updates = {}) {
       0,
       90
     ),
-    active_lodging_season: normalizeLodgingSeason(
-      updates.active_lodging_season ?? current.active_lodging_season
-    ),
   };
+
+  if (updates.season_periods != null) {
+    next.season_periods = await setSeasonPeriods(updates.season_periods);
+  } else {
+    next.season_periods = current.season_periods;
+  }
 
   for (const key of SETTING_KEYS) {
     await pool.query(
@@ -164,7 +179,8 @@ function clampInt(value, min, max) {
 export async function getPublicFiscalYearInfo({ bypassAdvanceLimit = false } = {}) {
   const settings = await getFiscalYearSettings();
   const bounds = getBookingDateBounds(settings, { bypassAdvanceLimit });
-  const activeLodgingSeason = settings.active_lodging_season;
+  const today = bounds.minDate;
+  const seasonForToday = await resolveLodgingSeasonForDate(today, settings.season_periods);
   const checkInFiscalYear = bounds.maxCheckInDate
     ? getFiscalYearForDate(bounds.maxCheckInDate, settings)
     : null;
@@ -172,8 +188,11 @@ export async function getPublicFiscalYearInfo({ bypassAdvanceLimit = false } = {
   return {
     ...bounds,
     settings,
-    activeLodgingSeason,
-    activeSeasonLabel: `${activeLodgingSeason} season rates`,
+    seasonPeriods: settings.season_periods,
+    seasonPeriodsSummary: describeSeasonPeriods(settings.season_periods),
+    seasonForToday,
+    activeLodgingSeason: seasonForToday,
+    activeSeasonLabel: `${seasonForToday} season rates apply today`,
     checkInFiscalYear,
     advanceLimitLabel: bounds.maxCheckInDate
       ? `Reservations may be made up to ${bounds.bookingAdvanceMonths} month(s) in advance (latest check-in: ${formatDisplayDate(bounds.maxCheckInDate)}).`
@@ -181,6 +200,8 @@ export async function getPublicFiscalYearInfo({ bypassAdvanceLimit = false } = {
     cancellationPolicyLabel: formatCancellationPolicyLabel(settings.guest_cancellation_cutoff_days),
   };
 }
+
+export { formatSeasonPeriodLabel, describeSeasonPeriods, LODGING_SEASONS };
 
 export function formatCancellationPolicyLabel(cutoffDays) {
   const days = Number(cutoffDays);

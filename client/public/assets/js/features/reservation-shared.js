@@ -260,7 +260,7 @@ export function emptyWizardState() {
     checkIn: '', checkOut: '', guestCount: 2, roomId: '', selectedRoom: null,
     originalRoomId: '', originalCheckIn: '', originalCheckOut: '',
     originalRoomLabel: '', guestMessage: '',
-    roomSearch: '', buildingFilter: '', showRecommendations: false,
+    roomSearch: '', showRecommendations: false,
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     mealAllergenNotes: '',
     fees: [], notes: '',
@@ -270,13 +270,12 @@ export function emptyWizardState() {
   };
 }
 
-export function filterRoomsList(rooms, { search = '', building = '', status = 'available' } = {}) {
+export function filterRoomsList(rooms, { search = '', status = 'available' } = {}) {
   const q = String(search || '').trim().toLowerCase();
   return (rooms || []).filter((room) => {
     if (status && room.availability_status !== status) return false;
-    if (building && room.building_name !== building) return false;
     if (!q) return true;
-    const hay = [room.building_name, room.room_number, room.room_type, String(room.id)].join(' ').toLowerCase();
+    const hay = [room.room_number, room.room_type, String(room.id)].join(' ').toLowerCase();
     return hay.includes(q);
   });
 }
@@ -314,7 +313,7 @@ export function emptyGroupWizardState() {
     checkIn: '', checkOut: '', totalGuests: 10, roomsRequested: null,
     guestMessage: '',
     selectedRooms: [], availableRooms: [], availableCount: 0,
-    roomSearch: '', buildingFilter: '',
+    roomSearch: '',
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     mealAllergenNotes: '',
     fees: [], notes: '',

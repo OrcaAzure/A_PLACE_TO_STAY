@@ -167,7 +167,7 @@ export function renderTimelineRow(room, barsHtml, todayCol, totalDays, { hasBook
       <div class="tl-room-label p-4 border-r border-outline-variant/20 flex flex-col justify-center min-h-[72px]">
         <div class="flex items-center gap-2">
           <span class="${roomStatusDot(room.status)}" aria-hidden="true"></span>
-          <span class="text-body-md font-bold text-on-surface">${escapeHtml(room.building)} ${escapeHtml(room.roomNumber)}</span>
+          <span class="text-body-md font-bold text-on-surface">${escapeHtml(room.roomNumber ? `Room ${room.roomNumber}` : room.building)}</span>
         </div>
         <span class="text-[10px] font-medium text-on-surface-variant/60 uppercase mt-1">${escapeHtml(room.roomTypeLabel || room.roomType || 'Room')}</span>
         ${room.status === 'Maintenance' ? '<span class="tl-room-maint-tag">Maintenance</span>' : ''}
@@ -494,9 +494,6 @@ export function renderTimeline({ rooms, items, rangeStart, dates, barRenderer, o
   });
 
   let visibleRooms = rooms;
-  if (filters.building && filters.building !== 'all') {
-    visibleRooms = visibleRooms.filter((r) => r.building === filters.building);
-  }
   visibleRooms = visibleRooms.filter((room) => (itemsByRoom[room.id] || []).length > 0);
 
   visibleRooms = visibleRooms.sort((a, b) => {

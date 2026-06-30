@@ -12,7 +12,7 @@ const SEED_USERS = [
   { full_name: 'James Reyes',          email: 'james.reyes@apts.edu.ph',     role: 'Faculty',       status: 'Active' },
   { full_name: 'Ruth Villanueva',      email: 'ruth.villanueva@apts.edu.ph', role: 'Staff',         status: 'Active' },
   { full_name: 'Paul Mendoza',         email: 'paul.mendoza@apts.edu.ph',    role: 'Missionary',       status: 'Active' },
-  { full_name: 'Grace Tan',            email: 'grace.tan@apts.edu.ph',       role: 'Supervisory User', status: 'Active' },
+  { full_name: 'Grace Tan',            email: 'grace.tan@apts.edu.ph',       role: 'Staff', status: 'Active' },
   { full_name: 'David Cho',            email: 'david.cho@apts.edu.ph',       role: 'GMC',              status: 'Active' },
   { full_name: 'Rev. Samuel Park',     email: 'samuel.park@gracechurch.org', role: 'External Guest',   status: 'Active' },
   { full_name: 'Manila Bible Church',  email: 'mbc.retreat@example.org',   role: 'External Guest',   status: 'Inactive' },
@@ -383,9 +383,22 @@ async function runSeasonSettingsMigration() {
      VALUES ('active_lodging_season', 'Regular')
      ON DUPLICATE KEY UPDATE setting_key = setting_key`
   );
+
+  const defaultPeriods = JSON.stringify([
+    { season: 'Regular', start_month: 7, start_day: 1, end_month: 3, end_day: 31 },
+    { season: 'Peak', start_month: 4, start_day: 1, end_month: 5, end_day: 31 },
+    { season: 'Super Peak', start_month: 6, start_day: 1, end_month: 6, end_day: 30 },
+  ]);
+  await pool.execute(
+    `INSERT INTO system_settings (setting_key, setting_value)
+     VALUES ('lodging_season_periods', ?)
+     ON DUPLICATE KEY UPDATE setting_key = setting_key`,
+    [defaultPeriods]
+  );
+
   try {
     await pool.execute('DROP TABLE IF EXISTS season_definitions');
-    console.log('[schema] season_definitions removed — active season is in system_settings');
+    console.log('[schema] season_definitions removed — season periods are in system_settings');
   } catch (err) {
     console.warn('[schema] season_definitions drop skipped:', err.message);
   }
