@@ -162,6 +162,7 @@
 
     <input type="hidden" id="vbm-category" />
     <input type="hidden" id="vbm-item" />
+    <input type="hidden" id="vbm-facility-id" />
 
     <div class="space-y-3">
       <div>
@@ -282,17 +283,33 @@
     'Dorm': 'bed',
     'Superior Guest Room': 'king_bed',
     'Standard Apartment': 'apartment',
-    'Deluxe 2 BR': 'meeting_room',
-    'Deluxe 3 BR': 'meeting_room',
+    'Deluxe Apartment': 'holiday_village',
   };
 
   const ROOM_IMAGE_BY_TYPE = {
     'Dorm': 'https://images.unsplash.com/photo-1555854877-bab0e5b6b4f5?auto=format&fit=crop&w=1200&q=80',
     'Superior Guest Room': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1200&q=80',
     'Standard Apartment': 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
-    'Deluxe 2 BR': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
-    'Deluxe 3 BR': 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80',
+    'Deluxe Apartment': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
+    'Deluxe Apartment 3 beds': 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80',
   };
+
+  function deluxeBedCount(room) {
+    if (room.bedCount != null) return room.bedCount;
+    if (room.roomType !== 'Deluxe Apartment') return null;
+    return ['201', '304'].includes(String(room.roomNumber)) ? 3 : 2;
+  }
+
+  function roomTypeDisplay(room) {
+    return room.roomTypeLabel || room.roomType || 'Room';
+  }
+
+  function roomCardImage(room) {
+    if (room.roomType === 'Deluxe Apartment' && deluxeBedCount(room) >= 3) {
+      return ROOM_IMAGE_BY_TYPE['Deluxe Apartment 3 beds'];
+    }
+    return ROOM_IMAGE_BY_TYPE[room.roomType] || 'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=1200&q=80';
+  }
 
   function readStayFields() {
     return {
@@ -578,11 +595,19 @@
   }
 
   function roomFromAvailability(entry) {
+    const bedCount = entry.bed_count != null ? Number(entry.bed_count) : null;
+    let roomTypeLabel = entry.room_type_label;
+    if (!roomTypeLabel && entry.room_type === 'Deluxe Apartment') {
+      const beds = bedCount ?? (['201', '304'].includes(String(entry.room_number)) ? 3 : 2);
+      roomTypeLabel = beds >= 3 ? 'Deluxe Apartment (3 beds)' : 'Deluxe Apartment';
+    }
     return {
       id: entry.id,
       building: entry.building_name,
       roomNumber: entry.room_number,
       roomType: entry.room_type,
+      roomTypeLabel: roomTypeLabel || entry.room_type,
+      bedCount,
       status: entry.status,
       capacityMin: entry.capacity_min,
       capacityMax: entry.capacity_max,
@@ -606,8 +631,8 @@
     const q = filters.search.trim().toLowerCase();
     return rooms.filter((r) => {
       if (filters.building && r.building !== filters.building) return false;
-      if (filters.type && r.roomType !== filters.type) return false;
-      if (q && !`${r.building} ${r.roomNumber} ${r.roomType}`.toLowerCase().includes(q)) return false;
+      if (filters.type && (r.roomTypeLabel || r.roomType) !== filters.type) return false;
+      if (q && !`${r.building} ${r.roomNumber} ${r.roomTypeLabel || r.roomType}`.toLowerCase().includes(q)) return false;
       return true;
     });
   }
@@ -634,7 +659,7 @@
   function renderFilters() {
     const source = roomsForFilters();
     const buildings = [...new Set(source.map((r) => r.building))].sort();
-    const types = [...new Set(source.map((r) => r.roomType))].sort();
+    const types = [...new Set(source.map((r) => r.roomTypeLabel || r.roomType))].sort();
     const buildingWrap = document.getElementById('building-filter-wrap');
     const buildingSelect = document.getElementById('building-select');
 
@@ -659,7 +684,7 @@
     const st = statusInfo(room);
     const price = priceFor(room);
     const icon = TYPE_ICON[room.roomType] || 'meeting_room';
-    const img = ROOM_IMAGE_BY_TYPE[room.roomType] || 'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=1200&q=80';
+    const img = roomCardImage(room);
     const priceLine = price && price.perNight != null
       ? `<p class="text-body-sm text-on-surface-variant mb-4">${peso(price.perNight)} / night · ${price.nights} night(s)</p>`
       : '<div class="mb-4"></div>';
@@ -678,7 +703,7 @@
     return `
       <article class="browse-room-card reveal">
         <div class="browse-room-card__media">
-          <img src="${img}" alt="${room.roomType} room ${room.roomNumber}" loading="lazy" />
+          <img src="${img}" alt="${roomTypeDisplay(room)} room ${room.roomNumber}" loading="lazy" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent"></div>
           <div class="absolute top-3 left-3">
             <span class="${st.cls} px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest shadow">${st.label}</span>
@@ -698,7 +723,7 @@
               <span class="font-label-sm font-semibold">${room.capacityMin}-${room.capacityMax}</span>
             </div>
           </div>
-          <p class="text-body-sm text-on-surface-variant mb-1">${room.roomType}</p>
+          <p class="text-body-sm text-on-surface-variant mb-1">${roomTypeDisplay(room)}</p>
           ${priceLine}
           ${reserveBtn}
         </div>
@@ -791,7 +816,7 @@
       setStayStatus(`${avail} room${avail === 1 ? '' : 's'} available`, avail > 0 ? 'success' : 'warn');
       setAvailabilityFeedback(
         avail > 0
-          ? `Showing ${avail} bookable room${avail === 1 ? '' : 's'} for ${fmtStayDate(checkIn)} → ${fmtStayDate(checkOut)}.`
+          ? `Showing ${avail} bookable room${avail === 1 ? '' : 's'} for ${fmtStayDate(checkIn)} → ${fmtStayDate(checkOut)}.${data.active_season ? ` Prices use ${data.active_season} season rates.` : ''}`
           : 'No rooms are open for these dates. Try different dates or fewer guests.',
       );
       document.getElementById('rooms-mount')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -891,8 +916,13 @@
         const regular = item.rates?.find((r) => r.season === 'Regular');
         const peak = item.rates?.find((r) => r.season === 'Peak');
         spaces.push({
+          facilityId: item.facility_id ?? item.id,
           category: group.category,
           item: item.item,
+          label: item.label || item.name || item.item,
+          name: item.name,
+          roomCode: item.room_code,
+          description: item.description,
           regularRate: regular?.rate ?? null,
           peakRate: peak?.rate ?? null,
         });
@@ -911,6 +941,9 @@
   }
 
   function venueCard(space) {
+    const desc = space.description
+      ? `<p class="text-body-sm text-on-surface-variant mb-2 line-clamp-2">${escapeHtml(space.description)}</p>`
+      : '';
     return `
       <div class="flex flex-col bg-white rounded-2xl overflow-hidden border border-outline-variant hover:border-primary/40 hover:shadow-xl transition-all duration-300 reveal">
         <div class="h-24 bg-gradient-to-br from-secondary/15 to-secondary/5 flex items-center justify-center">
@@ -918,12 +951,15 @@
         </div>
         <div class="p-5 flex flex-col flex-1">
           <p class="text-label-sm text-primary font-medium mb-1">${escapeHtml(space.category)}</p>
-          <h3 class="font-headline-sm text-on-surface mb-1">${escapeHtml(space.item)}</h3>
+          <h3 class="font-headline-sm text-on-surface mb-1">${escapeHtml(space.label)}</h3>
+          ${desc}
           <p class="text-body-sm text-on-surface-variant mb-3">${venueRateLabel(space)}</p>
           ${!readOnly ? `<button type="button"
             class="book-venue-btn mt-auto w-full border border-primary text-primary rounded-lg py-2 text-label-sm hover:bg-primary hover:text-white transition-colors"
+            data-venue-id="${escapeHtml(String(space.facilityId || ''))}"
             data-venue-category="${escapeHtml(space.category)}"
-            data-venue-item="${escapeHtml(space.item)}">
+            data-venue-item="${escapeHtml(space.item)}"
+            data-venue-label="${escapeHtml(space.label)}">
             Book this venue
           </button>` : `<div class="mt-auto w-full py-2 text-center bg-surface-container-low text-outline border border-outline-variant/50 rounded-lg text-label-sm">View only</div>`}
         </div>
@@ -974,31 +1010,36 @@
   const titleEl  = document.getElementById('vbm-title');
   const catEl    = document.getElementById('vbm-category');
   const itemEl   = document.getElementById('vbm-item');
+  const venueIdEl = document.getElementById('vbm-facility-id');
   const feedback = document.getElementById('vbm-feedback');
   const submitBtn= document.getElementById('vbm-submit-btn');
   const rateHint = document.getElementById('vbm-rate-hint');
 
   async function updateVenueRateHint() {
     if (!rateHint) return;
+    const facilityId = venueIdEl?.value;
     const category = catEl?.value;
     const item = itemEl?.value;
     const date = document.getElementById('vbm-date')?.value;
-    if (!category || !item || !date) {
+    if ((!facilityId && (!category || !item)) || !date) {
       rateHint.textContent = 'Rate depends on the event date (Regular or Peak).';
       return;
     }
     try {
-      const quote = await getVenueRateQuote(category, item, date);
+      const quote = facilityId
+        ? await getVenueRateQuote({ facility_id: facilityId, date })
+        : await getVenueRateQuote(category, item, date);
       rateHint.textContent = `${quote.calendar_season || quote.season} rate: ₱${Number(quote.rate).toLocaleString('en-PH')} / hr`;
     } catch {
       rateHint.textContent = '';
     }
   }
 
-  function openVenueModal(category, item) {
-    if (catEl) catEl.value = category;
-    if (itemEl) itemEl.value = item;
-    if (titleEl) titleEl.textContent = `Book — ${item}`;
+  function openVenueModal(category, item, facilityId, label) {
+    if (catEl) catEl.value = category || '';
+    if (itemEl) itemEl.value = item || '';
+    if (venueIdEl) venueIdEl.value = facilityId || '';
+    if (titleEl) titleEl.textContent = `Book — ${label || item || 'Venue'}`;
     const browseVenue = readVenueFields();
     const dateEl = document.getElementById('vbm-date');
     if (dateEl) {
@@ -1043,12 +1084,13 @@
     venueSlotTimer = setTimeout(async () => {
       const slotEl = document.getElementById('vbm-slot-status');
       if (!slotEl) return;
+      const facilityId = venueIdEl?.value;
       const category = catEl?.value;
       const item = itemEl?.value;
       const eventDate = document.getElementById('vbm-date')?.value;
       const startTime = document.getElementById('vbm-start')?.value;
       const endTime = document.getElementById('vbm-end')?.value;
-      if (!category || !item || !eventDate || !startTime || !endTime) {
+      if ((!facilityId && (!category || !item)) || !eventDate || !startTime || !endTime) {
         slotEl.classList.add('hidden');
         submitBtn.disabled = false;
         return;
@@ -1061,7 +1103,14 @@
         return;
       }
       try {
-        const result = await checkVenueSlotAvailability({ category, item, event_date: eventDate, start_time: startTime, end_time: endTime });
+        const result = await checkVenueSlotAvailability({
+          facility_id: facilityId || undefined,
+          category,
+          item,
+          event_date: eventDate,
+          start_time: startTime,
+          end_time: endTime,
+        });
         slotEl.textContent = result.available
           ? `${result.message}${result.estimated_total != null ? ` Estimated: ₱${Number(result.estimated_total).toLocaleString('en-PH', { minimumFractionDigits: 2 })}.` : ''}`
           : result.message;
@@ -1079,7 +1128,14 @@
 
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('.book-venue-btn');
-    if (btn) openVenueModal(btn.dataset.venueCategory, btn.dataset.venueItem);
+    if (btn) {
+      openVenueModal(
+        btn.dataset.venueCategory,
+        btn.dataset.venueItem,
+        btn.dataset.venueId,
+        btn.dataset.venueLabel
+      );
+    }
   });
 
   submitBtn?.addEventListener('click', async () => {
@@ -1094,6 +1150,7 @@
 
     const category = document.getElementById('vbm-category')?.value;
     const item = document.getElementById('vbm-item')?.value;
+    const facilityId = document.getElementById('vbm-facility-id')?.value;
     const eventDate  = document.getElementById('vbm-date')?.value;
     const startTime  = document.getElementById('vbm-start')?.value;
     const endTime    = document.getElementById('vbm-end')?.value;
@@ -1107,7 +1164,14 @@
     submitBtn.disabled = true;
     submitBtn.textContent = 'Checking availability…';
     try {
-      const slot = await checkVenueSlotAvailability({ category, item, event_date: eventDate, start_time: startTime, end_time: endTime });
+      const slot = await checkVenueSlotAvailability({
+        facility_id: facilityId || undefined,
+        category,
+        item,
+        event_date: eventDate,
+        start_time: startTime,
+        end_time: endTime,
+      });
       if (!slot.available) {
         showMsg(slot.message || 'This time slot is not available.', true);
         submitBtn.disabled = false;
@@ -1124,7 +1188,11 @@
     submitBtn.textContent = 'Submitting…';
 
     try {
-      await createFacilityBooking({ category, item, event_date: eventDate,
+      await createFacilityBooking({
+        facility_id: facilityId ? Number(facilityId) : undefined,
+        category,
+        item,
+        event_date: eventDate,
         start_time: startTime, end_time: endTime, guest_count: guestCount, notes });
       showMsg('Venue request submitted! You will be notified once it is approved.', false);
       submitBtn.textContent = 'Submitted';

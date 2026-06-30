@@ -231,7 +231,7 @@ function renderRoomCard(room) {
         <span class="material-symbols-outlined rooms-card__setup-icon" aria-hidden="true">${escapeHtml(setup.icon)}</span>
         ${escapeHtml(setup.label)}
       </p>
-      <p class="rooms-card__meta">Up to ${room.capacity_max} guests · ${escapeHtml(room.room_type || 'Room')}</p>
+      <p class="rooms-card__meta">Up to ${room.capacity_max} guests · ${escapeHtml(room.room_type_label || room.room_type || 'Room')}</p>
       ${priceHint}
     </button>`;
 }

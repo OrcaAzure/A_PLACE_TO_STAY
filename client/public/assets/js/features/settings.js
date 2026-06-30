@@ -116,6 +116,13 @@ function renderFiscalYearSettings(info) {
   if (monthSelect && info.settings) monthSelect.value = String(info.settings.fiscal_year_start_month);
   if (dayInput && info.settings) dayInput.value = String(info.settings.fiscal_year_start_day);
   if (advanceInput && info.settings) advanceInput.value = String(info.settings.booking_advance_months);
+  const seasonSelect = document.getElementById('active-lodging-season');
+  const seasonSummary = document.getElementById('sys-season-summary');
+  if (seasonSelect && info.settings) seasonSelect.value = info.settings.active_lodging_season || info.activeLodgingSeason || 'Regular';
+  if (seasonSummary) {
+    const season = info.activeLodgingSeason || info.settings?.active_lodging_season || 'Regular';
+    seasonSummary.textContent = `Guests and staff currently see ${season} rates for rooms and venues. Change this when Housing switches pricing — it is not automatic by date.`;
+  }
   const cutoffInput = document.getElementById('guest-cancel-cutoff-days');
   const cancelSummary = document.getElementById('sys-cancellation-policy-summary');
   if (cutoffInput && info.settings) cutoffInput.value = String(info.settings.guest_cancellation_cutoff_days ?? 1);
@@ -139,6 +146,7 @@ async function saveSystemSettings() {
       fiscal_year_start_day: Number(document.getElementById('fy-start-day')?.value),
       booking_advance_months: Number(document.getElementById('fy-advance-months')?.value),
       guest_cancellation_cutoff_days: Number(cutoffRaw),
+      active_lodging_season: document.getElementById('active-lodging-season')?.value || 'Regular',
     };
 
     if ([payload.fiscal_year_start_month, payload.fiscal_year_start_day, payload.booking_advance_months].some((n) => Number.isNaN(n))) {

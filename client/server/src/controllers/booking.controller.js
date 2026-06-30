@@ -16,6 +16,7 @@ import {
   notifyBookingUpdated,
   getRoomById,
 } from '../services/booking.service.js';
+import { getActiveLodgingSeason } from '../services/season.service.js';
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
 import { assertCanCancelRoomBooking, getGuestCancellationCutoffDays } from '../services/reservationLifecycle.service.js';
 
@@ -29,7 +30,7 @@ const bookingSelect = `
          r.room_number,
          r.room_type,
          b.name AS building_name
-  FROM bookings bk
+  FROM bookings_rooms bk
   JOIN users u ON bk.user_id = u.id
   LEFT JOIN rooms r ON bk.room_id = r.id
   LEFT JOIN buildings b ON r.building_id = b.id
@@ -95,7 +96,8 @@ export const getRoomAvailability = async (req, res) => {
       rooms = filterRoomsForGuestUser(rooms, req.user.email);
     }
     const availableCount = rooms.filter((r) => r.availability_status === 'available').length;
-    res.status(200).json({ rooms, available_count: availableCount });
+    const active_season = await getActiveLodgingSeason();
+    res.status(200).json({ rooms, available_count: availableCount, active_season });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -154,7 +156,7 @@ export const createBooking = async (req, res) => {
     const bookingStatus = ADMIN_ROLES.includes(role) ? (status || 'Approved') : 'Pending';
 
     const [result] = await pool.query(
-      `INSERT INTO bookings (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone)
+      `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         effectiveUserId, room_id, req.body.group_id || null, check_in, check_out, guest_count || 1,
@@ -182,7 +184,7 @@ export const updateBooking = async (req, res) => {
     const { role, id: userId } = req.user;
     const isAdmin = ADMIN_ROLES.includes(role);
 
-    const [existingRows] = await pool.query('SELECT * FROM bookings WHERE id = ?', [req.params.id]);
+    const [existingRows] = await pool.query('SELECT * FROM bookings_rooms WHERE id = ?', [req.params.id]);
     if (!existingRows.length) return res.status(404).json({ message: 'Booking not found' });
     const existing = existingRows[0];
 
@@ -203,7 +205,7 @@ export const updateBooking = async (req, res) => {
         cutoffDays: await getGuestCancellationCutoffDays(),
       });
       if (cancelError) return res.status(400).json({ message: cancelError });
-      await pool.query('UPDATE bookings SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
+      await pool.query('UPDATE bookings_rooms SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
       const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
       return res.status(200).json({ message: 'Booking cancelled', booking: await enrichBooking(rows[0]) });
     }
@@ -236,7 +238,7 @@ export const updateBooking = async (req, res) => {
     }
 
     await pool.query(
-      `UPDATE bookings SET
+      `UPDATE bookings_rooms SET
         user_id = COALESCE(?, user_id),
         room_id = COALESCE(?, room_id),
         check_in = COALESCE(?, check_in),
@@ -283,9 +285,9 @@ export const updateBooking = async (req, res) => {
 
 export const deleteBooking = async (req, res) => {
   try {
-    const [existing] = await pool.query('SELECT id FROM bookings WHERE id = ?', [req.params.id]);
+    const [existing] = await pool.query('SELECT id FROM bookings_rooms WHERE id = ?', [req.params.id]);
     if (!existing.length) return res.status(404).json({ message: 'Booking not found' });
-    await pool.query('DELETE FROM bookings WHERE id = ?', [req.params.id]);
+    await pool.query('DELETE FROM bookings_rooms WHERE id = ?', [req.params.id]);
     res.status(200).json({ message: 'Booking deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });

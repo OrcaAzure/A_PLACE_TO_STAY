@@ -182,7 +182,7 @@ function renderFacilityRow(f) {
     <article class="venue-space-row${rowClass}${f.has_pending ? ' has-pending' : ''}">
       <div class="venue-space-row__head">
         <div>
-          <h4 class="venue-space-row__name">${escapeHtml(f.item)}</h4>
+          <h4 class="venue-space-row__name">${escapeHtml(f.label || f.item)}</h4>
           <p class="venue-space-row__rate">${escapeHtml(formatRateLine(f))}</p>
         </div>
         <span class="venue-space-row__badge ${badge.cls}">${badge.text}</span>
@@ -194,7 +194,7 @@ function renderFacilityRow(f) {
 function matchesSearch(f, category) {
   const q = state.search.trim().toLowerCase();
   if (!q) return true;
-  const hay = [f.item, f.category, f.calendar_season, f.season].join(' ').toLowerCase();
+  const hay = [f.label, f.item, f.room_code, f.name, f.category, f.calendar_season, f.season].join(' ').toLowerCase();
   return hay.includes(q);
 }
 

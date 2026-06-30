@@ -168,13 +168,33 @@ export async function getRoomById(id) {
   return data.room;
 }
 
-export async function checkVenueSlotAvailability({ category, item, event_date, start_time, end_time }) {
-  const params = new URLSearchParams({ category, item, event_date, start_time, end_time });
+export async function checkVenueSlotAvailability({
+  category, item, facility_id, event_venue_id, room_code, event_date, start_time, end_time,
+}) {
+  const params = new URLSearchParams({ event_date, start_time, end_time });
+  const catalogId = facility_id || event_venue_id;
+  if (catalogId) params.set('facility_id', String(catalogId));
+  if (room_code) params.set('room_code', room_code);
+  if (category) params.set('category', category);
+  if (item) params.set('item', item);
   return apiRequest(`/facility-bookings/check-slot?${params}`);
 }
 
-export async function getVenueRateQuote(category, item, date) {
-  const params = new URLSearchParams({ category, item, date });
+export async function getVenueRateQuote(categoryOrOpts, item, date) {
+  const params = new URLSearchParams();
+  if (typeof categoryOrOpts === 'object' && categoryOrOpts !== null) {
+    const o = categoryOrOpts;
+    const catalogId = o.facility_id || o.event_venue_id;
+    if (catalogId) params.set('facility_id', String(catalogId));
+    if (o.room_code) params.set('room_code', o.room_code);
+    if (o.category) params.set('category', o.category);
+    if (o.item) params.set('item', o.item);
+    params.set('date', o.date);
+  } else {
+    params.set('category', categoryOrOpts);
+    params.set('item', item);
+    params.set('date', date);
+  }
   return apiRequest(`/facilities/venue-rate?${params}`);
 }
 
@@ -203,6 +223,42 @@ export async function updateFacilityRate(id, payload) {
 
 export async function deleteFacilityRate(id) {
   return apiRequest(`/facilities/${id}`, { method: 'DELETE' });
+}
+
+export async function createMealRate(payload) {
+  return apiRequest('/catalog/meal-rates', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateMealRate(id, payload) {
+  return apiRequest(`/catalog/meal-rates/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteMealRate(id) {
+  return apiRequest(`/catalog/meal-rates/${id}`, { method: 'DELETE' });
+}
+
+export async function createExtraServiceRate(payload) {
+  return apiRequest('/catalog/extra-services', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updateExtraServiceRate(id, payload) {
+  return apiRequest(`/catalog/extra-services/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteExtraServiceRate(id) {
+  return apiRequest(`/catalog/extra-services/${id}`, { method: 'DELETE' });
 }
 
 export async function getBuildings() {
@@ -354,11 +410,19 @@ export async function updatePayment(id, payload) {
 }
 
 export function normalizeRoom(room) {
+  const bedCount = room.bed_count != null ? Number(room.bed_count) : null;
+  let roomTypeLabel = room.room_type_label;
+  if (!roomTypeLabel && room.room_type === 'Deluxe Apartment') {
+    const beds = bedCount ?? (['201', '304'].includes(String(room.room_number)) ? 3 : 2);
+    roomTypeLabel = beds >= 3 ? 'Deluxe Apartment (3 beds)' : 'Deluxe Apartment';
+  }
   return {
     id: room.id,
     building: room.building_name || room.building || 'Unknown',
     roomNumber: room.room_number,
     roomType: room.room_type,
+    roomTypeLabel: roomTypeLabel || room.room_type,
+    bedCount,
     status: room.status,
     capacityMax: room.capacity_max,
     occupancy: room.occupancy,

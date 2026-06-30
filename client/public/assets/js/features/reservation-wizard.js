@@ -84,7 +84,7 @@ function renderRoomRow(room, { recommended = false } = {}) {
           <span class="material-symbols-outlined res-room-icon">meeting_room</span>
           <div>
             <strong class="res-room-row-num">Room ${escapeHtml(room.room_number)}</strong>
-            <span class="res-room-meta">${escapeHtml(room.building_name)} · ${escapeHtml(room.room_type)}</span>
+            <span class="res-room-meta">${escapeHtml(room.building_name)} · ${escapeHtml(room.room_type_label || room.room_type)}</span>
             ${topPick ? '<span class="res-rec-badge">Top pick</span>' : ''}
             ${recommended && !topPick ? '<span class="res-rec-badge res-rec-badge--alt">Suggested</span>' : ''}
           </div>

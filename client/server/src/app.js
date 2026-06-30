@@ -13,6 +13,7 @@ import statsRoutes   from './routes/stats.routes.js';
 import groupRoutes    from './routes/group.routes.js';
 import facilityRoutes        from './routes/facility.routes.js';
 import facilityBookingRoutes from './routes/facilityBooking.routes.js';
+import ancillaryRoutes       from './routes/ancillary.routes.js';
 import settingsRoutes  from './routes/settings.routes.js';
 import pageRoutes      from './routes/pages.routes.js';
 import { pool }        from './config/db.js';
@@ -84,6 +85,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/stats',      statsRoutes);
 app.use('/api/facilities',        facilityRoutes);
 app.use('/api/facility-bookings', facilityBookingRoutes);
+app.use('/api/catalog',           ancillaryRoutes);
 app.use('/api/settings',   settingsRoutes);
 
 app.use(pageRoutes);

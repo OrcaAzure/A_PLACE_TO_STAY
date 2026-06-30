@@ -29,6 +29,8 @@ function emptyState() {
     guestName: '',
     email: '',
     spaceKey: '',
+    eventVenueId: '',
+    facilityId: '',
     category: '',
     item: '',
     eventDate: '',
@@ -45,11 +47,15 @@ function buildVenueSpaces(catalog) {
   const rows = [];
   for (const group of catalog?.venues || []) {
     for (const item of group.items || []) {
+      const catalogId = item.facility_id ?? item.id;
       rows.push({
-        spaceKey: `${group.category}\x1f${item.item}`,
+        spaceKey: catalogId ? String(catalogId) : `${group.category}\x1f${item.item}`,
+        facilityId: catalogId,
+        eventVenueId: catalogId,
         category: group.category,
         item: item.item,
-        label: `${group.category} — ${item.item}`,
+        label: item.label || `${group.category} — ${item.item}`,
+        description: item.description || '',
         rates: item.rates || [],
       });
     }
@@ -174,6 +180,8 @@ function renderStep3() {
 function syncSpaceFromKey() {
   const v = selectedVenue();
   if (v) {
+    state.facilityId = v.facilityId || v.eventVenueId || '';
+    state.eventVenueId = state.facilityId;
     state.category = v.category;
     state.item = v.item;
   }
@@ -214,14 +222,17 @@ function readForm() {
 
 async function refreshRateQuote() {
   const hint = $('vbw-rate-hint');
-  if (!state.category || !state.item || !state.eventDate) {
+  if ((!state.facilityId && !state.eventVenueId && (!state.category || !state.item)) || !state.eventDate) {
     state.rateQuote = null;
     if (hint) hint.textContent = 'Rate is based on the event date (Regular or Peak).';
     return;
   }
   if (hint) hint.textContent = 'Checking rate for this date…';
   try {
-    state.rateQuote = await getVenueRateQuote(state.category, state.item, state.eventDate);
+    const catalogId = state.facilityId || state.eventVenueId;
+    state.rateQuote = catalogId
+      ? await getVenueRateQuote({ facility_id: catalogId, date: state.eventDate })
+      : await getVenueRateQuote(state.category, state.item, state.eventDate);
     if (hint) {
       const label = state.rateQuote.calendar_season || state.rateQuote.season;
       hint.innerHTML = `<strong>${escapeHtml(label)}</strong> rate: ${formatMoney(state.rateQuote.rate)}/hr`;
@@ -340,7 +351,9 @@ async function confirmSave() {
   showError('');
 
   try {
+    const catalogId = state.facilityId || state.eventVenueId;
     const result = await createFacilityBooking({
+      facility_id: catalogId ? Number(catalogId) : undefined,
       category: state.category,
       item: state.item,
       event_date: state.eventDate,
@@ -412,14 +425,28 @@ export async function openVenueBookingWizard(detail = {}) {
     users = userRows || [];
     venues = buildVenueSpaces(catalog);
 
-    if (detail.category && detail.item) {
-      state.spaceKey = `${detail.category}\x1f${detail.item}`;
+    if (detail.facility_id || detail.facilityId || detail.event_venue_id || detail.eventVenueId) {
+      const id = String(detail.facility_id || detail.facilityId || detail.event_venue_id || detail.eventVenueId);
+      state.spaceKey = id;
+      state.facilityId = id;
+      state.eventVenueId = id;
+      const match = venues.find((v) => String(v.eventVenueId) === id);
+      if (match) {
+        state.category = match.category;
+        state.item = match.item;
+      }
+    } else if (detail.category && detail.item) {
+      const match = venues.find((v) => v.category === detail.category && v.item === detail.item);
+      state.spaceKey = match?.spaceKey || `${detail.category}\x1f${detail.item}`;
+      state.facilityId = match?.facilityId || match?.eventVenueId || '';
+      state.eventVenueId = state.facilityId;
       state.category = detail.category;
       state.item = detail.item;
     } else if (detail.facilityId) {
       const match = findSpaceByFacilityId(detail.facilityId);
       if (match) {
         state.spaceKey = match.spaceKey;
+        state.eventVenueId = match.eventVenueId || '';
         state.category = match.category;
         state.item = match.item;
       }
@@ -427,6 +454,8 @@ export async function openVenueBookingWizard(detail = {}) {
 
     if (!state.spaceKey && venues.length === 1) {
       state.spaceKey = venues[0].spaceKey;
+      state.facilityId = venues[0].facilityId || venues[0].eventVenueId || '';
+      state.eventVenueId = state.facilityId;
       state.category = venues[0].category;
       state.item = venues[0].item;
     }

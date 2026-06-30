@@ -178,14 +178,18 @@ export const getRoomById = async (req, res) => {
 
 export const createRoom = async (req, res) => {
   try {
-    const { building_id, room_number, room_type, capacity_min, capacity_max, occupancy, status } = req.body;
+    const { building_id, room_number, room_type, bed_count, bedroom_count, capacity_min, capacity_max, occupancy, status } = req.body;
     if (isEmpty(building_id) || isEmpty(room_number) || isEmpty(room_type) || isEmpty(capacity_min) || isEmpty(capacity_max)) {
       return res.status(400).json({ message: 'building_id, room_number, room_type, capacity_min, and capacity_max are required' });
     }
+    const rawBedCount = bed_count ?? bedroom_count;
+    const bedCount = room_type === 'Deluxe Apartment' && rawBedCount != null
+      ? Number(rawBedCount)
+      : null;
     const [result] = await pool.query(
-      `INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max, occupancy, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [building_id, room_number, room_type, capacity_min, capacity_max, occupancy || 0, status || 'Available']
+      `INSERT INTO rooms (building_id, room_number, room_type, bed_count, capacity_min, capacity_max, occupancy, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [building_id, room_number, room_type, bedCount, capacity_min, capacity_max, occupancy || 0, status || 'Available']
     );
     const [newRoom] = await pool.query(
       `SELECT rooms.*, buildings.name AS building_name
@@ -205,18 +209,25 @@ export const updateRoom = async (req, res) => {
     const [existing] = await pool.query('SELECT * FROM rooms WHERE id = ? LIMIT 1', [req.params.id]);
     if (existing.length === 0) return res.status(404).json({ message: 'Room not found' });
 
-    const { building_id, room_number, room_type, capacity_min, capacity_max, occupancy, status } = req.body;
+    const { building_id, room_number, room_type, bed_count, bedroom_count, capacity_min, capacity_max, occupancy, status } = req.body;
+    const hasBedCount = Object.prototype.hasOwnProperty.call(req.body, 'bed_count')
+      || Object.prototype.hasOwnProperty.call(req.body, 'bedroom_count');
+    const rawBedCount = hasBedCount ? (bed_count ?? bedroom_count) : existing[0].bed_count;
+    const bedCount = hasBedCount
+      ? (rawBedCount != null ? Number(rawBedCount) : null)
+      : existing[0].bed_count;
     await pool.query(
       `UPDATE rooms SET
         building_id  = COALESCE(?, building_id),
         room_number  = COALESCE(?, room_number),
         room_type    = COALESCE(?, room_type),
+        bed_count = ?,
         capacity_min = COALESCE(?, capacity_min),
         capacity_max = COALESCE(?, capacity_max),
         occupancy    = COALESCE(?, occupancy),
         status       = COALESCE(?, status)
       WHERE id = ?`,
-      [building_id, room_number, room_type, capacity_min, capacity_max, occupancy, status, req.params.id]
+      [building_id, room_number, room_type, bedCount, capacity_min, capacity_max, occupancy, status, req.params.id]
     );
     const [updated] = await pool.query(
       `SELECT rooms.*, buildings.name AS building_name

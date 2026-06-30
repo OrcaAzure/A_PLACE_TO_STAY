@@ -23,7 +23,7 @@ const ROOM_TYPE_OPTIONS = [
   },
   {
     value: 'Superior Guest Room',
-    label: 'Guest Room',
+    label: 'Superior Guest Room',
     subtitle: 'Standard beds, 1–4 people',
     icon: 'king_bed',
     capacity: { min: 1, max: 4 },
@@ -36,18 +36,11 @@ const ROOM_TYPE_OPTIONS = [
     capacity: { min: 1, max: 4 },
   },
   {
-    value: 'Deluxe 2 BR',
-    label: '2-Bedroom Suite',
-    subtitle: 'Larger family unit',
+    value: 'Deluxe Apartment',
+    label: 'Deluxe Apartment',
+    subtitle: '2 or 3 beds — set below',
     icon: 'holiday_village',
     capacity: { min: 1, max: 6 },
-  },
-  {
-    value: 'Deluxe 3 BR',
-    label: '3-Bedroom Suite',
-    subtitle: 'Biggest unit',
-    icon: 'villa',
-    capacity: { min: 1, max: 8 },
   },
 ];
 
@@ -137,7 +130,12 @@ function getTypeOption(value) {
   return ROOM_TYPE_OPTIONS.find((t) => t.value === value) || null;
 }
 
-function getTypeLabel(value) {
+function getTypeLabel(value, room) {
+  if (room?.room_type === 'Deluxe Apartment' || value === 'Deluxe Apartment') {
+    const r = room || { room_type: value, bed_count: null, room_number: '' };
+    const beds = r.bed_count ?? (['201', '304'].includes(String(r.room_number)) ? 3 : 2);
+    return beds >= 3 ? 'Deluxe Apartment (3 beds)' : 'Deluxe Apartment';
+  }
   return getTypeOption(value)?.label || value || 'Room';
 }
 
@@ -155,8 +153,11 @@ export function getRoomSetupMeta(room) {
     return { label: 'Meeting / Conference', icon: 'groups_3', tone: 'meeting', presetId: 'meeting-space' };
   }
   const opt = getTypeOption(room.room_type);
+  const label = room.room_type === 'Deluxe Apartment'
+    ? getTypeLabel('Deluxe Apartment', room)
+    : (opt?.label || room.room_type || 'Guest Room');
   return {
-    label: opt?.label || room.room_type || 'Guest Room',
+    label,
     icon: opt?.icon || 'king_bed',
     tone: 'guest',
     presetId: room.room_type === 'Superior Guest Room' ? 'guest-room' : null,
@@ -179,6 +180,7 @@ function emptyForm() {
     building_id: '',
     room_number: '',
     room_type: first.value,
+    bed_count: 2,
     capacity_min: first.capacity.min,
     capacity_max: first.capacity.max,
     occupancy: 0,
@@ -193,6 +195,7 @@ function roomToForm(r) {
     building_id: r.building_id ?? '',
     room_number: r.room_number ?? '',
     room_type: r.room_type ?? fallback.value,
+    bed_count: r.bed_count ?? (['201', '304'].includes(String(r.room_number)) ? 3 : 2),
     capacity_min: r.capacity_min ?? typeOpt?.capacity.min ?? fallback.capacity.min,
     capacity_max: r.capacity_max ?? typeOpt?.capacity.max ?? fallback.capacity.max,
     occupancy: r.occupancy ?? 0,
@@ -365,9 +368,27 @@ function renderCapacityStepper() {
     </div>`;
 }
 
+function renderBedField() {
+  if (state.form.room_type !== 'Deluxe Apartment') return '';
+  const beds = state.form.bed_count ?? 2;
+  return `
+    <div class="admin-crud-field span-full">
+      <label class="mf-field-label">Beds</label>
+      <div class="mf-type-grid mf-type-grid--compact">
+        ${[2, 3].map((n) => `
+          <button type="button" class="mf-type-card${beds === n ? ' is-selected' : ''}" data-bed-count="${n}">
+            <span class="mf-type-label">${n} beds</span>
+            <span class="mf-type-sub">${n === 3 ? 'Rooms 201 & 304' : 'Most deluxe units'}</span>
+          </button>`).join('')}
+      </div>
+      <input type="hidden" id="mf-bed-count" name="bed_count" value="${beds}" />
+    </div>`;
+}
+
 function renderAdvancedFields(bldgOpts) {
   return `
       ${renderRoomTypeCards()}
+      ${renderBedField()}
 
       <div class="admin-crud-field">
         <label for="mf-building">Building</label>
@@ -562,6 +583,7 @@ function readFormFromDom() {
     building_id: fd.get('building_id'),
     room_number: fd.get('room_number'),
     room_type: roomType,
+    bed_count: roomType === 'Deluxe Apartment' ? Number(fd.get('bed_count') || state.form.bed_count || 2) : null,
     capacity_min: capacityMin,
     capacity_max: capacityMax,
     occupancy: Number(fd.get('occupancy')) || state.form.occupancy || 0,
@@ -638,6 +660,9 @@ function applyRoomType(typeValue) {
   if (opt) {
     state.form.capacity_min = opt.capacity.min;
     state.form.capacity_max = opt.capacity.max;
+  }
+  if (typeValue === 'Deluxe Apartment' && !state.form.bed_count) {
+    state.form.bed_count = 2;
   }
   state.message = null;
   render();
@@ -882,6 +907,7 @@ async function persistRoomForm({ successMessage } = {}) {
     building_id: Number(state.form.building_id),
     room_number: String(state.form.room_number).trim(),
     room_type: state.form.room_type,
+    bed_count: state.form.room_type === 'Deluxe Apartment' ? state.form.bed_count : null,
     capacity_min: state.form.capacity_min,
     capacity_max: state.form.capacity_max,
     occupancy: state.form.occupancy,
@@ -967,6 +993,14 @@ function handleClick(e) {
   const typeCard = e.target.closest('[data-room-type]');
   if (typeCard) {
     applyRoomType(typeCard.getAttribute('data-room-type'));
+    return;
+  }
+
+  const bedBtn = e.target.closest('[data-bed-count]');
+  if (bedBtn) {
+    state.form.bed_count = Number(bedBtn.getAttribute('data-bed-count'));
+    state.message = null;
+    render();
     return;
   }
 

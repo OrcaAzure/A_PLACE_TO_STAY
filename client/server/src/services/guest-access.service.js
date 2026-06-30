@@ -173,7 +173,7 @@ export async function getGuestAccessOverview() {
   const [bookings] = await pool.query(
     `SELECT bk.id, bk.user_id, bk.status, bk.check_in, bk.check_out, bk.group_id,
             r.room_number, b.name AS building_name
-     FROM bookings bk
+     FROM bookings_rooms bk
      LEFT JOIN rooms r ON bk.room_id = r.id
      LEFT JOIN buildings b ON r.building_id = b.id
      WHERE bk.user_id IN (${placeholders})`,

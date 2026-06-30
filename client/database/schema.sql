@@ -27,11 +27,11 @@ CREATE TABLE IF NOT EXISTS rooms (
     room_number   VARCHAR(50) NOT NULL,
     room_type     ENUM(
                     'Dorm',
-                    'Standard Guest Room',
+                    'Superior Guest Room',
                     'Standard Apartment',
-                    'Deluxe Apartment',
-                    'Uncategorized'
+                    'Deluxe Apartment'
                   ) NOT NULL,
+    bed_count     TINYINT      DEFAULT NULL,
     capacity_min  INT NOT NULL DEFAULT 1,
     capacity_max  INT NOT NULL DEFAULT 1,
     occupancy     INT NOT NULL DEFAULT 0,
@@ -56,17 +56,17 @@ CREATE TABLE IF NOT EXISTS rooms (
 );
 
 -- ============================================
--- ROOM RATES
+-- RATES: ROOMS
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS room_rates (
+CREATE TABLE IF NOT EXISTS rates_rooms (
     id        INT AUTO_INCREMENT PRIMARY KEY,
     room_type ENUM(
                 'Dorm',
-                'Standard Guest Room',
+                'Superior Guest Room',
                 'Standard Apartment',
-                'Deluxe Apartment',
-                'Uncategorized'
+                'Deluxe 2 BR',
+                'Deluxe 3 BR'
               ) NOT NULL,
     item      ENUM(
                 'Per person per Night',
@@ -85,39 +85,47 @@ CREATE TABLE IF NOT EXISTS room_rates (
 );
 
 -- ============================================
--- SEASON DEFINITIONS
--- ============================================
-
-CREATE TABLE IF NOT EXISTS season_definitions (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    season     ENUM('Regular', 'Peak', 'Super Peak') NOT NULL,
-    start_date DATE NOT NULL,
-    end_date   DATE NOT NULL,
-    label      VARCHAR(100),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT chk_season_dates CHECK (end_date >= start_date)
-);
-
--- ============================================
--- FACILITIES
+-- FACILITIES (bookable spaces — catalog)
+-- Seasonal prices live in `rates_facilities`.
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS facilities (
-    id           INT AUTO_INCREMENT PRIMARY KEY,
-    category     VARCHAR(50)  NOT NULL,
-    item         VARCHAR(100) NOT NULL,
-    season       ENUM('Regular', 'Peak', 'N/A') NOT NULL DEFAULT 'N/A',
-    rate         DECIMAL(10,2) NOT NULL,
-    capacity_min INT DEFAULT NULL,
-    capacity_max INT DEFAULT NULL,
+    id              INT AUTO_INCREMENT PRIMARY KEY,
+    name            VARCHAR(150) NOT NULL,
+    room_code       VARCHAR(20)  DEFAULT NULL,
+    description     TEXT         DEFAULT NULL,
+    package_name    VARCHAR(100) DEFAULT NULL,
+    facility_group  VARCHAR(50)  DEFAULT NULL,
+    capacity_min    INT          DEFAULT NULL,
+    capacity_max    INT          DEFAULT NULL,
 
-    UNIQUE KEY uq_facility_rate (category, item, season),
-    CONSTRAINT chk_facility_rate CHECK (rate > 0),
+    UNIQUE KEY uq_facility_room (room_code),
+
     CONSTRAINT chk_facility_capacity CHECK (
         (capacity_min IS NULL AND capacity_max IS NULL) OR
         (capacity_min >= 1 AND capacity_max >= capacity_min)
     ),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ============================================
+-- RATES: FACILITIES (seasonal venue pricing)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS rates_facilities (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    facility_id INT NOT NULL,
+    season      ENUM('Regular', 'Peak', 'N/A') NOT NULL DEFAULT 'Regular',
+    rate        DECIMAL(10,2) NOT NULL,
+
+    UNIQUE KEY uq_facility_rate (facility_id, season),
+    CONSTRAINT chk_facility_rate CHECK (rate > 0),
+
+    CONSTRAINT fk_rates_facility
+        FOREIGN KEY (facility_id) REFERENCES facilities(id)
+        ON DELETE CASCADE ON UPDATE CASCADE,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -249,10 +257,10 @@ CREATE INDEX idx_groups_status ON reservation_groups (status);
 CREATE INDEX idx_groups_dates ON reservation_groups (check_in, check_out);
 
 -- ============================================
--- BOOKINGS
+-- BOOKINGS: ROOMS
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS bookings (
+CREATE TABLE IF NOT EXISTS bookings_rooms (
     id             INT AUTO_INCREMENT PRIMARY KEY,
     user_id        INT NOT NULL,
     room_id        INT NOT NULL,
@@ -304,28 +312,61 @@ CREATE TABLE IF NOT EXISTS bookings (
     CONSTRAINT chk_total  CHECK (total_amount IS NULL OR total_amount > 0)
 );
 
-CREATE INDEX idx_bookings_room_dates ON bookings (room_id, check_in, check_out, status);
-CREATE INDEX idx_bookings_group ON bookings (group_id);
+CREATE INDEX idx_bookings_rooms_room_dates ON bookings_rooms (room_id, check_in, check_out, status);
+CREATE INDEX idx_bookings_rooms_group ON bookings_rooms (group_id);
 
-CREATE TABLE IF NOT EXISTS booking_meals (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    booking_id INT NOT NULL,
-    meal_type  ENUM('Breakfast', 'Lunch', 'Dinner', 'Snack') NOT NULL,
-    quantity   INT NOT NULL DEFAULT 0,
-    unit_price DECIMAL(10,2) NOT NULL,
-    subtotal   DECIMAL(10,2) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_meal_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_booking_meal (booking_id, meal_type)
+CREATE TABLE IF NOT EXISTS bookings_meals (
+    id               INT AUTO_INCREMENT PRIMARY KEY,
+    bookings_room_id INT NOT NULL,
+    meal_type        ENUM('Breakfast', 'Lunch', 'Dinner', 'Snack') NOT NULL,
+    quantity         INT NOT NULL DEFAULT 0,
+    unit_price       DECIMAL(10,2) NOT NULL,
+    subtotal         DECIMAL(10,2) NOT NULL,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_bookings_meals_room FOREIGN KEY (bookings_room_id) REFERENCES bookings_rooms(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_bookings_meals (bookings_room_id, meal_type)
 );
 
-CREATE TABLE IF NOT EXISTS booking_fees (
+CREATE TABLE IF NOT EXISTS bookings_extra_services (
+    id               INT AUTO_INCREMENT PRIMARY KEY,
+    bookings_room_id INT NOT NULL,
+    service_name     VARCHAR(100) NOT NULL,
+    amount           DECIMAL(10,2) NOT NULL,
+    created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_bookings_extra_services_room FOREIGN KEY (bookings_room_id) REFERENCES bookings_rooms(id) ON DELETE CASCADE
+);
+
+-- ============================================
+-- RATES: MEALS (room-stay add-ons, not venues)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS rates_meals (
     id         INT AUTO_INCREMENT PRIMARY KEY,
-    booking_id INT NOT NULL,
-    fee_name   VARCHAR(100) NOT NULL,
-    amount     DECIMAL(10,2) NOT NULL,
+    meal_type  ENUM('Breakfast', 'Lunch', 'Dinner', 'Snack') NOT NULL,
+    rate       DECIMAL(10,2) NOT NULL,
+
+    UNIQUE KEY uq_meal_type (meal_type),
+    CONSTRAINT chk_meal_rate CHECK (rate > 0),
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_fee_booking FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ============================================
+-- RATES: EXTRA SERVICES (laundry, corkage, maid, etc.)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS rates_extra_services (
+    id       INT AUTO_INCREMENT PRIMARY KEY,
+    category VARCHAR(50)  NOT NULL,
+    item     VARCHAR(100) NOT NULL,
+    rate     DECIMAL(10,2) NOT NULL,
+
+    UNIQUE KEY uq_extra_service (category, item),
+    CONSTRAINT chk_extra_service_rate CHECK (rate > 0),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- ============================================
@@ -333,8 +374,8 @@ CREATE TABLE IF NOT EXISTS booking_fees (
 -- ============================================
 
 DELIMITER //
-CREATE TRIGGER trg_booking_status_change
-AFTER UPDATE ON bookings
+CREATE TRIGGER trg_bookings_rooms_status_change
+AFTER UPDATE ON bookings_rooms
 FOR EACH ROW
 BEGIN
     IF NEW.status = 'Approved' AND OLD.status != 'Approved' THEN
@@ -358,9 +399,9 @@ DELIMITER ;
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS payments (
-    id         INT AUTO_INCREMENT PRIMARY KEY,
-    booking_id INT NOT NULL,
-    amount     DECIMAL(10,2) NOT NULL,
+    id               INT AUTO_INCREMENT PRIMARY KEY,
+    bookings_room_id INT NOT NULL,
+    amount           DECIMAL(10,2) NOT NULL,
     method     ENUM(
                  'Cash',
                  'GCash',
@@ -376,8 +417,8 @@ CREATE TABLE IF NOT EXISTS payments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_payment_booking
-        FOREIGN KEY (booking_id) REFERENCES bookings(id)
+    CONSTRAINT fk_payments_bookings_room
+        FOREIGN KEY (bookings_room_id) REFERENCES bookings_rooms(id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
@@ -385,10 +426,10 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 -- ============================================
--- FACILITY BOOKINGS
+-- BOOKINGS: FACILITIES (venue / event spaces)
 -- ============================================
 
-CREATE TABLE IF NOT EXISTS facility_bookings (
+CREATE TABLE IF NOT EXISTS bookings_facilities (
     id           INT AUTO_INCREMENT PRIMARY KEY,
     user_id      INT NOT NULL,
     facility_id  INT NOT NULL,
@@ -432,7 +473,7 @@ CREATE TABLE IF NOT EXISTS facility_bookings (
 -- DATA MIGRATION: BUILDING RENAME & CLEANUP
 -- (safe to re-run; no-op on fresh installs)
 -- ============================================
--- Renames PCALM → Global Missions Center (bookings keep room_id links).
+-- Renames PCALM → Global Missions Center (bookings_rooms keep room_id links).
 -- Removes deprecated buildings and their reservations in FK order.
 
 UPDATE buildings
@@ -442,13 +483,13 @@ WHERE name = 'PCALM';
 
 DELETE p
 FROM payments p
-JOIN bookings bk ON bk.id = p.booking_id
+JOIN bookings_rooms bk ON bk.id = p.bookings_room_id
 JOIN rooms r     ON r.id  = bk.room_id
 JOIN buildings b ON b.id  = r.building_id
 WHERE b.name IN ('Thesda', 'Sampaguita', 'Peranza', 'House');
 
 DELETE bk
-FROM bookings bk
+FROM bookings_rooms bk
 JOIN rooms r     ON r.id  = bk.room_id
 JOIN buildings b ON b.id  = r.building_id
 WHERE b.name IN ('Thesda', 'Sampaguita', 'Peranza', 'House');
@@ -461,18 +502,15 @@ WHERE b.name IN ('Thesda', 'Sampaguita', 'Peranza', 'House');
 DELETE FROM buildings
 WHERE name IN ('Thesda', 'Sampaguita', 'Peranza', 'House');
 
--- Migrate legacy lodging room types
-UPDATE rooms SET room_type = 'Standard Guest Room' WHERE room_type = 'Superior Guest Room';
-UPDATE rooms SET room_type = 'Deluxe Apartment'     WHERE room_type IN ('Deluxe 2 BR', 'Deluxe 3 BR');
-
-UPDATE room_rates SET room_type = 'Standard Guest Room' WHERE room_type = 'Superior Guest Room';
-UPDATE room_rates SET room_type = 'Deluxe Apartment'     WHERE room_type IN ('Deluxe 2 BR', 'Deluxe 3 BR');
-DELETE FROM room_rates WHERE room_type IN ('Deluxe 2 BR', 'Deluxe 3 BR', 'Superior Guest Room');
+-- Migrate legacy lodging room types (Superior Guest Room is the FY26 sheet name)
+UPDATE rooms SET room_type = 'Superior Guest Room' WHERE room_type = 'Standard Guest Room';
+UPDATE rates_rooms SET room_type = 'Superior Guest Room' WHERE room_type = 'Standard Guest Room';
+DELETE FROM rates_rooms WHERE room_type IN ('Standard Guest Room', 'Uncategorized');
 
 -- Remove reservations tied to retired lodging inventory or venue rows stored as rooms
 DELETE p
 FROM payments p
-JOIN bookings bk ON bk.id = p.booking_id
+JOIN bookings_rooms bk ON bk.id = p.bookings_room_id
 JOIN rooms r     ON r.id  = bk.room_id
 JOIN buildings b ON b.id  = r.building_id
 WHERE b.name = 'Global Missions Center'
@@ -481,7 +519,7 @@ WHERE b.name = 'Global Missions Center'
   );
 
 DELETE bk
-FROM bookings bk
+FROM bookings_rooms bk
 JOIN rooms r     ON r.id  = bk.room_id
 JOIN buildings b ON b.id  = r.building_id
 WHERE b.name = 'Global Missions Center'
@@ -509,16 +547,16 @@ ON DUPLICATE KEY UPDATE name = name;
 -- SEED DATA: LODGING — Global Missions Center
 -- ============================================
 
--- Deluxe Apartments (dlx apt)
-INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-501', 'Deluxe Apartment', 1, 6),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '201',   'Deluxe Apartment', 1, 6),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '301',   'Deluxe Apartment', 1, 6),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '304',   'Deluxe Apartment', 1, 6),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '401',   'Deluxe Apartment', 1, 6),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '402',   'Deluxe Apartment', 1, 6),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '403',   'Deluxe Apartment', 1, 6)
-ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
+-- Deluxe apartments — bed_count distinguishes 2-bed vs 3-bed pricing (201 & 304 have 3 beds)
+INSERT INTO rooms (building_id, room_number, room_type, bed_count, capacity_min, capacity_max) VALUES
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-501', 'Deluxe Apartment', 2, 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '201',   'Deluxe Apartment', 3, 1, 6),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '301',   'Deluxe Apartment', 2, 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '304',   'Deluxe Apartment', 3, 1, 6),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '401',   'Deluxe Apartment', 2, 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '402',   'Deluxe Apartment', 2, 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '403',   'Deluxe Apartment', 2, 1, 4)
+ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), bed_count = VALUES(bed_count), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
 -- Standard Apartments (std apt)
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
@@ -529,15 +567,15 @@ INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_m
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '404', 'Standard Apartment', 1, 4)
 ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
--- Standard Guest Rooms (sgr)
+-- Superior Guest Rooms (sgr) — FY26 sheet: "Superior Guest Room"
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '410', 'Standard Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '411', 'Standard Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '412', 'Standard Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '413', 'Standard Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '414', 'Standard Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '415', 'Standard Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '416', 'Standard Guest Room', 1, 4)
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '410', 'Superior Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '411', 'Superior Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '412', 'Superior Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '413', 'Superior Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '414', 'Superior Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '415', 'Superior Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '416', 'Superior Guest Room', 1, 4)
 ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
 -- Dormitories (dorm)
@@ -557,30 +595,24 @@ INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_m
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '310', 'Dorm', 5, 10)
 ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
--- Uncategorized (A-block, no assigned lodging class)
-INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-101', 'Uncategorized', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-105', 'Uncategorized', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-505', 'Uncategorized', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-504', 'Uncategorized', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-506', 'Uncategorized', 1, 4)
-ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
+-- A-501 is the only A-block lodging room (Deluxe Apartment). Conference/classroom spaces
+-- are bookable venues under facilities (GMC category), not lodging rooms.
 
 -- ============================================
 -- SEED DATA: ROOM RATES (FY26)
 -- ============================================
 
-INSERT INTO room_rates (room_type, item, season, rate) VALUES
+INSERT INTO rates_rooms (room_type, item, season, rate) VALUES
     ('Dorm', 'Per person per Night', 'Regular',    450.00),
     ('Dorm', 'Per person per Night', 'Peak',       500.00),
     ('Dorm', 'Per person per Night', 'Super Peak', 550.00),
 
-    ('Standard Guest Room', 'Single/Double Occupancy', 'Regular',    2250.00),
-    ('Standard Guest Room', 'Single/Double Occupancy', 'Peak',       2500.00),
-    ('Standard Guest Room', 'Single/Double Occupancy', 'Super Peak', 2750.00),
-    ('Standard Guest Room', 'Daily Maximum',           'Regular',    2800.00),
-    ('Standard Guest Room', 'Daily Maximum',           'Peak',       3050.00),
-    ('Standard Guest Room', 'Daily Maximum',           'Super Peak', 3400.00),
+    ('Superior Guest Room', 'Single/Double Occupancy', 'Regular',    2250.00),
+    ('Superior Guest Room', 'Single/Double Occupancy', 'Peak',       2500.00),
+    ('Superior Guest Room', 'Single/Double Occupancy', 'Super Peak', 2750.00),
+    ('Superior Guest Room', 'Daily Maximum',           'Regular',    2800.00),
+    ('Superior Guest Room', 'Daily Maximum',           'Peak',       3050.00),
+    ('Superior Guest Room', 'Daily Maximum',           'Super Peak', 3400.00),
 
     ('Standard Apartment', 'Single/Double Occupancy',   'Regular',    2500.00),
     ('Standard Apartment', 'Single/Double Occupancy',   'Peak',       2700.00),
@@ -592,89 +624,127 @@ INSERT INTO room_rates (room_type, item, season, rate) VALUES
     ('Standard Apartment', 'Extra Bed or Extra Person', 'Peak',        500.00),
     ('Standard Apartment', 'Extra Bed or Extra Person', 'Super Peak',  550.00),
 
-    ('Deluxe Apartment', 'Single/Double Occupancy',   'Regular',    3000.00),
-    ('Deluxe Apartment', 'Single/Double Occupancy',   'Peak',       3275.00),
-    ('Deluxe Apartment', 'Single/Double Occupancy',   'Super Peak', 3650.00),
-    ('Deluxe Apartment', 'Daily Maximum',             'Regular',    3750.00),
-    ('Deluxe Apartment', 'Daily Maximum',             'Peak',       4150.00),
-    ('Deluxe Apartment', 'Daily Maximum',             'Super Peak', 4500.00),
-    ('Deluxe Apartment', 'Extra Bed or Extra Person', 'Regular',     450.00),
-    ('Deluxe Apartment', 'Extra Bed or Extra Person', 'Peak',        500.00),
-    ('Deluxe Apartment', 'Extra Bed or Extra Person', 'Super Peak',  550.00),
+    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Regular',    3000.00),
+    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Peak',       3275.00),
+    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Super Peak', 3650.00),
+    ('Deluxe 2 BR', 'Daily Maximum',             'Regular',    3750.00),
+    ('Deluxe 2 BR', 'Daily Maximum',             'Peak',       4150.00),
+    ('Deluxe 2 BR', 'Daily Maximum',             'Super Peak', 4500.00),
+    ('Deluxe 2 BR', 'Extra Bed or Extra Person', 'Regular',     450.00),
+    ('Deluxe 2 BR', 'Extra Bed or Extra Person', 'Peak',        500.00),
+    ('Deluxe 2 BR', 'Extra Bed or Extra Person', 'Super Peak',  550.00),
 
-    ('Uncategorized', 'Single/Double Occupancy', 'Regular',    2250.00),
-    ('Uncategorized', 'Single/Double Occupancy', 'Peak',       2500.00),
-    ('Uncategorized', 'Single/Double Occupancy', 'Super Peak', 2750.00),
-    ('Uncategorized', 'Daily Maximum',           'Regular',    2800.00),
-    ('Uncategorized', 'Daily Maximum',           'Peak',       3050.00),
-    ('Uncategorized', 'Daily Maximum',           'Super Peak', 3400.00)
+    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Regular',    3600.00),
+    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Peak',       3650.00),
+    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Super Peak', 4450.00),
+    ('Deluxe 3 BR', 'Daily Maximum',             'Regular',    4350.00),
+    ('Deluxe 3 BR', 'Daily Maximum',             'Peak',       4750.00),
+    ('Deluxe 3 BR', 'Daily Maximum',             'Super Peak', 5200.00),
+    ('Deluxe 3 BR', 'Extra Bed or Extra Person', 'Regular',     450.00),
+    ('Deluxe 3 BR', 'Extra Bed or Extra Person', 'Peak',        500.00),
+    ('Deluxe 3 BR', 'Extra Bed or Extra Person', 'Super Peak',  550.00)
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
--- SEED DATA: FACILITIES & VENUES (FY26)
+-- SEED DATA: FACILITIES & RATES (FY26)
 -- Event spaces — not lodging rooms
 -- ============================================
 
-INSERT INTO facilities (category, item, season, rate, capacity_min, capacity_max) VALUES
-    ('GMC Chapel', 'Church',  'Regular',  3250.00, NULL, NULL),
-    ('GMC Chapel', 'Church',  'Peak',     4050.00, NULL, NULL),
-    ('GMC Chapel', 'Wedding', 'Regular',  7000.00, NULL, NULL),
-    ('GMC Chapel', 'Wedding', 'Peak',     8250.00, NULL, NULL),
-    ('GMC Chapel', 'Aircon',  'Regular',   275.00, NULL, NULL),
-    ('GMC Chapel', 'Aircon',  'Peak',      275.00, NULL, NULL),
+INSERT INTO facilities (name, room_code, description, package_name, facility_group, capacity_min, capacity_max) VALUES
+    ('GMC Chapel', NULL, NULL, 'Church',  'GMC Chapel', NULL, NULL),
+    ('GMC Chapel', NULL, NULL, 'Wedding', 'GMC Chapel', NULL, NULL),
+    ('Burdine Commons', NULL, NULL, 'Meeting and other functions', 'Burdine Commons', NULL, NULL),
+    ('Burdine Commons', NULL, NULL, 'Wedding and reception', 'Burdine Commons', NULL, NULL),
+    ('Osgood Garden', NULL, 'Outdoor garden venue.', NULL, 'Garden', 1, 150),
+    ('Prayer Mountain', NULL, NULL, 'Retreat use', 'Prayer Mountain', NULL, NULL),
+    ('Prayer Tower', NULL, NULL, 'Function', 'Prayer Tower', NULL, NULL),
+    ('Prayer Tower', NULL, NULL, 'Baptism', 'Prayer Tower', NULL, NULL),
+    ('Basketball Court', NULL, NULL, 'Sporting event', 'Recreation', NULL, NULL),
+    ('Childrens Playground', NULL, NULL, 'Playground use', 'Recreation', NULL, NULL),
+    ('Recreational Center', NULL, NULL, 'Recreation use', 'Recreation', NULL, NULL),
+    ('Russ Turney Educational Center', 'A-101', 'Large educational and meeting hall on the A-block.', NULL, 'GMC Conference Rooms', 1, 100),
+    ('Classroom Multi-Purpose Room', 'A-504', 'Multi-purpose classroom space.', NULL, 'GMC Conference Rooms', 1, 30),
+    ('Classroom Multi-Purpose Room', 'A-505', 'Multi-purpose classroom space.', NULL, 'GMC Conference Rooms', 1, 30),
+    ('Conference Room', 'A-506', 'Conference room on the A-block.', NULL, 'GMC Conference Rooms', 1, 15),
+    ('Conference Room', 'A-507', 'Conference room on the A-block (formerly A-105).', NULL, 'GMC Conference Rooms', 1, 15)
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    description = VALUES(description),
+    package_name = VALUES(package_name),
+    facility_group = VALUES(facility_group),
+    capacity_min = VALUES(capacity_min),
+    capacity_max = VALUES(capacity_max);
 
-    ('Burdine Commons', 'Meeting and other functions',  'Regular',  4500.00, NULL, NULL),
-    ('Burdine Commons', 'Meeting and other functions',  'Peak',     5500.00, NULL, NULL),
-    ('Burdine Commons', 'Wedding and reception',  'Regular',  4125.00, NULL, NULL),
-    ('Burdine Commons', 'Wedding and reception',  'Peak',     4750.00, NULL, NULL),
-
-    ('Garden', 'Osgood Garden', 'Regular', 17500.00, 1, 150),
-    ('Garden', 'Osgood Garden', 'Peak',    20000.00, 1, 150),
-
-    ('Prayer Mountain', 'Retreat use', 'Regular', 6000.00, NULL, NULL),
-    ('Prayer Mountain', 'Retreat use', 'Peak',    6500.00, NULL, NULL)
+INSERT INTO rates_facilities (facility_id, season, rate)
+SELECT f.id, s.season, s.rate
+FROM facilities f
+JOIN (
+    SELECT 'GMC Chapel' AS grp, 'Church' AS pkg, NULL AS code, 'Regular' AS season, 3250.00 AS rate UNION ALL
+    SELECT 'GMC Chapel', 'Church', NULL, 'Peak', 4050.00 UNION ALL
+    SELECT 'GMC Chapel', 'Wedding', NULL, 'Regular', 7000.00 UNION ALL
+    SELECT 'GMC Chapel', 'Wedding', NULL, 'Peak', 8250.00 UNION ALL
+    SELECT 'Burdine Commons', 'Meeting and other functions', NULL, 'Regular', 4500.00 UNION ALL
+    SELECT 'Burdine Commons', 'Meeting and other functions', NULL, 'Peak', 5500.00 UNION ALL
+    SELECT 'Burdine Commons', 'Wedding and reception', NULL, 'Regular', 4125.00 UNION ALL
+    SELECT 'Burdine Commons', 'Wedding and reception', NULL, 'Peak', 4750.00 UNION ALL
+    SELECT 'Garden', NULL, NULL, 'Regular', 17500.00 UNION ALL
+    SELECT 'Garden', NULL, NULL, 'Peak', 20000.00 UNION ALL
+    SELECT 'Prayer Mountain', 'Retreat use', NULL, 'Regular', 6000.00 UNION ALL
+    SELECT 'Prayer Mountain', 'Retreat use', NULL, 'Peak', 6500.00 UNION ALL
+    SELECT 'Prayer Tower', 'Function', NULL, 'Regular', 5500.00 UNION ALL
+    SELECT 'Prayer Tower', 'Function', NULL, 'Peak', 6000.00 UNION ALL
+    SELECT 'Prayer Tower', 'Baptism', NULL, 'Regular', 1000.00 UNION ALL
+    SELECT 'Prayer Tower', 'Baptism', NULL, 'Peak', 1000.00 UNION ALL
+    SELECT 'Recreation', 'Sporting event', NULL, 'Regular', 500.00 UNION ALL
+    SELECT 'Recreation', 'Sporting event', NULL, 'Peak', 625.00 UNION ALL
+    SELECT 'Recreation', 'Playground use', NULL, 'Regular', 250.00 UNION ALL
+    SELECT 'Recreation', 'Playground use', NULL, 'Peak', 375.00 UNION ALL
+    SELECT 'Recreation', 'Recreation use', NULL, 'Regular', 500.00 UNION ALL
+    SELECT 'Recreation', 'Recreation use', NULL, 'Peak', 625.00 UNION ALL
+    SELECT 'GMC Conference Rooms', NULL, 'A-101', 'Regular', 4500.00 UNION ALL
+    SELECT 'GMC Conference Rooms', NULL, 'A-101', 'Peak', 5500.00 UNION ALL
+    SELECT 'GMC Conference Rooms', NULL, 'A-504', 'Regular', 3000.00 UNION ALL
+    SELECT 'GMC Conference Rooms', NULL, 'A-504', 'Peak', 3500.00 UNION ALL
+    SELECT 'GMC Conference Rooms', NULL, 'A-505', 'Regular', 3000.00 UNION ALL
+    SELECT 'GMC Conference Rooms', NULL, 'A-505', 'Peak', 3500.00 UNION ALL
+    SELECT 'GMC Conference Rooms', NULL, 'A-506', 'Regular', 2100.00 UNION ALL
+    SELECT 'GMC Conference Rooms', NULL, 'A-506', 'Peak', 2500.00 UNION ALL
+    SELECT 'GMC Conference Rooms', NULL, 'A-507', 'Regular', 2100.00 UNION ALL
+    SELECT 'GMC Conference Rooms', NULL, 'A-507', 'Peak', 2500.00
+) s ON f.facility_group = s.grp
+   AND (f.package_name <=> s.pkg)
+   AND (s.code IS NULL OR f.room_code = s.code)
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
--- SEED DATA: ANCILLARY FACILITIES & SERVICES (FY26)
+-- SEED DATA: MEAL RATES (FY26)
 -- ============================================
 
-INSERT INTO facilities (category, item, season, rate, capacity_min, capacity_max) VALUES
-    ('Food Service', 'Breakfast', 'N/A', 175.00, 1, NULL),
-    ('Food Service', 'Lunch',     'N/A', 225.00, 1, NULL),
-    ('Food Service', 'Dinner',    'N/A', 225.00, 1, NULL),
-    ('Food Service', 'Snack',     'N/A',  85.00, 1, NULL),
+INSERT INTO rates_meals (meal_type, rate) VALUES
+    ('Breakfast', 175.00),
+    ('Lunch',     225.00),
+    ('Dinner',    225.00),
+    ('Snack',      85.00)
+ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
-    ('Laundry', 'Wash Spin and Dry per load 5kg', 'N/A', 200.00, NULL, NULL),
-    ('Laundry', 'Bleach additional per load',     'N/A',  50.00, NULL, NULL),
-    ('Laundry', 'Spin Only Washer per load 5kg',  'N/A',  75.00, NULL, NULL),
+-- ============================================
+-- SEED DATA: EXTRA SERVICE RATES (FY26)
+-- ============================================
 
-    ('Laundry-Iron', 'Short Sleeved Shirts Blouses',                    'N/A', 25.00, NULL, NULL),
-    ('Laundry-Iron', 'Long Sleeved Shirts Blouses Light Slacks Skirts', 'N/A', 30.00, NULL, NULL),
-    ('Laundry-Iron', 'Heavy Slacks Pants Skirts',                       'N/A', 35.00, NULL, NULL),
-    ('Laundry-Iron', 'Dresses',                                         'N/A', 45.00, NULL, NULL),
+INSERT INTO rates_extra_services (category, item, rate) VALUES
+    ('Laundry', 'Wash Spin and Dry per load 5kg', 200.00),
+    ('Laundry', 'Bleach additional per load',      50.00),
+    ('Laundry', 'Spin Only Washer per load 5kg',   75.00),
 
-    ('GMC', 'Russ Turney Educational Center', 'Regular', 4500.00, 1, 100),
-    ('GMC', 'Russ Turney Educational Center', 'Peak',    5500.00, 1, 100),
-    ('GMC', 'Classroom Multi-Purpose Room',   'Regular', 3000.00, 1,  30),
-    ('GMC', 'Classroom Multi-Purpose Room',   'Peak',    3500.00, 1,  30),
-    ('GMC', 'Conference Room',                'Regular', 2100.00, 1,  15),
-    ('GMC', 'Conference Room',                'Peak',    2500.00, 1,  15),
+    ('Laundry-Iron', 'Short Sleeved Shirts Blouses',                    25.00),
+    ('Laundry-Iron', 'Long Sleeved Shirts Blouses Light Slacks Skirts', 30.00),
+    ('Laundry-Iron', 'Heavy Slacks Pants Skirts',                       35.00),
+    ('Laundry-Iron', 'Dresses',                                         45.00),
 
-    ('Prayer Tower', 'Function', 'Regular', 5500.00, NULL, NULL),
-    ('Prayer Tower', 'Function', 'Peak',    6000.00, NULL, NULL),
-    ('Prayer Tower', 'Baptism',  'Regular', 1000.00, NULL, NULL),
-    ('Prayer Tower', 'Baptism',  'Peak',    1000.00, NULL, NULL),
+    ('Corkage Fee',  'Per person',  65.00),
+    ('Maid Service', 'Per person', 200.00),
 
-    ('Basketball Court',     'Sporting event', 'Regular',   500.00, NULL, NULL),
-    ('Basketball Court',     'Sporting event', 'Peak',      625.00, NULL, NULL),
-    ('Childrens Playground', 'Playground use', 'Regular',   250.00, NULL, NULL),
-    ('Childrens Playground', 'Playground use', 'Peak',      375.00, NULL, NULL),
-    ('Rec Center',           'Recreation use', 'Regular',   500.00, NULL, NULL),
-    ('Rec Center',           'Recreation use', 'Peak',      625.00, NULL, NULL),
-
-    ('Corkage Fee',  'Per person', 'N/A',  65.00, 1, NULL),
-    ('Maid Service', 'Per person', 'N/A', 200.00, 1, NULL)
+    ('GMC Chapel', 'Aircon', 275.00)
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
@@ -694,21 +764,11 @@ CREATE TABLE IF NOT EXISTS system_settings (
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
--- ============================================
--- SEED DATA: SEASON DEFINITIONS (FY26)
--- ============================================
-
-INSERT INTO season_definitions (season, start_date, end_date, label) VALUES
-    ('Regular',    '2026-01-01', '2026-03-31', 'Regular Jan-Mar 2026'),
-    ('Peak',       '2026-04-01', '2026-05-31', 'Peak Summer 2026'),
-    ('Regular',    '2026-06-01', '2026-10-31', 'Regular Jun-Oct 2026'),
-    ('Peak',       '2026-11-01', '2026-11-30', 'Peak Nov 2026'),
-    ('Super Peak', '2026-12-01', '2026-12-31', 'Super Peak Christmas 2026');
-
 INSERT INTO system_settings (setting_key, setting_value) VALUES
     ('fiscal_year_start_month', '7'),
     ('fiscal_year_start_day', '1'),
-    ('booking_advance_months', '12')
+    ('booking_advance_months', '12'),
+    ('active_lodging_season', 'Regular')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
 
 -- Demo bookings, payments, and room status samples are seeded by the server

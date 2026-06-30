@@ -10,7 +10,7 @@ const bookingSelect = `
          r.room_number,
          r.room_type,
          b.name AS building_name
-  FROM bookings bk
+  FROM bookings_rooms bk
   JOIN users u ON bk.user_id = u.id
   LEFT JOIN rooms r ON bk.room_id = r.id
   LEFT JOIN buildings b ON r.building_id = b.id
@@ -21,9 +21,13 @@ const venueBookingSelect = `
          u.full_name AS guest_name,
          u.email AS guest_email,
          u.role AS guest_role,
-         f.category AS facility_category,
-         f.item AS facility_name
-  FROM facility_bookings fb
+         f.facility_group AS facility_category,
+         COALESCE(
+           CONCAT(f.room_code, ' — ', f.name),
+           CONCAT(f.name, ' (', f.package_name, ')'),
+           f.name
+         ) AS facility_name
+  FROM bookings_facilities fb
   JOIN users u ON fb.user_id = u.id
   JOIN facilities f ON fb.facility_id = f.id
 `;
@@ -53,7 +57,7 @@ export const getAdminSummary = async (req, res) => {
           SUM(status = 'Rejected') AS rejected,
           SUM(status = 'Cancelled') AS cancelled,
           COUNT(*) AS total
-        FROM bookings
+        FROM bookings_rooms
       `),
       pool.query(`
         SELECT
@@ -78,7 +82,7 @@ export const getAdminSummary = async (req, res) => {
                COUNT(bk.id) AS booking_count
         FROM buildings b
         LEFT JOIN rooms r ON r.building_id = b.id
-        LEFT JOIN bookings bk ON bk.room_id = r.id
+        LEFT JOIN bookings_rooms bk ON bk.room_id = r.id
           AND bk.status = 'Approved'
           AND bk.check_in >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
         GROUP BY b.id, b.name
@@ -98,7 +102,7 @@ export const getAdminSummary = async (req, res) => {
     const groupStats = groupCounts[0] || { pending: 0, approved: 0 };
     const roomStats = roomRows[0];
     const [upcomingRows] = await pool.query(
-      `SELECT COUNT(*) AS count FROM bookings WHERE status = 'Approved' AND check_in >= ?`,
+      `SELECT COUNT(*) AS count FROM bookings_rooms WHERE status = 'Approved' AND check_in >= ?`,
       [today]
     );
 

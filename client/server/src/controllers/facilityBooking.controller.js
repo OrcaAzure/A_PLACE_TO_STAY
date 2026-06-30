@@ -6,19 +6,18 @@ import {
   getGuestCancellationCutoffDays,
 } from '../services/reservationLifecycle.service.js';
 import {
-  NON_VENUE_CATEGORIES,
   bookingOverlapsSlot,
   findVenueBookingOverlap,
-  groupVenueSpacesFromRows,
   normalizeTimeValue,
   resolveFacilityIdentity,
-  resolveVenueFacilityRow,
+  resolveVenueFacilityRowByFacilityId,
   computeVenueTotal,
   validateVenueCapacity,
   validateVenueDuration,
   venueRateMeta,
   bookingDurationHours,
 } from '../services/facility.service.js';
+import { fetchFacilitiesWithRates, FACILITY_GROUP_ICONS } from '../services/facilityCatalog.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -35,10 +34,12 @@ const bookingSelect = `
   SELECT fb.*,
          u.full_name AS guest_name,
          u.email     AS guest_email,
-         f.category  AS facility_category,
-         f.item      AS facility_name,
-         f.rate      AS facility_rate
-  FROM facility_bookings fb
+         f.facility_group AS facility_category,
+         f.name      AS facility_name,
+         f.room_code AS facility_room_code,
+         f.description AS facility_description,
+         f.package_name AS facility_package
+  FROM bookings_facilities fb
   JOIN users u ON fb.user_id = u.id
   JOIN facilities f ON fb.facility_id = f.id
 `;
@@ -79,15 +80,15 @@ export const createFacilityBooking = async (req, res) => {
   try {
     const { id: userId, role } = req.user;
     const {
-      facility_id, category, item, event_date, start_time, end_time, guest_count, notes,
+      facility_id, event_venue_id, room_code, category, item, event_date, start_time, end_time, guest_count, notes,
       user_id, guest_name, email, status,
     } = req.body;
 
     if (isEmpty(event_date) || isEmpty(start_time) || isEmpty(end_time)) {
       return res.status(400).json({ message: 'event_date, start_time, and end_time are required' });
     }
-    if (isEmpty(facility_id) && (isEmpty(category) || isEmpty(item))) {
-      return res.status(400).json({ message: 'Provide facility_id or both category and item' });
+    if (isEmpty(facility_id) && isEmpty(event_venue_id) && isEmpty(room_code) && (isEmpty(category) || isEmpty(item))) {
+      return res.status(400).json({ message: 'Provide facility_id, event_venue_id, room_code, or category and item' });
     }
 
     const isAdmin = ADMIN_ROLES.includes(role);
@@ -103,26 +104,28 @@ export const createFacilityBooking = async (req, res) => {
     }
 
     const identity = await resolveFacilityIdentity({
-      facility_id, category, item, event_date,
+      facility_id, event_venue_id, room_code, category, item, event_date,
     });
     if (!identity) {
       return res.status(404).json({ message: 'Venue space not found' });
     }
 
-    const { row: facilityRow } = identity;
-    const facilityId = facilityRow.id;
+    const { row: rateRow } = identity;
+    const catalogFacilityId = identity.facility_id;
 
-    const durationError = validateVenueDuration(startTime, endTime, identity.item);
+    const packageLabel = rateRow?.package_name || identity.item;
+    const durationError = validateVenueDuration(startTime, endTime, packageLabel);
     if (durationError) {
       return res.status(400).json({ message: durationError });
     }
 
-    const capacityError = validateVenueCapacity(facilityRow, guest_count);
+    const capacityError = validateVenueCapacity(rateRow, guest_count);
     if (capacityError) {
       return res.status(400).json({ message: capacityError });
     }
 
     const overlap = await findVenueBookingOverlap({
+      facility_id: catalogFacilityId,
       category: identity.category,
       item: identity.item,
       eventDate: event_date,
@@ -134,15 +137,20 @@ export const createFacilityBooking = async (req, res) => {
     }
 
     const season = await resolveSeason(event_date);
-    const total_amount = computeVenueTotal(facilityRow.rate, startTime, endTime, identity.item);
+    const total_amount = computeVenueTotal(
+      rateRow.rate,
+      startTime,
+      endTime,
+      rateRow?.package_name || identity.item
+    );
 
     const bookingStatus = isAdmin ? (status || 'Approved') : 'Pending';
 
     const [result] = await pool.query(
-      `INSERT INTO facility_bookings
+      `INSERT INTO bookings_facilities
          (user_id, facility_id, event_date, start_time, end_time, guest_count, season, total_amount, status, notes)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [effectiveUserId, facilityId, event_date, startTime, endTime, guest_count || 1,
+      [effectiveUserId, catalogFacilityId, event_date, startTime, endTime, guest_count || 1,
        season, total_amount, bookingStatus, notes || null]
     );
 
@@ -156,7 +164,7 @@ export const createFacilityBooking = async (req, res) => {
 export const updateFacilityBooking = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
-    const [existing] = await pool.query('SELECT * FROM facility_bookings WHERE id = ? LIMIT 1', [req.params.id]);
+    const [existing] = await pool.query('SELECT * FROM bookings_facilities WHERE id = ? LIMIT 1', [req.params.id]);
     if (!existing.length) return res.status(404).json({ message: 'Booking not found' });
 
     if (!ADMIN_ROLES.includes(role)) {
@@ -176,7 +184,7 @@ export const updateFacilityBooking = async (req, res) => {
         cutoffDays: await getGuestCancellationCutoffDays(),
       });
       if (cancelError) return res.status(400).json({ message: cancelError });
-      await pool.query('UPDATE facility_bookings SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
+      await pool.query('UPDATE bookings_facilities SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
       const [guestRows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
       return res.status(200).json({ message: 'Booking cancelled', booking: guestRows[0] });
     } else {
@@ -192,7 +200,7 @@ export const updateFacilityBooking = async (req, res) => {
         if (cancelError) return res.status(400).json({ message: cancelError });
       }
       await pool.query(
-        `UPDATE facility_bookings SET
+        `UPDATE bookings_facilities SET
            status = COALESCE(?, status),
            notes  = COALESCE(?, notes)
          WHERE id = ?`,
@@ -209,9 +217,9 @@ export const updateFacilityBooking = async (req, res) => {
 
 export const deleteFacilityBooking = async (req, res) => {
   try {
-    const [existing] = await pool.query('SELECT id FROM facility_bookings WHERE id = ? LIMIT 1', [req.params.id]);
+    const [existing] = await pool.query('SELECT id FROM bookings_facilities WHERE id = ? LIMIT 1', [req.params.id]);
     if (!existing.length) return res.status(404).json({ message: 'Venue booking not found' });
-    await pool.query('DELETE FROM facility_bookings WHERE id = ?', [req.params.id]);
+    await pool.query('DELETE FROM bookings_facilities WHERE id = ?', [req.params.id]);
     res.status(200).json({ message: 'Venue booking deleted' });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -219,15 +227,9 @@ export const deleteFacilityBooking = async (req, res) => {
 };
 
 const VENUE_CATEGORY_ICONS = {
-  Garden: 'park',
-  'GMC Chapel': 'church',
-  'Burdine Commons': 'groups',
-  GMC: 'school',
-  'Prayer Mountain': 'landscape',
-  'Prayer Tower': 'water_lux',
-  'Basketball Court': 'sports_basketball',
-  'Childrens Playground': 'child_care',
-  'Rec Center': 'fitness_center',
+  ...FACILITY_GROUP_ICONS,
+  'GMC Conference Rooms': 'school',
+  Recreation: 'sports_basketball',
 };
 
 function formatTime(t) {
@@ -240,9 +242,13 @@ function formatTime(t) {
 
 export const checkVenueSlotAvailability = async (req, res) => {
   try {
-    const { category, item, event_date, start_time, end_time } = req.query;
-    if (!category || !item || !event_date || !start_time || !end_time) {
-      return res.status(400).json({ message: 'category, item, event_date, start_time, and end_time are required' });
+    const { facility_id, event_venue_id, room_code, category, item, event_date, start_time, end_time } = req.query;
+    const catalogId = facility_id || event_venue_id;
+    if (!event_date || !start_time || !end_time) {
+      return res.status(400).json({ message: 'event_date, start_time, and end_time are required' });
+    }
+    if (!catalogId && !room_code && (!category || !item)) {
+      return res.status(400).json({ message: 'facility_id, room_code, or category and item are required' });
     }
 
     const startTime = normalizeTime(start_time);
@@ -251,12 +257,15 @@ export const checkVenueSlotAvailability = async (req, res) => {
       return res.status(400).json({ message: 'End time must be after start time' });
     }
 
-    const identity = await resolveFacilityIdentity({ category, item, event_date });
+    const identity = await resolveFacilityIdentity({
+      facility_id: catalogId, room_code, category, item, event_date,
+    });
     if (!identity) {
       return res.status(404).json({ message: 'Venue space not found' });
     }
 
     const overlap = await findVenueBookingOverlap({
+      facility_id: identity.facility_id,
       category: identity.category,
       item: identity.item,
       eventDate: event_date,
@@ -264,21 +273,23 @@ export const checkVenueSlotAvailability = async (req, res) => {
       endTime,
     });
 
-    const { row: facilityRow } = identity;
-    const durationError = validateVenueDuration(startTime, endTime, identity.item);
-    const estimatedTotal = computeVenueTotal(facilityRow.rate, startTime, endTime, identity.item);
-    const rateMeta = venueRateMeta(identity.item, facilityRow.rate);
+    const { row: rateRow } = identity;
+    const packageLabel = rateRow?.package_name || identity.item;
+    const durationError = validateVenueDuration(startTime, endTime, packageLabel);
+    const estimatedTotal = computeVenueTotal(rateRow.rate, startTime, endTime, packageLabel);
+    const rateMeta = venueRateMeta(packageLabel, rateRow.rate);
     const hours = bookingDurationHours(startTime, endTime);
 
     res.status(200).json({
       available: !overlap && !durationError,
       estimated_total: estimatedTotal,
-      rate: Number(facilityRow.rate),
-      season: facilityRow.season,
-      calendar_season: identity.calendar_season || facilityRow.season,
+      rate: Number(rateRow.rate),
+      season: rateRow.season,
+      calendar_season: rateRow.calendar_season || rateRow.season,
       duration_hours: hours,
-      capacity_min: facilityRow.capacity_min,
-      capacity_max: facilityRow.capacity_max,
+      capacity_min: rateRow.capacity_min,
+      capacity_max: rateRow.capacity_max,
+      label: rateRow.label,
       ...rateMeta,
       message: durationError
         || (overlap ? 'This time slot is already booked or pending approval.' : 'This time slot is available to request.'),
@@ -298,15 +309,8 @@ export const getVenueScheduleOverview = async (req, res) => {
     const checkStart = hasSlot ? normalizeTimeValue(rawStart) : null;
     const checkEnd = hasSlot ? normalizeTimeValue(rawEnd) : null;
     const slotValid = hasSlot && checkStart && checkEnd && checkEnd > checkStart;
-    const placeholders = NON_VENUE_CATEGORIES.map(() => '?').join(',');
 
-    const [facilityRows] = await pool.query(
-      `SELECT id, category, item, season, rate
-       FROM facilities
-       WHERE category NOT IN (${placeholders})
-       ORDER BY category ASC, item ASC, season ASC`,
-      NON_VENUE_CATEGORIES
-    );
+    const venueCatalog = await fetchFacilitiesWithRates();
 
     const [bookingRows] = await pool.query(
       `${bookingSelect}
@@ -331,19 +335,15 @@ export const getVenueScheduleOverview = async (req, res) => {
       });
     }
 
-    const spacesByKey = groupVenueSpacesFromRows(facilityRows);
     const byCategory = new Map();
     let noBookingsCount = 0;
     let freeForSlotCount = 0;
 
-    for (const space of spacesByKey.values()) {
-      const resolved = await resolveVenueFacilityRow(space.category, space.item, date);
+    for (const space of venueCatalog) {
+      const resolved = await resolveVenueFacilityRowByFacilityId(space.id, date);
       if (!resolved) continue;
 
-      const bookings = [];
-      for (const fid of space.facility_ids) {
-        bookings.push(...(bookingsByFacility.get(fid) || []));
-      }
+      const bookings = bookingsByFacility.get(space.id) || [];
       bookings.sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)));
 
       const is_free = bookings.length === 0;
@@ -355,18 +355,24 @@ export const getVenueScheduleOverview = async (req, res) => {
         if (is_free_for_slot) freeForSlotCount += 1;
       }
 
-      if (!byCategory.has(space.category)) {
-        byCategory.set(space.category, {
-          category: space.category,
-          icon: VENUE_CATEGORY_ICONS[space.category] || 'place',
+      const groupKey = space.facility_group || 'Facilities';
+      if (!byCategory.has(groupKey)) {
+        byCategory.set(groupKey, {
+          category: groupKey,
+          icon: VENUE_CATEGORY_ICONS[groupKey] || space.icon || 'place',
           facilities: [],
         });
       }
 
-      byCategory.get(space.category).facilities.push({
-        id: resolved.id,
-        category: space.category,
-        item: space.item,
+      byCategory.get(groupKey).facilities.push({
+        id: resolved.rate_id,
+        facility_id: space.id,
+        category: groupKey,
+        item: space.room_code || space.name,
+        label: space.label,
+        name: space.name,
+        room_code: space.room_code,
+        description: space.description,
         season: resolved.season,
         calendar_season: resolved.calendar_season,
         rate: resolved.rate,
@@ -389,7 +395,7 @@ export const getVenueScheduleOverview = async (req, res) => {
       check_start: slotValid ? checkStart.slice(0, 5) : null,
       check_end: slotValid ? checkEnd.slice(0, 5) : null,
       summary: {
-        totalSpaces: spacesByKey.size,
+        totalSpaces: venueCatalog.length,
         noBookingsToday: noBookingsCount,
         freeForSlot: slotValid ? freeForSlotCount : null,
         bookedToday: bookedCount,

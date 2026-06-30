@@ -194,7 +194,7 @@ const VENUE_BROWSE_BY_CATEGORY = {
   'Prayer Tower': 'prayer-mountain',
   'Basketball Court': 'sports-rec',
   'Childrens Playground': 'sports-rec',
-  'Rec Center': 'sports-rec',
+  'Recreational Center': 'sports-rec',
 };
 
 /** Item keywords that also belong on the chapel & garden tab. */

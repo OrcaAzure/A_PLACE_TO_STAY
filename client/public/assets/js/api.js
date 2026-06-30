@@ -118,11 +118,19 @@ export async function getPayments() {
 }
 
 export function normalizeRoom(room) {
+  const bedCount = room.bed_count != null ? Number(room.bed_count) : null;
+  let roomTypeLabel = room.room_type_label;
+  if (!roomTypeLabel && room.room_type === 'Deluxe Apartment') {
+    const beds = bedCount ?? (['201', '304'].includes(String(room.room_number)) ? 3 : 2);
+    roomTypeLabel = beds >= 3 ? 'Deluxe Apartment (3 beds)' : 'Deluxe Apartment';
+  }
   return {
     id: room.id,
     building: room.building_name || room.building || 'Unknown',
     roomNumber: room.room_number,
     roomType: room.room_type,
+    roomTypeLabel: roomTypeLabel || room.room_type,
+    bedCount,
     status: room.status,
     capacityMax: room.capacity_max,
     occupancy: room.occupancy,

@@ -22,7 +22,7 @@ const bookingSelect = `
   SELECT bk.*,
          r.room_number, r.room_type, r.capacity_min, r.capacity_max,
          b.name AS building_name
-  FROM bookings bk
+  FROM bookings_rooms bk
   JOIN rooms r ON bk.room_id = r.id
   JOIN buildings b ON r.building_id = b.id
 `;
@@ -159,7 +159,7 @@ export async function saveGroupBookings({
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    await conn.query('DELETE FROM bookings WHERE group_id = ?', [groupId]);
+    await conn.query('DELETE FROM bookings_rooms WHERE group_id = ?', [groupId]);
 
     let firstBookingId = null;
     let groupGrandTotal = 0;
@@ -187,7 +187,7 @@ export async function saveGroupBookings({
       groupGrandTotal += lineTotal;
 
       const [result] = await conn.query(
-        `INSERT INTO bookings (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone)
+        `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userId, room_id, groupId, checkIn, checkOut, guest_count,
@@ -411,7 +411,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
   }
 
   if (nextStatus === 'Rejected' || nextStatus === 'Cancelled') {
-    await pool.query('DELETE FROM bookings WHERE group_id = ?', [groupId]);
+    await pool.query('DELETE FROM bookings_rooms WHERE group_id = ?', [groupId]);
   }
 
   const result = await getGroupById(groupId);

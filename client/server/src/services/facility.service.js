@@ -1,73 +1,98 @@
 import { pool } from '../config/db.js';
-import { resolveSeason } from './booking.service.js';
+import { getActiveLodgingSeason, mapLodgingSeasonToFacilitySeason } from './season.service.js';
+import {
+  getFacilityById,
+  getFacilityByLegacyKeys,
+  getFacilityByRoomCode,
+} from './facilityCatalog.service.js';
+import { formatFacilityLabel } from '../constants/facilities.js';
 
-export const NON_VENUE_CATEGORIES = [
-  'Food Service',
-  'Laundry',
-  'Laundry-Iron',
-  'Corkage Fee',
-  'Maid Service',
-  'Accommodation Extras',
-];
-
-export function venueSpaceKey(category, item) {
-  return `${category}\x1f${item}`;
+export function facilitySpaceKey(facilityGroup, item) {
+  return `${facilityGroup}\x1f${item}`;
 }
 
-/** Map calendar season (incl. Super Peak) to a facilities.season row. */
+export function facilitySpaceKeyFromId(facilityId) {
+  return String(facilityId);
+}
+
 export function mapSeasonToFacilitySeason(season) {
-  if (season === 'Peak' || season === 'Super Peak') return 'Peak';
-  return 'Regular';
+  return mapLodgingSeasonToFacilitySeason(season);
 }
 
-export function isVenueCategory(category) {
-  return !NON_VENUE_CATEGORIES.includes(category);
+function enrichRateRow(rateRow, facility, calendarSeason) {
+  const label = facility ? formatFacilityLabel(facility) : null;
+  return {
+    rate_id: rateRow.id,
+    id: rateRow.id,
+    facility_id: facility?.id ?? rateRow.facility_id,
+    season: rateRow.season,
+    rate: Number(rateRow.rate),
+    name: facility?.name ?? null,
+    room_code: facility?.room_code ?? null,
+    description: facility?.description ?? null,
+    package_name: facility?.package_name ?? null,
+    facility_group: facility?.facility_group ?? null,
+    capacity_min: facility?.capacity_min ?? null,
+    capacity_max: facility?.capacity_max ?? null,
+    label,
+    calendar_season: calendarSeason,
+    category: facility?.facility_group || 'Facility',
+    item: facility?.room_code || facility?.package_name || facility?.name,
+  };
 }
 
-/** Pick the rate row for a physical venue space on a given date. */
-export async function resolveVenueFacilityRow(category, item, eventDate) {
-  const calendarSeason = await resolveSeason(eventDate);
-  const preferred = mapSeasonToFacilitySeason(calendarSeason);
+async function pickRateRowForFacility(facilityId, _eventDate) {
+  const activeSeason = await getActiveLodgingSeason();
+  const preferred = mapLodgingSeasonToFacilitySeason(activeSeason);
   const fallbacks = preferred === 'Peak' ? ['Peak', 'Regular'] : ['Regular', 'Peak'];
+  const facility = await getFacilityById(facilityId);
 
   for (const season of fallbacks) {
     const [rows] = await pool.query(
-      `SELECT id, category, item, season, rate, capacity_min, capacity_max
-       FROM facilities
-       WHERE category = ? AND item = ? AND season = ?
+      `SELECT rf.id, rf.facility_id, rf.season, rf.rate
+       FROM rates_facilities rf
+       WHERE rf.facility_id = ? AND rf.season = ?
        LIMIT 1`,
-      [category, item, season]
+      [facilityId, season]
     );
     if (rows.length) {
-      return {
-        ...rows[0],
-        rate: Number(rows[0].rate),
-        calendar_season: calendarSeason,
-      };
+      return enrichRateRow(rows[0], facility, activeSeason);
     }
   }
   return null;
 }
 
-export async function getVenueFacilityIds(category, item) {
-  const [rows] = await pool.query(
-    'SELECT id FROM facilities WHERE category = ? AND item = ?',
-    [category, item]
-  );
-  return rows.map((r) => r.id);
+export async function resolveVenueFacilityRowByFacilityId(facilityId, eventDate) {
+  return pickRateRowForFacility(facilityId, eventDate);
+}
+
+/** @deprecated alias */
+export const resolveVenueFacilityRowByEventVenueId = resolveVenueFacilityRowByFacilityId;
+
+export async function resolveVenueFacilityRow(category, item, eventDate) {
+  const facility = await getFacilityByLegacyKeys(category, item);
+  if (facility) {
+    return pickRateRowForFacility(facility.id, eventDate);
+  }
+  return null;
 }
 
 export async function findVenueBookingOverlap({
-  category, item, eventDate, startTime, endTime, excludeBookingId,
+  facility_id, event_venue_id, category, item, eventDate, startTime, endTime, excludeBookingId,
 }) {
-  const ids = await getVenueFacilityIds(category, item);
-  if (!ids.length) return null;
+  const catalogId = facility_id || event_venue_id;
+  let resolvedId = catalogId;
 
-  const placeholders = ids.map(() => '?').join(',');
-  const params = [...ids, eventDate, endTime, startTime];
+  if (!resolvedId && category && item) {
+    const facility = await getFacilityByLegacyKeys(category, item);
+    resolvedId = facility?.id;
+  }
+  if (!resolvedId) return null;
+
+  const params = [resolvedId, eventDate, endTime, startTime];
   let sql = `
-    SELECT id FROM facility_bookings
-    WHERE facility_id IN (${placeholders})
+    SELECT id FROM bookings_facilities
+    WHERE facility_id = ?
       AND event_date = ?
       AND status IN ('Pending', 'Approved')
       AND start_time < ? AND end_time > ?
@@ -90,7 +115,6 @@ export function normalizeTimeValue(value) {
   return raw;
 }
 
-/** True when two time ranges overlap (MySQL TIME strings). */
 export function timesOverlap(startA, endA, startB, endB) {
   const a = normalizeTimeValue(startA);
   const b = normalizeTimeValue(endA);
@@ -104,49 +128,58 @@ export function bookingOverlapsSlot(booking, startTime, endTime) {
   return timesOverlap(booking.start_time, booking.end_time, startTime, endTime);
 }
 
-/** Resolve category + item + rate row from facility_id and/or explicit space + date. */
-export async function resolveFacilityIdentity({ facility_id, category, item, event_date }) {
-  if (category && item) {
+export async function resolveFacilityIdentity({
+  facility_id, event_venue_id, room_code, category, item, event_date,
+}) {
+  const catalogId = facility_id || event_venue_id;
+
+  if (catalogId) {
+    const facility = await getFacilityById(catalogId);
+    if (!facility) return null;
     if (!event_date) {
       const [rows] = await pool.query(
-        `SELECT id, category, item, season, rate, capacity_min, capacity_max
-         FROM facilities WHERE category = ? AND item = ? ORDER BY FIELD(season, 'Regular', 'Peak') LIMIT 1`,
-        [category, item]
+        `SELECT rf.id, rf.facility_id, rf.season, rf.rate
+         FROM rates_facilities rf
+         WHERE rf.facility_id = ?
+         ORDER BY FIELD(rf.season, 'Regular', 'Peak') LIMIT 1`,
+        [catalogId]
       );
       if (!rows.length) return null;
       return {
-        category,
-        item,
-        row: { ...rows[0], rate: Number(rows[0].rate) },
+        facility_id: catalogId,
+        category: facility.facility_group || 'Facility',
+        item: facility.room_code || facility.package_name || facility.name,
+        facility,
+        row: enrichRateRow(rows[0], facility, null),
       };
     }
-    const row = await resolveVenueFacilityRow(category, item, event_date);
-    return row ? { category, item, row } : null;
+    const row = await pickRateRowForFacility(catalogId, event_date);
+    return row ? {
+      facility_id: catalogId,
+      category: facility.facility_group || 'Facility',
+      item: facility.room_code || facility.package_name || facility.name,
+      facility,
+      row,
+    } : null;
   }
 
-  if (facility_id) {
-    const [rows] = await pool.query(
-      'SELECT id, category, item, season, rate FROM facilities WHERE id = ? LIMIT 1',
-      [facility_id]
-    );
-    if (!rows.length) return null;
-    const f = rows[0];
-    if (event_date) {
-      const row = await resolveVenueFacilityRow(f.category, f.item, event_date);
-      return row ? { category: f.category, item: f.item, row } : null;
+  if (room_code) {
+    const facility = await getFacilityByRoomCode(room_code);
+    if (!facility) return null;
+    return resolveFacilityIdentity({ facility_id: facility.id, event_date });
+  }
+
+  if (category && item) {
+    const facility = await getFacilityByLegacyKeys(category, item);
+    if (facility) {
+      return resolveFacilityIdentity({ facility_id: facility.id, event_date });
     }
-    return {
-      category: f.category,
-      item: f.item,
-      row: { ...f, rate: Number(f.rate) },
-    };
+    return null;
   }
 
   return null;
 }
 
-/** Group raw facility rows into unique physical spaces with all rate variants. */
-/** Parse minimum/package hours from facility item name (e.g. "Church 4 hrs", "Four Hour minimum"). */
 export function parsePackageHours(itemName) {
   if (!itemName) return null;
   const s = String(itemName);
@@ -166,7 +199,6 @@ export function bookingDurationHours(startTime, endTime) {
   return ((eh * 60 + em) - (sh * 60 + sm)) / 60;
 }
 
-/** Package items use a flat rate (minimum block); others bill hourly. */
 export function computeVenueTotal(rate, startTime, endTime, itemName) {
   const hours = bookingDurationHours(startTime, endTime);
   const packageHours = parsePackageHours(itemName);
@@ -220,34 +252,4 @@ export function venueRateMeta(itemName, rate) {
     rate_type: 'hourly',
     rate_label: `₱${fmt(rate)} / hour`,
   };
-}
-
-export function groupVenueSpacesFromRows(rows) {
-  const bySpace = new Map();
-
-  for (const row of rows) {
-    if (!isVenueCategory(row.category)) continue;
-    const key = venueSpaceKey(row.category, row.item);
-    if (!bySpace.has(key)) {
-      bySpace.set(key, {
-        category: row.category,
-        item: row.item,
-        capacity_min: row.capacity_min,
-        capacity_max: row.capacity_max,
-        facility_ids: [],
-        rates: [],
-      });
-    }
-    const space = bySpace.get(key);
-    space.facility_ids.push(row.id);
-    space.rates.push({
-      id: row.id,
-      season: row.season,
-      rate: Number(row.rate),
-    });
-    if (row.capacity_min != null) space.capacity_min = row.capacity_min;
-    if (row.capacity_max != null) space.capacity_max = row.capacity_max;
-  }
-
-  return bySpace;
 }

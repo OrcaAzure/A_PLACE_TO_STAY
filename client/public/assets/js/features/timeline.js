@@ -169,7 +169,7 @@ export function renderTimelineRow(room, barsHtml, todayCol, totalDays, { hasBook
           <span class="${roomStatusDot(room.status)}" aria-hidden="true"></span>
           <span class="text-body-md font-bold text-on-surface">${escapeHtml(room.building)} ${escapeHtml(room.roomNumber)}</span>
         </div>
-        <span class="text-[10px] font-medium text-on-surface-variant/60 uppercase mt-1">${escapeHtml(room.roomType || 'Room')}</span>
+        <span class="text-[10px] font-medium text-on-surface-variant/60 uppercase mt-1">${escapeHtml(room.roomTypeLabel || room.roomType || 'Room')}</span>
         ${room.status === 'Maintenance' ? '<span class="tl-room-maint-tag">Maintenance</span>' : ''}
       </div>
       <div class="timeline-scroll tl-scroll-visible w-full">

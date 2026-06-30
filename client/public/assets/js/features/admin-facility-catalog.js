@@ -7,6 +7,12 @@ import {
   createFacilityRate,
   updateFacilityRate,
   deleteFacilityRate,
+  createMealRate,
+  updateMealRate,
+  deleteMealRate,
+  createExtraServiceRate,
+  updateExtraServiceRate,
+  deleteExtraServiceRate,
 } from '/assets/js/services/api.js';
 
 const MEAL_NAMES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
@@ -181,11 +187,17 @@ async function saveModal() {
 
   try {
     const payload = readPayload();
-    if (modalState.mode === 'edit' && modalState.row?.id) {
-      await updateFacilityRate(modalState.row.id, payload);
+    const { mode, kind, row } = modalState;
+
+    if (mode === 'edit' && row?.id) {
+      if (kind === 'meal') await updateMealRate(row.id, payload);
+      else if (kind === 'extra') await updateExtraServiceRate(row.id, payload);
+      else await updateFacilityRate(row.id, payload);
       setFeedback('Saved!', true);
     } else {
-      await createFacilityRate(payload);
+      if (kind === 'meal') await createMealRate(payload);
+      else if (kind === 'extra') await createExtraServiceRate(payload);
+      else await createFacilityRate(payload);
       setFeedback('Added!', true);
     }
     await onRefresh();
@@ -205,7 +217,10 @@ async function deleteRow() {
   const btn = $('catalog-modal-delete');
   btn.disabled = true;
   try {
-    await deleteFacilityRate(modalState.row.id);
+    const { kind, row } = modalState;
+    if (kind === 'meal') await deleteMealRate(row.id);
+    else if (kind === 'extra') await deleteExtraServiceRate(row.id);
+    else await deleteFacilityRate(row.id);
     await onRefresh();
     hideModal();
   } catch (err) {
@@ -236,6 +251,7 @@ function resolveRow(kind, id) {
       if (rate) {
         return {
           id: rate.id,
+          facility_id: item.facility_id,
           category: venue.category,
           item: item.item,
           season: rate.season,
@@ -285,10 +301,14 @@ export function renderVenuesCatalog(venues) {
         const cap = item.capacity_max
           ? (item.capacity_min > 1 ? `${item.capacity_min}–${item.capacity_max} people` : `Up to ${item.capacity_max} people`)
           : '';
+        const title = item.label || item.name || item.item;
+        const subtitle = item.description
+          || (item.room_code && item.name && item.room_code !== item.name ? item.name : '');
         return `
           <li class="catalog-price-row flex items-start justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
             <div class="min-w-0 flex-1">
-              <p class="text-sm font-medium text-slate-800">${escapeHtml(item.item)}</p>
+              <p class="text-sm font-medium text-slate-800">${escapeHtml(title)}</p>
+              ${subtitle ? `<p class="text-xs text-slate-500 mt-0.5">${escapeHtml(subtitle)}</p>` : ''}
               <p class="text-xs text-slate-500 mt-0.5">${escapeHtml(rate.season)}${cap ? ` · ${escapeHtml(cap)}` : ''}</p>
             </div>
             <div class="text-right shrink-0 flex flex-col items-end gap-1.5">

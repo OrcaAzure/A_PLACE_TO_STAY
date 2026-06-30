@@ -5,13 +5,13 @@ import { sendPaymentReceiptEmail } from '../services/email.service.js';
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
 const paymentSelect = `
-  SELECT p.*,
+  SELECT p.id, p.bookings_room_id AS booking_id, p.amount, p.method, p.status, p.paid_at, p.created_at, p.updated_at,
          b.user_id, b.check_in, b.check_out, b.status AS booking_status,
          u.full_name AS guest_name, u.email AS guest_email,
          r.room_number, r.room_type,
          bl.name AS building_name
   FROM payments p
-  JOIN bookings b ON p.booking_id = b.id
+  JOIN bookings_rooms b ON p.bookings_room_id = b.id
   JOIN users u ON b.user_id = u.id
   JOIN rooms r ON b.room_id = r.id
   JOIN buildings bl ON r.building_id = bl.id
@@ -55,7 +55,7 @@ export const createPayment = async (req, res) => {
       return res.status(400).json({ message: 'booking_id, amount, and method are required' });
     }
     const [result] = await pool.query(
-      `INSERT INTO payments (booking_id, amount, method, status) VALUES (?, ?, ?, 'Pending')`,
+      `INSERT INTO payments (bookings_room_id, amount, method, status) VALUES (?, ?, ?, 'Pending')`,
       [booking_id, amount, method]
     );
     const [rows] = await pool.query(`${paymentSelect} WHERE p.id = ?`, [result.insertId]);

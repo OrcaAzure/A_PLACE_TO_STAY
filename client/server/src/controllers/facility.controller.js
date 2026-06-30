@@ -1,192 +1,103 @@
 import { pool } from '../config/db.js';
-import Facility from '../models/Facility.js';
 import { isEmpty } from '../utils/helpers.js';
-import { resolveVenueFacilityRow, venueRateMeta } from '../services/facility.service.js';
+import {
+  fetchExtraServiceRows,
+  fetchMealRateRows,
+  groupMealRows,
+  groupServiceRows,
+} from '../services/ancillary.service.js';
+import {
+  fetchFacilitiesWithRates,
+  getFacilityByRoomCode,
+  getFacilityByLegacyKeys,
+  groupFacilitiesForOverview,
+} from '../services/facilityCatalog.service.js';
+import {
+  resolveVenueFacilityRow,
+  resolveVenueFacilityRowByFacilityId,
+  venueRateMeta,
+} from '../services/facility.service.js';
+import { getActiveLodgingSeason } from '../services/season.service.js';
 
 const VALID_SEASONS = ['Regular', 'Peak', 'N/A'];
 
-const MEAL_CATEGORY = 'Food Service';
-
-const SERVICE_CATEGORIES = new Set([
-  MEAL_CATEGORY,
-  'Laundry',
-  'Laundry-Iron',
-  'Corkage Fee',
-  'Maid Service',
-  'Accommodation Extras',
-]);
-
-const CATEGORY_ICONS = {
-  Garden: 'park',
-  'GMC Chapel': 'church',
-  'Burdine Commons': 'groups',
-  GMC: 'school',
-  'Prayer Mountain': 'landscape',
-  'Prayer Tower': 'water_lux',
-  'Basketball Court': 'sports_basketball',
-  'Childrens Playground': 'child_care',
-  'Rec Center': 'fitness_center',
-};
-
-const SERVICE_ICONS = {
-  Laundry: 'local_laundry_service',
-  'Laundry-Iron': 'iron',
-  'Corkage Fee': 'restaurant',
-  'Maid Service': 'cleaning_services',
-  'Accommodation Extras': 'bed',
-};
-
-const MEAL_ICONS = {
-  Breakfast: 'free_breakfast',
-  Lunch: 'lunch_dining',
-  Dinner: 'dinner_dining',
-  Snack: 'cookie',
-};
-
-function groupVenueRows(rows) {
-  const byCategory = new Map();
-
-  for (const row of rows) {
-    if (SERVICE_CATEGORIES.has(row.category)) continue;
-
-    if (!byCategory.has(row.category)) {
-      byCategory.set(row.category, {
-        category: row.category,
-        icon: CATEGORY_ICONS[row.category] || 'place',
-        items: new Map(),
-      });
-    }
-
-    const group = byCategory.get(row.category);
-    const key = row.item;
-    if (!group.items.has(key)) {
-      group.items.set(key, {
-        id: row.id,
-        item: row.item,
-        capacity_min: row.capacity_min,
-        capacity_max: row.capacity_max,
-        rates: [],
-      });
-    }
-    group.items.get(key).rates.push({
-      id: row.id,
-      season: row.season,
-      rate: Number(row.rate),
-    });
-  }
-
-  return [...byCategory.values()].map((venue) => ({
-    category: venue.category,
-    icon: venue.icon,
-    items: [...venue.items.values()],
-  }));
-}
-
-function groupMealRows(rows) {
-  const byItem = new Map();
-
-  for (const row of rows) {
-    if (!byItem.has(row.item)) {
-      byItem.set(row.item, {
-        id: row.id,
-        item: row.item,
-        icon: MEAL_ICONS[row.item] || 'restaurant',
-        rate: Number(row.rate),
-      });
-    }
-  }
-
-  const order = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
-  return order.filter((name) => byItem.has(name)).map((name) => byItem.get(name));
-}
-
-function groupServiceRows(rows) {
-  const byCategory = new Map();
-
-  for (const row of rows) {
-    if (row.category === MEAL_CATEGORY) continue;
-    if (!SERVICE_CATEGORIES.has(row.category)) continue;
-
-    if (!byCategory.has(row.category)) {
-      byCategory.set(row.category, {
-        category: row.category,
-        icon: SERVICE_ICONS[row.category] || 'add_circle',
-        items: [],
-      });
-    }
-    byCategory.get(row.category).items.push({
-      id: row.id,
-      item: row.item,
-      season: row.season,
-      rate: Number(row.rate),
-    });
-  }
-
-  return [...byCategory.values()].map((g) => ({
-    category: g.category,
-    icon: g.icon,
-    items: g.items,
-  }));
-}
-
-/** Admin facilities page: venues, meals, and add-on services grouped for display. */
+/** Admin facilities page: venues, meals, and add-on services. */
 export const getFacilitiesOverview = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT id, category, item, season, rate, capacity_min, capacity_max
-       FROM facilities
-       ORDER BY category ASC, item ASC,
-         FIELD(season, 'Regular', 'Peak', 'N/A') ASC`
-    );
-
-    const mealRows = rows.filter((r) => r.category === MEAL_CATEGORY);
+    const [facilities, mealRows, extraRows, active_lodging_season] = await Promise.all([
+      fetchFacilitiesWithRates(),
+      fetchMealRateRows(),
+      fetchExtraServiceRows(),
+      getActiveLodgingSeason(),
+    ]);
 
     res.status(200).json({
-      venues: groupVenueRows(rows),
+      venues: groupFacilitiesForOverview(facilities),
+      facilities,
       meals: groupMealRows(mealRows),
-      services: groupServiceRows(rows),
+      services: groupServiceRows(extraRows),
+      active_lodging_season,
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-/** Backward-compatible — venues only. */
+/** Venues only — guest browse and booking. */
 export const getVenueFacilities = async (req, res) => {
   try {
-    const [rows] = await pool.query(
-      `SELECT id, category, item, season, rate, capacity_min, capacity_max
-       FROM facilities
-       ORDER BY category ASC, item ASC,
-         FIELD(season, 'Regular', 'Peak', 'N/A') ASC`
-    );
-    res.status(200).json({ venues: groupVenueRows(rows) });
+    const facilities = await fetchFacilitiesWithRates();
+    res.status(200).json({
+      venues: groupFacilitiesForOverview(facilities),
+      facilities,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-/** Resolved venue rate for a physical space on a specific date. */
+/** Resolved venue rate for a bookable space on a specific date. */
 export const getVenueRateQuote = async (req, res) => {
   try {
-    const { category, item, date } = req.query;
-    if (isEmpty(category) || isEmpty(item) || isEmpty(date)) {
-      return res.status(400).json({ message: 'category, item, and date are required' });
+    const { category, item, date, facility_id, event_venue_id, room_code } = req.query;
+    const catalogId = facility_id || event_venue_id;
+
+    if (isEmpty(date)) {
+      return res.status(400).json({ message: 'date is required' });
     }
-    const row = await resolveVenueFacilityRow(category, item, date);
+
+    let row = null;
+    if (!isEmpty(catalogId)) {
+      row = await resolveVenueFacilityRowByFacilityId(Number(catalogId), date);
+    } else if (!isEmpty(room_code)) {
+      const facility = await getFacilityByRoomCode(room_code);
+      if (facility) row = await resolveVenueFacilityRowByFacilityId(facility.id, date);
+    } else if (!isEmpty(category) && !isEmpty(item)) {
+      row = await resolveVenueFacilityRow(category, item, date);
+    } else {
+      return res.status(400).json({ message: 'facility_id, room_code, or category and item are required' });
+    }
+
     if (!row) {
       return res.status(404).json({ message: 'Venue space not found' });
     }
+
+    const packageLabel = row.package_name || row.item;
     res.status(200).json({
-      facility_id: row.id,
-      category: row.category,
-      item: row.item,
+      rate_id: row.rate_id,
+      facility_id: row.facility_id,
+      name: row.name,
+      room_code: row.room_code,
+      description: row.description,
+      label: row.label,
+      category: row.facility_group || row.category,
+      item: row.room_code || row.item,
       rate: row.rate,
       season: row.season,
       calendar_season: row.calendar_season,
       capacity_min: row.capacity_min,
       capacity_max: row.capacity_max,
-      ...venueRateMeta(row.item, row.rate),
+      ...venueRateMeta(packageLabel, row.rate),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -195,29 +106,14 @@ export const getVenueRateQuote = async (req, res) => {
 
 export const getAllFacilities = async (req, res) => {
   try {
-    const { category, season } = req.query;
-
-    const conditions = [];
-    const params = [];
-
-    if (!isEmpty(category)) {
-      conditions.push('category = ?');
-      params.push(category);
-    }
-
-    if (!isEmpty(season)) {
-      conditions.push('season = ?');
-      params.push(season);
-    }
-
-    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
     const [rows] = await pool.query(
-      `SELECT * FROM facilities ${whereClause} ORDER BY category ASC, item ASC, season ASC`,
-      params
+      `SELECT f.*,
+              rf.id AS rate_id, rf.season, rf.rate
+       FROM facilities f
+       LEFT JOIN rates_facilities rf ON rf.facility_id = f.id
+       ORDER BY f.facility_group ASC, f.room_code ASC, rf.season ASC`
     );
-
-    res.status(200).json({ facilities: rows.map((row) => new Facility(row)) });
+    res.status(200).json({ facilities: rows });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -226,26 +122,34 @@ export const getAllFacilities = async (req, res) => {
 export const getFacilityById = async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM facilities WHERE id = ? LIMIT 1', [req.params.id]);
-
     if (!rows.length) {
       return res.status(404).json({ message: 'Facility not found' });
     }
-
-    res.status(200).json({ facility: new Facility(rows[0]) });
+    const [rates] = await pool.query(
+      'SELECT * FROM rates_facilities WHERE facility_id = ? ORDER BY FIELD(season, \'Regular\', \'Peak\', \'N/A\')',
+      [req.params.id]
+    );
+    res.status(200).json({ facility: rows[0], rates });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+/** Create or update a seasonal facility rate row. */
 export const createFacility = async (req, res) => {
   try {
-    const { category, item, season, rate, capacity_min, capacity_max } = req.body;
+    let { facility_id, category, item, season, rate } = req.body;
 
-    if (isEmpty(category) || isEmpty(item) || isEmpty(rate)) {
-      return res.status(400).json({ message: 'category, item, and rate are required' });
+    if (isEmpty(facility_id) && !isEmpty(category) && !isEmpty(item)) {
+      const facility = await getFacilityByLegacyKeys(category, item);
+      facility_id = facility?.id;
     }
 
-    const finalSeason = season || 'N/A';
+    if (isEmpty(facility_id) || isEmpty(rate)) {
+      return res.status(400).json({ message: 'facility_id and rate are required' });
+    }
+
+    const finalSeason = season || 'Regular';
     if (!VALID_SEASONS.includes(finalSeason)) {
       return res.status(400).json({ message: 'Invalid season value' });
     }
@@ -254,28 +158,22 @@ export const createFacility = async (req, res) => {
       return res.status(400).json({ message: 'rate must be greater than 0' });
     }
 
-    if (!isEmpty(capacity_min) && !isEmpty(capacity_max) && Number(capacity_max) < Number(capacity_min)) {
-      return res.status(400).json({ message: 'capacity_max must be greater than or equal to capacity_min' });
+    const [facility] = await pool.query('SELECT id FROM facilities WHERE id = ? LIMIT 1', [facility_id]);
+    if (!facility.length) {
+      return res.status(404).json({ message: 'Facility not found' });
     }
 
     const [result] = await pool.query(
-      `INSERT INTO facilities (category, item, season, rate, capacity_min, capacity_max)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [
-        category,
-        item,
-        finalSeason,
-        rate,
-        isEmpty(capacity_min) ? null : capacity_min,
-        isEmpty(capacity_max) ? null : capacity_max,
-      ]
+      `INSERT INTO rates_facilities (facility_id, season, rate)
+       VALUES (?, ?, ?)`,
+      [facility_id, finalSeason, rate]
     );
 
-    const [rows] = await pool.query('SELECT * FROM facilities WHERE id = ?', [result.insertId]);
-    res.status(201).json({ message: 'Facility created', facility: new Facility(rows[0]) });
+    const [rows] = await pool.query('SELECT * FROM rates_facilities WHERE id = ?', [result.insertId]);
+    res.status(201).json({ message: 'Facility rate created', rate: rows[0] });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ message: 'Facility rate already exists for this category, item, and season' });
+      return res.status(409).json({ message: 'A rate already exists for this facility and season' });
     }
     res.status(500).json({ message: error.message });
   }
@@ -283,13 +181,12 @@ export const createFacility = async (req, res) => {
 
 export const updateFacility = async (req, res) => {
   try {
-    const [existing] = await pool.query('SELECT * FROM facilities WHERE id = ? LIMIT 1', [req.params.id]);
-
+    const [existing] = await pool.query('SELECT * FROM rates_facilities WHERE id = ? LIMIT 1', [req.params.id]);
     if (!existing.length) {
-      return res.status(404).json({ message: 'Facility not found' });
+      return res.status(404).json({ message: 'Facility rate not found' });
     }
 
-    const { category, item, season, rate, capacity_min, capacity_max } = req.body;
+    const { season, rate } = req.body;
 
     if (!isEmpty(season) && !VALID_SEASONS.includes(season)) {
       return res.status(400).json({ message: 'Invalid season value' });
@@ -299,35 +196,19 @@ export const updateFacility = async (req, res) => {
       return res.status(400).json({ message: 'rate must be greater than 0' });
     }
 
-    if (!isEmpty(capacity_min) && !isEmpty(capacity_max) && Number(capacity_max) < Number(capacity_min)) {
-      return res.status(400).json({ message: 'capacity_max must be greater than or equal to capacity_min' });
-    }
-
     await pool.query(
-      `UPDATE facilities SET
-        category = COALESCE(?, category),
-        item = COALESCE(?, item),
+      `UPDATE rates_facilities SET
         season = COALESCE(?, season),
-        rate = COALESCE(?, rate),
-        capacity_min = ?,
-        capacity_max = ?
+        rate = COALESCE(?, rate)
        WHERE id = ?`,
-      [
-        category,
-        item,
-        season,
-        rate,
-        Object.prototype.hasOwnProperty.call(req.body, 'capacity_min') ? capacity_min || null : existing[0].capacity_min,
-        Object.prototype.hasOwnProperty.call(req.body, 'capacity_max') ? capacity_max || null : existing[0].capacity_max,
-        req.params.id,
-      ]
+      [season, rate, req.params.id]
     );
 
-    const [rows] = await pool.query('SELECT * FROM facilities WHERE id = ?', [req.params.id]);
-    res.status(200).json({ message: 'Facility updated', facility: new Facility(rows[0]) });
+    const [rows] = await pool.query('SELECT * FROM rates_facilities WHERE id = ?', [req.params.id]);
+    res.status(200).json({ message: 'Facility rate updated', rate: rows[0] });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(409).json({ message: 'Facility rate already exists for this category, item, and season' });
+      return res.status(409).json({ message: 'A rate already exists for this facility and season' });
     }
     res.status(500).json({ message: error.message });
   }
@@ -335,18 +216,14 @@ export const updateFacility = async (req, res) => {
 
 export const deleteFacility = async (req, res) => {
   try {
-    const [existing] = await pool.query('SELECT id FROM facilities WHERE id = ? LIMIT 1', [req.params.id]);
-
+    const [existing] = await pool.query('SELECT id FROM rates_facilities WHERE id = ? LIMIT 1', [req.params.id]);
     if (!existing.length) {
-      return res.status(404).json({ message: 'Facility not found' });
+      return res.status(404).json({ message: 'Facility rate not found' });
     }
 
-    await pool.query('DELETE FROM facilities WHERE id = ?', [req.params.id]);
-    res.status(200).json({ message: 'Facility deleted' });
+    await pool.query('DELETE FROM rates_facilities WHERE id = ?', [req.params.id]);
+    res.status(200).json({ message: 'Facility rate deleted' });
   } catch (error) {
-    if (error.code === 'ER_ROW_IS_REFERENCED_2') {
-      return res.status(409).json({ message: 'Cannot delete facility because it has existing bookings' });
-    }
     res.status(500).json({ message: error.message });
   }
 };

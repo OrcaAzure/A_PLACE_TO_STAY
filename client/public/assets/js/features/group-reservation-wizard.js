@@ -127,7 +127,7 @@ function renderGroupRoomRow(room) {
           <span class="material-symbols-outlined res-room-icon">meeting_room</span>
           <div>
             <strong class="res-room-row-num">Room ${escapeHtml(room.room_number)}</strong>
-            <span class="res-room-meta">${escapeHtml(room.building_name)} · ${escapeHtml(room.room_type)}</span>
+            <span class="res-room-meta">${escapeHtml(room.building_name)} · ${escapeHtml(room.room_type_label || room.room_type)}</span>
           </div>
         </div>
         <div class="res-room-row-cap">Fits ${room.capacity_min}–${room.capacity_max} guests</div>
