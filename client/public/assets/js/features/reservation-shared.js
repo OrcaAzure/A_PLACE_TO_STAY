@@ -10,12 +10,15 @@ export const WIZARD_STEPS = [
   { id: 5, label: 'Confirm', short: 'Review and save' },
 ];
 
-export const QUICK_FEES = [
-  { name: 'Extra Mattress', amount: 500 },
-  { name: 'Extra Bed', amount: 450 },
-  { name: 'Extra Chair', amount: 150 },
-  { name: 'Cleaning Fee', amount: 300 },
-];
+export function servicesToQuickFees(services = []) {
+  const fees = [];
+  for (const group of services) {
+    for (const item of group.items || []) {
+      fees.push({ name: item.item, amount: item.rate, category: group.category });
+    }
+  }
+  return fees;
+}
 
 export function escapeHtml(str) {
   if (str == null) return '';
@@ -230,16 +233,6 @@ export function recommendationReason(room, guestCount) {
   if (waste <= 1) return 'Best fit for your group size.';
   if (room.recommendation_rank === 1) return 'Lowest cost option that fits everyone.';
   return 'Good alternative if your first choice is taken.';
-}
-
-export function servicesToQuickFees(services = []) {
-  const fees = [];
-  for (const group of services) {
-    for (const item of group.items || []) {
-      fees.push({ name: item.item, amount: item.rate, category: group.category });
-    }
-  }
-  return fees.length ? fees : QUICK_FEES;
 }
 
 export function debounce(fn, ms = 300) {
