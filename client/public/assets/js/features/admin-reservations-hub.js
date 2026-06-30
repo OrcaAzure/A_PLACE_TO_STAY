@@ -286,6 +286,7 @@ function renderSingleStayDetails(item) {
       factRow('Rate type', item.occupancy_item),
     ].join(''))}
     ${addonRows ? renderSection('Meals & extras', addonRows) : ''}
+    ${renderHousingPaymentSection(item)}
     ${renderMealAllergenNotes(item.meal_allergen_notes)}
     ${renderNotes(item.notes)}
   `;
@@ -312,6 +313,8 @@ function renderGroupStayDetails(item) {
     ? renderSection('Pricing', factRow('Grand total', formatMoney(item.grand_total)))
     : '';
 
+  const housingSection = renderHousingPaymentSection(item);
+
   return `
     ${renderSection('Contact person', [
       factRow('Contact name', item.contact_name),
@@ -327,9 +330,56 @@ function renderGroupStayDetails(item) {
     ].join(''))}
     ${assignedSection}
     ${pricingSection}
+    ${housingSection}
     ${renderMealAllergenNotes(item.meal_allergen_notes)}
     ${renderNotes(item.notes)}
   `;
+}
+
+function paymentStatusBadge(item) {
+  const status = normStatus(item.status);
+  if (status !== 'approved') return '';
+
+  if (item.kind === 'group' || item.bookings?.length) {
+    const bookings = item.bookings || [];
+    const withInvoice = bookings.filter((b) => b.invoice);
+    const unpaid = withInvoice.filter((b) => b.invoice?.status === 'Pending');
+    const paid = withInvoice.filter((b) => b.invoice?.status === 'Paid');
+    if (unpaid.length) return `<span class="res-pill res-pill--pending">Housing unpaid (${unpaid.length})</span>`;
+    if (paid.length && paid.length === withInvoice.length) return '<span class="res-pill res-pill--approved">Housing paid</span>';
+    if (!withInvoice.length) return '<span class="res-pill res-pill--pending">Invoice pending</span>';
+    return '';
+  }
+
+  const inv = item.invoice;
+  if (!inv) return '<span class="res-pill res-pill--pending">Invoice pending</span>';
+  if (inv.status === 'Paid') return '<span class="res-pill res-pill--approved">Housing paid</span>';
+  return '<span class="res-pill res-pill--pending">Housing unpaid</span>';
+}
+
+function renderHousingPaymentSection(item) {
+  const status = normStatus(item.status);
+  if (status !== 'approved') return '';
+
+  if (item.bookings?.length) {
+    const rows = item.bookings.map((b) => {
+      const label = [`${b.building_name} ${b.room_number}`.trim(), b.room_type].filter(Boolean).join(' · ');
+      const inv = b.invoice;
+      if (!inv) return factRow(label, 'Invoice not created yet');
+      if (inv.status === 'Paid') return factRow(label, `Paid · ${formatMoney(inv.amount)}`);
+      return factRow(label, `Unpaid · ${formatMoney(inv.amount)} due`);
+    }).join('');
+    return renderSection('Housing payment', rows);
+  }
+
+  const inv = item.invoice;
+  if (!inv) {
+    return renderSection('Housing payment', factRow('Status', 'Invoice will appear after approval'));
+  }
+  const line = inv.status === 'Paid'
+    ? `Paid · ${formatMoney(inv.amount)}${inv.method ? ` via ${inv.method}` : ''}`
+    : `Unpaid · ${formatMoney(inv.amount)} due — room stay is still confirmed`;
+  return renderSection('Housing payment', factRow('Invoice', line));
 }
 
 function renderVenueDetails(item) {
@@ -469,7 +519,7 @@ function renderStayCard(item) {
   return renderExpandableCard({
     cardKey: key,
     title: guest,
-    badgesHtml: `${lifecyclePhaseBadge(lifecyclePhaseForBooking(item))}${statusBadge(item.status)}`,
+    badgesHtml: `${lifecyclePhaseBadge(lifecyclePhaseForBooking(item))}${paymentStatusBadge(item)}${statusBadge(item.status)}`,
     subtitle: detail,
     submitted: item.created_at ? `Booked ${formatSubmittedAt(item.created_at)}` : '',
     summaryHtml,
@@ -478,6 +528,7 @@ function renderStayCard(item) {
       <div class="res-hub-card-links">
         <a href="${calLink}" class="res-hub-link">View on calendar →</a>
         <a href="${facLink}" class="res-hub-link">${isGroup ? 'Room status →' : 'Check room status →'}</a>
+        <a href="payments.html" class="res-hub-link">Billing →</a>
       </div>`,
     actionsHtml: `
       <div class="res-list-actions">

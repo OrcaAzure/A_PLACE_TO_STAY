@@ -18,7 +18,8 @@ import {
   resolveSeason,
 } from '../services/booking.service.js';
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
-import { assertCanCancelRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
+import { assertCanCancelRoomBooking, getGuestCancellationCutoffDays } from '../services/reservationLifecycle.service.js';
+import { getInvoiceSnapshot, ensureInvoiceForBooking } from '../services/payment.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -40,6 +41,7 @@ async function enrichBooking(row) {
   const booking = new Booking(row);
   booking.meals = await getBookingMeals(booking.id);
   booking.fees = await getBookingFees(booking.id);
+  booking.invoice = await getInvoiceSnapshot(booking.id);
   return booking;
 }
 
@@ -175,6 +177,10 @@ export const createBooking = async (req, res) => {
 
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [result.insertId]);
     const booking = await enrichBooking(rows[0]);
+    if (bookingStatus === 'Approved') {
+      await ensureInvoiceForBooking(result.insertId, { autoEmail: true });
+      booking.invoice = await getInvoiceSnapshot(result.insertId);
+    }
     notifyBookingCreated(rows[0]);
     res.status(201).json({ message: 'Booking created', booking });
   } catch (error) {
@@ -271,6 +277,15 @@ export const updateBooking = async (req, res) => {
 
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
     const booking = await enrichBooking(rows[0]);
+
+    const becameApproved = status === 'Approved' && existing.status !== 'Approved';
+    if (becameApproved || (status === 'Approved' && !booking.invoice)) {
+      await ensureInvoiceForBooking(req.params.id, { autoEmail: true });
+      booking.invoice = await getInvoiceSnapshot(req.params.id);
+    } else if (status === 'Approved' && grandTotal !== Number(existing.total_amount)) {
+      await ensureInvoiceForBooking(req.params.id);
+      booking.invoice = await getInvoiceSnapshot(req.params.id);
+    }
 
     if (notify_guest && isAdmin) {
       await notifyBookingUpdated({

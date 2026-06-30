@@ -14,7 +14,7 @@
 <link rel="stylesheet" href="/assets/css/global/main.css" />
 <link rel="stylesheet" href="/assets/css/components/components.css" />
 <link rel="stylesheet" href="/assets/css/global/responsive.css" />
-<link rel="stylesheet" href="/assets/css/global/tabs-layout.css" />
+<link rel="stylesheet" href="/assets/css/features/admin-invoices.css" />
 <style>
   .material-symbols-outlined {
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -163,6 +163,22 @@
         </div>
       </div>
     </div>
+
+    <section id="guest-invoices-section" class="mb-xl hidden reveal" style="animation-delay:.22s" aria-labelledby="guest-invoices-heading">
+      <div class="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-5 bg-amber-50 border-b border-amber-100">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-amber-700 text-[28px]" aria-hidden="true">receipt_long</span>
+            <div>
+              <h3 id="guest-invoices-heading" class="font-headline-sm text-headline-sm text-on-surface">Housing invoices</h3>
+              <p class="text-body-sm text-on-surface-variant mt-0.5">Pay the APTS Housing Department. Your room stay stays confirmed either way.</p>
+            </div>
+          </div>
+          <p id="guest-invoices-count" class="text-label-md font-semibold text-amber-800 shrink-0">—</p>
+        </div>
+        <div id="guest-invoices-list" class="p-4 sm:p-6 grid gap-4 sm:grid-cols-2"></div>
+      </div>
+    </section>
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
       <div class="lg:col-span-8 space-y-gutter">
@@ -440,6 +456,7 @@
   } from '/assets/js/features/reservation-shared.js';
   import { parseBookQuery, priceNoticeHtml, hasCompleteBookIntent } from '/assets/js/features/guest-booking-flow.js';
   import { createGuestBookingExtras } from '/assets/js/features/guest-booking-extras.js';
+  import { loadGuestInvoices } from '/assets/js/features/guest-invoices.js';
 
   requireAuth();
   await initAppLayout({
@@ -668,6 +685,7 @@
       renderFeatured(allBookings);
       renderTimeline(allBookings);
       applyAndRender();
+      await loadGuestInvoices();
     } catch (err) {
       document.getElementById('reservations-list').innerHTML =
         `<div class="text-center py-12 text-error animate-fade-in"><span class="material-symbols-outlined text-[40px] mb-2 block">error</span><p>${err.message}</p></div>`;

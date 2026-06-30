@@ -25,7 +25,7 @@ export const ADMIN_NAV = [
   { id: 'reservations', label: 'Reservations', icon: 'event_note', href: '/admin/reservations.html' },
   { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/admin/facilities.html' },
   { id: 'residents', label: 'Guest Access', icon: 'badge', href: '/admin/residents.html' },
-  { id: 'payments', label: 'Payments', icon: 'payments', href: '/admin/payments.html' },
+  { id: 'payments', label: 'Billing', icon: 'payments', href: '/admin/payments.html' },
   { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings.html' },
 ];
 
@@ -230,7 +230,7 @@ const ADMIN_MOBILE_LABELS = {
   reservations: 'Manage',
   facilities: 'Facilities',
   residents: 'Guest Access',
-  payments: 'Payments',
+  payments: 'Billing',
   settings: 'Settings',
 };
 

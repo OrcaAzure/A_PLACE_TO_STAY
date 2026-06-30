@@ -17,6 +17,7 @@ import {
 import { validateReservationDates } from './fiscalYear.service.js';
 import { assertCanCancelRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
 import { sendGroupModifiedEmail, sendGroupConfirmationEmail } from './email.service.js';
+import { ensureInvoiceForBooking, ensureInvoicesForGroup, getInvoiceSnapshot } from './payment.service.js';
 
 const bookingSelect = `
   SELECT bk.*,
@@ -70,6 +71,7 @@ async function enrichGroupBookings(groupId) {
     ...row,
     meals: await getBookingMeals(row.id),
     fees: await getBookingFees(row.id),
+    invoice: await getInvoiceSnapshot(row.id),
   })));
   return bookings;
 }
@@ -212,6 +214,9 @@ export async function saveGroupBookings({
     );
 
     await conn.commit();
+    if (status === 'Approved') {
+      await ensureInvoicesForGroup(groupId, { autoEmail: true });
+    }
     return getGroupById(groupId);
   } catch (err) {
     await conn.rollback();
@@ -412,6 +417,9 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
           fresh
         );
       }
+    }
+    if (nextStatus === 'Approved') {
+      await ensureInvoicesForGroup(groupId, { autoEmail: true });
     }
     return updated;
   }

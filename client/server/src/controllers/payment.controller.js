@@ -1,35 +1,38 @@
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
-import { sendPaymentReceiptEmail } from '../services/email.service.js';
+import {
+  paymentDetailSelect,
+  ensureInvoiceForBooking,
+  loadPaymentDetail,
+  enrichPaymentRows,
+  sendInvoiceEmail,
+  updateInvoiceBilling,
+  markInvoicePaid,
+} from '../services/payment.service.js';
+import { isEmailDevMode } from '../services/email.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
-
-const paymentSelect = `
-  SELECT p.id, p.bookings_room_id AS booking_id, p.amount, p.method, p.status, p.paid_at, p.created_at, p.updated_at,
-         b.user_id, b.check_in, b.check_out, b.status AS booking_status,
-         u.full_name AS guest_name, u.email AS guest_email,
-         r.room_number, r.room_type,
-         bl.name AS building_name
-  FROM payments p
-  JOIN bookings_rooms b ON p.bookings_room_id = b.id
-  JOIN users u ON b.user_id = u.id
-  JOIN rooms r ON b.room_id = r.id
-  JOIN buildings bl ON r.building_id = bl.id
-`;
 
 export const getAllPayments = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
     let rows;
     if (ADMIN_ROLES.includes(role)) {
-      [rows] = await pool.query(`${paymentSelect} ORDER BY p.created_at DESC`);
+      [rows] = await pool.query(
+        `${paymentDetailSelect}
+         WHERE b.status = 'Approved'
+         ORDER BY
+           CASE WHEN p.status = 'Pending' THEN 0 ELSE 1 END,
+           p.created_at DESC`
+      );
     } else {
       [rows] = await pool.query(
-        `${paymentSelect} WHERE b.user_id = ? ORDER BY p.created_at DESC`,
+        `${paymentDetailSelect} WHERE b.user_id = ? AND b.status = 'Approved' ORDER BY p.created_at DESC`,
         [userId]
       );
     }
-    res.status(200).json({ payments: rows });
+    const payments = await enrichPaymentRows(rows);
+    res.status(200).json({ payments });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -37,12 +40,12 @@ export const getAllPayments = async (req, res) => {
 
 export const getPaymentById = async (req, res) => {
   try {
-    const [rows] = await pool.query(`${paymentSelect} WHERE p.id = ? LIMIT 1`, [req.params.id]);
-    if (!rows.length) return res.status(404).json({ message: 'Payment not found' });
-    if (!ADMIN_ROLES.includes(req.user.role) && rows[0].user_id !== req.user.id) {
+    const payment = await loadPaymentDetail(req.params.id);
+    if (!payment) return res.status(404).json({ message: 'Invoice not found' });
+    if (!ADMIN_ROLES.includes(req.user.role) && payment.user_id !== req.user.id) {
       return res.status(403).json({ message: 'Forbidden' });
     }
-    res.status(200).json({ payment: rows[0] });
+    res.status(200).json({ payment });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -50,36 +53,76 @@ export const getPaymentById = async (req, res) => {
 
 export const createPayment = async (req, res) => {
   try {
-    const { booking_id, amount, method } = req.body;
-    if (isEmpty(booking_id) || isEmpty(amount) || isEmpty(method)) {
-      return res.status(400).json({ message: 'booking_id, amount, and method are required' });
+    const { booking_id, amount, method, discount_amount, discount_note } = req.body;
+    if (isEmpty(booking_id)) {
+      return res.status(400).json({ message: 'booking_id is required' });
     }
-    const [result] = await pool.query(
-      `INSERT INTO payments (bookings_room_id, amount, method, status) VALUES (?, ?, ?, 'Pending')`,
-      [booking_id, amount, method]
-    );
-    const [rows] = await pool.query(`${paymentSelect} WHERE p.id = ?`, [result.insertId]);
-    void sendPaymentReceiptEmail(
-      { full_name: rows[0].guest_name, email: rows[0].guest_email },
-      rows[0]
-    );
-    res.status(201).json({ message: 'Payment created', payment: rows[0] });
+
+    const invoiceId = await ensureInvoiceForBooking(booking_id);
+    if (!invoiceId) {
+      return res.status(400).json({ message: 'Invoice can only be created for approved bookings with a total amount' });
+    }
+
+    if (discount_amount != null || discount_note != null) {
+      await updateInvoiceBilling(invoiceId, { discount_amount, discount_note });
+    }
+
+    if (amount != null) {
+      await pool.query('UPDATE payments SET amount = ? WHERE id = ? AND status = ?', [amount, invoiceId, 'Pending']);
+    }
+    if (method) {
+      await pool.query('UPDATE payments SET method = ? WHERE id = ?', [method, invoiceId]);
+    }
+
+    const payment = await loadPaymentDetail(invoiceId);
+    res.status(201).json({ message: 'Invoice ready', payment });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+export const sendPaymentInvoice = async (req, res) => {
+  try {
+    const payment = await loadPaymentDetail(req.params.id);
+    if (!payment) return res.status(404).json({ message: 'Invoice not found' });
+
+    const updated = await sendInvoiceEmail(req.params.id);
+    const message = isEmailDevMode()
+      ? `Invoice marked as sent (dev mode — logged to server console, not emailed to ${updated.guest_email})`
+      : `Invoice emailed to ${updated.guest_email}`;
+    res.status(200).json({ message, payment: updated, emailDevMode: isEmailDevMode() });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 export const updatePayment = async (req, res) => {
   try {
-    const { status } = req.body;
-    const paid_at = status === 'Paid' ? new Date() : null;
-    await pool.query(
-      `UPDATE payments SET status = COALESCE(?, status), paid_at = COALESCE(?, paid_at) WHERE id = ?`,
-      [status, paid_at, req.params.id]
-    );
-    const [rows] = await pool.query(`${paymentSelect} WHERE p.id = ?`, [req.params.id]);
-    res.status(200).json({ message: 'Payment updated', payment: rows[0] });
+    const { status, method, discount_amount, discount_note } = req.body;
+    const existing = await loadPaymentDetail(req.params.id);
+    if (!existing) return res.status(404).json({ message: 'Invoice not found' });
+
+    let payment = existing;
+
+    if (discount_amount != null || discount_note != undefined) {
+      payment = await updateInvoiceBilling(req.params.id, { discount_amount, discount_note });
+    }
+
+    if (status === 'Paid') {
+      payment = await markInvoicePaid(req.params.id, { method });
+      return res.status(200).json({
+        message: 'Payment recorded. Reservation stays active — room availability is based on stay dates, not payment.',
+        payment,
+      });
+    }
+
+    if (status) {
+      await pool.query('UPDATE payments SET status = ? WHERE id = ?', [status, req.params.id]);
+      payment = await loadPaymentDetail(req.params.id);
+    }
+
+    res.status(200).json({ message: 'Invoice updated', payment });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };

@@ -3,70 +3,74 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Payments | AptSpace Admin</title>
+  <title>Billing | AptSpace Admin</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="/assets/js/config/tailwind-theme-base.js"></script>
   <script src="/assets/js/config/tailwind-admin.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/global/main.css" />
   <link rel="stylesheet" href="/assets/css/components/components.css" />
   <link rel="stylesheet" href="/assets/css/global/responsive.css" />
   <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
   <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
-  <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-invoices.css" />
 </head>
 <body>
   <div id="page-content">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <div class="action-card">
-        <div class="action-card-icon bg-primary-container/10 text-primary">
-          <span class="material-symbols-outlined text-[28px]">payments</span>
+    <div class="billing-page">
+    <div class="invoice-summary-grid">
+      <div class="invoice-summary-card">
+        <div class="invoice-summary-card__icon invoice-summary-card__icon--due" aria-hidden="true">
+          <span class="material-symbols-outlined text-[24px]">hourglass_top</span>
         </div>
-        <div>
-          <h4 class="font-headline-sm text-on-surface">Collected Revenue</h4>
-          <p class="text-body-sm text-on-surface-variant mt-1">Total payments received this month.</p>
-        </div>
-        <div class="mt-auto pt-4 border-t border-outline-variant/30">
-          <span id="total-revenue" class="text-primary text-[10px] font-bold">LOADING...</span>
+        <div class="invoice-summary-card__body">
+          <p class="invoice-summary-card__label">Awaiting payment</p>
+          <p id="invoice-due-total" class="invoice-summary-card__value invoice-summary-card__value--due">—</p>
+          <p id="invoice-due-count" class="invoice-summary-card__hint">Loading…</p>
         </div>
       </div>
-      <div class="action-card">
-        <div class="action-card-icon bg-surface-container-high text-on-surface-variant">
-          <span class="material-symbols-outlined text-[28px]">pending_actions</span>
+      <div class="invoice-summary-card">
+        <div class="invoice-summary-card__icon invoice-summary-card__icon--paid" aria-hidden="true">
+          <span class="material-symbols-outlined text-[24px]">verified</span>
         </div>
-        <div>
-          <h4 class="font-headline-sm text-on-surface">Pending Payments</h4>
-          <p class="text-body-sm text-on-surface-variant mt-1">Outstanding invoices awaiting payment.</p>
-        </div>
-        <div class="mt-auto pt-4 border-t border-outline-variant/30">
-          <span id="pending-amount" class="bg-error/10 text-error text-[10px] px-2 py-1 rounded-full font-bold">LOADING...</span>
+        <div class="invoice-summary-card__body">
+          <p class="invoice-summary-card__label">Collected</p>
+          <p id="invoice-collected-total" class="invoice-summary-card__value">—</p>
+          <p id="invoice-paid-count" class="invoice-summary-card__hint">Loading…</p>
         </div>
       </div>
     </div>
 
-    <section class="timeline-workspace">
-      <div id="payments-feedback" class="hidden mx-6 mt-4"></div>
-      <div class="timeline-workspace-header">
-        <div class="flex items-center gap-4">
-          <div class="w-1.5 h-8 bg-primary rounded-full"></div>
-          <h3 class="font-headline-sm text-on-surface">Payment Monitoring Center</h3>
-        </div>
-        <div class="flex gap-2">
-          <button type="button" data-payment-filter="all" class="px-4 py-1.5 border-b-2 border-primary text-primary text-label-sm font-bold">All</button>
-          <button type="button" data-payment-filter="paid" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">Paid</button>
-          <button type="button" data-payment-filter="pending" class="px-4 py-1.5 border-b-2 border-transparent text-on-surface-variant text-label-sm">Pending</button>
+    <section class="invoice-workspace">
+      <div class="invoice-workspace__header">
+        <div class="invoice-tabs" role="tablist" aria-label="Billing filters">
+          <button type="button" class="invoice-tab is-active" data-invoice-filter="pending" role="tab" aria-selected="true">
+            Needs payment <span class="invoice-tab__count" data-invoice-count="pending">0</span>
+          </button>
+          <button type="button" class="invoice-tab" data-invoice-filter="paid" role="tab" aria-selected="false">
+            Paid &amp; closed <span class="invoice-tab__count" data-invoice-count="paid">0</span>
+          </button>
         </div>
       </div>
-      <div class="overflow-x-auto">
-        <table class="data-table">
-          <thead><tr><th>Booking ID</th><th>Amount</th><th>Method</th><th>Date</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody id="payments-tbody">
-            <tr><td colspan="6" class="text-center text-on-surface-variant py-8">Loading payments...</td></tr>
-          </tbody>
-        </table>
+
+      <div id="payments-feedback" class="hidden invoice-feedback" role="status" aria-live="polite"></div>
+
+      <div class="billing-list-only">
+        <p class="billing-list-hint">Tap a row to open the invoice for review and approval.</p>
+        <div id="invoice-list" class="billing-table-wrap" role="listbox" aria-label="Invoices">
+          <p class="invoice-empty__text">Loading…</p>
+        </div>
       </div>
     </section>
+    </div>
+
+    <div id="billing-invoice-modal" class="billing-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="billing-modal-title" hidden>
+      <button type="button" class="billing-modal__backdrop" data-close-detail aria-label="Close dialog"></button>
+      <div class="billing-modal__panel">
+        <div id="invoice-detail"></div>
+      </div>
+    </div>
   </div>
 
   <script type="module">
@@ -79,8 +83,8 @@
     await initAppLayout({
       portal:     'admin',
       activePage: 'payments',
-      title:      'Payments',
-      subtitle:   'Collected revenue and outstanding balances',
+      title:      'Billing',
+      subtitle:   'Review, edit & approve payment',
     });
 
     await loadPaymentsPage();

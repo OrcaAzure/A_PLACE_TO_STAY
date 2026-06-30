@@ -4,6 +4,7 @@ import { FISCAL_YEAR_DEFAULTS } from '../utils/constants.js';
 import { isProduction } from './env.js';
 import { NON_VENUE_CATEGORIES } from '../constants/ancillary.js';
 import { deriveFacilityCatalogFields } from '../services/facilityCatalog.service.js';
+import { ensureInvoiceForBooking } from '../services/payment.service.js';
 
 const SEED_USERS = [
   { full_name: 'System Administrator', email: 'admin@aptspace.com',          role: 'Super Admin',   status: 'Active' },
@@ -1128,6 +1129,58 @@ export async function runSchemaPatches() {
     await pool.execute(`ALTER TABLE rates_rooms MODIFY room_type ${rateEnum} NOT NULL`);
   } catch (err) {
     console.warn('[schema] remove Uncategorized room type skipped:', err.message);
+  }
+
+  if (await tableExists('payments')) {
+    if (!(await columnExists('payments', 'subtotal'))) {
+      try {
+        await pool.execute('ALTER TABLE payments ADD COLUMN subtotal DECIMAL(10,2) NULL AFTER bookings_room_id');
+        await pool.execute('UPDATE payments SET subtotal = amount WHERE subtotal IS NULL');
+      } catch (err) {
+        console.warn('[schema] payments.subtotal skipped:', err.message);
+      }
+    }
+    if (!(await columnExists('payments', 'discount_amount'))) {
+      try {
+        await pool.execute('ALTER TABLE payments ADD COLUMN discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER subtotal');
+      } catch (err) {
+        console.warn('[schema] payments.discount_amount skipped:', err.message);
+      }
+    }
+    if (!(await columnExists('payments', 'discount_note'))) {
+      try {
+        await pool.execute('ALTER TABLE payments ADD COLUMN discount_note VARCHAR(255) NULL AFTER discount_amount');
+      } catch (err) {
+        console.warn('[schema] payments.discount_note skipped:', err.message);
+      }
+    }
+    if (!(await columnExists('payments', 'invoice_sent_at'))) {
+      try {
+        await pool.execute('ALTER TABLE payments ADD COLUMN invoice_sent_at TIMESTAMP NULL DEFAULT NULL AFTER paid_at');
+      } catch (err) {
+        console.warn('[schema] payments.invoice_sent_at skipped:', err.message);
+      }
+    }
+    try {
+      await pool.execute(
+        `ALTER TABLE payments MODIFY method ENUM('Cash', 'GCash', 'Bank Transfer') NULL DEFAULT NULL`
+      );
+    } catch {
+      /* method may already be nullable */
+    }
+
+    try {
+      const [missing] = await pool.execute(
+        `SELECT b.id FROM bookings_rooms b
+         LEFT JOIN payments p ON p.bookings_room_id = b.id
+         WHERE b.status = 'Approved' AND b.total_amount > 0 AND p.id IS NULL`
+      );
+      for (const row of missing) {
+        await ensureInvoiceForBooking(row.id);
+      }
+    } catch (err) {
+      console.warn('[schema] invoice backfill skipped:', err.message);
+    }
   }
 }
 

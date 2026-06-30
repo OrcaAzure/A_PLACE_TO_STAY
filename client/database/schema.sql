@@ -402,18 +402,22 @@ DELIMITER ;
 CREATE TABLE IF NOT EXISTS payments (
     id               INT AUTO_INCREMENT PRIMARY KEY,
     bookings_room_id INT NOT NULL,
+    subtotal         DECIMAL(10,2) DEFAULT NULL,
+    discount_amount  DECIMAL(10,2) NOT NULL DEFAULT 0,
+    discount_note    VARCHAR(255) DEFAULT NULL,
     amount           DECIMAL(10,2) NOT NULL,
     method     ENUM(
                  'Cash',
                  'GCash',
                  'Bank Transfer'
-               ) NOT NULL,
+               ) DEFAULT NULL,
     status     ENUM(
                  'Pending',
                  'Paid',
                  'Failed'
                ) NOT NULL DEFAULT 'Pending',
-    paid_at    TIMESTAMP NULL DEFAULT NULL,
+    paid_at          TIMESTAMP NULL DEFAULT NULL,
+    invoice_sent_at  TIMESTAMP NULL DEFAULT NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
