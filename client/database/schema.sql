@@ -616,25 +616,23 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 -- ============================================
 
 INSERT INTO facilities (category, item, season, rate, capacity_min, capacity_max) VALUES
-    ('GMC Chapel', 'Church 4 hrs',  'Regular', 13000.00, NULL, NULL),
-    ('GMC Chapel', 'Church 4 hrs',  'Peak',    16200.00, NULL, NULL),
-    ('GMC Chapel', 'Wedding 4 hrs', 'Regular', 28000.00, NULL, NULL),
-    ('GMC Chapel', 'Wedding 4 hrs', 'Peak',    33000.00, NULL, NULL),
-    ('GMC Chapel', 'Aircon 4 hrs',  'Regular',  1100.00, NULL, NULL),
-    ('GMC Chapel', 'Aircon 4 hrs',  'Peak',     1100.00, NULL, NULL),
+    ('GMC Chapel', 'Church',  'Regular',  3250.00, NULL, NULL),
+    ('GMC Chapel', 'Church',  'Peak',     4050.00, NULL, NULL),
+    ('GMC Chapel', 'Wedding', 'Regular',  7000.00, NULL, NULL),
+    ('GMC Chapel', 'Wedding', 'Peak',     8250.00, NULL, NULL),
+    ('GMC Chapel', 'Aircon',  'Regular',   275.00, NULL, NULL),
+    ('GMC Chapel', 'Aircon',  'Peak',      275.00, NULL, NULL),
 
     ('Burdine Commons', 'Meeting and other functions',  'Regular',  4500.00, NULL, NULL),
     ('Burdine Commons', 'Meeting and other functions',  'Peak',     5500.00, NULL, NULL),
-    ('Burdine Commons', 'Wedding and reception 4 hrs',  'Regular', 16500.00, NULL, NULL),
-    ('Burdine Commons', 'Wedding and reception 4 hrs',  'Peak',    19000.00, NULL, NULL),
+    ('Burdine Commons', 'Wedding and reception',  'Regular',  4125.00, NULL, NULL),
+    ('Burdine Commons', 'Wedding and reception',  'Peak',     4750.00, NULL, NULL),
 
     ('Garden', 'Osgood Garden', 'Regular', 17500.00, 1, 150),
     ('Garden', 'Osgood Garden', 'Peak',    20000.00, 1, 150),
 
-    ('Prayer Mountain', 'Four Hour minimum', 'Regular', 24000.00, NULL, NULL),
-    ('Prayer Mountain', 'Four Hour minimum', 'Peak',    26000.00, NULL, NULL),
-    ('Prayer Mountain', 'Extra hour',        'Regular',  6000.00, NULL, NULL),
-    ('Prayer Mountain', 'Extra hour',        'Peak',     6500.00, NULL, NULL)
+    ('Prayer Mountain', 'Retreat use', 'Regular', 6000.00, NULL, NULL),
+    ('Prayer Mountain', 'Retreat use', 'Peak',    6500.00, NULL, NULL)
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
@@ -668,12 +666,12 @@ INSERT INTO facilities (category, item, season, rate, capacity_min, capacity_max
     ('Prayer Tower', 'Baptism',  'Regular', 1000.00, NULL, NULL),
     ('Prayer Tower', 'Baptism',  'Peak',    1000.00, NULL, NULL),
 
-    ('Basketball Court',     'Sporting event 4 hr', 'Regular', 2000.00, NULL, NULL),
-    ('Basketball Court',     'Sporting event 4 hr', 'Peak',    2500.00, NULL, NULL),
-    ('Childrens Playground', '4 hour',              'Regular', 1000.00, NULL, NULL),
-    ('Childrens Playground', '4 hour',              'Peak',    1500.00, NULL, NULL),
-    ('Rec Center',           '4 hour',              'Regular', 2000.00, NULL, NULL),
-    ('Rec Center',           '4 hour',              'Peak',    2500.00, NULL, NULL),
+    ('Basketball Court',     'Sporting event', 'Regular',   500.00, NULL, NULL),
+    ('Basketball Court',     'Sporting event', 'Peak',      625.00, NULL, NULL),
+    ('Childrens Playground', 'Playground use', 'Regular',   250.00, NULL, NULL),
+    ('Childrens Playground', 'Playground use', 'Peak',      375.00, NULL, NULL),
+    ('Rec Center',           'Recreation use', 'Regular',   500.00, NULL, NULL),
+    ('Rec Center',           'Recreation use', 'Peak',      625.00, NULL, NULL),
 
     ('Corkage Fee',  'Per person', 'N/A',  65.00, 1, NULL),
     ('Maid Service', 'Per person', 'N/A', 200.00, 1, NULL)
