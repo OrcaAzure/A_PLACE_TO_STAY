@@ -15,7 +15,7 @@ const SETTING_KEYS = [
   'fiscal_year_start_month',
   'fiscal_year_start_day',
   'booking_advance_months',
-  'guest_cancellation_cutoff_days',
+  'guest_cancellation_cutoff_hours',
 ];
 
 function pad(n) {
@@ -112,11 +112,16 @@ export async function getFiscalYearSettings() {
     );
     const stored = Object.fromEntries(rows.map((r) => [r.setting_key, r.setting_value]));
     const season_periods = await getSeasonPeriods();
+    let cutoffHours = readSettingInt(stored, 'guest_cancellation_cutoff_hours', null, 0, 2160);
+    if (cutoffHours == null) {
+      const legacyDays = readSettingInt(stored, 'guest_cancellation_cutoff_days', FISCAL_YEAR_DEFAULTS.guest_cancellation_cutoff_hours / 24, 0, 90);
+      cutoffHours = legacyDays * 24;
+    }
     return {
       fiscal_year_start_month: readSettingInt(stored, 'fiscal_year_start_month', FISCAL_YEAR_DEFAULTS.fiscal_year_start_month, 1, 12),
       fiscal_year_start_day: readSettingInt(stored, 'fiscal_year_start_day', FISCAL_YEAR_DEFAULTS.fiscal_year_start_day, 1, 31),
       booking_advance_months: readSettingInt(stored, 'booking_advance_months', FISCAL_YEAR_DEFAULTS.booking_advance_months, 1, 36),
-      guest_cancellation_cutoff_days: readSettingInt(stored, 'guest_cancellation_cutoff_days', FISCAL_YEAR_DEFAULTS.guest_cancellation_cutoff_days, 0, 90),
+      guest_cancellation_cutoff_hours: cutoffHours,
       season_periods,
     };
   } catch {
@@ -145,10 +150,10 @@ export async function updateFiscalYearSettings(updates = {}) {
       1,
       36
     ),
-    guest_cancellation_cutoff_days: clampInt(
-      updates.guest_cancellation_cutoff_days ?? current.guest_cancellation_cutoff_days,
+    guest_cancellation_cutoff_hours: clampInt(
+      updates.guest_cancellation_cutoff_hours ?? current.guest_cancellation_cutoff_hours,
       0,
-      90
+      2160
     ),
   };
 
@@ -197,21 +202,21 @@ export async function getPublicFiscalYearInfo({ bypassAdvanceLimit = false } = {
     advanceLimitLabel: bounds.maxCheckInDate
       ? `Reservations may be made up to ${bounds.bookingAdvanceMonths} month(s) in advance (latest check-in: ${formatDisplayDate(bounds.maxCheckInDate)}).`
       : 'No advance booking limit.',
-    cancellationPolicyLabel: formatCancellationPolicyLabel(settings.guest_cancellation_cutoff_days),
+    cancellationPolicyLabel: formatCancellationPolicyLabel(settings.guest_cancellation_cutoff_hours),
   };
 }
 
 export { formatSeasonPeriodLabel, describeSeasonPeriods, LODGING_SEASONS };
 
-export function formatCancellationPolicyLabel(cutoffDays) {
-  const days = Number(cutoffDays);
-  if (days <= 0) {
-    return 'Guests may cancel pending or approved reservations any time before check-in or the event starts.';
+export function formatCancellationPolicyLabel(cutoffHours) {
+  const hours = Number(cutoffHours);
+  if (hours <= 0) {
+    return 'Guests may cancel any time before check-in or the event starts.';
   }
-  if (days === 1) {
-    return 'Guests may cancel pending or approved reservations at least 1 day before check-in or the event date.';
+  if (hours === 1) {
+    return 'Guests must cancel at least 1 hour before check-in or the event start.';
   }
-  return `Guests may cancel pending or approved reservations at least ${days} days before check-in or the event date.`;
+  return `Guests must cancel at least ${hours} hours before check-in or the event start.`;
 }
 
 export async function validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit = false } = {}) {

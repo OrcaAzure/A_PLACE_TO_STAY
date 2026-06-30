@@ -22,6 +22,16 @@ export function daysUntilDate(targetDateStr, todayStr = localDateStr()) {
   return Math.round((target - today) / 86400000);
 }
 
+export function hoursUntilCheckIn(checkIn, now = new Date()) {
+  const start = new Date(`${String(checkIn).slice(0, 10)}T00:00:00`);
+  return (start - now) / 3600000;
+}
+
+export function hoursUntilEventStart(eventDate, startTime, now = new Date()) {
+  const start = combineDateTime(eventDate, startTime);
+  return (start - now) / 3600000;
+}
+
 /** @returns {'upcoming'|'active'|'past'} */
 export function roomStayPhase(checkIn, checkOut, todayStr = localDateStr()) {
   const ci = String(checkIn).slice(0, 10);
@@ -40,15 +50,15 @@ export function venueEventPhase(eventDate, startTime, endTime, now = new Date())
   return 'upcoming';
 }
 
-export function cutoffDaysError(cutoffDays) {
-  const days = Number(cutoffDays);
-  if (days <= 0) return null;
-  if (days === 1) return 'Cancellations must be made at least 1 day before check-in or the event date.';
-  return `Cancellations must be made at least ${days} days before check-in or the event date.`;
+export function cutoffHoursError(cutoffHours) {
+  const hours = Number(cutoffHours);
+  if (hours <= 0) return null;
+  if (hours === 1) return 'Cancellations must be made at least 1 hour before check-in or the event start.';
+  return `Cancellations must be made at least ${hours} hours before check-in or the event start.`;
 }
 
 export function assertCanCancelRoomBooking({
-  status, check_in, check_out, isAdmin = false, cutoffDays = 0,
+  status, check_in, check_out, isAdmin = false, cutoffHours = 0,
 }) {
   const s = String(status || '');
   if (s === 'Cancelled' || s === 'Rejected') {
@@ -62,9 +72,8 @@ export function assertCanCancelRoomBooking({
     if (!['Pending', 'Approved'].includes(s)) {
       return 'Only pending or approved reservations can be cancelled.';
     }
-    const daysUntil = daysUntilDate(check_in);
-    if (daysUntil < cutoffDays) {
-      return cutoffDaysError(cutoffDays);
+    if (hoursUntilCheckIn(check_in) < cutoffHours) {
+      return cutoffHoursError(cutoffHours);
     }
   } else if (!['Pending', 'Approved'].includes(s)) {
     return 'Only pending or approved reservations can be cancelled.';
@@ -73,7 +82,7 @@ export function assertCanCancelRoomBooking({
 }
 
 export function assertCanCancelVenueBooking({
-  status, event_date, start_time, end_time, isAdmin = false, cutoffDays = 0,
+  status, event_date, start_time, end_time, isAdmin = false, cutoffHours = 0,
 }) {
   const s = String(status || '');
   if (s === 'Cancelled' || s === 'Rejected') {
@@ -87,9 +96,8 @@ export function assertCanCancelVenueBooking({
     if (!['Pending', 'Approved'].includes(s)) {
       return 'Only pending or approved bookings can be cancelled.';
     }
-    const daysUntil = daysUntilDate(event_date);
-    if (daysUntil < cutoffDays) {
-      return cutoffDaysError(cutoffDays);
+    if (hoursUntilEventStart(event_date, start_time) < cutoffHours) {
+      return cutoffHoursError(cutoffHours);
     }
   } else if (!['Pending', 'Approved'].includes(s)) {
     return 'Only pending or approved bookings can be cancelled.';
@@ -97,12 +105,18 @@ export function assertCanCancelVenueBooking({
   return null;
 }
 
-export async function getGuestCancellationCutoffDays() {
+export async function getGuestCancellationCutoffHours() {
   const settings = await getFiscalYearSettings();
-  return Number(settings.guest_cancellation_cutoff_days);
+  return Number(settings.guest_cancellation_cutoff_hours);
+}
+
+/** @deprecated Use getGuestCancellationCutoffHours */
+export async function getGuestCancellationCutoffDays() {
+  const hours = await getGuestCancellationCutoffHours();
+  return Math.ceil(hours / 24);
 }
 
 export async function getCancellationPolicyLabel() {
   const settings = await getFiscalYearSettings();
-  return formatCancellationPolicyLabel(settings.guest_cancellation_cutoff_days);
+  return formatCancellationPolicyLabel(settings.guest_cancellation_cutoff_hours);
 }

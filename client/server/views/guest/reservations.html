@@ -462,10 +462,14 @@
 
   const { readOnly } = applyRoleUI();
 
-  let cancellationCutoffDays = 1;
+  let cancellationCutoffHours = 24;
   try {
     const fyInfo = await getFiscalYear();
-    cancellationCutoffDays = Number(fyInfo.settings?.guest_cancellation_cutoff_days ?? 1);
+    const settings = fyInfo.settings || {};
+    cancellationCutoffHours = Number(
+      settings.guest_cancellation_cutoff_hours
+      ?? (settings.guest_cancellation_cutoff_days != null ? settings.guest_cancellation_cutoff_days * 24 : 24)
+    );
     const policyEl = document.getElementById('res-policy-text');
     if (policyEl && fyInfo.cancellationPolicyLabel) {
       policyEl.textContent = `${fyInfo.cancellationPolicyLabel} Events or stays that have already started cannot be cancelled online.`;
@@ -474,11 +478,11 @@
     console.warn('Cancellation policy unavailable', err);
   }
 
-  const cancelOpts = { todayStr: undefined, cutoffDays: cancellationCutoffDays };
+  const cancelOpts = { cutoffHours: cancellationCutoffHours };
 
   const now = new Date();
   const todayStr = now.toISOString().slice(0, 10);
-  cancelOpts.todayStr = todayStr;
+  cancelOpts.now = now;
   document.getElementById('current-month-label').textContent =
     now.toLocaleString('default', { month: 'long', year: 'numeric' });
   document.getElementById('timeline-month').textContent =
@@ -1137,7 +1141,7 @@
     const idLabel = `#VEN-${b.id}`;
     const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
     const phaseBadge = lifecycleGuestBadge(b);
-    const canCancel = !readOnly && canGuestCancelVenueBooking(b, { cutoffDays: cancellationCutoffDays });
+    const canCancel = !readOnly && canGuestCancelVenueBooking(b, { cutoffHours: cancellationCutoffHours });
     return `
       <div class="group bg-white p-5 rounded-2xl border border-outline-variant hover:border-primary/40 hover:shadow-lg lift reveal" style="animation-delay:${0.05 * index}s" data-venue-id="${b.id}">
         <div class="flex flex-col sm:flex-row gap-6">

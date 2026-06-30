@@ -1,118 +1,211 @@
 /**
- * Admin settings — profile, roles, system info, and fiscal year configuration.
+ * Admin settings — profile and booking rules (Chrome-style layout).
  */
 
-import { getProfile, updateProfile, getAdminSummary, getFiscalYear, updateFiscalYearSettings } from '/assets/js/services/api.js';
-import { initTabGroup } from '/assets/js/layout/tabs.js';
+import { getProfile, updateProfile, changePassword, getFiscalYear, updateFiscalYearSettings } from '/assets/js/services/api.js';
 import { formatDate } from '/assets/js/features/reservation-shared.js';
 
 let fiscalYearInfo = null;
 
-const HIDDEN_ROLES = new Set(['Supervisory User', 'GNC View Only']);
-
-const ROLE_DESCRIPTIONS = {
-  'Super Admin': 'Full system access',
-  Admin: 'Manage bookings, rooms, and users',
-  GMC: 'Guest booking access (GMC staff)',
-  Faculty: 'Guest booking access',
-  Staff: 'Guest booking access',
-  Missionary: 'Guest booking access',
-  'External Guest': 'Guest portal access — created by Housing admin',
-};
-
 const SEASON_ORDER = ['Regular', 'Peak', 'Super Peak'];
 
 const MONTHS = [
-  { value: 1, label: 'Jan' },
-  { value: 2, label: 'Feb' },
-  { value: 3, label: 'Mar' },
-  { value: 4, label: 'Apr' },
+  { value: 1, label: 'January' },
+  { value: 2, label: 'February' },
+  { value: 3, label: 'March' },
+  { value: 4, label: 'April' },
   { value: 5, label: 'May' },
-  { value: 6, label: 'Jun' },
-  { value: 7, label: 'Jul' },
-  { value: 8, label: 'Aug' },
-  { value: 9, label: 'Sep' },
-  { value: 10, label: 'Oct' },
-  { value: 11, label: 'Nov' },
-  { value: 12, label: 'Dec' },
+  { value: 6, label: 'June' },
+  { value: 7, label: 'July' },
+  { value: 8, label: 'August' },
+  { value: 9, label: 'September' },
+  { value: 10, label: 'October' },
+  { value: 11, label: 'November' },
+  { value: 12, label: 'December' },
 ];
 
-export async function loadAdminSettings() {
-  bindTabs();
+const SEASON_BADGE_CLASS = {
+  Regular: 'settings-season-badge--regular',
+  Peak: 'settings-season-badge--peak',
+  'Super Peak': 'settings-season-badge--super',
+};
 
-  const [{ user }, summary, fyInfo] = await Promise.all([
-    getProfile(),
-    getAdminSummary(),
-    getFiscalYear(),
-  ]);
+const NAV_ACTIVE = 'settings-nav__item--active';
+
+export async function loadAdminSettings() {
+  bindNavigation();
+
+  const [{ user }, fyInfo] = await Promise.all([getProfile(), getFiscalYear()]);
   fiscalYearInfo = fyInfo;
 
   const nameInput = document.getElementById('settings-name');
-  const emailInput = document.getElementById('settings-email');
-  const roleInput = document.getElementById('settings-role');
 
   if (nameInput) nameInput.value = user.full_name || '';
-  if (emailInput) emailInput.value = user.email || '';
-  if (roleInput) roleInput.value = user.role || '';
 
-  renderRoleTable(summary.usersByRole || []);
+  updateProfileHeader(user);
+  const bannerName = document.getElementById('settings-banner-name');
+  if (bannerName) bannerName.dataset.fallback = user.full_name || 'User';
+  bindNamePreview();
   renderFiscalYearSettings(fyInfo);
 
-  document.getElementById('settings-save-btn')?.addEventListener('click', async () => {
-    const feedback = document.getElementById('settings-feedback');
-    const btn = document.getElementById('settings-save-btn');
-    btn.disabled = true;
-    feedback?.classList.add('hidden');
-
-    try {
-      const result = await updateProfile({ full_name: nameInput.value.trim() });
-      localStorage.setItem('user', JSON.stringify(result.user));
-      if (feedback) {
-        feedback.textContent = 'Profile saved.';
-        feedback.className = 'text-body-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2';
-        feedback.classList.remove('hidden');
-      }
-    } catch (err) {
-      if (feedback) {
-        feedback.textContent = err.message || 'Save failed';
-        feedback.className = 'text-body-sm text-error bg-error-container rounded-lg px-3 py-2';
-        feedback.classList.remove('hidden');
-      }
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
+  document.getElementById('settings-save-btn')?.addEventListener('click', saveProfile);
+  document.getElementById('settings-password-btn')?.addEventListener('click', savePassword);
   document.getElementById('system-settings-save-btn')?.addEventListener('click', saveSystemSettings);
 }
 
-function bindTabs() {
-  initTabGroup({
-    tabAttr: 'data-settings-tab',
-    panelAttr: 'data-settings-panel',
-    tabsSelector: '[role="tablist"]',
-    panelsSelector: '.app-tab-panels',
-    useHiddenClass: true,
-  });
+async function saveProfile() {
+  const feedback = document.getElementById('settings-feedback');
+  const btn = document.getElementById('settings-save-btn');
+  const nameInput = document.getElementById('settings-name');
+  btn.disabled = true;
+  feedback?.classList.add('hidden');
+
+  try {
+    const result = await updateProfile({ full_name: nameInput.value.trim() });
+    localStorage.setItem('user', JSON.stringify(result.user));
+    updateProfileHeader(result.user);
+    refreshAdminChromeName(result.user);
+    showFeedback(feedback, 'Saved.');
+  } catch (err) {
+    showFeedback(feedback, err.message || 'Save failed', true);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
-function renderRoleTable(usersByRole) {
-  const tbody = document.getElementById('settings-roles-tbody');
-  if (!tbody) return;
+async function savePassword() {
+  const feedback = document.getElementById('settings-password-feedback');
+  const btn = document.getElementById('settings-password-btn');
+  const current = document.getElementById('settings-current-password')?.value || '';
+  const next = document.getElementById('settings-new-password')?.value || '';
+  const confirm = document.getElementById('settings-confirm-password')?.value || '';
 
-  const rows = usersByRole.filter((row) => !HIDDEN_ROLES.has(row.role));
+  feedback?.classList.add('hidden');
 
-  if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="3" class="text-center py-6 text-on-surface-variant">No users found.</td></tr>';
+  if (!current || !next || !confirm) {
+    showFeedback(feedback, 'Fill in all password fields.', true);
+    return;
+  }
+  if (next.length < 6) {
+    showFeedback(feedback, 'New password must be at least 6 characters.', true);
+    return;
+  }
+  if (next !== confirm) {
+    showFeedback(feedback, 'New passwords do not match.', true);
     return;
   }
 
-  tbody.innerHTML = rows.map((row) => `
-    <tr>
-      <td>${row.role}</td>
-      <td>${ROLE_DESCRIPTIONS[row.role] || 'System user'}</td>
-      <td>${row.count}</td>
-    </tr>`).join('');
+  btn.disabled = true;
+  try {
+    const result = await changePassword({ current_password: current, new_password: next });
+    ['settings-current-password', 'settings-new-password', 'settings-confirm-password'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    showFeedback(feedback, result.message || 'Password updated.');
+  } catch (err) {
+    showFeedback(feedback, err.message || 'Update failed', true);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function updateProfileHeader(user) {
+  const name = user.full_name || 'User';
+  const email = user.email || '';
+  const initials = name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || '?';
+
+  const avatar = document.getElementById('settings-avatar');
+  const bannerName = document.getElementById('settings-banner-name');
+  const emailEl = document.getElementById('settings-profile-email');
+  const emailDisplay = document.getElementById('settings-email-display');
+  const roleEl = document.getElementById('settings-account-role');
+  const memberEl = document.getElementById('settings-member-since');
+
+  if (avatar) avatar.textContent = initials;
+  if (bannerName) bannerName.textContent = name;
+  if (emailEl) emailEl.textContent = email;
+  if (emailDisplay) emailDisplay.textContent = email;
+  if (roleEl) roleEl.textContent = user.role || 'User';
+  if (memberEl && user.created_at) {
+    const joined = new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    memberEl.textContent = `Member since ${joined}`;
+  } else if (memberEl) {
+    memberEl.textContent = '';
+  }
+}
+
+function bindNamePreview() {
+  const nameInput = document.getElementById('settings-name');
+  const bannerName = document.getElementById('settings-banner-name');
+  if (!nameInput || !bannerName) return;
+  nameInput.addEventListener('input', () => {
+    bannerName.textContent = nameInput.value.trim() || bannerName.dataset.fallback || '—';
+  });
+}
+
+function refreshAdminChromeName(user) {
+  const name = user.full_name || 'User';
+  const initial = name.charAt(0).toUpperCase();
+  document.querySelector('.admin-user-chip__name')?.replaceChildren(document.createTextNode(name));
+  document.querySelector('.admin-user-chip__avatar')?.replaceChildren(document.createTextNode(initial));
+}
+
+function bindNavigation() {
+  const tabs = document.querySelectorAll('.settings-nav__item[data-settings-tab]');
+  const panels = document.querySelectorAll('[data-settings-panel]');
+  if (!tabs.length || !panels.length) return;
+
+  const switchTo = (id) => {
+    tabs.forEach((tab) => {
+      const active = tab.getAttribute('data-settings-tab') === id;
+      tab.classList.toggle(NAV_ACTIVE, active);
+      tab.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    panels.forEach((panel) => {
+      const show = panel.getAttribute('data-settings-panel') === id;
+      panel.classList.toggle('is-tab-hidden', !show);
+      panel.classList.toggle('hidden', !show);
+    });
+  };
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => switchTo(tab.getAttribute('data-settings-tab')));
+  });
+
+  switchTo('account');
+}
+
+function showFeedback(el, message, isError = false) {
+  if (!el) return;
+  el.textContent = message;
+  el.classList.toggle('settings-feedback--error', isError);
+  el.classList.remove('hidden');
+}
+
+function renderStatusGrid(info) {
+  const mount = document.getElementById('settings-status-grid');
+  if (!mount || !info) return;
+
+  const todaySeason = info.seasonForToday || info.activeLodgingSeason || 'Regular';
+  const fy = info.currentFiscalYear;
+
+  mount.innerHTML = `
+    <article class="settings-status-card">
+      <span class="settings-status-card__label">Today's rates</span>
+      <span class="settings-status-card__value">${todaySeason}</span>
+      <span class="settings-status-card__hint">Based on today's date</span>
+    </article>
+    <article class="settings-status-card">
+      <span class="settings-status-card__label">Guest booking window</span>
+      <span class="settings-status-card__value">${info.bookingAdvanceMonths} month${info.bookingAdvanceMonths === 1 ? '' : 's'} ahead</span>
+      <span class="settings-status-card__hint">${info.maxCheckInDate ? `Until ${formatDate(info.maxCheckInDate)}` : 'Admins are not limited'}</span>
+    </article>
+    <article class="settings-status-card">
+      <span class="settings-status-card__label">Fiscal year</span>
+      <span class="settings-status-card__value">${fy?.label || '—'}</span>
+      <span class="settings-status-card__hint">${fy ? `${formatDate(fy.startDate)} – ${formatDate(fy.endDate)}` : ''}</span>
+    </article>`;
 }
 
 function monthOptions(selected) {
@@ -127,33 +220,23 @@ function renderSeasonPeriodEditor(periods = []) {
 
   mount.innerHTML = SEASON_ORDER.map((season) => {
     const p = bySeason[season] || { season, start_month: 1, start_day: 1, end_month: 12, end_day: 31 };
-    const badgeClass = season === 'Super Peak'
-      ? 'bg-amber-100 text-amber-900'
-      : season === 'Peak'
-        ? 'bg-orange-100 text-orange-900'
-        : 'bg-slate-100 text-slate-800';
+    const badgeClass = SEASON_BADGE_CLASS[season] || 'settings-season-badge--regular';
     return `
-      <div class="rounded-lg border border-outline-variant/80 p-3 bg-surface-container-low/40" data-season-period="${season}">
-        <div class="flex items-center gap-2 mb-3">
-          <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wide ${badgeClass}">${season}</span>
-          <span class="text-body-sm text-on-surface-variant">Date range (repeats every year)</span>
+      <div class="settings-season-row" data-season-period="${season}">
+        <div class="settings-season-row__head">
+          <span class="settings-season-badge ${badgeClass}">${season}</span>
+          <span class="text-body-sm text-on-surface-variant">Repeats every year</span>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1">Starts — month</label>
-            <select class="season-start-month w-full border border-outline-variant rounded-lg px-2 py-2 text-body-sm">${monthOptions(p.start_month)}</select>
+        <div class="settings-season-dates">
+          <div class="settings-date-pair">
+            <span class="settings-date-pair__label">From</span>
+            <select class="season-start-month" aria-label="${season} start month">${monthOptions(p.start_month)}</select>
+            <input type="number" class="season-start-day" min="1" max="31" value="${p.start_day ?? 1}" aria-label="${season} start day" />
           </div>
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1">Starts — day</label>
-            <input type="number" class="season-start-day w-full border border-outline-variant rounded-lg px-2 py-2 text-body-sm" min="1" max="31" value="${p.start_day ?? 1}" />
-          </div>
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1">Ends — month</label>
-            <select class="season-end-month w-full border border-outline-variant rounded-lg px-2 py-2 text-body-sm">${monthOptions(p.end_month)}</select>
-          </div>
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1">Ends — day</label>
-            <input type="number" class="season-end-day w-full border border-outline-variant rounded-lg px-2 py-2 text-body-sm" min="1" max="31" value="${p.end_day ?? 31}" />
+          <div class="settings-date-pair">
+            <span class="settings-date-pair__label">Until</span>
+            <select class="season-end-month" aria-label="${season} end month">${monthOptions(p.end_month)}</select>
+            <input type="number" class="season-end-day" min="1" max="31" value="${p.end_day ?? 31}" aria-label="${season} end day" />
           </div>
         </div>
       </div>`;
@@ -176,20 +259,22 @@ function readSeasonPeriodsFromForm() {
 
 function renderFiscalYearSettings(info) {
   const summary = document.getElementById('sys-fiscal-year-summary');
+  const advanceHint = document.getElementById('sys-advance-hint');
   const monthSelect = document.getElementById('fy-start-month');
   const dayInput = document.getElementById('fy-start-day');
   const advanceInput = document.getElementById('fy-advance-months');
 
   if (!info) return;
 
+  renderStatusGrid(info);
+
   const fy = info.currentFiscalYear;
   if (summary && fy) {
-    summary.textContent = [
-      `Current period: ${fy.label} (${formatDate(fy.startDate)} – ${formatDate(fy.endDate)})`,
-      info.maxCheckInDate
-        ? `Guests may book up to ${info.bookingAdvanceMonths} month(s) ahead (latest check-in: ${formatDate(info.maxCheckInDate)}).`
-        : 'No advance booking limit for admins.',
-    ].join(' ');
+    summary.textContent = `Currently ${fy.label}: ${formatDate(fy.startDate)} through ${formatDate(fy.endDate)}.`;
+  }
+
+  if (advanceHint && info.maxCheckInDate) {
+    advanceHint.textContent = `Latest guest check-in: ${formatDate(info.maxCheckInDate)}.`;
   }
 
   if (monthSelect && info.settings) monthSelect.value = String(info.settings.fiscal_year_start_month);
@@ -201,19 +286,16 @@ function renderFiscalYearSettings(info) {
   renderSeasonPeriodEditor(periods);
   if (seasonSummary) {
     const todaySeason = info.seasonForToday || info.activeLodgingSeason || 'Regular';
-    const summaryText = info.seasonPeriodsSummary || '';
-    seasonSummary.textContent = [
-      `Today (${formatDate(new Date().toISOString().slice(0, 10))}) uses ${todaySeason} rates.`,
-      summaryText ? `Calendar: ${summaryText}.` : '',
-      'Update the ranges below when Housing publishes the annual season schedule.',
-    ].filter(Boolean).join(' ');
+    seasonSummary.textContent = `Today uses ${todaySeason} rates. Update when Housing publishes the annual schedule.`;
   }
 
-  const cutoffInput = document.getElementById('guest-cancel-cutoff-days');
+  const cutoffInput = document.getElementById('guest-cancel-cutoff-hours');
   const cancelSummary = document.getElementById('sys-cancellation-policy-summary');
-  if (cutoffInput && info.settings) cutoffInput.value = String(info.settings.guest_cancellation_cutoff_days ?? 1);
+  if (cutoffInput && info.settings) {
+    cutoffInput.value = String(info.settings.guest_cancellation_cutoff_hours ?? 24);
+  }
   if (cancelSummary) {
-    cancelSummary.textContent = info.cancellationPolicyLabel || 'Guests may cancel before check-in or the event date within the configured window.';
+    cancelSummary.textContent = info.cancellationPolicyLabel || 'How many days before check-in or an event a guest must cancel online.';
   }
 }
 
@@ -226,35 +308,27 @@ async function saveSystemSettings() {
   feedback?.classList.add('hidden');
 
   try {
-    const cutoffRaw = document.getElementById('guest-cancel-cutoff-days')?.value;
+    const cutoffRaw = document.getElementById('guest-cancel-cutoff-hours')?.value;
     const payload = {
       fiscal_year_start_month: Number(document.getElementById('fy-start-month')?.value),
       fiscal_year_start_day: Number(document.getElementById('fy-start-day')?.value),
       booking_advance_months: Number(document.getElementById('fy-advance-months')?.value),
-      guest_cancellation_cutoff_days: Number(cutoffRaw),
+      guest_cancellation_cutoff_hours: Number(cutoffRaw),
       season_periods: readSeasonPeriodsFromForm(),
     };
 
     if ([payload.fiscal_year_start_month, payload.fiscal_year_start_day, payload.booking_advance_months].some((n) => Number.isNaN(n))) {
-      throw new Error('Fiscal year and booking window fields must be valid numbers.');
+      throw new Error('Please check the fiscal year and booking window numbers.');
     }
-    if (Number.isNaN(payload.guest_cancellation_cutoff_days)) {
-      throw new Error('Guest cancellation days must be a valid number (0–90).');
+    if (Number.isNaN(payload.guest_cancellation_cutoff_hours)) {
+      throw new Error('Cancellation hours must be a number from 0 to 2160.');
     }
 
     fiscalYearInfo = await updateFiscalYearSettings(payload);
     renderFiscalYearSettings(fiscalYearInfo);
-    if (feedback) {
-      feedback.textContent = 'System settings saved.';
-      feedback.className = 'text-body-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2';
-      feedback.classList.remove('hidden');
-    }
+    showFeedback(feedback, 'Booking rules saved.');
   } catch (err) {
-    if (feedback) {
-      feedback.textContent = err.message || 'Save failed';
-      feedback.className = 'text-body-sm text-error bg-error-container rounded-lg px-3 py-2';
-      feedback.classList.remove('hidden');
-    }
+    showFeedback(feedback, err.message || 'Save failed — please try again.', true);
   } finally {
     btn.disabled = false;
   }

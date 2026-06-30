@@ -15,7 +15,7 @@ import {
   getRoomById,
 } from './booking.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
-import { assertCanCancelRoomBooking, getGuestCancellationCutoffDays } from './reservationLifecycle.service.js';
+import { assertCanCancelRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
 import { sendGroupModifiedEmail, sendGroupConfirmationEmail } from './email.service.js';
 
 const bookingSelect = `
@@ -313,7 +313,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       check_in: group.check_in,
       check_out: group.check_out,
       isAdmin: false,
-      cutoffDays: await getGuestCancellationCutoffDays(),
+      cutoffHours: await getGuestCancellationCutoffHours(),
     });
     if (cancelError) throw new Error(cancelError);
     await pool.query('UPDATE reservation_groups SET status = ? WHERE id = ?', ['Cancelled', groupId]);

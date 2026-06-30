@@ -55,6 +55,13 @@ export async function updateProfile(payload) {
   });
 }
 
+export async function changePassword(payload) {
+  return apiRequest('/auth/me/password', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getAdminSummary() {
   return apiRequest('/stats/summary');
 }

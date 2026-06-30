@@ -34,6 +34,6 @@ export const FISCAL_YEAR_DEFAULTS = {
   fiscal_year_start_month: 7,
   fiscal_year_start_day: 1,
   booking_advance_months: 12,
-  guest_cancellation_cutoff_days: 1,
+  guest_cancellation_cutoff_hours: 24,
   active_lodging_season: 'Regular',
 };

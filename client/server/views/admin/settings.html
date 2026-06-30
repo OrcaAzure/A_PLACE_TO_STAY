@@ -14,132 +14,185 @@
   <link rel="stylesheet" href="/assets/css/global/responsive.css" />
   <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
   <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
-  <link rel="stylesheet" href="/assets/css/global/tabs-layout.css" />
-  <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-settings-page.css" />
 </head>
 <body>
   <div id="page-content">
-    <section class="admin-panel settings-workspace app-tab-workspace">
-      <div class="admin-panel-header flex-col items-stretch gap-4">
-        <div class="flex items-center gap-4">
-          <div class="w-1.5 h-8 bg-primary rounded-full shrink-0"></div>
-          <h3 class="font-headline-sm text-on-surface m-0">System Settings</h3>
-        </div>
-        <div class="app-tabs w-full" role="tablist" aria-label="Settings sections">
-          <button type="button" role="tab" data-settings-tab="account" class="app-tab-btn app-tab-active" aria-selected="true">Account</button>
-          <button type="button" role="tab" data-settings-tab="roles" class="app-tab-btn" aria-selected="false">User Roles</button>
-          <button type="button" role="tab" data-settings-tab="system" class="app-tab-btn" aria-selected="false">System</button>
+    <div class="settings-page">
+      <aside class="settings-nav" aria-label="Settings sections">
+        <nav class="settings-nav__list" role="tablist">
+          <button type="button" role="tab" data-settings-tab="account" class="settings-nav__item settings-nav__item--active" aria-selected="true">
+            <span class="material-symbols-outlined" aria-hidden="true">person</span>
+            My account
+          </button>
+          <button type="button" role="tab" data-settings-tab="booking" class="settings-nav__item" aria-selected="false">
+            <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+            Booking rules
+          </button>
+        </nav>
+        <button type="button" data-action="logout" class="settings-nav__logout lg:hidden">
+          <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+          Log out
+        </button>
+      </aside>
+
+      <div class="settings-content">
+        <div class="settings-panels">
+          <!-- My account -->
+          <div data-settings-panel="account" class="settings-panel" role="tabpanel">
+            <div class="settings-panel__intro">
+              <h1 class="settings-panel__title settings-panel__title--solo">My account</h1>
+              <p class="settings-panel__subtitle">Your sign-in details for AptSpace admin.</p>
+            </div>
+
+            <section class="admin-panel settings-account-panel">
+              <div class="settings-account-banner">
+                <div class="settings-avatar settings-avatar--lg" id="settings-avatar" aria-hidden="true">—</div>
+                <div class="settings-account-banner__text">
+                  <p class="settings-account-banner__name" id="settings-banner-name">—</p>
+                  <p class="settings-account-banner__email" id="settings-profile-email">—</p>
+                  <div class="settings-account-meta">
+                    <span class="settings-account-badge" id="settings-account-role">—</span>
+                    <span class="settings-account-meta__item" id="settings-member-since">—</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-rows">
+                <div class="settings-row settings-row--split" data-settings-search="email account">
+                  <div class="settings-row__label-col">
+                    <span class="settings-row__label">Email</span>
+                    <span class="settings-row__hint">Used to sign in. Contact IT to change.</span>
+                  </div>
+                  <div class="settings-row__control-col">
+                    <span class="settings-row__value" id="settings-email-display">—</span>
+                  </div>
+                </div>
+
+                <div class="settings-row settings-row--split" data-settings-search="name profile account">
+                  <div class="settings-row__label-col">
+                    <label class="settings-row__label" for="settings-name">Name</label>
+                    <span class="settings-row__hint">Shown on your bookings and in the header.</span>
+                  </div>
+                  <div class="settings-row__control-col">
+                    <input type="text" id="settings-name" class="settings-input" autocomplete="name" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-panel-footer">
+                <div id="settings-feedback" class="settings-feedback hidden"></div>
+                <button type="button" id="settings-save-btn" class="btn-primary">Save</button>
+              </div>
+
+              <div class="settings-subsection">
+                <p class="settings-subsection__title">Password</p>
+                <p class="settings-subsection__lead">Choose a strong password you don’t use elsewhere.</p>
+                <div class="settings-rows">
+                  <div class="settings-row settings-row--split" data-settings-search="password security account">
+                    <div class="settings-row__label-col">
+                      <label class="settings-row__label" for="settings-current-password">Current</label>
+                    </div>
+                    <div class="settings-row__control-col">
+                      <input type="password" id="settings-current-password" class="settings-input" autocomplete="current-password" />
+                    </div>
+                  </div>
+                  <div class="settings-row settings-row--split" data-settings-search="password security account">
+                    <div class="settings-row__label-col">
+                      <label class="settings-row__label" for="settings-new-password">New</label>
+                    </div>
+                    <div class="settings-row__control-col">
+                      <input type="password" id="settings-new-password" class="settings-input" autocomplete="new-password" />
+                    </div>
+                  </div>
+                  <div class="settings-row settings-row--split" data-settings-search="password security account">
+                    <div class="settings-row__label-col">
+                      <label class="settings-row__label" for="settings-confirm-password">Confirm</label>
+                    </div>
+                    <div class="settings-row__control-col">
+                      <input type="password" id="settings-confirm-password" class="settings-input" autocomplete="new-password" />
+                    </div>
+                  </div>
+                </div>
+                <div class="settings-panel-footer">
+                  <div id="settings-password-feedback" class="settings-feedback hidden"></div>
+                  <button type="button" id="settings-password-btn" class="btn-primary">Update password</button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <!-- Booking rules -->
+          <div data-settings-panel="booking" class="settings-panel is-tab-hidden hidden" role="tabpanel">
+            <div class="settings-panel__head">
+              <h1 class="settings-panel__title">Booking rules</h1>
+            </div>
+
+            <div id="settings-status-grid" class="settings-status-grid" aria-live="polite"></div>
+
+            <section class="admin-panel">
+              <div class="admin-panel-body settings-form">
+                <div class="settings-form-group" data-settings-search="booking window advance months guest check-in">
+                  <label class="settings-form-group__label" for="fy-advance-months">How far ahead guests can book</label>
+                  <p class="settings-form-group__hint">Months into the future a guest may choose a check-in date.</p>
+                  <input type="number" id="fy-advance-months" min="1" max="36" value="12" class="settings-input" />
+                  <p class="settings-form-group__hint" id="sys-advance-hint"></p>
+                </div>
+
+                <div class="settings-form-group" data-settings-search="fiscal year reporting labels">
+                  <span class="settings-form-group__label">Fiscal year</span>
+                  <p class="settings-form-group__hint">Start of your housing year for reports. Does not affect room prices.</p>
+                  <p class="settings-form-group__hint" id="sys-fiscal-year-summary">Loading…</p>
+                  <div class="settings-inline-fields">
+                    <div>
+                      <label for="fy-start-month">Starts in</label>
+                      <select id="fy-start-month" class="settings-input">
+                        <option value="1">January</option>
+                        <option value="2">February</option>
+                        <option value="3">March</option>
+                        <option value="4">April</option>
+                        <option value="5">May</option>
+                        <option value="6">June</option>
+                        <option value="7">July</option>
+                        <option value="8">August</option>
+                        <option value="9">September</option>
+                        <option value="10">October</option>
+                        <option value="11">November</option>
+                        <option value="12">December</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label for="fy-start-day">Day</label>
+                      <input type="number" id="fy-start-day" min="1" max="31" value="1" class="settings-input" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="settings-form-group settings-form-group--wide" data-settings-search="rate season regular peak super peak pricing dates">
+                  <span class="settings-form-group__label">Rate seasons</span>
+                  <p class="settings-form-group__hint" id="sys-season-summary">Loading…</p>
+                  <div id="season-periods-mount" class="settings-season-grid"></div>
+                </div>
+
+                <div class="settings-form-group" data-settings-search="cancellation cancel guest hours">
+                  <label class="settings-form-group__label" for="guest-cancel-cutoff-hours">Guest cancellations</label>
+                  <p class="settings-form-group__hint" id="sys-cancellation-policy-summary">Loading…</p>
+                  <div class="settings-input-suffix-wrap">
+                    <input type="number" id="guest-cancel-cutoff-hours" min="0" max="2160" step="1" value="24" class="settings-input settings-input--suffix" />
+                    <span class="settings-input-suffix">hours before check-in / event</span>
+                  </div>
+                </div>
+
+                <div class="settings-form-actions">
+                  <div id="system-settings-feedback" class="settings-feedback hidden"></div>
+                  <button type="button" id="system-settings-save-btn" class="btn-primary">Save booking rules</button>
+                </div>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
-
-      <div class="app-tab-panels max-w-full">
-        <div data-settings-panel="account" class="app-tab-panel space-y-4" role="tabpanel">
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1" for="settings-name">Full Name</label>
-            <input type="text" id="settings-name" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
-          </div>
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1" for="settings-email">Email</label>
-            <input type="email" id="settings-email" readonly class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm bg-slate-50" />
-          </div>
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1" for="settings-role">Role</label>
-            <input type="text" id="settings-role" readonly class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm bg-slate-50" />
-          </div>
-          <div id="settings-feedback" class="hidden"></div>
-          <button type="button" id="settings-save-btn" class="btn-primary">Save Changes</button>
-
-          <div class="mt-6 pt-6 border-t border-outline-variant lg:hidden">
-            <h4 class="font-label-md font-bold text-on-surface mb-2">Session</h4>
-            <p class="text-body-sm text-on-surface-variant mb-4">Sign out of your admin account on this device.</p>
-            <button type="button" data-action="logout" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-outline-variant text-on-surface-variant font-label-md font-semibold hover:bg-surface-variant/30 transition-colors min-h-[3rem]">
-              <span class="material-symbols-outlined text-[1.25rem]">logout</span>
-              Log Out
-            </button>
-          </div>
-        </div>
-
-        <div data-settings-panel="roles" class="app-tab-panel is-tab-hidden space-y-4" role="tabpanel">
-          <table class="data-table w-full">
-            <thead><tr><th>Role</th><th>Description</th><th>Users</th></tr></thead>
-            <tbody id="settings-roles-tbody">
-              <tr><td colspan="3" class="text-center py-6 text-on-surface-variant">Loading...</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <div data-settings-panel="system" class="app-tab-panel is-tab-hidden space-y-4" role="tabpanel">
-          <div class="p-4 rounded-lg border border-primary/20 bg-primary/5 space-y-3">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">calendar_month</span>
-              <h4 class="font-label-md font-bold text-on-surface">Fiscal Year & Booking Window</h4>
-            </div>
-            <p class="text-body-sm text-on-surface-variant" id="sys-fiscal-year-summary">Loading…</p>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <label class="text-label-sm text-on-surface-variant block mb-1" for="fy-start-month">Fiscal year starts (month)</label>
-                <select id="fy-start-month" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm">
-                  <option value="1">January</option>
-                  <option value="2">February</option>
-                  <option value="3">March</option>
-                  <option value="4">April</option>
-                  <option value="5">May</option>
-                  <option value="6">June</option>
-                  <option value="7">July</option>
-                  <option value="8">August</option>
-                  <option value="9">September</option>
-                  <option value="10">October</option>
-                  <option value="11">November</option>
-                  <option value="12">December</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-label-sm text-on-surface-variant block mb-1" for="fy-start-day">Start day</label>
-                <input type="number" id="fy-start-day" min="1" max="31" value="1" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
-              </div>
-              <div>
-                <label class="text-label-sm text-on-surface-variant block mb-1" for="fy-advance-months">Advance booking (months)</label>
-                <input type="number" id="fy-advance-months" min="1" max="36" value="12" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
-              </div>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-lg border border-outline-variant bg-white space-y-4">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">wb_sunny</span>
-              <h4 class="font-label-md font-bold text-on-surface">Rate Season Calendar</h4>
-            </div>
-            <p class="text-body-sm text-on-surface-variant" id="sys-season-summary">Loading…</p>
-            <p class="text-body-sm text-on-surface-variant m-0">Room and venue prices are chosen from the season that matches each <strong>check-in date</strong> (or event date for venues). Stays spanning multiple seasons are priced night-by-night.</p>
-            <div id="season-periods-mount" class="space-y-3"></div>
-          </div>
-
-          <div class="p-4 rounded-lg border border-outline-variant bg-white space-y-3">
-            <div class="flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">event_busy</span>
-              <h4 class="font-label-md font-bold text-on-surface">Guest Cancellation Policy</h4>
-            </div>
-            <p class="text-body-sm text-on-surface-variant" id="sys-cancellation-policy-summary">Loading…</p>
-            <div class="max-w-xs">
-              <label class="text-label-sm text-on-surface-variant block mb-1" for="guest-cancel-cutoff-days">Minimum days before check-in / event</label>
-              <input type="number" id="guest-cancel-cutoff-days" min="0" max="90" value="1" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
-              <p class="text-body-sm text-on-surface-variant mt-1">0 = guests may cancel anytime before the stay or event starts. 1 = at least one full day before.</p>
-            </div>
-          </div>
-
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1">Timezone</label>
-            <input type="text" readonly value="Asia/Manila (UTC+8)" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm bg-slate-50" />
-          </div>
-
-          <div class="pt-2 border-t border-outline-variant space-y-3">
-            <div id="system-settings-feedback" class="hidden"></div>
-            <button type="button" id="system-settings-save-btn" class="btn-primary">Save System Settings</button>
-            <p class="text-body-sm text-on-surface-variant m-0">Saves fiscal year, booking window, season calendar, and guest cancellation policy together.</p>
-          </div>
-        </div>
-      </div>
-    </section>
+    </div>
   </div>
 
   <script type="module">
@@ -154,7 +207,7 @@
       portal: 'admin',
       activePage: 'settings',
       title: 'Settings',
-      subtitle: 'Mission Control',
+      subtitle: '',
       deferEnhancements: true,
     });
 
@@ -165,8 +218,8 @@
       console.error(err);
       const feedback = document.getElementById('system-settings-feedback');
       if (feedback) {
-        feedback.textContent = err.message || 'Settings failed to load. Refresh the page and try again.';
-        feedback.className = 'text-body-sm text-error bg-error-container rounded-lg px-3 py-2';
+        feedback.textContent = err.message || 'Settings failed to load. Refresh and try again.';
+        feedback.className = 'settings-feedback settings-feedback--error';
         feedback.classList.remove('hidden');
       }
       const { releaseChromeBoot } = await import('/assets/js/layout/animations.js');

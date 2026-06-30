@@ -18,7 +18,7 @@ import {
   resolveSeason,
 } from '../services/booking.service.js';
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
-import { assertCanCancelRoomBooking, getGuestCancellationCutoffDays } from '../services/reservationLifecycle.service.js';
+import { assertCanCancelRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -207,7 +207,7 @@ export const updateBooking = async (req, res) => {
         check_in: existing.check_in,
         check_out: existing.check_out,
         isAdmin: false,
-        cutoffDays: await getGuestCancellationCutoffDays(),
+        cutoffHours: await getGuestCancellationCutoffHours(),
       });
       if (cancelError) return res.status(400).json({ message: cancelError });
       await pool.query('UPDATE bookings_rooms SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);

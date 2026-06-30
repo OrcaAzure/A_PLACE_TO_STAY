@@ -117,23 +117,39 @@ export function daysUntilDate(targetDateStr, todayStr = localDateStr()) {
   return Math.round((target - today) / 86400000);
 }
 
-export function cutoffDaysError(cutoffDays) {
-  const days = Number(cutoffDays);
-  if (days <= 0) return null;
-  if (days === 1) return 'Cancellations must be made at least 1 day before check-in or the event date.';
-  return `Cancellations must be made at least ${days} days before check-in or the event date.`;
+export function hoursUntilCheckIn(checkIn, now = new Date()) {
+  const start = new Date(`${String(checkIn).slice(0, 10)}T00:00:00`);
+  return (start - now) / 3600000;
 }
 
-export function canGuestCancelRoomBooking(booking, { todayStr = localDateStr(), cutoffDays = 1 } = {}) {
+export function hoursUntilEventStart(eventDate, startTime, now = new Date()) {
+  const start = combineDateTime(eventDate, startTime);
+  return (start - now) / 3600000;
+}
+
+export function cutoffHoursError(cutoffHours) {
+  const hours = Number(cutoffHours);
+  if (hours <= 0) return null;
+  if (hours === 1) return 'Cancellations must be made at least 1 hour before check-in or the event start.';
+  return `Cancellations must be made at least ${hours} hours before check-in or the event start.`;
+}
+
+/** @deprecated Use cutoffHoursError */
+export function cutoffDaysError(cutoffDays) {
+  return cutoffHoursError(Number(cutoffDays) * 24);
+}
+
+export function canGuestCancelRoomBooking(booking, { now = new Date(), cutoffHours = 24 } = {}) {
   const status = normStatus(booking.status);
   if (!['pending', 'approved'].includes(status)) return false;
+  const todayStr = localDateStr(now);
   if (roomStayPhase(booking.startDate || booking.check_in, booking.endDate || booking.check_out, todayStr) !== 'upcoming') {
     return false;
   }
-  return daysUntilDate(booking.startDate || booking.check_in, todayStr) >= Number(cutoffDays);
+  return hoursUntilCheckIn(booking.startDate || booking.check_in, now) >= Number(cutoffHours);
 }
 
-export function canGuestCancelVenueBooking(booking, { now = new Date(), cutoffDays = 1 } = {}) {
+export function canGuestCancelVenueBooking(booking, { now = new Date(), cutoffHours = 24 } = {}) {
   const status = normStatus(booking.status);
   if (!['pending', 'approved'].includes(status)) return false;
   if (venueEventPhase(
@@ -144,8 +160,11 @@ export function canGuestCancelVenueBooking(booking, { now = new Date(), cutoffDa
   ) !== 'upcoming') {
     return false;
   }
-  const todayStr = localDateStr(now);
-  return daysUntilDate(booking.eventDate || booking.startDate || booking.event_date, todayStr) >= Number(cutoffDays);
+  return hoursUntilEventStart(
+    booking.eventDate || booking.startDate || booking.event_date,
+    booking.startTime || booking.start_time,
+    now,
+  ) >= Number(cutoffHours);
 }
 
 export function canAdminCancelVenueBooking(booking, now = new Date()) {

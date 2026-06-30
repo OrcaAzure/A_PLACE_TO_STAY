@@ -76,7 +76,7 @@ export const getMe = async (userId) => {
 
 export const updateMe = async (userId, { full_name }) => {
   if (isEmpty(full_name)) {
-    throw new Error('Full name is required');
+    throw new Error('Name is required');
   }
 
   await pool.query('UPDATE users SET full_name = ? WHERE id = ?', [full_name.trim(), userId]);

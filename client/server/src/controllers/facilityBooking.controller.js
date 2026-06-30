@@ -3,7 +3,7 @@ import { isEmpty } from '../utils/helpers.js';
 import { resolveGuestUser } from '../services/booking.service.js';
 import {
   assertCanCancelVenueBooking,
-  getGuestCancellationCutoffDays,
+  getGuestCancellationCutoffHours,
 } from '../services/reservationLifecycle.service.js';
 import {
   bookingOverlapsSlot,
@@ -182,7 +182,7 @@ export const updateFacilityBooking = async (req, res) => {
         start_time: existing[0].start_time,
         end_time: existing[0].end_time,
         isAdmin: false,
-        cutoffDays: await getGuestCancellationCutoffDays(),
+        cutoffHours: await getGuestCancellationCutoffHours(),
       });
       if (cancelError) return res.status(400).json({ message: cancelError });
       await pool.query('UPDATE bookings_facilities SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
