@@ -404,12 +404,8 @@ export function applyBookingDateBounds(checkInEl, checkOutEl, bounds) {
   }
 }
 
-export function formatFiscalYearHint(bounds) {
-  if (!bounds?.currentFiscalYear) return '';
-  const fy = bounds.currentFiscalYear;
-  const parts = [`Current fiscal year: ${fy.label} (${formatDate(fy.startDate)} – ${formatDate(fy.endDate)})`];
-  if (bounds.maxCheckInDate) {
-    parts.push(`Book up to ${bounds.bookingAdvanceMonths} month(s) ahead (latest check-in: ${formatDate(bounds.maxCheckInDate)})`);
-  }
-  return parts.join(' · ');
+export function formatBookingWindowHint(bounds) {
+  if (!bounds?.maxCheckInDate) return '';
+  const months = bounds.bookingAdvanceMonths;
+  return `Book up to ${months} month${months === 1 ? '' : 's'} ahead (latest check-in: ${formatDate(bounds.maxCheckInDate)}).`;
 }

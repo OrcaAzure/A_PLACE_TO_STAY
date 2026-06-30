@@ -8,7 +8,7 @@ import {
 import {
   WIZARD_STEPS, escapeHtml, formatDateLong, formatMoney,
   emptyWizardState, mealsFromBooking, calcGrandTotal, calcMealsSubtotal, calcFeesSubtotal, availLabel, debounce,
-  loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint,
+  loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
   recommendRooms, recommendationReason, servicesToQuickFees, filterRoomsList,
 } from '/assets/js/features/reservation-shared.js';
 
@@ -60,7 +60,10 @@ function renderStep2() {
     </div>` : '';
   return `
     <p class="res-lead">Pick the stay dates and how many people will stay.</p>
-    ${fiscalBounds ? `<p class="res-hint">${escapeHtml(formatFiscalYearHint(fiscalBounds))}</p>` : ''}
+    ${(() => {
+      const hint = fiscalBounds ? formatBookingWindowHint(fiscalBounds) : '';
+      return hint ? `<p class="res-hint">${escapeHtml(hint)}</p>` : '';
+    })()}
     <div class="res-row">
       <div><label class="res-label">Check-in</label><input id="wiz-check-in" class="res-input" type="date" value="${escapeHtml(state.checkIn)}" /></div>
       <div><label class="res-label">Check-out</label><input id="wiz-check-out" class="res-input" type="date" value="${escapeHtml(state.checkOut)}" /></div>

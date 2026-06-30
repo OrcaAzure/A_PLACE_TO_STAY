@@ -4,6 +4,7 @@
 
 import { getProfile, updateProfile, changePassword, getFiscalYear, updateFiscalYearSettings } from '/assets/js/services/api.js';
 import { formatDate } from '/assets/js/features/reservation-shared.js';
+import { openModal, closeModal } from '/assets/js/layout/ui.js';
 
 let fiscalYearInfo = null;
 
@@ -188,7 +189,6 @@ function renderStatusGrid(info) {
   if (!mount || !info) return;
 
   const todaySeason = info.seasonForToday || info.activeLodgingSeason || 'Regular';
-  const fy = info.currentFiscalYear;
 
   mount.innerHTML = `
     <article class="settings-status-card">
@@ -200,11 +200,6 @@ function renderStatusGrid(info) {
       <span class="settings-status-card__label">Guest booking window</span>
       <span class="settings-status-card__value">${info.bookingAdvanceMonths} month${info.bookingAdvanceMonths === 1 ? '' : 's'} ahead</span>
       <span class="settings-status-card__hint">${info.maxCheckInDate ? `Until ${formatDate(info.maxCheckInDate)}` : 'Admins are not limited'}</span>
-    </article>
-    <article class="settings-status-card">
-      <span class="settings-status-card__label">Fiscal year</span>
-      <span class="settings-status-card__value">${fy?.label || '—'}</span>
-      <span class="settings-status-card__hint">${fy ? `${formatDate(fy.startDate)} – ${formatDate(fy.endDate)}` : ''}</span>
     </article>`;
 }
 
@@ -258,27 +253,17 @@ function readSeasonPeriodsFromForm() {
 }
 
 function renderFiscalYearSettings(info) {
-  const summary = document.getElementById('sys-fiscal-year-summary');
   const advanceHint = document.getElementById('sys-advance-hint');
-  const monthSelect = document.getElementById('fy-start-month');
-  const dayInput = document.getElementById('fy-start-day');
   const advanceInput = document.getElementById('fy-advance-months');
 
   if (!info) return;
 
   renderStatusGrid(info);
 
-  const fy = info.currentFiscalYear;
-  if (summary && fy) {
-    summary.textContent = `Currently ${fy.label}: ${formatDate(fy.startDate)} through ${formatDate(fy.endDate)}.`;
-  }
-
   if (advanceHint && info.maxCheckInDate) {
     advanceHint.textContent = `Latest guest check-in: ${formatDate(info.maxCheckInDate)}.`;
   }
 
-  if (monthSelect && info.settings) monthSelect.value = String(info.settings.fiscal_year_start_month);
-  if (dayInput && info.settings) dayInput.value = String(info.settings.fiscal_year_start_day);
   if (advanceInput && info.settings) advanceInput.value = String(info.settings.booking_advance_months);
 
   const seasonSummary = document.getElementById('sys-season-summary');
@@ -304,26 +289,34 @@ async function saveSystemSettings() {
   const btn = document.getElementById('system-settings-save-btn');
   if (!btn) return;
 
-  btn.disabled = true;
   feedback?.classList.add('hidden');
 
+  const cutoffRaw = document.getElementById('guest-cancel-cutoff-hours')?.value;
+  const payload = {
+    booking_advance_months: Number(document.getElementById('fy-advance-months')?.value),
+    guest_cancellation_cutoff_hours: Number(cutoffRaw),
+    season_periods: readSeasonPeriodsFromForm(),
+  };
+
+  if (Number.isNaN(payload.booking_advance_months)) {
+    showFeedback(feedback, 'Please check the booking window number.', true);
+    return;
+  }
+  if (Number.isNaN(payload.guest_cancellation_cutoff_hours)) {
+    showFeedback(feedback, 'Cancellation hours must be a number from 0 to 2160.', true);
+    return;
+  }
+
+  const result = await confirmSaveBookingRules();
+  if (result === 'discard') {
+    if (fiscalYearInfo) renderFiscalYearSettings(fiscalYearInfo);
+    feedback?.classList.add('hidden');
+    return;
+  }
+  if (result !== 'confirm') return;
+
+  btn.disabled = true;
   try {
-    const cutoffRaw = document.getElementById('guest-cancel-cutoff-hours')?.value;
-    const payload = {
-      fiscal_year_start_month: Number(document.getElementById('fy-start-month')?.value),
-      fiscal_year_start_day: Number(document.getElementById('fy-start-day')?.value),
-      booking_advance_months: Number(document.getElementById('fy-advance-months')?.value),
-      guest_cancellation_cutoff_hours: Number(cutoffRaw),
-      season_periods: readSeasonPeriodsFromForm(),
-    };
-
-    if ([payload.fiscal_year_start_month, payload.fiscal_year_start_day, payload.booking_advance_months].some((n) => Number.isNaN(n))) {
-      throw new Error('Please check the fiscal year and booking window numbers.');
-    }
-    if (Number.isNaN(payload.guest_cancellation_cutoff_hours)) {
-      throw new Error('Cancellation hours must be a number from 0 to 2160.');
-    }
-
     fiscalYearInfo = await updateFiscalYearSettings(payload);
     renderFiscalYearSettings(fiscalYearInfo);
     showFeedback(feedback, 'Booking rules saved.');
@@ -332,4 +325,40 @@ async function saveSystemSettings() {
   } finally {
     btn.disabled = false;
   }
+}
+
+function confirmSaveBookingRules() {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      closeModal();
+      resolve(value);
+    };
+
+    openModal(
+      'Save changes',
+      `
+        <p class="text-[0.9375rem] text-on-surface-variant leading-relaxed m-0">
+          Are you sure you want to save your changes?
+        </p>
+        <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-outline-variant">
+          <button type="button" class="settings-confirm-cancel px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant font-semibold text-sm hover:bg-surface-variant/30 transition-colors min-h-[2.75rem]" data-action="discard">
+            No, discard
+          </button>
+          <button type="button" class="settings-confirm-save btn-primary px-5 py-2.5 min-h-[2.75rem]" data-action="confirm">
+            Confirm
+          </button>
+        </div>
+      `,
+    );
+
+    const body = document.getElementById('modalBody');
+    body?.querySelector('[data-action="discard"]')?.addEventListener('click', () => finish('discard'), { once: true });
+    body?.querySelector('[data-action="confirm"]')?.addEventListener('click', () => finish('confirm'), { once: true });
+
+    document.getElementById('modal-close')?.addEventListener('click', () => finish('discard'), { once: true });
+    document.getElementById('modal-overlay')?.addEventListener('click', () => finish('discard'), { once: true });
+  });
 }

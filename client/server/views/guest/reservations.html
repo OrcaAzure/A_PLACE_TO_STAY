@@ -328,7 +328,7 @@
               <input type="date" id="booking-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
             </div>
           </div>
-          <p id="booking-fiscal-hint" class="text-[12px] text-on-surface-variant hidden"></p>
+          <p id="booking-window-hint" class="text-[12px] text-on-surface-variant hidden"></p>
           <div>
             <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-guests">Guests</label>
             <input type="number" id="booking-guests" min="1" value="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
@@ -435,7 +435,7 @@
     getFiscalYear,
   } from '/assets/js/services/api.js';
   import {
-    loadFiscalYearBounds, applyBookingDateBounds, formatFiscalYearHint,
+    loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
     canGuestCancelRoomBooking, canGuestCancelVenueBooking, lifecyclePhaseForBooking, venuePhaseLabel, normStatus,
   } from '/assets/js/features/reservation-shared.js';
   import { parseBookQuery, priceNoticeHtml, hasCompleteBookIntent } from '/assets/js/features/guest-booking-flow.js';
@@ -453,7 +453,7 @@
   try {
     fiscalBounds = await loadFiscalYearBounds();
   } catch (err) {
-    console.warn('Fiscal year settings unavailable', err);
+    console.warn('Booking rules unavailable', err);
   }
 
   /* Buildings guests are not allowed to view/book. */
@@ -897,16 +897,18 @@
   function applyFiscalDateLimits() {
     const checkInEl = document.getElementById('booking-check-in');
     const checkOutEl = document.getElementById('booking-check-out');
-    const hintEl = document.getElementById('booking-fiscal-hint');
+    const hintEl = document.getElementById('booking-window-hint');
     if (fiscalBounds) {
       applyBookingDateBounds(checkInEl, checkOutEl, fiscalBounds);
       if (hintEl) {
-        hintEl.textContent = formatFiscalYearHint(fiscalBounds);
-        hintEl.classList.remove('hidden');
+        const hint = formatBookingWindowHint(fiscalBounds);
+        hintEl.textContent = hint;
+        hintEl.classList.toggle('hidden', !hint);
       }
     } else {
       if (checkInEl) checkInEl.min = todayStr;
       if (checkOutEl) checkOutEl.min = todayStr;
+      hintEl?.classList.add('hidden');
     }
   }
 
