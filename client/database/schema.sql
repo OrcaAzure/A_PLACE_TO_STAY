@@ -286,8 +286,9 @@ CREATE TABLE IF NOT EXISTS bookings_rooms (
                      'Rejected',
                      'Cancelled'
                    ) NOT NULL DEFAULT 'Pending',
-    notes          TEXT DEFAULT NULL,
-    contact_phone  VARCHAR(30) DEFAULT NULL,
+    notes               TEXT DEFAULT NULL,
+    contact_phone       VARCHAR(30) DEFAULT NULL,
+    meal_allergen_notes TEXT DEFAULT NULL,
 
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

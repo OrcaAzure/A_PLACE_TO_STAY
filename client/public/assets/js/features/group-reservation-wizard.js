@@ -210,6 +210,8 @@ function renderStep4() {
       ${renderMealRow('Snack', state.meals.Snack)}
       <p class="res-meal-total">Meals subtotal: <strong>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
     </div>
+    <label class="res-label" for="gw-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
+    <textarea id="gw-meal-allergens" class="res-input" rows="2" placeholder="e.g. nut allergy, gluten-free, vegetarian…">${escapeHtml(state.mealAllergenNotes || '')}</textarea>
     <h3 class="res-subhead">Additional fees (optional)</h3>
     ${quickFeesBlock}
     <div class="res-row">
@@ -290,6 +292,7 @@ function readAllFields() {
   if ($('gw-rooms-req')) state.roomsRequested = rr ? Math.max(1, Number(rr)) : null;
   state.notes = $('gw-notes')?.value?.trim() ?? state.notes;
   state.guestMessage = $('gw-guest-message')?.value?.trim() ?? state.guestMessage;
+  if ($('gw-meal-allergens')) state.mealAllergenNotes = $('gw-meal-allergens').value?.trim() || '';
   if ($('gw-room-search')) state.roomSearch = $('gw-room-search').value;
   if ($('gw-building-filter')) state.buildingFilter = $('gw-building-filter').value;
 }
@@ -526,6 +529,7 @@ async function confirmSave() {
     rooms: state.selectedRooms,
     meals: state.meals,
     fees: state.fees,
+    meal_allergen_notes: state.mealAllergenNotes || undefined,
     notify_guest: Boolean(state.fromRequestId || state.modifyRequest),
     notify_modification: Boolean(state.modifyRequest),
     modification_message: state.modifyRequest ? state.guestMessage?.trim() : undefined,
@@ -606,6 +610,7 @@ export async function openGroupWizard(options = {}) {
     state.roomsRequested = group.rooms_requested;
     state.notes = group.notes || '';
     state.meals = mealsFromBooking(group.meals || []);
+    state.mealAllergenNotes = group.meal_allergen_notes || '';
     state.fees = (group.fees || []).map((f) => ({ fee_name: f.fee_name, amount: f.amount }));
     state.selectedRooms = (group.bookings || []).map((b) => ({
       room_id: b.room_id,
@@ -626,6 +631,10 @@ export async function openGroupWizard(options = {}) {
       notes: prefill.notes || state.notes,
       userId: prefill.userId || prefill.user_id || state.userId,
     });
+    if (prefill.meals) {
+      state.meals = Array.isArray(prefill.meals) ? mealsFromBooking(prefill.meals) : { ...state.meals, ...prefill.meals };
+    }
+    if (prefill.mealAllergenNotes != null) state.mealAllergenNotes = prefill.mealAllergenNotes;
   }
 
   isOpen = true;

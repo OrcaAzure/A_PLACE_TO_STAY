@@ -5,6 +5,7 @@ import { DEFAULT_BOOKING_GUEST_ROLE } from '../utils/constants.js';
 import { sendBookingConfirmationEmail, sendBookingModifiedEmail } from './email.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
 import { DEFAULT_MEAL_RATES } from '../constants/ancillary.js';
+import { getMealRatesMap } from './ancillary.service.js';
 import { resolveRateRoomType, formatRoomTypeLabel } from '../constants/rooms.js';
 import { getActiveLodgingSeason } from './season.service.js';
 

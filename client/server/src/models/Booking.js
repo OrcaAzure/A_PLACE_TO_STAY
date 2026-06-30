@@ -12,6 +12,7 @@ export default class Booking {
     this.status         = data.status;
     this.notes          = data.notes;
     this.contact_phone   = data.contact_phone || null;
+    this.meal_allergen_notes = data.meal_allergen_notes || null;
     this.meals           = data.meals || [];
     this.fees            = data.fees || [];
     this.created_at     = data.created_at;

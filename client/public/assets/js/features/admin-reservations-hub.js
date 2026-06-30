@@ -135,6 +135,12 @@ function renderNotes(notes) {
   </section>`;
 }
 
+function renderMealAllergenNotes(notes) {
+  const text = notes?.trim();
+  if (!text) return '';
+  return renderSection('Meal allergens & dietary notes', factRow('Notes', text));
+}
+
 function renderDatesTriple(cells) {
   return `<dl class="res-list-dates res-list-dates--triple">
     ${cells.map(({ label, value }) => `<div><dt>${escapeHtml(label)}</dt><dd>${value}</dd></div>`).join('')}
@@ -197,6 +203,7 @@ function renderSingleRequestDetails(r) {
       factRow('Rate type', r.occupancyItem),
     ].join(''))}
     ${addonRows ? renderSection('Meals & extras', addonRows) : ''}
+    ${renderMealAllergenNotes(r.mealAllergenNotes)}
     ${renderNotes(r.notes)}
   `;
 }
@@ -237,6 +244,7 @@ function renderGroupRequestDetails(r) {
     ].join(''))}
     ${assignedSection}
     ${pricingSection}
+    ${renderMealAllergenNotes(r.mealAllergenNotes)}
     ${renderNotes(r.notes)}
   `;
 }
@@ -274,6 +282,7 @@ function renderSingleStayDetails(item) {
       factRow('Rate type', item.occupancy_item),
     ].join(''))}
     ${addonRows ? renderSection('Meals & extras', addonRows) : ''}
+    ${renderMealAllergenNotes(item.meal_allergen_notes)}
     ${renderNotes(item.notes)}
   `;
 }
@@ -314,6 +323,7 @@ function renderGroupStayDetails(item) {
     ].join(''))}
     ${assignedSection}
     ${pricingSection}
+    ${renderMealAllergenNotes(item.meal_allergen_notes)}
     ${renderNotes(item.notes)}
   `;
 }

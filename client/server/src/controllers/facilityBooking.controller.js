@@ -1,6 +1,6 @@
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
-import { resolveSeason, resolveGuestUser } from '../services/booking.service.js';
+import { resolveGuestUser } from '../services/booking.service.js';
 import {
   assertCanCancelVenueBooking,
   getGuestCancellationCutoffDays,
@@ -9,6 +9,7 @@ import {
   bookingOverlapsSlot,
   findVenueBookingOverlap,
   normalizeTimeValue,
+  normalizeFacilityBookingSeason,
   resolveFacilityIdentity,
   resolveVenueFacilityRowByFacilityId,
   computeVenueTotal,
@@ -136,7 +137,7 @@ export const createFacilityBooking = async (req, res) => {
       return res.status(409).json({ message: 'This venue is already booked for the selected time slot.' });
     }
 
-    const season = await resolveSeason(event_date);
+    const season = normalizeFacilityBookingSeason(rateRow.season);
     const total_amount = computeVenueTotal(
       rateRow.rate,
       startTime,

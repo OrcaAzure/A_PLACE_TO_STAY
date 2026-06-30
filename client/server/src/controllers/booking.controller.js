@@ -117,7 +117,7 @@ export const createBooking = async (req, res) => {
     const {
       user_id, room_id, check_in, check_out, guest_count,
       season, occupancy_item, notes, contact_phone, status, meals, fees,
-      guest_name, email,
+      guest_name, email, meal_allergen_notes,
     } = req.body;
 
     const effectiveUserId = ADMIN_ROLES.includes(role)
@@ -156,12 +156,12 @@ export const createBooking = async (req, res) => {
     const bookingStatus = ADMIN_ROLES.includes(role) ? (status || 'Approved') : 'Pending';
 
     const [result] = await pool.query(
-      `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         effectiveUserId, room_id, req.body.group_id || null, check_in, check_out, guest_count || 1,
         prepared.season, prepared.occupancy_item, grandTotal, bookingStatus,
-        notes || null, contact_phone || null,
+        notes || null, contact_phone || null, meal_allergen_notes || null,
       ]
     );
 
@@ -222,7 +222,7 @@ export const updateBooking = async (req, res) => {
 
     const validated = await validateBookingUpdate(existing, req.body, true);
     const { check_in, check_out, guest_count, status, notes, contact_phone, room_id, meals, fees, guest_name, email,
-      notify_guest, notify_modification, modification_message } = req.body;
+      notify_guest, notify_modification, modification_message, meal_allergen_notes } = req.body;
     const mealRates = await getMealRates();
     const grandTotal = meals != null || fees != null
       ? await computeGrandTotal({ roomTotal: validated.totalAmount, meals, fees, mealRates })
@@ -248,6 +248,7 @@ export const updateBooking = async (req, res) => {
         season = ?, occupancy_item = ?,
         notes = COALESCE(?, notes),
         contact_phone = COALESCE(?, contact_phone),
+        meal_allergen_notes = COALESCE(?, meal_allergen_notes),
         total_amount = ?
       WHERE id = ?`,
       [
@@ -255,7 +256,7 @@ export const updateBooking = async (req, res) => {
         room_id ?? validated.roomId,
         check_in, check_out, guest_count, status,
         validated.season, validated.occupancyItem,
-        notes, contact_phone, grandTotal,
+        notes, contact_phone, meal_allergen_notes, grandTotal,
         req.params.id,
       ]
     );

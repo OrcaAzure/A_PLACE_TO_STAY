@@ -90,6 +90,8 @@ export function openModifyRequestWizard(r, { modifyRequest = true } = {}) {
           roomsRequested: r.roomsRequested,
           notes: r.notes,
           userId: r.userId,
+          meals: r.meals,
+          mealAllergenNotes: r.mealAllergenNotes,
         },
         originalRequest: {
           checkIn: r.schedule?.checkIn,
@@ -113,6 +115,8 @@ export function openModifyRequestWizard(r, { modifyRequest = true } = {}) {
           guestCount: r.guestCount,
           roomId: r.roomId,
           notes: r.notes,
+          meals: r.meals,
+          mealAllergenNotes: r.mealAllergenNotes,
           facility: r.facility,
         },
         originalRequest: {

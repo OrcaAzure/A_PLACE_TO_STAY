@@ -381,6 +381,7 @@ export function normalizeManageGroupRequest(group) {
     submittedAt: group.created_at,
     updatedAt: group.updated_at,
     grandTotal: group.grand_total != null ? Number(group.grand_total) : null,
+    mealAllergenNotes: group.meal_allergen_notes || '',
     assignedBookings: (group.bookings || []).map((b) => ({
       id: b.id,
       building: b.building_name,
@@ -480,6 +481,7 @@ export function normalizeManageRequest(booking) {
     season: booking.season,
     occupancyItem: booking.occupancy_item,
     contactPhone: booking.contact_phone || null,
+    mealAllergenNotes: booking.meal_allergen_notes || '',
     meals: booking.meals || [],
     fees: booking.fees || [],
     requester: {

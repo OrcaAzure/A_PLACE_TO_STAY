@@ -796,6 +796,15 @@ export async function runSchemaPatches() {
 
   try {
     await pool.execute(
+      `ALTER TABLE bookings_rooms
+       ADD COLUMN meal_allergen_notes TEXT DEFAULT NULL AFTER contact_phone`
+    );
+  } catch {
+    /* column may already exist */
+  }
+
+  try {
+    await pool.execute(
       `ALTER TABLE users
        MODIFY role ENUM(
          'Super Admin',

@@ -19,6 +19,14 @@ export function mapSeasonToFacilitySeason(season) {
   return mapLodgingSeasonToFacilitySeason(season);
 }
 
+const FACILITY_BOOKING_SEASONS = ['Regular', 'Peak', 'N/A'];
+
+/** bookings_facilities.season accepts Regular | Peak | N/A — not lodging Super Peak. */
+export function normalizeFacilityBookingSeason(season) {
+  if (FACILITY_BOOKING_SEASONS.includes(season)) return season;
+  return mapLodgingSeasonToFacilitySeason(season);
+}
+
 function enrichRateRow(rateRow, facility, calendarSeason) {
   const label = facility ? formatFacilityLabel(facility) : null;
   return {

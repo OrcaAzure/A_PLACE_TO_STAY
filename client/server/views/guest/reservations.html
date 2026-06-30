@@ -360,6 +360,8 @@
           <div class="guest-extras-block">
             <p class="guest-extras-block__label">Meals</p>
             <div id="booking-meals-grid" class="guest-meals-grid"></div>
+            <label class="guest-extras-block__label mt-3" for="booking-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
+            <textarea id="booking-meal-allergens" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="e.g. nut allergy, gluten-free, vegetarian…"></textarea>
           </div>
           <div class="guest-extras-block">
             <p class="guest-extras-block__label">Extra services</p>
@@ -1093,7 +1095,7 @@
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
     const bookedRoom = selectedRoom;
-    const { meals, fees } = bookingExtras.getPayload();
+    const { meals, fees, meal_allergen_notes } = bookingExtras.getPayload();
     try {
       await createBooking({
         room_id: Number(roomInput.value),
@@ -1103,6 +1105,7 @@
         notes: document.getElementById('booking-notes').value.trim() || null,
         meals,
         fees,
+        meal_allergen_notes,
       });
       await loadBookings();
       showBookingSuccess(bookedRoom);

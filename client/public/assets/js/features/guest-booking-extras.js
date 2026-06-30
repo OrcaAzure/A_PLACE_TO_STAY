@@ -142,9 +142,11 @@ export function createGuestBookingExtras({
   }
 
   function getPayload() {
+    const allergenEl = document.getElementById('booking-meal-allergens');
     return {
       meals: { ...meals },
       fees: fees.map((f) => ({ fee_name: f.name, amount: f.amount })),
+      meal_allergen_notes: allergenEl?.value?.trim() || undefined,
     };
   }
 
@@ -157,6 +159,8 @@ export function createGuestBookingExtras({
     meals = emptyMeals();
     fees = [];
     expandedGroupId = null;
+    const allergenEl = document.getElementById('booking-meal-allergens');
+    if (allergenEl) allergenEl.value = '';
     setRoomSelected(false);
     render();
     onChange();

@@ -200,6 +200,8 @@ function renderStep4() {
       ${renderMealRow('Snack', state.meals.Snack)}
       <p class="res-meal-total">Meals subtotal: <strong>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
     </div>
+    <label class="res-label" for="wiz-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
+    <textarea id="wiz-meal-allergens" class="res-input" rows="2" placeholder="e.g. nut allergy, gluten-free, vegetarian…">${escapeHtml(state.mealAllergenNotes || '')}</textarea>
     <h3 class="res-subhead">Additional fees (optional)</h3>
     <p class="res-hint">Tap a catalog fee or add your own.</p>
     ${quickFeesBlock}
@@ -285,6 +287,9 @@ function readFields() {
   if (state.step === 5) {
     state.notes = $('wiz-notes')?.value?.trim() || '';
     state.guestMessage = $('wiz-guest-message')?.value?.trim() || state.guestMessage;
+  }
+  if ($('wiz-meal-allergens')) {
+    state.mealAllergenNotes = $('wiz-meal-allergens').value?.trim() || '';
   }
 }
 
@@ -460,6 +465,7 @@ async function confirmSave() {
     status: 'Approved',
     meals: state.meals,
     fees: state.fees,
+    meal_allergen_notes: state.mealAllergenNotes || undefined,
     notify_guest: Boolean(state.fromRequestId || state.modifyRequest),
     notify_modification: Boolean(state.modifyRequest),
     modification_message: state.modifyRequest ? state.guestMessage?.trim() : undefined,
@@ -539,6 +545,7 @@ export async function openReservationWizard(options = {}) {
     state.roomId = booking.room_id;
     state.notes = booking.notes || '';
     state.meals = mealsFromBooking(booking.meals || []);
+    state.mealAllergenNotes = booking.meal_allergen_notes || '';
     state.fees = (booking.fees || []).map((f) => ({ fee_name: f.fee_name, amount: f.amount }));
   }
 
@@ -554,6 +561,10 @@ export async function openReservationWizard(options = {}) {
       roomId: prefill.roomId || prefill.room_id || state.roomId,
       notes: prefill.notes || state.notes,
     });
+    if (prefill.meals) {
+      state.meals = Array.isArray(prefill.meals) ? mealsFromBooking(prefill.meals) : { ...state.meals, ...prefill.meals };
+    }
+    if (prefill.mealAllergenNotes != null) state.mealAllergenNotes = prefill.mealAllergenNotes;
   }
 
   if (originalRequest) {

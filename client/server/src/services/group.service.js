@@ -85,9 +85,11 @@ export async function getGroupById(groupId) {
   if (group.bookings[0]) {
     group.meals = group.bookings[0].meals || [];
     group.fees = group.bookings[0].fees || [];
+    group.meal_allergen_notes = group.bookings[0].meal_allergen_notes || null;
   } else {
     group.meals = [];
     group.fees = [];
+    group.meal_allergen_notes = null;
   }
   return group;
 }
@@ -151,6 +153,7 @@ export async function saveGroupBookings({
   contactPhone,
   meals,
   fees,
+  meal_allergen_notes,
   bypassAdvanceLimit = false,
 }) {
   await validateRoomAssignments({ checkIn, checkOut, rooms, excludeGroupId: groupId });
@@ -187,12 +190,12 @@ export async function saveGroupBookings({
       groupGrandTotal += lineTotal;
 
       const [result] = await conn.query(
-        `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userId, room_id, groupId, checkIn, checkOut, guest_count,
           prepared.season, prepared.occupancy_item, lineTotal, status,
-          notes || null, contactPhone || null,
+          notes || null, contactPhone || null, i === 0 ? (meal_allergen_notes || null) : null,
         ]
       );
 
@@ -234,6 +237,7 @@ export async function createReservationGroup(raw = {}) {
   const rooms = raw.rooms;
   const meals = raw.meals;
   const fees = raw.fees;
+  const meal_allergen_notes = raw.meal_allergen_notes || raw.mealAllergenNotes;
   const userId = raw.userId ?? raw.user_id;
   const guestName = raw.guestName || raw.guest_name;
   const email = raw.email || raw.contact_email;
@@ -287,6 +291,7 @@ export async function createReservationGroup(raw = {}) {
       contactPhone,
       meals,
       fees,
+      meal_allergen_notes,
       bypassAdvanceLimit: isAdmin,
     });
   }
@@ -318,7 +323,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
   const {
     group_name, contact_name, contact_phone, contact_email,
     check_in, check_out, total_guests, rooms_requested, notes, status,
-    rooms, meals, fees, user_id, guest_name, email,
+    rooms, meals, fees, user_id, guest_name, email, meal_allergen_notes,
   } = body;
 
   const nextCheckIn = check_in || group.check_in;
@@ -385,6 +390,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       contactPhone: contact_phone ?? group.contact_phone,
       meals,
       fees,
+      meal_allergen_notes,
       bypassAdvanceLimit: isAdmin,
     });
     if (body.notify_guest && isAdmin) {

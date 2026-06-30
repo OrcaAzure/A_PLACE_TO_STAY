@@ -94,6 +94,12 @@ function renderNotes(notes) {
   </section>`;
 }
 
+function renderMealAllergenNotes(notes) {
+  const text = notes?.trim();
+  if (!text) return '';
+  return renderSection('Meal allergens & dietary notes', factRow('Notes', text));
+}
+
 function renderSingleRequest(r) {
   const building = r.facility?.building || '';
   const room = r.facility?.roomNumber || '';
@@ -135,6 +141,7 @@ function renderSingleRequest(r) {
     ${renderSection('Stay dates', stayRows)}
     ${renderSection('Pricing estimate', pricingRows)}
     ${addonRows ? renderSection('Meals & extras', addonRows) : ''}
+    ${renderMealAllergenNotes(r.mealAllergenNotes)}
     ${renderNotes(r.notes)}
   `;
 }
@@ -179,6 +186,7 @@ function renderGroupRequest(r) {
     ${renderSection('Stay details', stayRows)}
     ${assignedSection}
     ${pricingSection}
+    ${renderMealAllergenNotes(r.mealAllergenNotes)}
     ${renderNotes(r.notes)}
   `;
 }
