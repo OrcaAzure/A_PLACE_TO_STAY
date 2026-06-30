@@ -1,5 +1,5 @@
 import { pool } from '../config/db.js';
-import { getActiveLodgingSeason, mapLodgingSeasonToFacilitySeason } from './season.service.js';
+import { resolveLodgingSeasonForDate, mapLodgingSeasonToFacilitySeason } from './season.service.js';
 import {
   getFacilityById,
   getFacilityByLegacyKeys,
@@ -49,9 +49,11 @@ function enrichRateRow(rateRow, facility, calendarSeason) {
   };
 }
 
-async function pickRateRowForFacility(facilityId, _eventDate) {
-  const activeSeason = await getActiveLodgingSeason();
-  const preferred = mapLodgingSeasonToFacilitySeason(activeSeason);
+async function pickRateRowForFacility(facilityId, eventDate) {
+  const lodgingSeason = eventDate
+    ? await resolveLodgingSeasonForDate(String(eventDate).slice(0, 10))
+    : await resolveLodgingSeasonForDate(new Date().toISOString().slice(0, 10));
+  const preferred = mapLodgingSeasonToFacilitySeason(lodgingSeason);
   const fallbacks = preferred === 'Peak' ? ['Peak', 'Regular'] : ['Regular', 'Peak'];
   const facility = await getFacilityById(facilityId);
 
@@ -64,7 +66,7 @@ async function pickRateRowForFacility(facilityId, _eventDate) {
       [facilityId, season]
     );
     if (rows.length) {
-      return enrichRateRow(rows[0], facility, activeSeason);
+      return enrichRateRow(rows[0], facility, lodgingSeason);
     }
   }
   return null;

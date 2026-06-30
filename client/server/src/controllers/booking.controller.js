@@ -15,8 +15,8 @@ import {
   notifyBookingCreated,
   notifyBookingUpdated,
   getRoomById,
+  resolveSeason,
 } from '../services/booking.service.js';
-import { getActiveLodgingSeason } from '../services/season.service.js';
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
 import { assertCanCancelRoomBooking, getGuestCancellationCutoffDays } from '../services/reservationLifecycle.service.js';
 
@@ -96,8 +96,13 @@ export const getRoomAvailability = async (req, res) => {
       rooms = filterRoomsForGuestUser(rooms, req.user.email);
     }
     const availableCount = rooms.filter((r) => r.availability_status === 'available').length;
-    const active_season = await getActiveLodgingSeason();
-    res.status(200).json({ rooms, available_count: availableCount, active_season });
+    const resolved_season = await resolveSeason(check_in);
+    res.status(200).json({
+      rooms,
+      available_count: availableCount,
+      active_season: resolved_season,
+      resolved_season,
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

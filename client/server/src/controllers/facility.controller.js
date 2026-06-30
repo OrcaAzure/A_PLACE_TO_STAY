@@ -17,18 +17,19 @@ import {
   resolveVenueFacilityRowByFacilityId,
   venueRateMeta,
 } from '../services/facility.service.js';
-import { getActiveLodgingSeason } from '../services/season.service.js';
+import { resolveLodgingSeasonForDate } from '../services/season.service.js';
 
 const VALID_SEASONS = ['Regular', 'Peak', 'N/A'];
 
 /** Admin facilities page: venues, meals, and add-on services. */
 export const getFacilitiesOverview = async (req, res) => {
   try {
+    const today = new Date().toISOString().slice(0, 10);
     const [facilities, mealRows, extraRows, active_lodging_season] = await Promise.all([
       fetchFacilitiesWithRates(),
       fetchMealRateRows(),
       fetchExtraServiceRows(),
-      getActiveLodgingSeason(),
+      resolveLodgingSeasonForDate(today),
     ]);
 
     res.status(200).json({
