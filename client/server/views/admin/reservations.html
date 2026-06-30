@@ -18,14 +18,22 @@
 </head>
 <body>
   <div id="page-content" class="p-6 space-y-6 max-w-[1600px] mx-auto w-full">
+    <div class="res-manage-intro">
+      <div>
+        <h2 class="res-manage-intro-title">Manage reservations</h2>
+        <p class="res-manage-intro-text">Review guest requests, create room stays, and book venue spaces. Open the <a href="calendar.html" class="text-primary font-semibold hover:underline">calendar</a> for a full schedule view.</p>
+      </div>
+      <a href="calendar.html" class="res-manage-cal-link">
+        <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+        Open calendar
+      </a>
+    </div>
     <div id="action-cards-mount"></div>
-    <div id="timeline-mount" class="w-full flex flex-col"></div>
   </div>
 
   <script type="module">
-    import { requireAuth }          from '/assets/js/services/auth.js';
-    import { initAppLayout }        from '/assets/js/layout/ui.js';
-    import { mountBookingTimeline } from '/assets/js/features/timeline.js';
+    import { requireAuth }   from '/assets/js/services/auth.js';
+    import { initAppLayout } from '/assets/js/layout/ui.js';
     import { getBookings, getGroups, getFacilityBookings } from '/assets/js/services/api.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
@@ -57,12 +65,6 @@
       title:      'Reservations',
       subtitle:   'Rooms, groups & venue spaces',
       deferEnhancements: true,
-    });
-
-    await mountBookingTimeline({
-      mountEl: document.getElementById('timeline-mount'),
-      title:   'Reservation calendar',
-      onData:  () => { syncPendingBadge(); },
     });
 
     const { initAdminEnhancements } = await import('/assets/js/layout/animations.js');

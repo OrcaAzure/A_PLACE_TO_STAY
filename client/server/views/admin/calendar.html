@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Calendar | AptSpace Admin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="/assets/js/config/tailwind-theme-base.js"></script>
+  <script src="/assets/js/config/tailwind-admin.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <link rel="stylesheet" href="/assets/css/components/components.css" />
+  <link rel="stylesheet" href="/assets/css/global/responsive.css" />
+  <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
+  <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
+  <link rel="stylesheet" href="/assets/css/features/reservation-admin.css" />
+</head>
+<body>
+  <div id="page-content" class="cal-page-wrap p-2 sm:p-4 w-full">
+    <div id="calendar-mount" class="w-full"></div>
+  </div>
+
+  <script type="module">
+    import { requireAuth }   from '/assets/js/services/auth.js';
+    import { initAppLayout } from '/assets/js/layout/ui.js';
+    import { mountAdminCalendar } from '/assets/js/features/timeline.js';
+
+    if (!requireAuth()) throw new Error('Not authenticated');
+
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'calendar',
+      title:      'Calendar',
+      subtitle:   'Room stays & venue events',
+      deferEnhancements: true,
+    });
+
+    await mountAdminCalendar({
+      mountEl: document.getElementById('calendar-mount'),
+      title:   'Reservation calendar',
+    });
+
+    const { initAdminEnhancements } = await import('/assets/js/layout/animations.js');
+    await initAdminEnhancements();
+  </script>
+</body>
+</html>

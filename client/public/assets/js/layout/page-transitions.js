@@ -11,6 +11,7 @@ const GUEST_PAGES = new Set([
 
 const ADMIN_PAGES = new Set([
   'dashboard.html',
+  'calendar.html',
   'reservations.html',
   'facilities.html',
   'residents.html',

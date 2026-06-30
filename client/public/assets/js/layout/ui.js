@@ -19,7 +19,8 @@ import {
 
 export const ADMIN_NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin/dashboard.html' },
-  { id: 'reservations', label: 'Reservations', icon: 'calendar_month', href: '/admin/reservations.html' },
+  { id: 'calendar', label: 'Calendar', icon: 'calendar_month', href: '/admin/calendar.html' },
+  { id: 'reservations', label: 'Reservations', icon: 'event_note', href: '/admin/reservations.html' },
   { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/admin/facilities.html' },
   { id: 'residents', label: 'Guest Access', icon: 'badge', href: '/admin/residents.html' },
   { id: 'payments', label: 'Payments', icon: 'payments', href: '/admin/payments.html' },
@@ -29,9 +30,9 @@ export const ADMIN_NAV = [
 /** Mobile bottom bar — 5 items max for readable single-row layout (Payments via dashboard). */
 export const ADMIN_MOBILE_NAV = [
   { id: 'dashboard', label: 'Home', icon: 'dashboard', href: '/admin/dashboard.html' },
-  { id: 'reservations', label: 'Bookings', icon: 'calendar_month', href: '/admin/reservations.html' },
+  { id: 'calendar', label: 'Calendar', icon: 'calendar_month', href: '/admin/calendar.html' },
+  { id: 'reservations', label: 'Manage', icon: 'event_note', href: '/admin/reservations.html' },
   { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/admin/facilities.html' },
-  { id: 'residents', label: 'Guests', icon: 'badge', href: '/admin/residents.html' },
   { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings.html' },
 ];
 
@@ -223,7 +224,8 @@ function guestBottomNavLinkClass(active, id) {
 
 const ADMIN_MOBILE_LABELS = {
   dashboard: 'Home',
-  reservations: 'Bookings',
+  calendar: 'Calendar',
+  reservations: 'Manage',
   facilities: 'Facilities',
   residents: 'Guest Access',
   payments: 'Payments',

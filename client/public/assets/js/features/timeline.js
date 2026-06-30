@@ -184,14 +184,14 @@ export function renderTimelineRow(room, barsHtml, todayCol, totalDays, { hasBook
 function renderSimpleSummary(stats) {
   const parts = [];
   if (stats.pending > 0) {
-    parts.push(`<strong>${stats.pending}</strong> need${stats.pending === 1 ? 's' : ''} your approval`);
+    parts.push(`<strong>${stats.pending}</strong> pending approval`);
   }
   if (stats.inMonth > 0) parts.push(`<strong>${stats.inMonth}</strong> active this month`);
   if (stats.cancelledInMonth > 0) {
-    parts.push(`<strong>${stats.cancelledInMonth}</strong> cancelled this month <span class="text-on-surface-variant">(shown muted — slot is free)</span>`);
+    parts.push(`<strong>${stats.cancelledInMonth}</strong> cancelled`);
   }
-  if (!parts.length) return 'Tap a reservation to see full details.';
-  return parts.join(' · ') + '. Tap any reservation to see full details.';
+  if (!parts.length) return 'Tap an event to see details.';
+  return parts.join(' · ') + '. Tap an event to see details.';
 }
 
 function buildMonthWeeks(year, month, todayStr) {
@@ -395,32 +395,38 @@ function bindMonthCalendar(root, { bookings, rawBookingsById, rawVenueById, onRe
   });
 }
 
-export function renderTimelineShell({ title }) {
-  return `
-    <section class="mac-cal-shell" id="timeline-section">
-      <header class="mac-cal-header">
-        <div class="mac-cal-header-top">
-          <div class="mac-cal-title-block">
-            <h3 class="mac-cal-title">${escapeHtml(title)}</h3>
-            <p class="mac-cal-summary" id="timeline-summary">Loading…</p>
-          </div>
-          <div class="mac-cal-nav">
-            <button type="button" id="timeline-prev" class="mac-cal-nav-btn" aria-label="Previous month">
-              <span class="material-symbols-outlined">chevron_left</span>
-            </button>
-            <h4 class="mac-cal-month" id="timeline-period">Loading…</h4>
-            <button type="button" id="timeline-next" class="mac-cal-nav-btn" aria-label="Next month">
-              <span class="material-symbols-outlined">chevron_right</span>
-            </button>
-            <button type="button" id="timeline-today" class="mac-cal-today-btn">Today</button>
-          </div>
-        </div>
+export function renderTimelineShell({ title, compactLegend = false }) {
+  const legendHtml = compactLegend ? '' : `
         <div class="mac-cal-legend" aria-hidden="true">
           <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--pending"></span>Needs approval</span>
           <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--confirmed"></span>Room confirmed</span>
           <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--venue"></span>Venue booking</span>
-          <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--cancelled"></span>Cancelled (audit only)</span>
+          <span class="mac-legend-item"><span class="mac-legend-dot mac-legend-dot--cancelled"></span>Cancelled</span>
+        </div>`;
+
+  return `
+    <section class="mac-cal-shell" id="timeline-section">
+      <header class="mac-cal-header">
+        <div class="mac-cal-header-row">
+          <h3 class="mac-cal-title">${escapeHtml(title)}</h3>
+          <div class="mac-cal-nav">
+            <button type="button" id="cal-filters-toggle" class="cal-filters-toggle mac-cal-nav-btn lg:hidden" aria-label="Show filters">
+              <span class="material-symbols-outlined">filter_list</span>
+            </button>
+            <div class="mac-cal-nav-group" aria-label="Month navigation">
+              <button type="button" id="timeline-prev" class="mac-cal-nav-btn" aria-label="Previous month">
+                <span class="material-symbols-outlined">chevron_left</span>
+              </button>
+              <h4 class="mac-cal-month" id="timeline-period">Loading…</h4>
+              <button type="button" id="timeline-next" class="mac-cal-nav-btn" aria-label="Next month">
+                <span class="material-symbols-outlined">chevron_right</span>
+              </button>
+            </div>
+            <button type="button" id="timeline-today" class="mac-cal-today-btn">Today</button>
+          </div>
         </div>
+        <p class="mac-cal-summary" id="timeline-summary">Loading…</p>
+        ${legendHtml}
       </header>
       <div id="mac-cal-mount" class="mac-cal-body"></div>
     </section>`;
@@ -814,8 +820,129 @@ export function openVenueBookingModal(rawBooking, { onRefresh } = {}) {
   });
 }
 
-export async function mountBookingTimeline({ mountEl, title, onData }) {
-  if (!mountEl) return;
+const DEFAULT_CAL_FILTERS = {
+  showRoom: true,
+  showVenue: true,
+  showPending: true,
+  showApproved: true,
+  showCancelled: false,
+};
+
+function applyCalendarFilters(bookings, filters) {
+  return bookings.filter((b) => {
+    const st = normStatus(b.status);
+    if (b.kind === 'venue') {
+      if (!filters.showVenue) return false;
+    } else if (!filters.showRoom) {
+      return false;
+    }
+    if (st === 'pending' && !filters.showPending) return false;
+    if (st === 'approved' && !filters.showApproved) return false;
+    if (st === 'cancelled' && !filters.showCancelled) return false;
+    return true;
+  });
+}
+
+function renderFilterRow({ id, checked, attrs = '', label, swatchClass = '' }) {
+  const swatch = swatchClass
+    ? `cal-filter-box cal-filter-swatch ${swatchClass}`
+    : 'cal-filter-box';
+  return `
+    <label class="cal-filter-row">
+      <input type="checkbox" class="cal-filter-input"${id ? ` id="${id}"` : ''} ${checked ? 'checked' : ''} ${attrs} />
+      <span class="${swatch}" aria-hidden="true"></span>
+      <span class="cal-filter-label">${label}</span>
+    </label>`;
+}
+
+function renderMiniCalendar(year, month, todayStr) {
+  const weeks = buildMonthWeeks(year, month, todayStr);
+  const weekdayRow = WEEKDAYS.map((d) =>
+    `<span class="cal-mini-wd">${d.charAt(0)}</span>`).join('');
+  const weeksHtml = weeks.map((week) => {
+    const daysHtml = week.map((day) => {
+      const cls = [
+        'cal-mini-day',
+        !day.inMonth ? 'cal-mini-day--outside' : '',
+        day.isToday ? 'cal-mini-day--today' : '',
+      ].filter(Boolean).join(' ');
+      return `<button type="button" class="${cls}" data-mini-day="${day.iso}" aria-label="${day.iso}">${day.dayNum}</button>`;
+    }).join('');
+    return `<div class="cal-mini-week">${daysHtml}</div>`;
+  }).join('');
+
+  return `
+    <div class="cal-mini-cal" aria-label="Jump to date">
+      <div class="cal-mini-head">
+        <button type="button" class="cal-mini-nav" data-mini-nav="-1" aria-label="Previous month">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <span class="cal-mini-month">${MONTHS_FULL[month]} ${year}</span>
+        <button type="button" class="cal-mini-nav" data-mini-nav="1" aria-label="Next month">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
+      <div class="cal-mini-weekdays">${weekdayRow}</div>
+      <div class="cal-mini-grid">${weeksHtml}</div>
+    </div>`;
+}
+
+function renderCalendarFilterSidebar(filters) {
+  const typeChecks = `
+    <section class="cal-filter-section">
+      <h4 class="cal-filter-title">Show on calendar</h4>
+      <div class="cal-filter-list">
+        ${renderFilterRow({ checked: filters.showRoom, attrs: 'data-filter-bool="showRoom"', label: 'PCALM room stays' })}
+        ${renderFilterRow({ checked: filters.showVenue, attrs: 'data-filter-bool="showVenue"', label: 'Campus venue events' })}
+      </div>
+    </section>`;
+
+  const statusChecks = `
+    <section class="cal-filter-section">
+      <h4 class="cal-filter-title">Status</h4>
+      <div class="cal-filter-list">
+        ${renderFilterRow({ checked: filters.showPending, attrs: 'data-filter-bool="showPending"', label: 'Needs approval', swatchClass: 'cal-swatch--pending' })}
+        ${renderFilterRow({ checked: filters.showApproved, attrs: 'data-filter-bool="showApproved"', label: 'Confirmed', swatchClass: 'cal-swatch--confirmed' })}
+        ${renderFilterRow({ checked: filters.showCancelled, attrs: 'data-filter-bool="showCancelled"', label: 'Cancelled', swatchClass: 'cal-swatch--cancelled' })}
+      </div>
+    </section>`;
+
+  return `
+    <aside class="cal-sidebar" id="cal-sidebar">
+      <button type="button" class="cal-sidebar-close" id="cal-sidebar-close" aria-label="Close filters">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+      <div class="cal-sidebar-inner">
+        <div class="cal-sidebar-mini" id="cal-mini-mount"></div>
+        ${typeChecks}
+        ${statusChecks}
+        <section class="cal-filter-section cal-filter-legend">
+          <h4 class="cal-filter-title">Colors on calendar</h4>
+          <ul class="cal-legend-list">
+            <li><span class="cal-legend-swatch cal-swatch--pending"></span>Needs approval</li>
+            <li><span class="cal-legend-swatch cal-swatch--confirmed"></span>Confirmed / upcoming</li>
+            <li><span class="cal-legend-swatch cal-swatch--venue"></span>Venue event</li>
+            <li><span class="cal-legend-swatch cal-swatch--in-progress"></span>In progress — guest is here now</li>
+            <li><span class="cal-legend-swatch cal-swatch--completed"></span>Completed — stay or event is done</li>
+            <li><span class="cal-legend-swatch cal-swatch--cancelled"></span>Cancelled</li>
+          </ul>
+        </section>
+      </div>
+    </aside>`;
+}
+
+function renderCalendarPageShell({ title }) {
+  return `
+    <div class="cal-page">
+      ${renderCalendarFilterSidebar(DEFAULT_CAL_FILTERS)}
+      <div class="cal-main">
+        ${renderTimelineShell({ title, compactLegend: true })}
+      </div>
+    </div>`;
+}
+
+function createCalendarController({ mountEl, title, onData, withFilters = false }) {
+  if (!mountEl) return null;
 
   const now = new Date();
   const todayStr = toLocalDateString(now);
@@ -825,24 +952,80 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
   let allBookings = [];
   let rawBookingsById = {};
   let rawVenueById = {};
+  let filters = structuredClone(DEFAULT_CAL_FILTERS);
+
+  function filteredBookings() {
+    return withFilters ? applyCalendarFilters(allBookings, filters) : allBookings;
+  }
+
+  function renderFilters() {
+    if (!withFilters) return;
+    const inner = document.querySelector('#cal-sidebar .cal-sidebar-inner');
+    if (!inner) return;
+    const parsed = new DOMParser().parseFromString(
+      renderCalendarFilterSidebar(filters),
+      'text/html',
+    ).querySelector('.cal-sidebar-inner');
+    if (parsed) inner.replaceChildren(...parsed.childNodes);
+    const miniMount = document.getElementById('cal-mini-mount');
+    if (miniMount) miniMount.innerHTML = renderMiniCalendar(viewYear, viewMonth, todayStr);
+    bindFilterEvents();
+  }
 
   function renderMonth() {
     const periodEl = document.getElementById('timeline-period');
     if (periodEl) periodEl.textContent = `${MONTHS_FULL[viewMonth]} ${viewYear}`;
 
-    const stats = computeStats(allBookings, todayStr, viewYear, viewMonth);
+    const visible = filteredBookings();
+    const stats = computeStats(visible, todayStr, viewYear, viewMonth);
     const summaryEl = document.getElementById('timeline-summary');
     if (summaryEl) summaryEl.innerHTML = renderSimpleSummary(stats);
 
+    const miniMount = document.getElementById('cal-mini-mount');
+    if (miniMount) {
+      miniMount.innerHTML = renderMiniCalendar(viewYear, viewMonth, todayStr);
+      bindMiniCalendarEvents();
+    }
+
     const mount = document.getElementById('mac-cal-mount');
     if (!mount) return;
-    mount.innerHTML = renderMonthCalendar(allBookings, viewYear, viewMonth, todayStr);
+    mount.innerHTML = renderMonthCalendar(visible, viewYear, viewMonth, todayStr);
     bindMonthCalendar(mount, {
-      bookings: allBookings,
+      bookings: visible,
       rawBookingsById,
       rawVenueById,
       onRefresh: refresh,
     });
+  }
+
+  function bindMiniCalendarEvents() {
+    document.querySelectorAll('[data-mini-day]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const iso = btn.getAttribute('data-mini-day');
+        const d = new Date(`${iso}T00:00:00`);
+        viewYear = d.getFullYear();
+        viewMonth = d.getMonth();
+        renderMonth();
+      });
+    });
+    document.querySelectorAll('[data-mini-nav]').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        shiftMonth(Number(btn.getAttribute('data-mini-nav')));
+      });
+    });
+  }
+
+  function bindFilterEvents() {
+    document.querySelectorAll('[data-filter-bool]').forEach((input) => {
+      input.addEventListener('change', () => {
+        const key = input.getAttribute('data-filter-bool');
+        filters[key] = input.checked;
+        renderMonth();
+      });
+    });
+
+    bindMiniCalendarEvents();
   }
 
   async function refresh() {
@@ -850,13 +1033,18 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
       const [rawBookings, rawVenues] = await Promise.all([getBookings(), getFacilityBookings()]);
       const roomRows = rawBookings
         .filter((b) => !b.group_id && ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
-        .map(normalizeBooking);
+        .map((b) => ({ ...normalizeBooking(b), kind: 'room' }));
       const venueRows = rawVenues
         .filter((b) => ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
         .map(normalizeFacilityBooking);
       allBookings = [...roomRows, ...venueRows];
       rawBookingsById = Object.fromEntries(rawBookings.map((b) => [String(b.id), b]));
       rawVenueById = Object.fromEntries(rawVenues.map((b) => [String(b.id), b]));
+
+      if (withFilters) {
+        renderFilters();
+      }
+
       renderMonth();
       onData?.({ bookings: allBookings });
     } catch (err) {
@@ -867,24 +1055,53 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
     }
   }
 
-  mountEl.innerHTML = renderTimelineShell({ title });
-
-  document.getElementById('timeline-prev')?.addEventListener('click', () => {
-    viewMonth -= 1;
+  function shiftMonth(delta) {
+    viewMonth += delta;
     if (viewMonth < 0) { viewMonth = 11; viewYear -= 1; }
-    renderMonth();
-  });
-  document.getElementById('timeline-next')?.addEventListener('click', () => {
-    viewMonth += 1;
     if (viewMonth > 11) { viewMonth = 0; viewYear += 1; }
     renderMonth();
-  });
+  }
+
+  mountEl.innerHTML = withFilters
+    ? renderCalendarPageShell({ title })
+    : renderTimelineShell({ title });
+
+  document.getElementById('timeline-prev')?.addEventListener('click', () => shiftMonth(-1));
+  document.getElementById('timeline-next')?.addEventListener('click', () => shiftMonth(1));
   document.getElementById('timeline-today')?.addEventListener('click', () => {
     viewYear = now.getFullYear();
     viewMonth = now.getMonth();
     renderMonth();
   });
 
-  await refresh();
-  window.addEventListener('booking:updated', refresh);
+  document.getElementById('cal-filters-toggle')?.addEventListener('click', () => {
+    document.getElementById('cal-sidebar')?.classList.toggle('cal-sidebar--open');
+  });
+
+  document.getElementById('cal-sidebar-close')?.addEventListener('click', () => {
+    document.getElementById('cal-sidebar')?.classList.remove('cal-sidebar--open');
+  });
+
+  mountEl.querySelector('.cal-page')?.addEventListener('click', (e) => {
+    const sidebar = document.getElementById('cal-sidebar');
+    if (!sidebar?.classList.contains('cal-sidebar--open')) return;
+    if (sidebar.contains(e.target) || e.target.closest('#cal-filters-toggle')) return;
+    sidebar.classList.remove('cal-sidebar--open');
+  });
+
+  return { refresh };
+}
+
+export async function mountBookingTimeline({ mountEl, title, onData }) {
+  const controller = createCalendarController({ mountEl, title, onData, withFilters: false });
+  if (!controller) return;
+  await controller.refresh();
+  window.addEventListener('booking:updated', controller.refresh);
+}
+
+export async function mountAdminCalendar({ mountEl, title = 'Calendar', onData }) {
+  const controller = createCalendarController({ mountEl, title, onData, withFilters: true });
+  if (!controller) return;
+  await controller.refresh();
+  window.addEventListener('booking:updated', controller.refresh);
 }
