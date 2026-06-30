@@ -1,10 +1,11 @@
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
 import {
-  paymentDetailSelect,
   ensureInvoiceForBooking,
+  ensureInvoiceForFacilityBooking,
   loadPaymentDetail,
   enrichPaymentRows,
+  listAllPaymentRows,
   sendInvoiceEmail,
   updateInvoiceBilling,
   markInvoicePaid,
@@ -16,21 +17,9 @@ const ADMIN_ROLES = ['Super Admin', 'Admin'];
 export const getAllPayments = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
-    let rows;
-    if (ADMIN_ROLES.includes(role)) {
-      [rows] = await pool.query(
-        `${paymentDetailSelect}
-         WHERE b.status = 'Approved'
-         ORDER BY
-           CASE WHEN p.status = 'Pending' THEN 0 ELSE 1 END,
-           p.created_at DESC`
-      );
-    } else {
-      [rows] = await pool.query(
-        `${paymentDetailSelect} WHERE b.user_id = ? AND b.status = 'Approved' ORDER BY p.created_at DESC`,
-        [userId]
-      );
-    }
+    const rows = await listAllPaymentRows(
+      ADMIN_ROLES.includes(role) ? {} : { userId }
+    );
     const payments = await enrichPaymentRows(rows);
     res.status(200).json({ payments });
   } catch (error) {

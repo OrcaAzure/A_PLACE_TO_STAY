@@ -400,12 +400,13 @@ DELIMITER ;
 -- ============================================
 
 CREATE TABLE IF NOT EXISTS payments (
-    id               INT AUTO_INCREMENT PRIMARY KEY,
-    bookings_room_id INT NOT NULL,
-    subtotal         DECIMAL(10,2) DEFAULT NULL,
-    discount_amount  DECIMAL(10,2) NOT NULL DEFAULT 0,
-    discount_note    VARCHAR(255) DEFAULT NULL,
-    amount           DECIMAL(10,2) NOT NULL,
+    id                    INT AUTO_INCREMENT PRIMARY KEY,
+    bookings_room_id      INT NULL,
+    bookings_facility_id  INT NULL,
+    subtotal              DECIMAL(10,2) DEFAULT NULL,
+    discount_amount       DECIMAL(10,2) NOT NULL DEFAULT 0,
+    discount_note         VARCHAR(255) DEFAULT NULL,
+    amount                DECIMAL(10,2) NOT NULL,
     method     ENUM(
                  'Cash',
                  'GCash',
@@ -427,7 +428,19 @@ CREATE TABLE IF NOT EXISTS payments (
         ON DELETE RESTRICT
         ON UPDATE CASCADE,
 
-    CONSTRAINT chk_amount CHECK (amount > 0)
+    CONSTRAINT fk_payments_bookings_facility
+        FOREIGN KEY (bookings_facility_id) REFERENCES bookings_facilities(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT chk_payment_booking_ref CHECK (
+        (bookings_room_id IS NOT NULL AND bookings_facility_id IS NULL) OR
+        (bookings_room_id IS NULL AND bookings_facility_id IS NOT NULL)
+    ),
+
+    CONSTRAINT chk_amount CHECK (amount > 0),
+
+    UNIQUE KEY uq_payment_facility (bookings_facility_id)
 );
 
 -- ============================================

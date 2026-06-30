@@ -2,7 +2,7 @@
  * Admin billing — clickable list; invoice review opens in a popup modal.
  */
 
-import { getPayments, updatePayment, sendPaymentInvoice } from '/assets/js/services/api.js';
+import { getPayments, getPaymentById, updatePayment, sendPaymentInvoice } from '/assets/js/services/api.js';
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer'];
@@ -44,9 +44,22 @@ function formatSentAt(value) {
   return `Emailed ${new Date(value).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
 }
 
+function invoiceEmailButtonLabel(p) {
+  const email = p.guest_email || 'guest';
+  return p.invoice_sent_at ? `Resend invoice to ${email}` : `Email invoice to ${email}`;
+}
+
+function invoiceEmailHint(p) {
+  if (p.invoice_sent_at) {
+    return 'Use resend after changing the discount or if the guest did not receive it.';
+  }
+  return 'Not emailed yet — send the invoice to the guest\u2019s booking email.';
+}
+
 function roomShort(p) {
   const room = p.room_number ? `Rm ${p.room_number}` : 'Room';
-  return `${p.building_name || 'GMC'} · ${room}`;
+  const building = p.building_name || 'Building';
+  return `${building} · ${room}`;
 }
 
 function roomLabel(p) {
@@ -54,6 +67,62 @@ function roomLabel(p) {
   const room = p.room_number ? `Room ${p.room_number}` : 'Room';
   const type = p.room_type ? ` (${p.room_type})` : '';
   return `${building} · ${room}${type}`;
+}
+
+function isVenueInvoice(p) {
+  if (!p) return false;
+  if (p.invoice_kind === 'venue') return true;
+  if (p.facility_booking_id != null && p.facility_booking_id !== '') return true;
+  if ((p.facility_name || p.facility_category) && !p.room_number) return true;
+  if (p.event_date && !p.check_in) return true;
+  return false;
+}
+
+function formatTime12(t) {
+  if (!t) return '';
+  const [h, m] = String(t).slice(0, 5).split(':').map(Number);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+function venueLabel(p) {
+  const parts = [p.facility_category, p.facility_room_code || p.facility_name].filter(Boolean);
+  return parts.join(' · ') || 'Venue';
+}
+
+function venueShort(p) {
+  if (p.facility_room_code) {
+    return `${p.facility_category || 'Venue'} · ${p.facility_room_code}`;
+  }
+  return venueLabel(p);
+}
+
+function formatDateLongSingle(dateStr) {
+  if (!dateStr) return '—';
+  const raw = String(dateStr).slice(0, 10);
+  return new Date(`${raw}T12:00:00`).toLocaleDateString('en-PH', {
+    month: 'long', day: 'numeric', year: 'numeric',
+  });
+}
+
+function formatVenueWhen(p) {
+  if (!p.event_date) return '—';
+  const raw = String(p.event_date).slice(0, 10);
+  const date = new Date(`${raw}T12:00:00`).toLocaleDateString('en-PH', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+  const start = formatTime12(p.start_time);
+  const end = formatTime12(p.end_time);
+  return start && end ? `${date} · ${start}–${end}` : date;
+}
+
+function bookingShort(p) {
+  return isVenueInvoice(p) ? venueShort(p) : roomShort(p);
+}
+
+function bookingDatesShort(p) {
+  return isVenueInvoice(p) ? formatVenueWhen(p) : formatDateShort(p.check_in, p.check_out);
 }
 
 function dueAmount(p) {
@@ -182,11 +251,12 @@ function renderListRow(p) {
       aria-selected="${isSelected}">
       <span class="billing-row__main">
         <span class="billing-row__guest">${escapeHtml(p.guest_name || 'Guest')}</span>
-        <span class="billing-row__meta">${escapeHtml(roomShort(p))} · ${escapeHtml(formatDateShort(p.check_in, p.check_out))}</span>
+        <span class="billing-row__meta">${escapeHtml(bookingShort(p))} · ${escapeHtml(bookingDatesShort(p))}</span>
       </span>
       <span class="billing-row__side">
         <span class="billing-row__amount">${fmt(isPending ? due : p.amount)}</span>
         <span class="billing-row__badges">
+          ${isVenueInvoice(p) ? '<span class="billing-row__tag billing-row__tag--venue">Venue</span>' : '<span class="billing-row__tag billing-row__tag--room">Room</span>'}
           <span class="billing-row__status billing-row__status--${isPending ? 'pending' : 'paid'}">${isPending ? 'Due' : 'Paid'}</span>
           ${isPending ? emailed : ''}
         </span>
@@ -201,11 +271,26 @@ function stayNights(p) {
 }
 
 function chargeLines(p) {
+  const bookingTotal = Number(p.booking_total || p.subtotal || 0);
+
+  if (isVenueInvoice(p)) {
+    const time = [formatTime12(p.start_time), formatTime12(p.end_time)].filter(Boolean).join(' – ');
+    const packageNote = p.facility_package ? ` · ${p.facility_package}` : '';
+    return {
+      lines: [{
+        icon: 'sports_basketball',
+        label: p.facility_name || 'Venue rental',
+        detail: `${venueLabel(p)}${time ? ` · ${time}` : ''} · ${p.guest_count || 1} guest${Number(p.guest_count) === 1 ? '' : 's'}${p.season ? ` · ${p.season}` : ''}${packageNote}`,
+        amount: bookingTotal,
+      }],
+      bookingTotal,
+    };
+  }
+
   const meals = (p.meals || []).filter((m) => Number(m.quantity) > 0);
   const fees = p.fees || [];
   const mealTotal = meals.reduce((s, m) => s + Number(m.subtotal || 0), 0);
   const feeTotal = fees.reduce((s, f) => s + Number(f.amount || 0), 0);
-  const bookingTotal = Number(p.booking_total || p.subtotal || 0);
   const roomTotal = Math.max(0, Math.round((bookingTotal - mealTotal - feeTotal) * 100) / 100);
   const nights = stayNights(p);
   const lines = [];
@@ -292,6 +377,40 @@ function renderInfoChip(icon, label, value) {
 }
 
 function renderReservationSection(p) {
+  if (isVenueInvoice(p)) {
+    const timeLabel = `${formatTime12(p.start_time)} – ${formatTime12(p.end_time)}`;
+    const chips = [
+      renderInfoChip('event', 'Event date', formatDateLongSingle(p.event_date)),
+      renderInfoChip('schedule', 'Time', timeLabel),
+      renderInfoChip('group', 'Guests', `${p.guest_count || 1} expected`),
+      renderInfoChip('location_on', 'Venue', venueLabel(p)),
+      p.season ? renderInfoChip('wb_sunny', 'Season', p.season) : '',
+      p.facility_package ? renderInfoChip('inventory_2', 'Package', p.facility_package) : '',
+    ].filter(Boolean).join('');
+
+    const extras = [
+      p.guest_email ? `<div class="billing-meta-row"><span>Email</span><span>${escapeHtml(p.guest_email)}</span></div>` : '',
+      p.notes ? `<div class="billing-meta-row"><span>Booking notes</span><span>${escapeHtml(p.notes)}</span></div>` : '',
+      `<div class="billing-meta-row"><span>Booking ref</span><span>#${p.facility_booking_id}</span></div>`,
+      '<div class="billing-meta-row"><span>Type</span><span>Venue / facility</span></div>',
+    ].filter(Boolean).join('');
+
+    return `
+    <section class="billing-reservation-card">
+      <h4 class="billing-section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">meeting_room</span>
+        Venue booking details
+      </h4>
+      <div class="billing-info-chips">${chips}</div>
+      ${extras ? `<div class="billing-meta-list">${extras}</div>` : ''}
+      <h4 class="billing-section-title billing-section-title--sub">
+        <span class="material-symbols-outlined" aria-hidden="true">request_quote</span>
+        Charge breakdown
+      </h4>
+      ${renderChargeTable(p)}
+    </section>`;
+  }
+
   const nights = stayNights(p);
   const chips = [
     renderInfoChip('calendar_month', 'Stay', formatDateRange(p.check_in, p.check_out)),
@@ -337,10 +456,10 @@ function renderDetailHeader(p, { statusLabel, statusClass }) {
     <header class="billing-detail__header billing-detail__header--styled">
       <div class="billing-detail__header-main">
         <div class="billing-detail__avatar" aria-hidden="true">
-          <span class="material-symbols-outlined">person</span>
+          <span class="material-symbols-outlined">${isVenueInvoice(p) ? 'meeting_room' : 'person'}</span>
         </div>
         <div>
-          <p class="billing-detail__eyebrow">Invoice #${p.id} · ${statusLabel}</p>
+          <p class="billing-detail__eyebrow">Invoice #${p.id} · ${isVenueInvoice(p) ? 'Venue' : 'Housing'} · ${statusLabel}</p>
           <h3 class="billing-detail__title" id="billing-modal-title">${escapeHtml(p.guest_name || 'Guest')}</h3>
         </div>
       </div>
@@ -371,7 +490,7 @@ function renderBillingColumn(p, { isPending }) {
         <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
         Edit &amp; approve
       </h4>
-      <p class="billing-detail__lead">When a stay is approved, the housing invoice is emailed automatically to the guest. Adjust discount if needed, then approve payment.</p>
+      <p class="billing-detail__lead">When a stay or venue booking is approved, the invoice is emailed automatically to the guest. Adjust discount if needed, then approve payment.</p>
 
       <form class="billing-edit-form" data-detail-form="${p.id}">
         <div class="billing-edit-form__grid">
@@ -404,11 +523,10 @@ function renderBillingColumn(p, { isPending }) {
         </div>
         <button type="button" class="invoice-btn-secondary" data-send-invoice="${p.id}">
           <span class="material-symbols-outlined" aria-hidden="true">send</span>
-          Resend invoice to ${escapeHtml(p.guest_email || 'guest')}
+          ${escapeHtml(invoiceEmailButtonLabel(p))}
         </button>
         <p class="billing-email-recipient-hint">
-          Invoices are sent automatically to the guest&apos;s email when their stay is approved.
-          Use resend after changing the discount or if the guest did not receive it.
+          ${escapeHtml(invoiceEmailHint(p))}
         </p>
         <label class="billing-edit-form__field">
           <span>Payment method (required to approve)</span>
@@ -511,9 +629,9 @@ function renderList() {
   listEl.innerHTML = `<div class="billing-table">${list.map(renderListRow).join('')}</div>`;
 
   listEl.querySelectorAll('[data-invoice-row]').forEach((btn) => {
-    btn.addEventListener('click', () => {
+    btn.addEventListener('click', async () => {
       hideFeedback(document.getElementById('payments-feedback'));
-      openInvoiceModal(btn.getAttribute('data-invoice-row'));
+      await openInvoiceModal(btn.getAttribute('data-invoice-row'));
     });
   });
 }
@@ -522,19 +640,30 @@ function getModal() {
   return document.getElementById('billing-invoice-modal');
 }
 
-function openInvoiceModal(id) {
+async function openInvoiceModal(id) {
   state.selectedId = id;
   renderList();
 
-  const p = selectedPayment();
   const modal = getModal();
   const detailEl = document.getElementById('invoice-detail');
-  if (!p || !modal || !detailEl) return;
+  if (!modal || !detailEl) return;
 
-  detailEl.innerHTML = renderDetailPanel(p);
-  bindDetailActions(p);
   modal.classList.remove('is-hidden');
   modal.hidden = false;
+  detailEl.innerHTML = '<p class="billing-detail-loading">Loading invoice…</p>';
+
+  try {
+    const p = await getPaymentById(id);
+    const idx = state.payments.findIndex((x) => String(x.id) === String(id));
+    if (idx >= 0) state.payments[idx] = p;
+    else state.payments.push(p);
+    renderList();
+
+    detailEl.innerHTML = renderDetailPanel(p);
+    bindDetailActions(p);
+  } catch (err) {
+    detailEl.innerHTML = `<p class="billing-detail-error">${escapeHtml(err.message || 'Could not load invoice.')}</p>`;
+  }
 }
 
 function closeInvoiceModal() {
@@ -576,18 +705,20 @@ function bindDetailActions(p) {
 
   detailEl?.querySelector('[data-send-invoice]')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget;
-    if (!window.confirm(`Resend invoice #${p.id} to ${p.guest_email}?`)) return;
+    const fresh = selectedPayment() || p;
+    const verb = fresh.invoice_sent_at ? 'Resend' : 'Email';
+    if (!window.confirm(`${verb} invoice #${fresh.id} to ${fresh.guest_email}?`)) return;
     btn.disabled = true;
-    btn.textContent = 'Sending…';
+    const label = btn.innerHTML;
+    btn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span> Sending…';
     try {
-      const result = await sendPaymentInvoice(p.id);
+      const result = await sendPaymentInvoice(fresh.id);
       await reload({ keepSelection: true, keepModalOpen: true });
       showFeedback(pageFeedback, result.message || 'Invoice emailed.', 'ok');
     } catch (err) {
       showFeedback(detailFeedback, err.message || 'Could not send email.', 'error');
-    } finally {
       btn.disabled = false;
-      btn.textContent = `Resend invoice to ${p.guest_email || 'guest'}`;
+      btn.innerHTML = label;
     }
   });
 
@@ -684,7 +815,7 @@ async function reload({ keepSelection = false, keepModalOpen = false } = {}) {
   renderList();
 
   if (wasOpen && state.payments.some((x) => String(x.id) === String(prevId))) {
-    openInvoiceModal(prevId);
+    await openInvoiceModal(prevId);
   } else if (!keepModalOpen) {
     closeInvoiceModal();
   }

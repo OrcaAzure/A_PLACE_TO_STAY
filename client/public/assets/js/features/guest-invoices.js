@@ -1,5 +1,5 @@
 /**
- * Guest housing invoices — view amount due after stay is approved.
+ * Guest housing & venue invoices — view amount due after booking is approved.
  */
 
 import { getPayments } from '/assets/js/services/api.js';
@@ -21,6 +21,10 @@ function dueAmount(p) {
   return Math.max(0.01, subtotal - discount);
 }
 
+function isVenueInvoice(p) {
+  return p.invoice_kind === 'venue' || Boolean(p.facility_booking_id);
+}
+
 function formatDateRange(checkIn, checkOut) {
   if (!checkIn || !checkOut) return '—';
   const start = new Date(`${checkIn}T12:00:00`);
@@ -28,22 +32,40 @@ function formatDateRange(checkIn, checkOut) {
   return `${start.toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} – ${end.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}`;
 }
 
+function formatVenueWhen(p) {
+  if (!p.event_date) return '—';
+  const date = new Date(`${p.event_date}T12:00:00`).toLocaleDateString('en-PH', {
+    month: 'short', day: 'numeric', year: 'numeric',
+  });
+  const start = p.start_time ? String(p.start_time).slice(0, 5) : '';
+  const end = p.end_time ? String(p.end_time).slice(0, 5) : '';
+  return start && end ? `${date} · ${start}–${end}` : date;
+}
+
+function invoiceTitle(p) {
+  if (isVenueInvoice(p)) {
+    return [p.facility_category, p.facility_room_code || p.facility_name].filter(Boolean).join(' · ') || 'Venue booking';
+  }
+  return [p.building_name, p.room_number ? `Room ${p.room_number}` : ''].filter(Boolean).join(' · ');
+}
+
 function renderCard(p) {
   const isPaid = p.status === 'Paid';
   const due = dueAmount(p);
   const discount = Number(p.discount_amount || 0);
-  const room = [p.building_name, p.room_number ? `Room ${p.room_number}` : ''].filter(Boolean).join(' · ');
+  const isVenue = isVenueInvoice(p);
+  const when = isVenue ? formatVenueWhen(p) : formatDateRange(p.check_in, p.check_out);
 
   return `
     <article class="guest-invoice-card ${isPaid ? 'guest-invoice-card--paid' : 'guest-invoice-card--due'}">
       <div class="guest-invoice-card__head">
         <div>
-          <p class="guest-invoice-card__id">Invoice #${p.id}</p>
-          <h4 class="guest-invoice-card__room">${escapeHtml(room)}</h4>
-          <p class="guest-invoice-card__dates">${escapeHtml(formatDateRange(p.check_in, p.check_out))}</p>
+          <p class="guest-invoice-card__id">Invoice #${p.id} · ${isVenue ? 'Venue' : 'Housing'}</p>
+          <h4 class="guest-invoice-card__room">${escapeHtml(invoiceTitle(p))}</h4>
+          <p class="guest-invoice-card__dates">${escapeHtml(when)}</p>
         </div>
         <span class="guest-invoice-card__badge guest-invoice-card__badge--${isPaid ? 'paid' : 'due'}">
-          ${isPaid ? 'Paid' : 'Pay housing'}
+          ${isPaid ? 'Paid' : 'Payment due'}
         </span>
       </div>
       <div class="guest-invoice-card__amount-row">
@@ -56,8 +78,8 @@ function renderCard(p) {
       ${isPaid
         ? `<p class="guest-invoice-card__hint">Thank you — payment recorded via ${escapeHtml(p.method || 'housing office')}.</p>`
         : `<p class="guest-invoice-card__hint">
-            Please pay the <strong>APTS Housing Department</strong> before or during your stay.
-            Cash, GCash, and bank transfer are accepted. Your room reservation stays confirmed either way.
+            Please pay the <strong>APTS Housing Department</strong>${isVenue ? ' for your venue reservation' : ' before or during your stay'}.
+            Cash, GCash, and bank transfer are accepted.
           </p>`}
     </article>`;
 }
@@ -81,7 +103,7 @@ export async function loadGuestInvoices() {
     if (countEl) {
       countEl.textContent = open.length
         ? `${open.length} bill${open.length === 1 ? '' : 's'} need payment`
-        : 'All housing bills paid';
+        : 'All bills paid';
     }
 
     list.innerHTML = payments.map(renderCard).join('');

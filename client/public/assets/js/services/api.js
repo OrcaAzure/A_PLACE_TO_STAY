@@ -410,6 +410,11 @@ export async function getPayments() {
   return data.payments || [];
 }
 
+export async function getPaymentById(id) {
+  const data = await apiRequest(`/payments/${id}`);
+  return data.payment;
+}
+
 export async function updatePayment(id, payload) {
   return apiRequest(`/payments/${id}`, {
     method: 'PATCH',

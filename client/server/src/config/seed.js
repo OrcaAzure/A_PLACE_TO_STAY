@@ -4,7 +4,7 @@ import { FISCAL_YEAR_DEFAULTS } from '../utils/constants.js';
 import { isProduction } from './env.js';
 import { NON_VENUE_CATEGORIES } from '../constants/ancillary.js';
 import { deriveFacilityCatalogFields } from '../services/facilityCatalog.service.js';
-import { ensureInvoiceForBooking } from '../services/payment.service.js';
+import { ensureInvoiceForBooking, ensureInvoiceForFacilityBooking } from '../services/payment.service.js';
 
 const SEED_USERS = [
   { full_name: 'System Administrator', email: 'admin@aptspace.com',          role: 'Super Admin',   status: 'Active' },
@@ -1180,6 +1180,36 @@ export async function runSchemaPatches() {
       }
     } catch (err) {
       console.warn('[schema] invoice backfill skipped:', err.message);
+    }
+
+    if (!(await columnExists('payments', 'bookings_facility_id'))) {
+      try {
+        await pool.execute('ALTER TABLE payments MODIFY bookings_room_id INT NULL');
+        await pool.execute(
+          'ALTER TABLE payments ADD COLUMN bookings_facility_id INT NULL AFTER bookings_room_id'
+        );
+        await pool.execute(
+          `ALTER TABLE payments
+           ADD CONSTRAINT fk_payments_bookings_facility
+           FOREIGN KEY (bookings_facility_id) REFERENCES bookings_facilities(id)
+           ON DELETE RESTRICT ON UPDATE CASCADE`
+        );
+      } catch (err) {
+        console.warn('[schema] payments.bookings_facility_id skipped:', err.message);
+      }
+    }
+
+    try {
+      const [missingVenue] = await pool.execute(
+        `SELECT fb.id FROM bookings_facilities fb
+         LEFT JOIN payments p ON p.bookings_facility_id = fb.id
+         WHERE fb.status = 'Approved' AND fb.total_amount > 0 AND p.id IS NULL`
+      );
+      for (const row of missingVenue) {
+        await ensureInvoiceForFacilityBooking(row.id);
+      }
+    } catch (err) {
+      console.warn('[schema] venue invoice backfill skipped:', err.message);
     }
   }
 }

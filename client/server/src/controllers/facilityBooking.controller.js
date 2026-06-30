@@ -1,5 +1,6 @@
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
+import { ensureInvoiceForFacilityBooking } from '../services/payment.service.js';
 import { resolveGuestUser } from '../services/booking.service.js';
 import {
   assertCanCancelVenueBooking,
@@ -156,6 +157,9 @@ export const createFacilityBooking = async (req, res) => {
     );
 
     const [rows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [result.insertId]);
+    if (bookingStatus === 'Approved') {
+      await ensureInvoiceForFacilityBooking(result.insertId, { autoEmail: true });
+    }
     res.status(201).json({ message: 'Venue booking created', booking: rows[0] });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -167,6 +171,8 @@ export const updateFacilityBooking = async (req, res) => {
     const { role, id: userId } = req.user;
     const [existing] = await pool.query('SELECT * FROM bookings_facilities WHERE id = ? LIMIT 1', [req.params.id]);
     if (!existing.length) return res.status(404).json({ message: 'Booking not found' });
+
+    const prev = existing[0];
 
     if (!ADMIN_ROLES.includes(role)) {
       if (existing[0].user_id !== userId) {
@@ -209,7 +215,11 @@ export const updateFacilityBooking = async (req, res) => {
       );
     }
 
+    const becameApproved = req.body.status === 'Approved' && prev.status !== 'Approved';
     const [rows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
+    if (becameApproved) {
+      await ensureInvoiceForFacilityBooking(req.params.id, { autoEmail: true });
+    }
     res.status(200).json({ message: 'Booking updated', booking: rows[0] });
   } catch (err) {
     res.status(500).json({ message: err.message });

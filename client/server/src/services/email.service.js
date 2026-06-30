@@ -69,6 +69,44 @@ const transporter = createTransporter();
 
 const fromAddress = () => SMTP_FROM || 'noreply@aptspace.com';
 
+function formatTime12(t) {
+  if (!t) return '';
+  const [h, m] = String(t).slice(0, 5).split(':').map(Number);
+  if (Number.isNaN(h)) return String(t).slice(0, 5);
+  const suffix = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${suffix}`;
+}
+
+function formatEmailDateTime(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value).slice(0, 16);
+  return d.toLocaleString('en-PH', {
+    month: 'long', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+}
+
+function formatEventDate(value) {
+  if (!value) return '—';
+  const raw = String(value).slice(0, 10);
+  const d = new Date(`${raw}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString('en-PH', {
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+  });
+}
+
+/** Match venue invoices even if invoice_kind is missing on the row. */
+export function isVenuePayment(payment) {
+  if (!payment) return false;
+  if (payment.invoice_kind === 'venue') return true;
+  if (payment.facility_booking_id != null && payment.facility_booking_id !== '') return true;
+  if (payment.bookings_facility_id != null && payment.bookings_facility_id !== '') return true;
+  if ((payment.facility_name || payment.facility_category) && !payment.room_number) return true;
+  return Boolean(payment.event_date && !payment.check_in);
+}
+
 async function sendMail({ to, subject, html }) {
   try {
     const info = await transporter.sendMail({
@@ -167,26 +205,41 @@ export async function sendBookingConfirmationEmail(user, booking) {
 export async function sendPaymentReceiptEmail(user, payment) {
   const name = user.full_name || user.guest_name || 'Guest';
   const amount = payment.amount != null ? `₱${Number(payment.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : '—';
-  const date = payment.paid_at || payment.created_at || new Date().toISOString().slice(0, 10);
+  const date = formatEmailDateTime(payment.paid_at || payment.created_at);
   const method = payment.method || '—';
-  const room = payment.building_name
-    ? `${payment.building_name} — Room ${payment.room_number}`
-    : `Room ${payment.room_number || ''}`;
+  const isVenue = isVenuePayment(payment);
+  const place = isVenue
+    ? [payment.facility_category, payment.facility_name || payment.facility_room_code].filter(Boolean).join(' — ')
+    : payment.building_name
+      ? `${payment.building_name} — Room ${payment.room_number}`
+      : `Room ${payment.room_number || ''}`;
+  const start = formatTime12(payment.start_time);
+  const end = formatTime12(payment.end_time);
+  const when = isVenue
+    ? `${formatEventDate(payment.event_date)}${start && end ? ` · ${start} – ${end}` : ''}`
+    : `${payment.check_in || '—'} to ${payment.check_out || '—'}`;
+  const invoiceRef = payment.id ? ` #${payment.id}` : '';
 
   return sendMail({
     to: user.email || user.guest_email,
-    subject: 'Payment Confirmed — APTS Housing',
+    subject: isVenue
+      ? `Venue payment confirmed${invoiceRef} — AptSpace`
+      : `Housing payment confirmed${invoiceRef} — APTS Housing`,
     html: `
-      <h2>Payment Confirmed</h2>
+      <h2>${isVenue ? 'Venue Payment Confirmed' : 'Housing Payment Confirmed'}</h2>
       <p>Hi ${name},</p>
-      <p>APTS Housing has recorded your payment. Thank you!</p>
+      <p>APTS Housing has recorded your ${isVenue ? 'venue' : 'housing'} payment. Thank you!</p>
+      <p><strong>Invoice${invoiceRef}</strong></p>
       <ul>
-        <li><strong>Room:</strong> ${room}</li>
+        <li><strong>${isVenue ? 'Venue' : 'Room'}:</strong> ${place}</li>
+        <li><strong>${isVenue ? 'Event' : 'Stay'}:</strong> ${when}</li>
+        ${isVenue && payment.season ? `<li><strong>Season:</strong> ${payment.season}</li>` : ''}
+        ${isVenue && payment.facility_package ? `<li><strong>Package:</strong> ${payment.facility_package}</li>` : ''}
         <li><strong>Amount paid:</strong> ${amount}</li>
-        <li><strong>Date:</strong> ${date}</li>
+        <li><strong>Date paid:</strong> ${date}</li>
         <li><strong>Method:</strong> ${method}</li>
       </ul>
-      <p>Your reservation remains confirmed. Payment is separate from your room assignment dates.</p>
+      <p>Your ${isVenue ? 'facility reservation' : 'room reservation'} remains confirmed.</p>
     `,
   });
 }
@@ -207,7 +260,7 @@ export async function sendHousingInvoiceEmail(user, payment) {
 
   return sendMail({
     to: user.email || user.guest_email,
-    subject: 'Your Housing Invoice — AptSpace',
+    subject: `Your housing invoice #${payment.id} — Room ${payment.room_number || ''} | AptSpace`,
     html: `
       <h2>Your Housing Invoice</h2>
       <p>Hi ${name},</p>
@@ -224,6 +277,53 @@ export async function sendHousingInvoiceEmail(user, payment) {
       <p>Accepted methods: Cash, GCash, or Bank Transfer at the housing office.</p>
       <p>View your invoice anytime after logging in: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
       <p>If you have questions, contact the Housing Department.</p>
+    `,
+  });
+}
+
+export async function sendVenueInvoiceEmail(user, payment) {
+  const name = user.full_name || user.guest_name || 'Guest';
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const venue = [payment.facility_category, payment.facility_name || payment.facility_room_code]
+    .filter(Boolean)
+    .join(' — ');
+  const eventDate = formatEventDate(payment.event_date);
+  const start = formatTime12(payment.start_time);
+  const end = formatTime12(payment.end_time);
+  const timeRange = start && end ? `${start} – ${end}` : '—';
+  const subtotal = Number(payment.subtotal ?? payment.amount ?? 0);
+  const discount = Number(payment.discount_amount || 0);
+  const due = Number(payment.amount ?? subtotal);
+  const fmt = (n) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+  const discountLine = discount > 0
+    ? `<li><strong>Discount:</strong> −${fmt(discount)}${payment.discount_note ? ` (${payment.discount_note})` : ''}</li>`
+    : '';
+  const seasonLine = payment.season ? `<li><strong>Season:</strong> ${payment.season}</li>` : '';
+  const packageLine = payment.facility_package
+    ? `<li><strong>Package:</strong> ${payment.facility_package}</li>`
+    : '';
+
+  return sendMail({
+    to: user.email || user.guest_email,
+    subject: `Your venue invoice #${payment.id} — ${payment.facility_name || 'Facility'} | AptSpace`,
+    html: `
+      <h2>Your Venue Invoice</h2>
+      <p>Hi ${name},</p>
+      <p>Your <strong>facility / venue reservation</strong> has been approved. This email is your venue invoice — not a room lodging bill.</p>
+      <p><strong>Invoice #${payment.id}</strong> · Booking #${payment.facility_booking_id || '—'}</p>
+      <ul>
+        <li><strong>Venue:</strong> ${venue}</li>
+        <li><strong>Event date:</strong> ${eventDate}</li>
+        <li><strong>Time:</strong> ${timeRange}</li>
+        <li><strong>Guests:</strong> ${payment.guest_count || 1}</li>
+        ${seasonLine}
+        ${packageLine}
+        <li><strong>Subtotal:</strong> ${fmt(subtotal)}</li>
+        ${discountLine}
+        <li><strong><span style="font-size:1.1em">Amount due: ${fmt(due)}</span></strong></li>
+      </ul>
+      <p>Accepted methods: Cash, GCash, or Bank Transfer at the housing office.</p>
+      <p>View your invoice anytime after logging in: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
     `,
   });
 }
