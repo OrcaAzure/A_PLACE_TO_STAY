@@ -27,10 +27,10 @@ CREATE TABLE IF NOT EXISTS rooms (
     room_number   VARCHAR(50) NOT NULL,
     room_type     ENUM(
                     'Dorm',
-                    'Superior Guest Room',
+                    'Standard Guest Room',
                     'Standard Apartment',
-                    'Deluxe 2 BR',
-                    'Deluxe 3 BR'
+                    'Deluxe Apartment',
+                    'Uncategorized'
                   ) NOT NULL,
     capacity_min  INT NOT NULL DEFAULT 1,
     capacity_max  INT NOT NULL DEFAULT 1,
@@ -63,10 +63,10 @@ CREATE TABLE IF NOT EXISTS room_rates (
     id        INT AUTO_INCREMENT PRIMARY KEY,
     room_type ENUM(
                 'Dorm',
-                'Superior Guest Room',
+                'Standard Guest Room',
                 'Standard Apartment',
-                'Deluxe 2 BR',
-                'Deluxe 3 BR'
+                'Deluxe Apartment',
+                'Uncategorized'
               ) NOT NULL,
     item      ENUM(
                 'Per person per Night',
@@ -429,139 +429,142 @@ CREATE TABLE IF NOT EXISTS facility_bookings (
 );
 
 -- ============================================
+-- DATA MIGRATION: BUILDING RENAME & CLEANUP
+-- (safe to re-run; no-op on fresh installs)
+-- ============================================
+-- Renames PCALM → Global Missions Center (bookings keep room_id links).
+-- Removes deprecated buildings and their reservations in FK order.
+
+UPDATE buildings
+SET name        = 'Global Missions Center',
+    description = 'Main Global Missions Center building'
+WHERE name = 'PCALM';
+
+DELETE p
+FROM payments p
+JOIN bookings bk ON bk.id = p.booking_id
+JOIN rooms r     ON r.id  = bk.room_id
+JOIN buildings b ON b.id  = r.building_id
+WHERE b.name IN ('Thesda', 'Sampaguita', 'Peranza', 'House');
+
+DELETE bk
+FROM bookings bk
+JOIN rooms r     ON r.id  = bk.room_id
+JOIN buildings b ON b.id  = r.building_id
+WHERE b.name IN ('Thesda', 'Sampaguita', 'Peranza', 'House');
+
+DELETE r
+FROM rooms r
+JOIN buildings b ON b.id = r.building_id
+WHERE b.name IN ('Thesda', 'Sampaguita', 'Peranza', 'House');
+
+DELETE FROM buildings
+WHERE name IN ('Thesda', 'Sampaguita', 'Peranza', 'House');
+
+-- Migrate legacy lodging room types
+UPDATE rooms SET room_type = 'Standard Guest Room' WHERE room_type = 'Superior Guest Room';
+UPDATE rooms SET room_type = 'Deluxe Apartment'     WHERE room_type IN ('Deluxe 2 BR', 'Deluxe 3 BR');
+
+UPDATE room_rates SET room_type = 'Standard Guest Room' WHERE room_type = 'Superior Guest Room';
+UPDATE room_rates SET room_type = 'Deluxe Apartment'     WHERE room_type IN ('Deluxe 2 BR', 'Deluxe 3 BR');
+DELETE FROM room_rates WHERE room_type IN ('Deluxe 2 BR', 'Deluxe 3 BR', 'Superior Guest Room');
+
+-- Remove reservations tied to retired lodging inventory or venue rows stored as rooms
+DELETE p
+FROM payments p
+JOIN bookings bk ON bk.id = p.booking_id
+JOIN rooms r     ON r.id  = bk.room_id
+JOIN buildings b ON b.id  = r.building_id
+WHERE b.name = 'Global Missions Center'
+  AND r.room_number IN (
+    '104', '501', '504', '505', '506', '507', '601', '602', '703', 'COMMONS', 'CHAPEL'
+  );
+
+DELETE bk
+FROM bookings bk
+JOIN rooms r     ON r.id  = bk.room_id
+JOIN buildings b ON b.id  = r.building_id
+WHERE b.name = 'Global Missions Center'
+  AND r.room_number IN (
+    '104', '501', '504', '505', '506', '507', '601', '602', '703', 'COMMONS', 'CHAPEL'
+  );
+
+DELETE r
+FROM rooms r
+JOIN buildings b ON b.id = r.building_id
+WHERE b.name = 'Global Missions Center'
+  AND r.room_number IN (
+    '104', '501', '504', '505', '506', '507', '601', '602', '703', 'COMMONS', 'CHAPEL'
+  );
+
+-- ============================================
 -- SEED DATA: BUILDINGS
 -- ============================================
 
 INSERT INTO buildings (name, description) VALUES
-    ('PCALM',      'Main PCALM building'),
-    ('House',      'Guest house units A-J'),
-    ('Thesda',     'Thesda dormitory building'),
-    ('Sampaguita', 'Sampaguita residential building'),
-    ('Peranza',    'Peranza residential building')
+    ('Global Missions Center', 'Main Global Missions Center building')
 ON DUPLICATE KEY UPDATE name = name;
 
 -- ============================================
--- SEED DATA: ROOMS
+-- SEED DATA: LODGING — Global Missions Center
 -- ============================================
 
+-- Deluxe Apartments (dlx apt)
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
-    ((SELECT id FROM buildings WHERE name='PCALM'), '104',    'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '201',    'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '202',    'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '203',    'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '204',    'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '205',    'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '206',    'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '207',    'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '208',    'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '209',    'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '301',    'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '302',    'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '303',    'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '304',    'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '305',    'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '306',    'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '307',    'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '308',    'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '309',    'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '310',    'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '401',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '402',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '403',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '404',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '410',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '411',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '412',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '413',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '414',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '415',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '416',    'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '501',    'Deluxe 3 BR',         1, 6),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '504',    'Deluxe 3 BR',         1, 6),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '505',    'Deluxe 3 BR',         1, 6),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '506',    'Deluxe 3 BR',         1, 6),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '507',    'Deluxe 3 BR',         1, 6),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '601',    'Deluxe 3 BR',         1, 6),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '602',    'Deluxe 3 BR',         1, 6),
-    ((SELECT id FROM buildings WHERE name='PCALM'), '703',    'Deluxe 3 BR',         1, 6),
-    ((SELECT id FROM buildings WHERE name='PCALM'), 'COMMONS','Superior Guest Room',  1, 4),
-    ((SELECT id FROM buildings WHERE name='PCALM'), 'CHAPEL', 'Superior Guest Room',  1, 4)
-ON DUPLICATE KEY UPDATE room_number = room_number;
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-501', 'Deluxe Apartment', 1, 6),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '201',   'Deluxe Apartment', 1, 6),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '301',   'Deluxe Apartment', 1, 6),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '304',   'Deluxe Apartment', 1, 6),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '401',   'Deluxe Apartment', 1, 6),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '402',   'Deluxe Apartment', 1, 6),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '403',   'Deluxe Apartment', 1, 6)
+ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
+-- Standard Apartments (std apt)
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
-    ((SELECT id FROM buildings WHERE name='House'), 'A',  'Standard Apartment', 1, 4),
-    ((SELECT id FROM buildings WHERE name='House'), 'B',  'Standard Apartment', 1, 4),
-    ((SELECT id FROM buildings WHERE name='House'), 'C',  'Standard Apartment', 1, 4),
-    ((SELECT id FROM buildings WHERE name='House'), 'D',  'Standard Apartment', 1, 4),
-    ((SELECT id FROM buildings WHERE name='House'), 'E1', 'Standard Apartment', 1, 4),
-    ((SELECT id FROM buildings WHERE name='House'), 'E2', 'Standard Apartment', 1, 4),
-    ((SELECT id FROM buildings WHERE name='House'), 'F',  'Standard Apartment', 1, 4),
-    ((SELECT id FROM buildings WHERE name='House'), 'G',  'Standard Apartment', 1, 4),
-    ((SELECT id FROM buildings WHERE name='House'), 'H',  'Standard Apartment', 1, 4),
-    ((SELECT id FROM buildings WHERE name='House'), 'J1', 'Standard Apartment', 1, 4),
-    ((SELECT id FROM buildings WHERE name='House'), 'J2', 'Standard Apartment', 1, 4)
-ON DUPLICATE KEY UPDATE room_number = room_number;
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '203', 'Standard Apartment', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '205', 'Standard Apartment', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '302', 'Standard Apartment', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '303', 'Standard Apartment', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '404', 'Standard Apartment', 1, 4)
+ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
+-- Standard Guest Rooms (sgr)
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
-    ((SELECT id FROM buildings WHERE name='Thesda'), 'BG1', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Thesda'), 'BG2', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Thesda'), 'BG3', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Thesda'), 'BG4', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Thesda'), 'BG5', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '101', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '102', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '103', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '104', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '106', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '107', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '108', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '109', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '111', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '201', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '208', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '209', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '301', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '302', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '303', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '304', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '305', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '306', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '307', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '308', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Thesda'), '311', 'Standard Apartment',  1, 4)
-ON DUPLICATE KEY UPDATE room_number = room_number;
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '410', 'Standard Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '411', 'Standard Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '412', 'Standard Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '413', 'Standard Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '414', 'Standard Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '415', 'Standard Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '416', 'Standard Guest Room', 1, 4)
+ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
+-- Dormitories (dorm)
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '101', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '102', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '103', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '104', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '105', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '106', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '107', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '108', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '201', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '202', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '203', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '204', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '205', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '206', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '207', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Sampaguita'), '208', 'Standard Apartment',  1, 4)
-ON DUPLICATE KEY UPDATE room_number = room_number;
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '103', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '202', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '204', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '206', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '207', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '208', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '209', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '305', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '306', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '307', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '308', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '309', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '310', 'Dorm', 5, 10)
+ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
+-- Uncategorized (A-block, no assigned lodging class)
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
-    ((SELECT id FROM buildings WHERE name='Peranza'), '101', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Peranza'), '102', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Peranza'), '103', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Peranza'), '104', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Peranza'), '201', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Peranza'), '202', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Peranza'), '203', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Peranza'), '204', 'Standard Apartment',  1, 4),
-    ((SELECT id FROM buildings WHERE name='Peranza'), '300', 'Deluxe 2 BR',         1, 4),
-    ((SELECT id FROM buildings WHERE name='Peranza'), '400', 'Deluxe 2 BR',         1, 4)
-ON DUPLICATE KEY UPDATE room_number = room_number;
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-101', 'Uncategorized', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-105', 'Uncategorized', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-505', 'Uncategorized', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-504', 'Uncategorized', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-506', 'Uncategorized', 1, 4)
+ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
 -- ============================================
 -- SEED DATA: ROOM RATES (FY26)
@@ -572,12 +575,12 @@ INSERT INTO room_rates (room_type, item, season, rate) VALUES
     ('Dorm', 'Per person per Night', 'Peak',       500.00),
     ('Dorm', 'Per person per Night', 'Super Peak', 550.00),
 
-    ('Superior Guest Room', 'Single/Double Occupancy', 'Regular',    2250.00),
-    ('Superior Guest Room', 'Single/Double Occupancy', 'Peak',       2500.00),
-    ('Superior Guest Room', 'Single/Double Occupancy', 'Super Peak', 2750.00),
-    ('Superior Guest Room', 'Daily Maximum',           'Regular',    2800.00),
-    ('Superior Guest Room', 'Daily Maximum',           'Peak',       3050.00),
-    ('Superior Guest Room', 'Daily Maximum',           'Super Peak', 3400.00),
+    ('Standard Guest Room', 'Single/Double Occupancy', 'Regular',    2250.00),
+    ('Standard Guest Room', 'Single/Double Occupancy', 'Peak',       2500.00),
+    ('Standard Guest Room', 'Single/Double Occupancy', 'Super Peak', 2750.00),
+    ('Standard Guest Room', 'Daily Maximum',           'Regular',    2800.00),
+    ('Standard Guest Room', 'Daily Maximum',           'Peak',       3050.00),
+    ('Standard Guest Room', 'Daily Maximum',           'Super Peak', 3400.00),
 
     ('Standard Apartment', 'Single/Double Occupancy',   'Regular',    2500.00),
     ('Standard Apartment', 'Single/Double Occupancy',   'Peak',       2700.00),
@@ -589,29 +592,53 @@ INSERT INTO room_rates (room_type, item, season, rate) VALUES
     ('Standard Apartment', 'Extra Bed or Extra Person', 'Peak',        500.00),
     ('Standard Apartment', 'Extra Bed or Extra Person', 'Super Peak',  550.00),
 
-    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Regular',    3000.00),
-    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Peak',       3275.00),
-    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Super Peak', 3650.00),
-    ('Deluxe 2 BR', 'Daily Maximum',             'Regular',    3750.00),
-    ('Deluxe 2 BR', 'Daily Maximum',             'Peak',       4150.00),
-    ('Deluxe 2 BR', 'Daily Maximum',             'Super Peak', 4500.00),
-    ('Deluxe 2 BR', 'Extra Bed or Extra Person', 'Regular',     450.00),
-    ('Deluxe 2 BR', 'Extra Bed or Extra Person', 'Peak',        500.00),
-    ('Deluxe 2 BR', 'Extra Bed or Extra Person', 'Super Peak',  550.00),
+    ('Deluxe Apartment', 'Single/Double Occupancy',   'Regular',    3000.00),
+    ('Deluxe Apartment', 'Single/Double Occupancy',   'Peak',       3275.00),
+    ('Deluxe Apartment', 'Single/Double Occupancy',   'Super Peak', 3650.00),
+    ('Deluxe Apartment', 'Daily Maximum',             'Regular',    3750.00),
+    ('Deluxe Apartment', 'Daily Maximum',             'Peak',       4150.00),
+    ('Deluxe Apartment', 'Daily Maximum',             'Super Peak', 4500.00),
+    ('Deluxe Apartment', 'Extra Bed or Extra Person', 'Regular',     450.00),
+    ('Deluxe Apartment', 'Extra Bed or Extra Person', 'Peak',        500.00),
+    ('Deluxe Apartment', 'Extra Bed or Extra Person', 'Super Peak',  550.00),
 
-    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Regular',    3600.00),
-    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Peak',       3650.00),
-    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Super Peak', 4450.00),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Regular',    4350.00),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Peak',       4750.00),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Super Peak', 5200.00),
-    ('Deluxe 3 BR', 'Extra Bed or Extra Person', 'Regular',     450.00),
-    ('Deluxe 3 BR', 'Extra Bed or Extra Person', 'Peak',        500.00),
-    ('Deluxe 3 BR', 'Extra Bed or Extra Person', 'Super Peak',  550.00)
+    ('Uncategorized', 'Single/Double Occupancy', 'Regular',    2250.00),
+    ('Uncategorized', 'Single/Double Occupancy', 'Peak',       2500.00),
+    ('Uncategorized', 'Single/Double Occupancy', 'Super Peak', 2750.00),
+    ('Uncategorized', 'Daily Maximum',           'Regular',    2800.00),
+    ('Uncategorized', 'Daily Maximum',           'Peak',       3050.00),
+    ('Uncategorized', 'Daily Maximum',           'Super Peak', 3400.00)
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
--- SEED DATA: FACILITIES (FY26)
+-- SEED DATA: FACILITIES & VENUES (FY26)
+-- Event spaces — not lodging rooms
+-- ============================================
+
+INSERT INTO facilities (category, item, season, rate, capacity_min, capacity_max) VALUES
+    ('GMC Chapel', 'Church 4 hrs',  'Regular', 13000.00, NULL, NULL),
+    ('GMC Chapel', 'Church 4 hrs',  'Peak',    16200.00, NULL, NULL),
+    ('GMC Chapel', 'Wedding 4 hrs', 'Regular', 28000.00, NULL, NULL),
+    ('GMC Chapel', 'Wedding 4 hrs', 'Peak',    33000.00, NULL, NULL),
+    ('GMC Chapel', 'Aircon 4 hrs',  'Regular',  1100.00, NULL, NULL),
+    ('GMC Chapel', 'Aircon 4 hrs',  'Peak',     1100.00, NULL, NULL),
+
+    ('Burdine Commons', 'Meeting and other functions',  'Regular',  4500.00, NULL, NULL),
+    ('Burdine Commons', 'Meeting and other functions',  'Peak',     5500.00, NULL, NULL),
+    ('Burdine Commons', 'Wedding and reception 4 hrs',  'Regular', 16500.00, NULL, NULL),
+    ('Burdine Commons', 'Wedding and reception 4 hrs',  'Peak',    19000.00, NULL, NULL),
+
+    ('Garden', 'Osgood Garden', 'Regular', 17500.00, 1, 150),
+    ('Garden', 'Osgood Garden', 'Peak',    20000.00, 1, 150),
+
+    ('Prayer Mountain', 'Four Hour minimum', 'Regular', 24000.00, NULL, NULL),
+    ('Prayer Mountain', 'Four Hour minimum', 'Peak',    26000.00, NULL, NULL),
+    ('Prayer Mountain', 'Extra hour',        'Regular',  6000.00, NULL, NULL),
+    ('Prayer Mountain', 'Extra hour',        'Peak',     6500.00, NULL, NULL)
+ON DUPLICATE KEY UPDATE rate = VALUES(rate);
+
+-- ============================================
+-- SEED DATA: ANCILLARY FACILITIES & SERVICES (FY26)
 -- ============================================
 
 INSERT INTO facilities (category, item, season, rate, capacity_min, capacity_max) VALUES
@@ -629,32 +656,12 @@ INSERT INTO facilities (category, item, season, rate, capacity_min, capacity_max
     ('Laundry-Iron', 'Heavy Slacks Pants Skirts',                       'N/A', 35.00, NULL, NULL),
     ('Laundry-Iron', 'Dresses',                                         'N/A', 45.00, NULL, NULL),
 
-    ('Garden', 'Osgood Garden', 'Regular', 17500.00, 1, 150),
-    ('Garden', 'Osgood Garden', 'Peak',    20000.00, 1, 150),
-
-    ('GMC Chapel', 'Church 4 hrs',  'Regular', 13000.00, NULL, NULL),
-    ('GMC Chapel', 'Church 4 hrs',  'Peak',    16200.00, NULL, NULL),
-    ('GMC Chapel', 'Wedding 4 hrs', 'Regular', 28000.00, NULL, NULL),
-    ('GMC Chapel', 'Wedding 4 hrs', 'Peak',    33000.00, NULL, NULL),
-    ('GMC Chapel', 'Aircon 4 hrs',  'Regular',  1100.00, NULL, NULL),
-    ('GMC Chapel', 'Aircon 4 hrs',  'Peak',     1100.00, NULL, NULL),
-
-    ('Burdine Commons', 'Meeting and other functions',  'Regular',  4500.00, NULL, NULL),
-    ('Burdine Commons', 'Meeting and other functions',  'Peak',     5500.00, NULL, NULL),
-    ('Burdine Commons', 'Wedding and reception 4 hrs',  'Regular', 16500.00, NULL, NULL),
-    ('Burdine Commons', 'Wedding and reception 4 hrs',  'Peak',    19000.00, NULL, NULL),
-
     ('GMC', 'Russ Turney Educational Center', 'Regular', 4500.00, 1, 100),
     ('GMC', 'Russ Turney Educational Center', 'Peak',    5500.00, 1, 100),
     ('GMC', 'Classroom Multi-Purpose Room',   'Regular', 3000.00, 1,  30),
     ('GMC', 'Classroom Multi-Purpose Room',   'Peak',    3500.00, 1,  30),
     ('GMC', 'Conference Room',                'Regular', 2100.00, 1,  15),
     ('GMC', 'Conference Room',                'Peak',    2500.00, 1,  15),
-
-    ('Prayer Mountain', 'Four Hour minimum', 'Regular', 24000.00, NULL, NULL),
-    ('Prayer Mountain', 'Four Hour minimum', 'Peak',    26000.00, NULL, NULL),
-    ('Prayer Mountain', 'Extra hour',        'Regular',  6000.00, NULL, NULL),
-    ('Prayer Mountain', 'Extra hour',        'Peak',     6500.00, NULL, NULL),
 
     ('Prayer Tower', 'Function', 'Regular', 5500.00, NULL, NULL),
     ('Prayer Tower', 'Function', 'Peak',    6000.00, NULL, NULL),

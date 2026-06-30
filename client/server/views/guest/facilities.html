@@ -245,7 +245,7 @@
   document.getElementById('vbm-price-notice').innerHTML = priceNoticeHtml('mt-1');
   document.getElementById('guest-access-notice').innerHTML = guestAccessNoticeHtml(isInternal);
 
-  const BLOCKED_BUILDINGS = ['House'];
+  const BLOCKED_BUILDINGS = [];
   const isBlocked = (n) => BLOCKED_BUILDINGS.includes(String(n || '').trim());
 
   const { readOnly } = applyRoleUI();
@@ -508,7 +508,7 @@
       subtitle.textContent = categoryShowsRooms(selectedCategory)
         ? (isInternal
           ? 'Set your stay dates above, then browse open rooms across campus guest houses.'
-          : 'Set your stay dates above, then browse open PCALM rooms for your trip.')
+          : 'Set your stay dates above, then browse open Global Missions Center rooms for your trip.')
         : `Pick your event date above, then browse ${meta.label.toLowerCase()} and submit a request.`;
     }
     if (roomsHeading) {

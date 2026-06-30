@@ -13,9 +13,9 @@ export const BROWSE_CATEGORIES = [
   {
     id: 'guest-houses',
     label: 'Guest Houses',
-    externalLabel: 'PCALM Guest Rooms',
+    externalLabel: 'Global Missions Center Guest Rooms',
     description: 'Overnight stays',
-    externalDescription: 'PCALM building only',
+    externalDescription: 'Global Missions Center only',
     image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1200&q=80',
     showsRooms: true,
   },
@@ -114,8 +114,8 @@ export function readBrowseQuery() {
   };
 }
 
-const BLOCKED_BUILDINGS = ['House'];
-const EXTERNAL_ROOM_BUILDINGS = ['PCALM'];
+const BLOCKED_BUILDINGS = [];
+const EXTERNAL_ROOM_BUILDINGS = ['Global Missions Center'];
 
 export function getBrowseCategories() {
   return BROWSE_CATEGORIES;
@@ -243,23 +243,22 @@ export function guestAccessNoticeHtml(isInternal = isInternalGuest()) {
       <span class="material-symbols-outlined text-primary text-[20px] shrink-0">verified_user</span>
       <p class="m-0 leading-relaxed">
         <strong class="text-primary">External guest access.</strong>
-        You can browse and request all campus facilities. Overnight guest rooms are limited to PCALM;
-        campus housing in Thesda, Sampaguita, and Peranza is reserved for APTS community members.
+        You can browse and request all campus facilities. Overnight guest rooms are available in Global Missions Center.
       </p>
     </div>`;
 }
 
-/** Update PCALM-focused copy on guest home for external users. */
+/** Update Global Missions Center copy on guest home for external users. */
 export function applyGuestLandingAccess(root = document, isInternal = isInternalGuest()) {
   const guestHouseCard = root.querySelector('[data-browse-category="guest-houses"]');
   if (guestHouseCard && !isInternal) {
     const tag = guestHouseCard.querySelector('.lp-facility-body span.inline-block');
     const title = guestHouseCard.querySelector('.lp-facility-body h3');
-    if (tag) tag.textContent = 'PCALM building';
-    if (title) title.textContent = 'PCALM Guest Rooms';
+    if (tag) tag.textContent = 'Global Missions Center';
+    if (title) title.textContent = 'Global Missions Center Guest Rooms';
     const desc = guestHouseCard.querySelector('.lp-facility-body p.mb-4, .lp-facility-body p.mb-3');
     if (desc) {
-      desc.textContent = 'Overnight rooms in PCALM for visiting partners — plus conference and event spaces below.';
+      desc.textContent = 'Overnight rooms in Global Missions Center for visiting partners — plus conference and event spaces below.';
     }
   }
 }

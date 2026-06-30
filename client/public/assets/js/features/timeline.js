@@ -892,7 +892,7 @@ function renderCalendarFilterSidebar(filters) {
     <section class="cal-filter-section">
       <h4 class="cal-filter-title">Show on calendar</h4>
       <div class="cal-filter-list">
-        ${renderFilterRow({ checked: filters.showRoom, attrs: 'data-filter-bool="showRoom"', label: 'PCALM room stays' })}
+        ${renderFilterRow({ checked: filters.showRoom, attrs: 'data-filter-bool="showRoom"', label: 'Global Missions Center room stays' })}
         ${renderFilterRow({ checked: filters.showVenue, attrs: 'data-filter-bool="showVenue"', label: 'Campus venue events' })}
       </div>
     </section>`;

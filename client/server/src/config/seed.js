@@ -18,29 +18,26 @@ const SEED_USERS = [
 ];
 
 const DEMO_BOOKINGS = [
-  { email: 'maria.santos@apts.edu.ph',    building: 'PCALM',      room: '201', check_in: '2026-07-01', check_out: '2026-07-05', guests: 2, season: 'Regular', item: 'Single/Double Occupancy', total: 10000, status: 'Approved', notes: 'Conference attendance' },
-  { email: 'james.reyes@apts.edu.ph',     building: 'Thesda',     room: 'BG1', check_in: '2026-07-10', check_out: '2026-07-12', guests: 1, season: 'Regular', item: 'Single/Double Occupancy', total: 4500,  status: 'Pending',  notes: 'Short study visit' },
-  { email: 'ruth.villanueva@apts.edu.ph', building: 'House',      room: 'A',   check_in: '2026-06-20', check_out: '2026-06-25', guests: 3, season: 'Regular', item: 'Daily Maximum',           total: 15250, status: 'Approved', notes: 'Staff retreat' },
-  { email: 'paul.mendoza@apts.edu.ph',    building: 'Sampaguita', room: '101', check_in: '2026-08-01', check_out: '2026-08-07', guests: 2, season: 'Regular', item: 'Single/Double Occupancy', total: 15000, status: 'Pending',  notes: 'Mission partner visit' },
-  { email: 'maria.santos@apts.edu.ph',    building: 'PCALM',      room: '401', check_in: '2026-07-15', check_out: '2026-07-20', guests: 4, season: 'Regular', item: 'Daily Maximum',           total: 22750, status: 'Rejected', notes: 'Family retreat — rejected due to room conflict' },
-  { email: 'james.reyes@apts.edu.ph',     building: 'Thesda',     room: '101', check_in: '2026-09-05', check_out: '2026-09-10', guests: 1, season: 'Regular', item: 'Single/Double Occupancy', total: 11250, status: 'Approved', notes: 'Academic conference' },
-  { email: 'paul.mendoza@apts.edu.ph',    building: 'PCALM',      room: '501', check_in: '2026-10-01', check_out: '2026-10-03', guests: 6, season: 'Regular', item: 'Daily Maximum',           total: 8700,  status: 'Pending',  notes: 'Mission team accommodation' },
-  { email: 'ruth.villanueva@apts.edu.ph', building: 'Sampaguita', room: '202', check_in: '2026-07-22', check_out: '2026-07-24', guests: 2, season: 'Regular', item: 'Single/Double Occupancy', total: 5000,  status: 'Cancelled', notes: 'Cancelled — travel plans changed' },
+  { email: 'maria.santos@apts.edu.ph',    building: 'Global Missions Center', room: '201', check_in: '2026-07-01', check_out: '2026-07-05', guests: 2, season: 'Regular', item: 'Single/Double Occupancy', total: 10000, status: 'Approved', notes: 'Conference attendance' },
+  { email: 'james.reyes@apts.edu.ph',     building: 'Global Missions Center', room: '205', check_in: '2026-07-10', check_out: '2026-07-12', guests: 1, season: 'Regular', item: 'Single/Double Occupancy', total: 4500,  status: 'Pending',  notes: 'Short study visit' },
+  { email: 'ruth.villanueva@apts.edu.ph', building: 'Global Missions Center', room: '304', check_in: '2026-06-20', check_out: '2026-06-25', guests: 3, season: 'Regular', item: 'Daily Maximum',           total: 15250, status: 'Approved', notes: 'Staff retreat' },
+  { email: 'paul.mendoza@apts.edu.ph',    building: 'Global Missions Center', room: '202', check_in: '2026-08-01', check_out: '2026-08-07', guests: 2, season: 'Regular', item: 'Single/Double Occupancy', total: 15000, status: 'Pending',  notes: 'Mission partner visit' },
+  { email: 'maria.santos@apts.edu.ph',    building: 'Global Missions Center', room: '401', check_in: '2026-07-15', check_out: '2026-07-20', guests: 4, season: 'Regular', item: 'Daily Maximum',           total: 22750, status: 'Rejected', notes: 'Family retreat — rejected due to room conflict' },
+  { email: 'james.reyes@apts.edu.ph',     building: 'Global Missions Center', room: '203', check_in: '2026-09-05', check_out: '2026-09-10', guests: 1, season: 'Regular', item: 'Single/Double Occupancy', total: 11250, status: 'Approved', notes: 'Academic conference' },
+  { email: 'paul.mendoza@apts.edu.ph',    building: 'Global Missions Center', room: 'A-501', check_in: '2026-10-01', check_out: '2026-10-03', guests: 6, season: 'Regular', item: 'Daily Maximum',           total: 8700,  status: 'Pending',  notes: 'Mission team accommodation' },
+  { email: 'ruth.villanueva@apts.edu.ph', building: 'Global Missions Center', room: '306', check_in: '2026-07-22', check_out: '2026-07-24', guests: 2, season: 'Regular', item: 'Single/Double Occupancy', total: 5000,  status: 'Cancelled', notes: 'Cancelled — travel plans changed' },
 ];
 
 const ROOM_STATUS_UPDATES = [
-  { building: 'PCALM',      room: '201', status: 'Occupied',    occupancy: 2 },
-  { building: 'House',      room: 'A',   status: 'Occupied',    occupancy: 3 },
-  { building: 'Thesda',     room: '101', status: 'Occupied',    occupancy: 1 },
-  { building: 'Sampaguita', room: '101', status: 'Occupied',    occupancy: 2 },
-  { building: 'PCALM',      room: '302', status: 'Occupied',    occupancy: 4 },
-  { building: 'Thesda',     room: '104', status: 'Occupied',    occupancy: 2 },
-  { building: 'House',      room: 'B',   status: 'Occupied',    occupancy: 1 },
-  { building: 'PCALM',      room: '303', status: 'Maintenance', occupancy: 0 },
-  { building: 'Thesda',     room: 'BG3', status: 'Maintenance', occupancy: 0 },
-  { building: 'Sampaguita', room: '204', status: 'Maintenance', occupancy: 0 },
-  { building: 'Peranza',    room: '203', status: 'Maintenance', occupancy: 0 },
-  { building: 'PCALM',      room: '410', status: 'Maintenance', occupancy: 0 },
+  { building: 'Global Missions Center', room: '201', status: 'Occupied',    occupancy: 2 },
+  { building: 'Global Missions Center', room: '304', status: 'Occupied',    occupancy: 3 },
+  { building: 'Global Missions Center', room: '203', status: 'Occupied',    occupancy: 1 },
+  { building: 'Global Missions Center', room: '202', status: 'Occupied',    occupancy: 2 },
+  { building: 'Global Missions Center', room: '302', status: 'Occupied',    occupancy: 4 },
+  { building: 'Global Missions Center', room: '205', status: 'Occupied',    occupancy: 1 },
+  { building: 'Global Missions Center', room: '303', status: 'Maintenance', occupancy: 0 },
+  { building: 'Global Missions Center', room: '307', status: 'Maintenance', occupancy: 0 },
+  { building: 'Global Missions Center', room: '410', status: 'Maintenance', occupancy: 0 },
 ];
 
 async function getUserId(email) {
@@ -316,12 +313,44 @@ export async function runSchemaPatches() {
   } catch (err) {
     console.warn('[schema] audit_logs patch skipped:', err.message);
   }
+
+  try {
+    await pool.execute(
+      `UPDATE buildings
+       SET name = 'Global Missions Center',
+           description = 'Main Global Missions Center building'
+       WHERE name = 'PCALM'`
+    );
+    await pool.execute(
+      `DELETE p FROM payments p
+       JOIN bookings bk ON bk.id = p.booking_id
+       JOIN rooms r ON r.id = bk.room_id
+       JOIN buildings b ON b.id = r.building_id
+       WHERE b.name IN ('Thesda', 'Sampaguita', 'Peranza', 'House')`
+    );
+    await pool.execute(
+      `DELETE bk FROM bookings bk
+       JOIN rooms r ON r.id = bk.room_id
+       JOIN buildings b ON b.id = r.building_id
+       WHERE b.name IN ('Thesda', 'Sampaguita', 'Peranza', 'House')`
+    );
+    await pool.execute(
+      `DELETE r FROM rooms r
+       JOIN buildings b ON b.id = r.building_id
+       WHERE b.name IN ('Thesda', 'Sampaguita', 'Peranza', 'House')`
+    );
+    await pool.execute(
+      `DELETE FROM buildings WHERE name IN ('Thesda', 'Sampaguita', 'Peranza', 'House')`
+    );
+  } catch (err) {
+    console.warn('[schema] building rename/removal patch skipped:', err.message);
+  }
 }
 
 export async function seedGuestStayExamples() {
   const samuelId = await getUserId('samuel.park@gracechurch.org');
   const mbcId = await getUserId('mbc.retreat@example.org');
-  const roomId = await getRoomId('PCALM', '301');
+  const roomId = await getRoomId('Global Missions Center', '301');
   if (!roomId) return;
 
   const today = new Date();

@@ -2,10 +2,10 @@
 
 const INTERNAL_EMAIL_SUFFIXES = ['@apts.edu.ph', '@apts.edu'];
 
-export const GUEST_BLOCKED_BUILDINGS = ['House'];
+export const GUEST_BLOCKED_BUILDINGS = [];
 
 /** External guests may only book/view rooms in these buildings. */
-export const EXTERNAL_ROOM_BUILDINGS = ['PCALM'];
+export const EXTERNAL_ROOM_BUILDINGS = ['Global Missions Center'];
 
 export function isInternalGuestEmail(email) {
   const normalized = String(email || '').trim().toLowerCase();
@@ -28,6 +28,6 @@ export function filterRoomsForGuestUser(rooms, email) {
 
 export function assertGuestCanAccessRoom(email, buildingName) {
   if (!canGuestAccessBuilding(email, buildingName)) {
-    throw new Error('You do not have access to this room. External guests may only book PCALM rooms.');
+    throw new Error('You do not have access to this room. External guests may only book Global Missions Center rooms.');
   }
 }

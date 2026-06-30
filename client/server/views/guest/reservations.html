@@ -455,7 +455,7 @@
   }
 
   /* Buildings guests are not allowed to view/book. */
-  const BLOCKED_BUILDINGS = ['House'];
+  const BLOCKED_BUILDINGS = [];
   const isBlockedBuilding = (name) => BLOCKED_BUILDINGS.includes(String(name || '').trim());
 
   const { readOnly } = applyRoleUI();
