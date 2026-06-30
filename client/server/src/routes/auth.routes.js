@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { login, register, getProfile, updateProfile, forgotPassword, resetPassword, updatePassword } from '../controllers/auth.controller.js';
+import { login, register, getProfile, updateProfile, forgotPassword, resetPassword, updatePassword, logout } from '../controllers/auth.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { blockReadOnly } from '../middleware/role.middleware.js';
 
 const router = Router();
 
 router.post('/login',          login);
+router.post('/logout',         logout);
 router.post('/register',       register);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password',  resetPassword);

@@ -18,6 +18,7 @@ import {
   venueRateMeta,
 } from '../services/facility.service.js';
 import { resolveLodgingSeasonForDate } from '../services/season.service.js';
+import { bustCatalogAndFacilities } from '../utils/cache.js';
 
 const VALID_SEASONS = ['Regular', 'Peak', 'N/A'];
 
@@ -171,6 +172,7 @@ export const createFacility = async (req, res) => {
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_facilities WHERE id = ?', [result.insertId]);
+    bustCatalogAndFacilities();
     res.status(201).json({ message: 'Facility rate created', rate: rows[0] });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -206,6 +208,7 @@ export const updateFacility = async (req, res) => {
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_facilities WHERE id = ?', [req.params.id]);
+    bustCatalogAndFacilities();
     res.status(200).json({ message: 'Facility rate updated', rate: rows[0] });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -223,6 +226,7 @@ export const deleteFacility = async (req, res) => {
     }
 
     await pool.query('DELETE FROM rates_facilities WHERE id = ?', [req.params.id]);
+    bustCatalogAndFacilities();
     res.status(200).json({ message: 'Facility rate deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });

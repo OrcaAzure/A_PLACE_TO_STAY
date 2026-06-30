@@ -3,6 +3,7 @@ import {
   getFiscalYearSettings,
   updateFiscalYearSettings,
 } from '../services/fiscalYear.service.js';
+import { bustFiscalYearSettings } from '../utils/cache.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -24,6 +25,7 @@ export const updateFiscalYear = async (req, res) => {
 
     const settings = await updateFiscalYearSettings(req.body || {});
     const info = await getPublicFiscalYearInfo({ bypassAdvanceLimit: true });
+    bustFiscalYearSettings();
     res.status(200).json({
       message: 'Fiscal year settings updated',
       settings,

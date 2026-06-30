@@ -1,10 +1,17 @@
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 import { pool } from '../config/db.js';
-import { JWT_SECRET, JWT_EXPIRES_IN, isProduction } from '../config/env.js';
+import { isProduction } from '../config/env.js';
 import { safeUser, isEmpty } from '../utils/helpers.js';
 import { sendPasswordResetEmail } from './email.service.js';
+import { signUserToken } from '../utils/authToken.js';
+import {
+  checkLoginAllowed,
+  recordFailedLogin,
+  clearLoginAttempts,
+  rotateSession,
+  invalidateSession,
+} from './session.service.js';
 
 const MIN_PASSWORD_LENGTH = isProduction ? 8 : 6;
 
@@ -19,12 +26,15 @@ export const login = async ({ email, password }) => {
     throw new Error('Email and password are required');
   }
 
+  await checkLoginAllowed(email);
+
   const [rows] = await pool.query(
     'SELECT * FROM users WHERE email = ? LIMIT 1',
     [email]
   );
 
   if (rows.length === 0) {
+    await recordFailedLogin(email);
     throw new Error('Invalid email or password');
   }
 
@@ -36,14 +46,13 @@ export const login = async ({ email, password }) => {
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
+    await recordFailedLogin(email);
     throw new Error('Invalid email or password');
   }
 
-  const token = jwt.sign(
-    { id: user.id, email: user.email, role: user.role },
-    JWT_SECRET,
-    { expiresIn: JWT_EXPIRES_IN || '7d' }
-  );
+  await clearLoginAttempts(email);
+  const sid = await rotateSession(user.id);
+  const token = signUserToken(user, sid);
 
   return {
     message: 'Login successful',
@@ -97,7 +106,8 @@ export const changePassword = async (userId, { current_password, new_password })
 
   const hashed = await bcrypt.hash(new_password, 10);
   await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashed, userId]);
-  return { message: 'Password changed successfully' };
+  await invalidateSession(userId);
+  return { message: 'Password changed successfully. Please sign in again.' };
 };
 
 export const requestPasswordReset = async (email) => {
@@ -164,6 +174,7 @@ export const resetPassword = async (token, newPassword) => {
   const hashedPassword = await bcrypt.hash(newPassword, 10);
   await pool.query('UPDATE users SET password = ? WHERE id = ?', [hashedPassword, record.user_id]);
   await pool.query('DELETE FROM password_reset_tokens WHERE user_id = ?', [record.user_id]);
+  await invalidateSession(record.user_id);
 
   return { message: 'Password reset successful' };
 };

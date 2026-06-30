@@ -1,4 +1,4 @@
-import { login } from '/assets/js/services/api.js';
+import { login, getProfile, logout as logoutApi } from '/assets/js/services/api.js';
 
 export function requireAuth() {
   const token = localStorage.getItem('token');
@@ -29,15 +29,20 @@ export function requireAuth() {
   return true;
 }
 
-export function redirectIfLoggedIn() {
-  if (localStorage.getItem('token')) {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const role = user.role || '';
-    if (role === 'Super Admin' || role === 'Admin') {
-      window.location.href = '/admin/dashboard.html';
-    } else {
-      window.location.href = '/guest/dashboard.html';
-    }
+export async function redirectIfLoggedIn() {
+  const token = localStorage.getItem('token');
+  if (!token) return;
+
+  try {
+    const { user } = await getProfile();
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    const role = user?.role || '';
+    const dest = next || (ADMIN_ROLES.includes(role) ? '/admin/dashboard.html' : '/guest/dashboard.html');
+    window.location.href = dest;
+  } catch {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
   }
 }
 
@@ -116,8 +121,12 @@ export function applyRoleUI() {
   return { role, readOnly };
 }
 
-export function doLogout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+export async function doLogout() {
+  try {
+    await logoutApi();
+  } catch {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }
   window.location.href = '/login.html';
 }

@@ -18,7 +18,8 @@ import settingsRoutes  from './routes/settings.routes.js';
 import pageRoutes      from './routes/pages.routes.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { pool }        from './config/db.js';
-import { getAllowedOrigins, isProduction } from './config/env.js';
+import { getAllowedOrigins, isProduction, API_RATE_LIMIT_MAX } from './config/env.js';
+import { cache } from './utils/cache.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir  = path.join(__dirname, '../../public');
@@ -62,6 +63,18 @@ app.use(cors({
 
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+
+app.use('/api', (req, res, next) => {
+  if (!['POST', 'PATCH', 'PUT'].includes(req.method)) return next();
+  const len = Number(req.headers['content-length'] || 0);
+  if (len === 0) return next();
+  const ct = req.headers['content-type'] || '';
+  if (!ct.includes('application/json')) {
+    return res.status(415).json({ message: 'Content-Type must be application/json' });
+  }
+  next();
+});
+
 app.use(requestLogger);
 
 app.get('/api', (req, res) => {
@@ -71,11 +84,25 @@ app.get('/api', (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
-    res.json({ status: 'ok', db: 'connected', env: isProduction ? 'production' : 'development' });
+    res.json({
+      status: 'ok',
+      db: 'connected',
+      env: isProduction ? 'production' : 'development',
+      cache: cache.stats(),
+    });
   } catch {
-    res.status(503).json({ status: 'error', db: 'disconnected' });
+    res.status(503).json({ status: 'error', db: 'disconnected', cache: cache.stats() });
   }
 });
+
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: API_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many requests, please try again later.' },
+});
+app.use('/api', apiLimiter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -102,7 +129,18 @@ app.use('/api/settings',   settingsRoutes);
 
 app.use(pageRoutes);
 
-app.use(express.static(publicDir, { extensions: ['html'] }));
+app.use(express.static(publicDir, {
+  extensions: ['html'],
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+      return;
+    }
+    if (/\.(js|css|woff2?|png|jpe?g|svg|ico|webp)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', isProduction ? 'public, max-age=86400' : 'no-cache');
+    }
+  },
+}));
 
 app.get('/', (req, res) => {
   res.redirect('/index.html');

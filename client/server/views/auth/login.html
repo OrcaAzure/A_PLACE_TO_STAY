@@ -42,8 +42,15 @@
   </main>
 
   <script type="module">
-    import { redirectIfLoggedIn } from '/assets/js/services/auth.js';
+    import { redirectIfLoggedIn, ADMIN_ROLES } from '/assets/js/services/auth.js';
     import { login } from '/assets/js/services/api.js';
+
+    const errorEl = document.getElementById('loginError');
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('reason') === 'session' && errorEl) {
+      errorEl.textContent = 'Your session expired or you signed in on another device. Please log in again.';
+      errorEl.classList.remove('hidden');
+    }
 
     redirectIfLoggedIn();
 
@@ -67,7 +74,7 @@
           localStorage.setItem('user', JSON.stringify(data.user));
 
           const role = data.user.role || '';
-          if (role === 'Super Admin' || role === 'Admin') {
+          if (ADMIN_ROLES.includes(role)) {
             window.location.href = '/admin/dashboard.html';
           } else {
             window.location.href = '/guest/dashboard.html';

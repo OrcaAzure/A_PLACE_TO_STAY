@@ -16,7 +16,11 @@ export async function apiRequest(endpoint, options = {}) {
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers,
+    credentials: 'include',
+  });
 
   let data = null;
   const contentType = response.headers.get('content-type');
@@ -26,6 +30,13 @@ export async function apiRequest(endpoint, options = {}) {
 
   if (!response.ok) {
     const message = data?.message || `Request failed (${response.status})`;
+    if (response.status === 401 && token && /session expired|signed in elsewhere/i.test(message)) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      if (!window.location.pathname.includes('login.html')) {
+        window.location.href = '/login.html?reason=session';
+      }
+    }
     throw new Error(message);
   }
 
@@ -40,8 +51,19 @@ export async function login(email, password) {
 }
 
 export async function logout() {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  try {
+    await fetch(`${API_URL}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+      },
+      credentials: 'include',
+    });
+  } finally {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+  }
 }
 
 export async function getProfile() {

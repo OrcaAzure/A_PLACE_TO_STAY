@@ -10,6 +10,7 @@ import {
   groupMealRows,
   groupServiceRows,
 } from '../services/ancillary.service.js';
+import { bustCatalogAndFacilities } from '../utils/cache.js';
 
 export const getMealRatesCatalog = async (req, res) => {
   try {
@@ -48,6 +49,7 @@ export const createMealRate = async (req, res) => {
 
     const [rows] = await pool.query('SELECT id, meal_type, rate FROM rates_meals WHERE id = ?', [result.insertId]);
     const row = rows[0];
+    bustCatalogAndFacilities();
     res.status(201).json({
       message: 'Meal price created',
       meal: { id: row.id, item: row.meal_type, rate: Number(row.rate) },
@@ -87,6 +89,7 @@ export const updateMealRate = async (req, res) => {
 
     const [rows] = await pool.query('SELECT id, meal_type, rate FROM rates_meals WHERE id = ?', [req.params.id]);
     const row = rows[0];
+    bustCatalogAndFacilities();
     res.status(200).json({
       message: 'Meal price updated',
       meal: { id: row.id, item: row.meal_type, rate: Number(row.rate) },
@@ -106,6 +109,7 @@ export const deleteMealRate = async (req, res) => {
       return res.status(404).json({ message: 'Meal price not found' });
     }
     await pool.query('DELETE FROM rates_meals WHERE id = ?', [req.params.id]);
+    bustCatalogAndFacilities();
     res.status(200).json({ message: 'Meal price deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -131,6 +135,7 @@ export const createExtraService = async (req, res) => {
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_extra_services WHERE id = ?', [result.insertId]);
+    bustCatalogAndFacilities();
     res.status(201).json({ message: 'Extra service created', service: rows[0] });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -166,6 +171,7 @@ export const updateExtraService = async (req, res) => {
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_extra_services WHERE id = ?', [req.params.id]);
+    bustCatalogAndFacilities();
     res.status(200).json({ message: 'Extra service updated', service: rows[0] });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -182,6 +188,7 @@ export const deleteExtraService = async (req, res) => {
       return res.status(404).json({ message: 'Extra service not found' });
     }
     await pool.query('DELETE FROM rates_extra_services WHERE id = ?', [req.params.id]);
+    bustCatalogAndFacilities();
     res.status(200).json({ message: 'Extra service deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });

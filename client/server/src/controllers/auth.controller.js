@@ -1,13 +1,34 @@
 import * as authService from '../services/auth.service.js';
+import { setAuthCookie, clearAuthCookie } from '../utils/cookies.js';
+import { extractToken } from '../utils/authToken.js';
+import { invalidateSession } from '../services/session.service.js';
+import jwt from 'jsonwebtoken';
+import { JWT_SECRET } from '../config/env.js';
 
 // POST /api/auth/login
 export const login = async (req, res) => {
   try {
     const result = await authService.login(req.body);
+    setAuthCookie(res, result.token);
     res.status(200).json(result);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
+};
+
+// POST /api/auth/logout
+export const logout = async (req, res) => {
+  const token = extractToken(req);
+  if (token) {
+    try {
+      const payload = jwt.verify(token, JWT_SECRET);
+      if (payload?.id) await invalidateSession(payload.id);
+    } catch {
+      /* token may already be invalid */
+    }
+  }
+  clearAuthCookie(res);
+  res.status(200).json({ message: 'Logged out' });
 };
 
 // POST /api/auth/register
@@ -24,6 +45,8 @@ export const register = async (req, res) => {
 export const getProfile = async (req, res) => {
   try {
     const user = await authService.getMe(req.user.id);
+    const token = extractToken(req);
+    if (token) setAuthCookie(res, token);
     res.status(200).json({ user });
   } catch (error) {
     res.status(404).json({ message: error.message });

@@ -1212,6 +1212,28 @@ export async function runSchemaPatches() {
       console.warn('[schema] venue invoice backfill skipped:', err.message);
     }
   }
+
+  try {
+    await pool.execute(
+      `CREATE TABLE IF NOT EXISTS login_attempts (
+         email VARCHAR(150) PRIMARY KEY,
+         attempt_count INT NOT NULL DEFAULT 0,
+         locked_until TIMESTAMP NULL,
+         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+       )`
+    );
+  } catch (err) {
+    console.warn('[schema] login_attempts table skipped:', err.message);
+  }
+
+  if (await tableExists('users') && !(await columnExists('users', 'session_id'))) {
+    try {
+      await pool.execute('ALTER TABLE users ADD COLUMN session_id VARCHAR(64) NULL AFTER status');
+      console.log('[schema] Added users.session_id for single-session auth');
+    } catch (err) {
+      console.warn('[schema] users.session_id skipped:', err.message);
+    }
+  }
 }
 
 export async function seedGuestStayExamples() {

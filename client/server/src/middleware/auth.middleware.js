@@ -1,15 +1,19 @@
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '../config/env.js';
+import { extractToken, resolveAuthUser } from '../utils/authToken.js';
 
-export const requireAuth = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+export const requireAuth = async (req, res, next) => {
+  const token = extractToken(req);
+  if (!token) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
   try {
-    const token = authHeader.split(' ')[1];
-    req.user = jwt.verify(token, JWT_SECRET);
+    const user = await resolveAuthUser(token);
+    if (!user) {
+      return res.status(401).json({
+        message: 'Session expired or signed in elsewhere. Please log in again.',
+      });
+    }
+    req.user = user;
     next();
   } catch {
     return res.status(401).json({ message: 'Invalid or expired token' });

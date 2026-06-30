@@ -32,6 +32,15 @@ export const SMTP_FROM = process.env.SMTP_FROM || process.env.MAIL_FROM;
 export const DB_SSL = process.env.DB_SSL === 'true';
 export const DB_CONNECTION_LIMIT = Number(process.env.DB_CONNECTION_LIMIT) || 10;
 
+/** In-memory API response cache (set CACHE_ENABLED=false to disable). */
+export const CACHE_ENABLED = process.env.CACHE_ENABLED !== 'false';
+export const CACHE_TTL_SECONDS = Number(process.env.CACHE_TTL_SECONDS) || 120;
+export const CACHE_MAX_ENTRIES = Number(process.env.CACHE_MAX_ENTRIES) || 500;
+
+/** General API rate limit per IP (requests per minute). */
+export const API_RATE_LIMIT_MAX = Number(process.env.API_RATE_LIMIT_MAX)
+  || (isProduction ? 120 : 600);
+
 const LOCAL_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:5500',

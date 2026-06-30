@@ -672,11 +672,10 @@ function bindLayoutEvents({ isGuest = false } = {}) {
   if (!isGuest) initAdminUserMenu();
 
   document.querySelectorAll('[data-action="logout"]').forEach((btn) => {
-    btn.addEventListener('click', (e) => {
+    btn.addEventListener('click', async (e) => {
       e.preventDefault();
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login.html';
+      const { doLogout } = await import('/assets/js/services/auth.js');
+      await doLogout();
     });
   });
 
