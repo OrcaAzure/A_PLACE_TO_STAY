@@ -6,10 +6,16 @@
     "dev": "npm run dev --prefix client/server",
     "start": "npm start --prefix client/server",
     "start:staging": "node scripts/run-server.mjs .env.staging",
+    "start:staging:local": "node scripts/run-server.mjs .env.staging.local",
     "install:server": "npm install --prefix client/server",
     "setup": "node scripts/setup.mjs",
     "setup:staging": "node scripts/setup-staging.mjs",
+    "setup:staging:local": "node scripts/setup-staging-local.mjs",
+    "setup:cloud": "node scripts/setup-cloud.mjs",
     "verify": "node scripts/verify-local.mjs",
-    "verify:staging": "node scripts/verify-staging.mjs"
+    "verify:staging": "node scripts/verify-staging.mjs",
+    "docker:up": "docker compose up --build -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f app"
   }
 }

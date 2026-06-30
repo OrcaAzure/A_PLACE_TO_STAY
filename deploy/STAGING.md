@@ -54,6 +54,34 @@ npm run start:staging
 This runs with `NODE_ENV=production` rules (stricter env validation, no demo seed unless flagged).
 Your normal `npm run dev` still uses `.env` — they do not overwrite each other.
 
+## Practice staging locally (on your PC)
+
+Simulate production (`NODE_ENV=production`) without waiting for IT. Uses **port 3001** so `npm run dev` can stay on 3000 at the same time.
+
+```bash
+# 1. One-time setup
+npm run setup:staging:local
+
+# 2. Create a separate practice database
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS aptspace_staging;"
+mysql -u root -p aptspace_staging < client/database/schema.sql
+
+# 3. Run staging-practice server
+npm run start:staging:local
+```
+
+Open **http://localhost:3001** — login `admin@aptspace.com` / `password` (after first boot with `ENABLE_SEED=true`).
+
+After admin login works, edit `client/server/.env.staging.local` and set `ENABLE_SEED=false`.
+
+| | Dev | Staging practice |
+|--|-----|------------------|
+| Command | `npm run dev` | `npm run start:staging:local` |
+| Port | 3000 | 3001 |
+| Env file | `.env` | `.env.staging.local` |
+| Database | `aptspace` | `aptspace_staging` |
+| NODE_ENV | development | production |
+
 ## Step 4 — When IT gives server access
 
 On the **staging server**:

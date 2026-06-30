@@ -1,0 +1,59 @@
+# Practice cloud deploy on your PC with Docker (Node + MySQL).
+# Simulates a real VPS before you use Oracle Cloud.
+#
+#   npm run docker:up
+#   Open http://localhost:3000
+#
+# Teammates on your LAN: http://YOUR_PC_IP:3000
+# (add your IP to ALLOWED_ORIGIN below first)
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: aptspace
+      MYSQL_USER: aptspace_app
+      MYSQL_PASSWORD: aptspace_dev
+    volumes:
+      - aptspace_mysql:/var/lib/mysql
+      - ./client/database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost', '-uroot', '-proot']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+      DB_HOST: mysql
+      DB_USER: aptspace_app
+      DB_PASSWORD: aptspace_dev
+      DB_NAME: aptspace
+      DB_SSL: 'false'
+      JWT_SECRET: docker_practice_change_before_public_internet_use_48chars_min
+      JWT_EXPIRES_IN: 7d
+      DEFAULT_PASSWORD: password
+      APP_URL: http://localhost:3000
+      ALLOWED_ORIGIN: http://localhost:3000
+      ENABLE_SEED: 'true'
+      ENABLE_DEMO_DATA: 'true'
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      SMTP_USER: test
+      SMTP_PASS: test
+      SMTP_FROM: noreply@localhost
+
+volumes:
+  aptspace_mysql:

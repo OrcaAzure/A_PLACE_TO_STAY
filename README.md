@@ -2,6 +2,8 @@
 
 AptSpace is a web-based housing and accommodation management system for Asia Pacific Theological Seminary (APTS).
 
+**New to the project and need to run the server?** → see **[RUN-SERVER.md](RUN-SERVER.md)** (step-by-step guide for teammates).
+
 ## Quick start
 
 ```bash
@@ -39,9 +41,11 @@ You can develop locally **and** prepare staging in parallel — they use **separ
 | `npm run dev` | `client/server/.env` | Daily coding |
 | `npm run setup:staging` | creates `.env.staging` | Start staging prep |
 | `npm run verify:staging` | checks `.env.staging` | Before deploy |
-| `npm run start:staging` | `.env.staging` | Optional: test production mode locally |
+| `npm run start:staging` | `.env.staging` | Test with real IT values (when ready) |
+| `npm run start:staging:local` | `.env.staging.local` | **Practice staging on your PC** (port 3001) |
+| `npm run docker:up` | Docker | **Practice cloud deploy locally** (port 3000) |
 
-Full staging workflow: [deploy/STAGING.md](deploy/STAGING.md)
+Cloud VM guide: [deploy/FREE-CLOUD.md](deploy/FREE-CLOUD.md)
 
 ## Configuration
 
