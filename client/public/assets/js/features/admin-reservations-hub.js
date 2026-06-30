@@ -39,6 +39,10 @@ const state = {
   expandedKeys: new Set(),
 };
 
+let eventsBound = false;
+/** @type {(() => void) | null} */
+let onBookingUpdatedRes = null;
+
 function $(id) { return document.getElementById(id); }
 
 function readInitialTab() {
@@ -748,6 +752,9 @@ function onTabChange(tab) {
 }
 
 function bindEvents() {
+  if (eventsBound) return;
+  eventsBound = true;
+
   document.querySelectorAll('[data-res-tab]').forEach((btn) => {
     btn.addEventListener('click', () => onTabChange(btn.getAttribute('data-res-tab')));
   });
@@ -807,7 +814,16 @@ function bindEvents() {
     }
   });
 
-  window.addEventListener('booking:updated', () => loadAll());
+  onBookingUpdatedRes = () => loadAll();
+  window.addEventListener('booking:updated', onBookingUpdatedRes);
+}
+
+export function teardownReservationsHub() {
+  if (onBookingUpdatedRes) {
+    window.removeEventListener('booking:updated', onBookingUpdatedRes);
+    onBookingUpdatedRes = null;
+  }
+  eventsBound = false;
 }
 
 export async function bootstrapReservationsHub() {

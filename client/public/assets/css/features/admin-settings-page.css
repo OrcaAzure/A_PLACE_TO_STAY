@@ -89,23 +89,6 @@
   font-size: 1.25rem;
 }
 
-.settings-nav__logout {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  margin-top: 0.75rem;
-  padding: 0.625rem 0.875rem;
-  border: 1px solid var(--color-outline-variant, #cbd5e0);
-  border-radius: 0.5rem;
-  background: #fff;
-  font: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #475569;
-  cursor: pointer;
-}
-
 /* ── Main column ── */
 .settings-content {
   min-width: 0;

@@ -58,6 +58,14 @@ export function isInternalGuest(userOrEmail = getCurrentUser()) {
 
 /* Roles that use the admin portal. Everyone else lands in the guest portal. */
 export const ADMIN_ROLES = ['Super Admin', 'Admin'];
+
+/** Display label for admin roles in the UI (DB role unchanged). */
+export function formatRoleLabel(role) {
+  if (role === 'Super Admin') return 'Housing Administrator';
+  if (role === 'Admin') return 'Housing Admin';
+  return role || '';
+}
+
 /* Guest-portal roles that may only view — no creating/editing/cancelling. */
 export const READ_ONLY_ROLES = ['Supervisory User'];
 

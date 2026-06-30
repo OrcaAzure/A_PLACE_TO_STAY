@@ -1,8 +1,5 @@
 <header class="admin-app-header anim-static shrink-0 z-30">
   <div class="admin-app-header__inner">
-    <button id="sidebar-open-btn" type="button" class="admin-header-icon-btn sidebar-open-btn" aria-label="Open sidebar" aria-expanded="true" title="Open sidebar">
-      <span class="material-symbols-outlined sidebar-open-btn__icon">menu</span>
-    </button>
     <div class="admin-app-header__start">
       <div class="admin-app-header__lead min-w-0">
         <div class="admin-page-heading">
@@ -12,20 +9,41 @@
       </div>
     </div>
     <div class="admin-app-header__actions shrink-0">
-      <div class="admin-status-badge" title="System is running normally">
-        <span class="admin-status-dot" aria-hidden="true"></span>
-        <span>System Live</span>
-      </div>
       <button id="notifications-btn" type="button" class="admin-header-icon-btn" aria-label="Notifications">
         <span class="material-symbols-outlined">notifications</span>
         <span class="admin-notif-dot" aria-hidden="true"></span>
       </button>
-      <div class="admin-user-chip">
-        <div class="admin-user-chip__text hidden sm:block">
-          <p class="admin-user-chip__name">{{USER_NAME}}</p>
-          <p class="admin-user-chip__role">{{USER_ROLE}}</p>
+      <div class="admin-user-menu">
+        <button
+          type="button"
+          id="admin-user-menu-btn"
+          class="admin-user-menu-btn"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="admin-user-dropdown"
+          aria-label="Account menu"
+        >
+          <div class="admin-user-chip__text hidden sm:block">
+            <p class="admin-user-chip__name">{{USER_NAME}}</p>
+            <p class="admin-user-chip__role">{{USER_ROLE}}</p>
+          </div>
+          <div class="admin-user-chip__avatar" aria-hidden="true">{{USER_INITIAL}}</div>
+          <span class="material-symbols-outlined admin-user-menu-chevron hidden sm:block" aria-hidden="true">expand_more</span>
+        </button>
+        <div id="admin-user-dropdown" class="admin-user-dropdown hidden" role="menu">
+          <div class="admin-user-dropdown__head">
+            <p class="admin-user-chip__name">{{USER_NAME}}</p>
+            <p class="admin-user-chip__role">{{USER_ROLE}}</p>
+          </div>
+          <a href="/admin/settings.html" class="admin-user-dropdown__item" role="menuitem">
+            <span class="material-symbols-outlined" aria-hidden="true">settings</span>
+            Settings
+          </a>
+          <button type="button" data-action="logout" class="admin-user-dropdown__item admin-user-dropdown__item--logout" role="menuitem">
+            <span class="material-symbols-outlined" aria-hidden="true">logout</span>
+            Log out
+          </button>
         </div>
-        <div class="admin-user-chip__avatar" aria-hidden="true">{{USER_INITIAL}}</div>
       </div>
     </div>
   </div>

@@ -1,13 +1,12 @@
 <aside id="app-sidebar" class="anim-static bg-white border-r border-outline-variant flex flex-col py-lg px-md z-40 shrink-0 h-full">
-  <div class="mb-xl px-sm flex items-center justify-between gap-sm min-w-0">
+  <div class="admin-sidebar-head mb-xl px-sm flex items-center justify-between gap-sm min-w-0">
     <a href="{{BRAND_HREF}}" class="admin-brand flex items-center gap-md min-w-0 no-underline flex-1" aria-label="AptSpace home">
       <span class="admin-brand-mark" aria-hidden="true">A</span>
       <div class="admin-brand-text min-w-0">
         <h1 class="font-headline-md text-headline-md font-bold text-primary leading-tight truncate">AptSpace</h1>
-        <p class="text-body-sm text-on-surface-variant mt-0.5 admin-portal-label truncate">{{PORTAL_LABEL}}</p>
       </div>
     </a>
-    <button id="sidebar-collapse-btn" type="button" class="admin-sidebar-collapse-btn" aria-label="Hide sidebar" title="Hide sidebar">
+    <button id="sidebar-collapse-btn" type="button" class="admin-sidebar-collapse-btn" aria-label="Collapse sidebar" title="Collapse sidebar" aria-expanded="true">
       <span class="material-symbols-outlined">dock_to_right</span>
     </button>
   </div>
@@ -15,11 +14,4 @@
   <nav class="flex-1 space-y-1.5 min-w-0 overflow-y-auto" aria-label="Main navigation">{{NAV_ITEMS}}</nav>
 
   {{SIDEBAR_FOOTER}}
-
-  <div class="mt-auto border-t border-outline-variant pt-lg shrink-0">
-    <button id="logout-btn" type="button" class="w-full flex items-center gap-md px-md py-md text-on-surface-variant hover:bg-surface-variant/50 rounded-lg min-h-[3rem]">
-      <span class="material-symbols-outlined text-[1.35rem] shrink-0">logout</span>
-      <span class="font-body-md font-medium admin-nav-label">Log Out</span>
-    </button>
-  </div>
 </aside>

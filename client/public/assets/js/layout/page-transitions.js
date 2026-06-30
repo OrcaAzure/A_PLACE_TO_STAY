@@ -1,6 +1,10 @@
 /**
- * Portal page navigation — instant (no fade/slide) for stable admin & guest chrome.
+ * Portal page navigation — admin soft nav keeps sidebar/header static.
  */
+
+import { formatRoleLabel } from '/assets/js/services/auth.js';
+import { lockStaticChrome } from '/assets/js/layout/animations.js';
+import { bootAdminPage, cleanupAdminPage } from '/assets/js/layout/admin-page-loaders.js';
 
 const GUEST_PAGES = new Set([
   'dashboard.html',
@@ -18,6 +22,9 @@ const ADMIN_PAGES = new Set([
   'payments.html',
   'settings.html',
 ]);
+
+/** @type {Promise<void> | null} */
+let adminNavPromise = null;
 
 function pageNameFromHref(href) {
   try {
@@ -45,17 +52,111 @@ function isInternalPortalLink(link, allowedPages) {
   return allowedPages.has(pageNameFromHref(href));
 }
 
-/** No enter animation — content is visible immediately on load. */
+function parseAdminPageMeta(html, pageName) {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const content = doc.getElementById('page-content');
+  const script = doc.querySelector('script[type="module"]')?.textContent || '';
+  const title = script.match(/title:\s*['"]([^'"]+)['"]/)?.[1]
+    || doc.title.replace(/\s*\|\s*AptSpace.*$/i, '').trim();
+  const subtitle = script.match(/subtitle:\s*['"]([^'"]*)['"]/)?.[1] ?? '';
+  const activePage = script.match(/activePage:\s*['"]([^'"]+)['"]/)?.[1]
+    || pageName.replace('.html', '');
+
+  return {
+    contentClass: content?.className || '',
+    contentHtml: content?.innerHTML || '',
+    title,
+    subtitle,
+    activePage,
+    docTitle: doc.title,
+    doc,
+  };
+}
+
+function mergePageStyles(doc) {
+  doc.querySelectorAll('link[rel="stylesheet"]').forEach((link) => {
+    const href = link.getAttribute('href');
+    if (!href || document.querySelector(`link[rel="stylesheet"][href="${href}"]`)) return;
+    document.head.appendChild(link.cloneNode(true));
+  });
+}
+
 function ensureVisible(contentEl, headerEl) {
   [contentEl, headerEl].forEach((el) => {
     if (!el) return;
-    el.classList.remove('page-enter-start', 'page-enter-active', 'page-exit-active');
+    el.classList.remove('page-enter-start', 'page-enter-active', 'page-exit-active', 'admin-content-loading');
     el.style.opacity = '1';
     el.style.transform = 'none';
   });
 }
 
-function bindPortalNav({ navSelector, contentSelector, headerSelector, allowedPages }) {
+async function navigateAdminSoft(href) {
+  if (!document.getElementById('app-sidebar')) {
+    window.location.href = href;
+    return;
+  }
+
+  const pageName = pageNameFromHref(href);
+  if (!ADMIN_PAGES.has(pageName)) {
+    window.location.href = href;
+    return;
+  }
+
+  if (adminNavPromise) return adminNavPromise;
+
+  const pageEl = document.getElementById('page-content');
+  const headerEl = document.querySelector('main > header');
+  if (!pageEl) {
+    window.location.href = href;
+    return;
+  }
+
+  document.documentElement.classList.add('admin-chrome-boot');
+  lockStaticChrome();
+  pageEl.classList.add('admin-content-loading');
+
+  adminNavPromise = (async () => {
+    try {
+      const res = await fetch(href, { credentials: 'same-origin' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const html = await res.text();
+      const meta = parseAdminPageMeta(html, pageName);
+      if (!meta.contentHtml) throw new Error('Missing page content');
+
+      mergePageStyles(meta.doc);
+      cleanupAdminPage();
+      pageEl.className = meta.contentClass;
+      pageEl.innerHTML = meta.contentHtml;
+
+      const { ADMIN_NAV, updateActiveNav, updateAdminHeader } = await import('/assets/js/layout/ui.js');
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const userName = user.full_name || user.name || 'Admin User';
+      updateAdminHeader({
+        title: meta.title,
+        subtitle: meta.subtitle,
+        userName,
+        userRole: formatRoleLabel(user.role) || 'Housing Admin',
+        userInitial: userName.charAt(0).toUpperCase(),
+      });
+      updateActiveNav(meta.activePage, ADMIN_NAV);
+      document.title = meta.docTitle;
+      window.history.pushState({ adminPage: pageName }, '', href);
+
+      ensureVisible(pageEl, headerEl);
+      await bootAdminPage(pageName);
+    } catch (err) {
+      console.warn('[nav] Soft navigation failed, using full load:', err);
+      window.location.href = href;
+    } finally {
+      pageEl.classList.remove('admin-content-loading');
+      adminNavPromise = null;
+    }
+  })();
+
+  return adminNavPromise;
+}
+
+function bindPortalNav({ navSelector, contentSelector, headerSelector, allowedPages, softNav = false }) {
   const contentEl = document.querySelector(contentSelector);
   if (!contentEl) return;
 
@@ -69,8 +170,18 @@ function bindPortalNav({ navSelector, contentSelector, headerSelector, allowedPa
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
       if (isSameDocument(link.href)) {
         e.preventDefault();
+        return;
       }
-      // Default browser navigation — no exit animation delay.
+      if (softNav) {
+        e.preventDefault();
+        import('/assets/js/layout/ui.js').then(({ ADMIN_NAV, updateActiveNav }) => {
+          const page = pageNameFromHref(link.href);
+          const activePage = ADMIN_NAV.find((item) => item.href.endsWith(page))?.id
+            || page.replace('.html', '');
+          updateActiveNav(activePage, ADMIN_NAV);
+        });
+        navigateAdminSoft(link.href);
+      }
     });
   });
 }
@@ -90,5 +201,12 @@ export function initAdminPageNavTransitions() {
     contentSelector: '#page-content',
     headerSelector: 'main > header',
     allowedPages: ADMIN_PAGES,
+    softNav: true,
+  });
+
+  window.addEventListener('popstate', () => {
+    if (document.getElementById('app-sidebar')) {
+      navigateAdminSoft(window.location.href);
+    }
   });
 }

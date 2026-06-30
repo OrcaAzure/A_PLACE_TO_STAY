@@ -17,6 +17,8 @@ const state = {
 };
 
 let boardInitialized = false;
+/** @type {(() => void) | null} */
+let onRoomsChanged = null;
 
 function debounce(fn, ms = 280) {
   let t;
@@ -305,7 +307,16 @@ export function initRoomsBoard() {
     if (card) openRoom(card.getAttribute('data-room-id'));
   });
 
-  window.addEventListener('rooms:changed', () => loadBoard());
+  onRoomsChanged = () => loadBoard();
+  window.addEventListener('rooms:changed', onRoomsChanged);
+}
+
+export function teardownRoomsBoard() {
+  if (onRoomsChanged) {
+    window.removeEventListener('rooms:changed', onRoomsChanged);
+    onRoomsChanged = null;
+  }
+  boardInitialized = false;
 }
 
 export async function bootstrapRoomsBoard() {

@@ -41,6 +41,7 @@ function escapeHtml(value) {
 }
 
 let onRefresh = async () => {};
+let catalogShellInitialized = false;
 let modalState = { mode: 'edit', kind: 'venue', row: null };
 let activeCatalogTab = 'rooms';
 const catalogEditMode = { venues: false, meals: false, extras: false };
@@ -418,6 +419,8 @@ export function setCatalogToolbarTab(tab) {
 
 export function initFacilityCatalog({ refresh }) {
   onRefresh = refresh;
+  if (catalogShellInitialized) return;
+  catalogShellInitialized = true;
 
   $('catalog-modal-close')?.addEventListener('click', hideModal);
   $('catalog-modal-overlay')?.addEventListener('click', hideModal);

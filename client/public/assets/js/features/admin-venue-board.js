@@ -14,6 +14,10 @@ const state = {
   search: '',
 };
 
+let venueBoardInitialized = false;
+/** @type {(() => void) | null} */
+let onBookingUpdated = null;
+
 function escapeHtml(str) {
   if (str == null) return '';
   return String(str)
@@ -318,6 +322,9 @@ function loadToday() {
 }
 
 export function initVenueScheduleBoard() {
+  if (venueBoardInitialized) return;
+  venueBoardInitialized = true;
+
   const dateInput = document.getElementById('venue-schedule-date');
   const startInput = document.getElementById('venue-schedule-start');
   const endInput = document.getElementById('venue-schedule-end');
@@ -369,9 +376,18 @@ export function initVenueScheduleBoard() {
     });
   });
 
-  window.addEventListener('booking:updated', () => {
+  onBookingUpdated = () => {
     if (state.date) loadSchedule(state.date);
-  });
+  };
+  window.addEventListener('booking:updated', onBookingUpdated);
+}
+
+export function teardownVenueScheduleBoard() {
+  if (onBookingUpdated) {
+    window.removeEventListener('booking:updated', onBookingUpdated);
+    onBookingUpdated = null;
+  }
+  venueBoardInitialized = false;
 }
 
 export async function bootstrapVenueScheduleBoard() {

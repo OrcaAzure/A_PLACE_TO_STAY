@@ -3,6 +3,7 @@
  */
 
 import { getProfile, updateProfile, changePassword, getFiscalYear, updateFiscalYearSettings } from '/assets/js/services/api.js';
+import { formatRoleLabel } from '/assets/js/services/auth.js';
 import { formatDate } from '/assets/js/features/reservation-shared.js';
 import { openModal, closeModal } from '/assets/js/layout/ui.js';
 
@@ -33,8 +34,24 @@ const SEASON_BADGE_CLASS = {
 
 const NAV_ACTIVE = 'settings-nav__item--active';
 
-export async function loadAdminSettings() {
+let settingsUiBound = false;
+
+function bindSettingsUi() {
+  if (settingsUiBound) return;
+  settingsUiBound = true;
+
   bindNavigation();
+  document.getElementById('settings-save-btn')?.addEventListener('click', saveProfile);
+  document.getElementById('settings-password-btn')?.addEventListener('click', savePassword);
+  document.getElementById('system-settings-save-btn')?.addEventListener('click', saveSystemSettings);
+}
+
+export function teardownAdminSettings() {
+  settingsUiBound = false;
+}
+
+export async function loadAdminSettings() {
+  bindSettingsUi();
 
   const [{ user }, fyInfo] = await Promise.all([getProfile(), getFiscalYear()]);
   fiscalYearInfo = fyInfo;
@@ -48,10 +65,6 @@ export async function loadAdminSettings() {
   if (bannerName) bannerName.dataset.fallback = user.full_name || 'User';
   bindNamePreview();
   renderFiscalYearSettings(fyInfo);
-
-  document.getElementById('settings-save-btn')?.addEventListener('click', saveProfile);
-  document.getElementById('settings-password-btn')?.addEventListener('click', savePassword);
-  document.getElementById('system-settings-save-btn')?.addEventListener('click', saveSystemSettings);
 }
 
 async function saveProfile() {
@@ -127,7 +140,7 @@ function updateProfileHeader(user) {
   if (bannerName) bannerName.textContent = name;
   if (emailEl) emailEl.textContent = email;
   if (emailDisplay) emailDisplay.textContent = email;
-  if (roleEl) roleEl.textContent = user.role || 'User';
+  if (roleEl) roleEl.textContent = formatRoleLabel(user.role) || 'User';
   if (memberEl && user.created_at) {
     const joined = new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
     memberEl.textContent = `Member since ${joined}`;
@@ -148,7 +161,9 @@ function bindNamePreview() {
 function refreshAdminChromeName(user) {
   const name = user.full_name || 'User';
   const initial = name.charAt(0).toUpperCase();
-  document.querySelector('.admin-user-chip__name')?.replaceChildren(document.createTextNode(name));
+  document.querySelectorAll('.admin-user-chip__name').forEach((el) => {
+    el.textContent = name;
+  });
   document.querySelector('.admin-user-chip__avatar')?.replaceChildren(document.createTextNode(initial));
 }
 

@@ -10,6 +10,7 @@ import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDraw
 import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
 import { initGuestPortalChrome } from '/assets/js/layout/guest-portal.js';
 import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
+import { formatRoleLabel } from '/assets/js/services/auth.js';
 import {
   isDesktopSidebar,
   closeMobileSidebar,
@@ -59,7 +60,7 @@ export async function loadComponent(url) {
 }
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v8';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v13';
 
 /** @type {Promise<Record<string, string>> | null} */
 let templatesPromise = null;
@@ -184,9 +185,9 @@ function buildAdminShell({
   const header = templates.header
     .replace('{{TITLE}}', title)
     .replace('{{SUBTITLE}}', subtitle)
-    .replace('{{USER_NAME}}', userName)
-    .replace('{{USER_ROLE}}', userRole)
-    .replace('{{USER_INITIAL}}', userInitial);
+    .replace(/\{\{USER_NAME\}\}/g, userName)
+    .replace(/\{\{USER_ROLE\}\}/g, userRole)
+    .replace(/\{\{USER_INITIAL\}\}/g, userInitial);
 
   return `
     ${sidebar}
@@ -209,16 +210,16 @@ function buildAdminShell({
   `;
 }
 
-function adminBottomNavLinkClass(active, id) {
+function adminBottomNavLinkClass(isActive) {
   const base = 'portal-bottom-nav-link admin-bottom-nav-link flex flex-col items-center justify-center gap-0.5 flex-1 min-h-0 px-0.5 py-1.5 font-semibold no-underline transition-colors min-w-0';
-  return active === id
+  return isActive
     ? `${base} is-active text-primary`
     : `${base} text-on-surface-variant`;
 }
 
-function guestBottomNavLinkClass(active, id) {
+function guestBottomNavLinkClass(isActive) {
   const base = 'portal-bottom-nav-link guest-bottom-nav-link flex flex-col items-center justify-center gap-0.5 flex-1 min-h-0 px-0.5 py-1.5 font-semibold no-underline transition-colors min-w-0';
-  return active === id
+  return isActive
     ? `${base} is-active text-primary`
     : `${base} text-on-surface-variant`;
 }
@@ -237,7 +238,7 @@ function renderAdminBottomNav(items, active) {
   return `
     <nav class="portal-bottom-nav admin-bottom-nav lg:hidden" aria-label="Mobile navigation">
       ${items.map((item) => `
-        <a class="${adminBottomNavLinkClass(active, item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}" aria-label="${ADMIN_NAV.find((n) => n.id === item.id)?.label || item.label}">
+        <a class="${adminBottomNavLinkClass(active === item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}" aria-label="${ADMIN_NAV.find((n) => n.id === item.id)?.label || item.label}">
           <span class="material-symbols-outlined leading-none" aria-hidden="true">${item.icon}</span>
           <span class="admin-bottom-nav-label">${ADMIN_MOBILE_LABELS[item.id] || item.label}</span>
         </a>
@@ -248,7 +249,7 @@ function renderGuestBottomNav(items, active) {
   return `
     <nav class="portal-bottom-nav guest-bottom-nav lg:hidden" aria-label="Mobile navigation">
       ${items.map((item) => `
-        <a class="${guestBottomNavLinkClass(active, item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}" aria-label="${item.label}">
+        <a class="${guestBottomNavLinkClass(active === item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}" aria-label="${item.label}">
           <span class="material-symbols-outlined leading-none" aria-hidden="true">${item.icon}</span>
           <span class="guest-bottom-nav-label">${item.label}</span>
         </a>
@@ -256,21 +257,21 @@ function renderGuestBottomNav(items, active) {
     </nav>`;
 }
 
-function guestTopNavLinkClass(active, id) {
+function guestTopNavLinkClass(isActive) {
   const base = 'text-label-md transition-colors no-underline';
-  return active === id
+  return isActive
     ? `${base} text-primary font-semibold`
     : `${base} text-on-surface-variant hover:text-primary`;
 }
 
-function guestMobileNavLinkClass(active, id) {
+function guestMobileNavLinkClass(isActive) {
   const base = 'lp-mobile-link';
-  return active === id ? `${base} text-primary font-semibold` : base;
+  return isActive ? `${base} text-primary font-semibold` : base;
 }
 
 function renderGuestTopNavLinks(items, active) {
   return items.map((item) => `
-    <a class="${guestTopNavLinkClass(active, item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}">${item.label}</a>
+    <a class="${guestTopNavLinkClass(active === item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}">${item.label}</a>
   `).join('');
 }
 
@@ -350,7 +351,7 @@ function updateGuestChrome({ userName, userRole, userInitial }) {
   document.querySelectorAll('.guest-user-initial').forEach((el) => { el.textContent = userInitial; });
 }
 
-function updateActiveNav(activePage, navItems = ADMIN_NAV) {
+export function updateActiveNav(activePage, navItems = ADMIN_NAV) {
   const mobileNavItems = navItems === ADMIN_NAV ? ADMIN_MOBILE_NAV : navItems;
   document.querySelectorAll('#app-sidebar nav a, .guest-bottom-nav a, .admin-bottom-nav a, .guest-top-nav-links a, #lp-mobile-menu nav a[href]').forEach((link) => {
     const href = link.getAttribute('href') || '';
@@ -361,44 +362,74 @@ function updateActiveNav(activePage, navItems = ADMIN_NAV) {
       ?? navItems.find((item) => item.href.endsWith(page))?.id;
     const active = id === activePage;
     if (link.closest('.guest-bottom-nav')) {
-      link.className = guestBottomNavLinkClass(active, id || '');
+      link.className = guestBottomNavLinkClass(active);
     } else if (link.closest('.admin-bottom-nav')) {
-      link.className = adminBottomNavLinkClass(active, id || '');
+      link.className = adminBottomNavLinkClass(active);
     } else if (link.closest('.guest-top-nav-links')) {
-      link.className = guestTopNavLinkClass(active, id || '');
+      link.className = guestTopNavLinkClass(active);
     } else if (link.closest('#lp-mobile-menu')) {
-      link.className = guestMobileNavLinkClass(active, id || '');
+      link.className = guestMobileNavLinkClass(active);
     } else {
-      link.className = navLinkClass(active, id || '');
+      link.className = navLinkClass(active);
     }
     link.setAttribute('aria-current', active ? 'page' : 'false');
   });
 }
 
-function updateAdminHeader({ title, subtitle, userName, userRole, userInitial }) {
+export function updateAdminHeader({ title, subtitle, userName, userRole, userInitial }) {
   const titleEl = document.querySelector('.admin-page-title');
   const subtitleEl = document.querySelector('.admin-page-subtitle');
-  const nameEl = document.querySelector('.admin-user-chip__name');
-  const roleEl = document.querySelector('.admin-user-chip__role');
+  const nameEls = document.querySelectorAll('.admin-user-chip__name');
+  const roleEls = document.querySelectorAll('.admin-user-chip__role');
   const initialEl = document.querySelector('.admin-user-chip__avatar');
 
   if (titleEl) titleEl.textContent = title;
   if (subtitleEl) subtitleEl.textContent = subtitle;
-  if (nameEl) nameEl.textContent = userName;
-  if (roleEl) roleEl.textContent = userRole;
+  nameEls.forEach((el) => { el.textContent = userName; });
+  roleEls.forEach((el) => { el.textContent = userRole; });
   if (initialEl) initialEl.textContent = userInitial;
 }
 
-function navLinkClass(active, id) {
+function initAdminUserMenu() {
+  const btn = document.getElementById('admin-user-menu-btn');
+  const menu = document.getElementById('admin-user-dropdown');
+  if (!btn || !menu) return;
+
+  const setOpen = (open) => {
+    menu.classList.toggle('hidden', !open);
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    setOpen(menu.classList.contains('hidden'));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!menu.contains(e.target) && !btn.contains(e.target)) {
+      setOpen(false);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setOpen(false);
+  });
+
+  menu.querySelectorAll('a, button').forEach((item) => {
+    item.addEventListener('click', () => setOpen(false));
+  });
+}
+
+function navLinkClass(isActive) {
   const base = 'flex items-center gap-md px-md py-md rounded-lg text-body-md';
-  return active === id
+  return isActive
     ? `${base} admin-nav-active text-primary font-bold`
     : `${base} hover:bg-surface-variant/50 text-on-surface-variant`;
 }
 
 function renderSidebarNav(items, active) {
   return items.map((item) => `
-    <a class="${navLinkClass(active, item.id)}" href="${item.href}">
+    <a class="${navLinkClass(active === item.id)}" href="${item.href}" title="${item.label}">
       <span class="material-symbols-outlined">${item.icon}</span>
       <span class="font-body-md admin-nav-label">${item.label}</span>
     </a>
@@ -417,9 +448,9 @@ export async function initAppLayout(config = {}) {
   const {
     portal = 'admin',
     activePage = 'dashboard',
-    title = 'Mission Control',
-    subtitle = 'Operations Center',
-    portalLabel = portal === 'admin' ? 'Seminary Admin' : 'Guest Portal',
+    title = 'Dashboard',
+    subtitle = '',
+    portalLabel = '',
     deferEnhancements = false,
     landingHome = false,
   } = config;
@@ -431,7 +462,7 @@ export async function initAppLayout(config = {}) {
 
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const userName = user.full_name || user.name || (isGuest ? 'Guest User' : 'Admin User');
-  const userRole = user.role || (isGuest ? 'Guest' : 'Ops Commander');
+  const userRole = formatRoleLabel(user.role) || (isGuest ? 'Guest' : 'Housing Admin');
   const userInitial = userName.charAt(0).toUpperCase();
   const collapsed = isSidebarCollapsedPreferred();
 
@@ -560,17 +591,13 @@ function ensureSidebarUi() {
 
 function initSidebarCollapse() {
   const collapseBtn = document.getElementById('sidebar-collapse-btn');
-  const openBtn = document.getElementById('sidebar-open-btn');
 
   syncSidebarToggleUi();
 
   collapseBtn?.addEventListener('click', () => {
     if (!isDesktopSidebar()) return;
-    setSidebarCollapsed(true);
-  });
-  openBtn?.addEventListener('click', () => {
-    if (!isDesktopSidebar()) return;
-    setSidebarCollapsed(false);
+    const collapsed = document.body.classList.contains('sidebar-collapsed');
+    setSidebarCollapsed(!collapsed);
   });
 
   window.addEventListener('resize', () => {
@@ -583,26 +610,68 @@ function initSidebarCollapse() {
   });
 }
 
+function syncSidebarCollapseUi() {
+  const collapseBtn = document.getElementById('sidebar-collapse-btn');
+  const collapsed = document.body.classList.contains('sidebar-collapsed');
+  const icon = collapseBtn?.querySelector('.material-symbols-outlined');
+  if (icon) icon.textContent = collapsed ? 'dock_to_left' : 'dock_to_right';
+  if (collapseBtn) {
+    const label = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+    collapseBtn.setAttribute('aria-label', label);
+    collapseBtn.title = label;
+    collapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  }
+}
+
 function setSidebarCollapsed(collapsed) {
   const shell = document.body;
+  const sidebar = document.getElementById('app-sidebar');
   document.documentElement.classList.add('sidebar-user-toggle');
+
+  if (sidebar) sidebar.classList.add('sidebar-labels-hidden');
+
   shell.classList.toggle('sidebar-collapsed', collapsed);
   if (isDesktopSidebar()) {
     localStorage.setItem(SIDEBAR_COLLAPSED_KEY, collapsed ? '1' : '0');
   }
   if (collapsed) closeMobileSidebar();
   syncSidebarToggleUi();
-  requestAnimationFrame(() => {
+
+  if (!sidebar || !isDesktopSidebar()) {
+    sidebar?.classList.remove('sidebar-labels-hidden');
     document.documentElement.classList.remove('sidebar-user-toggle');
-  });
+    return;
+  }
+
+  let finished = false;
+  const finishTransition = () => {
+    if (finished) return;
+    finished = true;
+    sidebar.classList.remove('sidebar-labels-hidden');
+    document.documentElement.classList.remove('sidebar-user-toggle');
+    sidebar.removeEventListener('transitionend', onWidthTransitionEnd);
+    clearTimeout(fallbackTimer);
+  };
+
+  const onWidthTransitionEnd = (event) => {
+    if (event.target === sidebar && event.propertyName === 'width') {
+      finishTransition();
+    }
+  };
+
+  sidebar.addEventListener('transitionend', onWidthTransitionEnd);
+  const fallbackTimer = setTimeout(finishTransition, 240);
 }
 
 function syncSidebarToggleUi() {
+  syncSidebarCollapseUi();
   syncMobileSidebarToggleUi();
 }
 
 function bindLayoutEvents({ isGuest = false } = {}) {
-  document.querySelectorAll('#logout-btn, [data-action="logout"]').forEach((btn) => {
+  if (!isGuest) initAdminUserMenu();
+
+  document.querySelectorAll('[data-action="logout"]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
       localStorage.removeItem('token');
@@ -650,7 +719,6 @@ function bindLayoutEvents({ isGuest = false } = {}) {
             ? { icon: 'pending_actions', text: `${pending} pending reservation${pending === 1 ? '' : 's'}`, sub: 'Requires admin review' }
             : { icon: 'check_circle', text: 'No pending reservations', sub: 'All clear' },
           { icon: 'login', text: `${arriving} upcoming check-in${arriving === 1 ? '' : 's'}`, sub: 'Approved reservations ahead' },
-          { icon: 'wifi',  text: 'System status: Live', sub: 'All services operational' },
         ];
 
         list.innerHTML = items.map(item => `

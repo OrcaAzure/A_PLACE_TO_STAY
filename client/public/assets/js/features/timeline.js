@@ -1146,7 +1146,8 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
 
 export async function mountAdminCalendar({ mountEl, title = 'Calendar', onData }) {
   const controller = createCalendarController({ mountEl, title, onData, withFilters: true });
-  if (!controller) return;
+  if (!controller) return () => {};
   await controller.refresh();
   window.addEventListener('booking:updated', controller.refresh);
+  return () => window.removeEventListener('booking:updated', controller.refresh);
 }

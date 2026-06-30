@@ -7,8 +7,8 @@ requireAuth();
 await initAppLayout({
   portal: 'admin',
   activePage: 'reservations',
-  title: 'Reservation Operations Center',
-  subtitle: 'Mission Control',
+  title: 'Reservations',
+  subtitle: 'Review and approve booking requests',
 });
 
 try {

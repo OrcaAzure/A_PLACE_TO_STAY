@@ -28,6 +28,10 @@ function escapeHtml(value) {
 
 let overview = { summary: {}, guests: [] };
 let requests = [];
+let guestShellInitialized = false;
+let guestPageInitialized = false;
+/** @type {((e: KeyboardEvent) => void) | null} */
+let guestEscapeHandler = null;
 let activityEntries = [];
 let statusFilter = 'all';
 let searchQuery = '';
@@ -497,33 +501,47 @@ async function handleRejectRequest(id) {
 }
 
 export function initGuestAccessPage() {
+  if (!guestShellInitialized) {
+    guestShellInitialized = true;
+
+    $('guest-access-modal-close')?.addEventListener('click', hideAddGuestModal);
+    $('guest-access-modal-cancel')?.addEventListener('click', hideAddGuestModal);
+    $('guest-access-modal-overlay')?.addEventListener('click', hideAddGuestModal);
+    $('guest-access-done')?.addEventListener('click', hideAddGuestModal);
+    $('guest-access-form')?.addEventListener('submit', submitAddGuest);
+
+    $('guest-copy-password')?.addEventListener('click', async () => {
+      const value = $('guest-temp-password')?.textContent?.trim();
+      if (!value) return;
+      try {
+        await navigator.clipboard.writeText(value);
+        $('guest-copy-password').textContent = 'Copied';
+        setTimeout(() => { $('guest-copy-password').textContent = 'Copy'; }, 1500);
+      } catch {
+        window.alert('Could not copy — please select and copy the password manually.');
+      }
+    });
+
+    document.querySelectorAll('input[name="ga-add-mode"]').forEach((radio) => {
+      radio.addEventListener('change', syncAddGuestModal);
+    });
+
+    guestEscapeHandler = (e) => {
+      if (e.key === 'Escape' && !$('guest-access-modal')?.classList.contains('hidden')) {
+        hideAddGuestModal();
+      }
+    };
+    document.addEventListener('keydown', guestEscapeHandler);
+  }
+
+  if (guestPageInitialized) return;
+  guestPageInitialized = true;
+
   document.querySelectorAll('[data-ga-tab]').forEach((btn) => {
     btn.addEventListener('click', () => switchTab(btn.getAttribute('data-ga-tab')));
   });
 
   $('add-guest-btn')?.addEventListener('click', () => showAddGuestModal('form'));
-
-  document.querySelectorAll('input[name="ga-add-mode"]').forEach((radio) => {
-    radio.addEventListener('change', syncAddGuestModal);
-  });
-
-  $('guest-access-modal-close')?.addEventListener('click', hideAddGuestModal);
-  $('guest-access-modal-cancel')?.addEventListener('click', hideAddGuestModal);
-  $('guest-access-modal-overlay')?.addEventListener('click', hideAddGuestModal);
-  $('guest-access-done')?.addEventListener('click', hideAddGuestModal);
-  $('guest-access-form')?.addEventListener('submit', submitAddGuest);
-
-  $('guest-copy-password')?.addEventListener('click', async () => {
-    const value = $('guest-temp-password')?.textContent?.trim();
-    if (!value) return;
-    try {
-      await navigator.clipboard.writeText(value);
-      $('guest-copy-password').textContent = 'Copied';
-      setTimeout(() => { $('guest-copy-password').textContent = 'Copy'; }, 1500);
-    } catch {
-      window.alert('Could not copy — please select and copy the password manually.');
-    }
-  });
 
   document.querySelectorAll('[data-ga-filter]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -565,11 +583,9 @@ export function initGuestAccessPage() {
     if (reject) handleRejectRequest(reject.getAttribute('data-ga-reject-request'));
   });
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !$('guest-access-modal')?.classList.contains('hidden')) {
-      hideAddGuestModal();
-    }
-  });
-
   syncAddGuestModal();
+}
+
+export function teardownGuestAccessPage() {
+  guestPageInitialized = false;
 }
