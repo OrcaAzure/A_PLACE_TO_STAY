@@ -386,17 +386,22 @@ function renderBedField() {
 }
 
 function renderAdvancedFields(bldgOpts) {
-  return `
-      ${renderRoomTypeCards()}
-      ${renderBedField()}
-
-      <div class="admin-crud-field">
+  const singleBuilding = state.buildings.length === 1;
+  const buildingField = singleBuilding
+    ? `<input type="hidden" id="mf-building" name="building_id" value="${escapeHtml(String(state.form.building_id || state.buildings[0]?.id || ''))}" />`
+    : `<div class="admin-crud-field">
         <label for="mf-building">Building</label>
         <select id="mf-building" name="building_id" required>
           <option value="">Select building…</option>
           ${bldgOpts}
         </select>
-      </div>
+      </div>`;
+
+  return `
+      ${renderRoomTypeCards()}
+      ${renderBedField()}
+
+      ${buildingField}
       <div class="admin-crud-field">
         <label for="mf-room-number">Room name / number</label>
         <input id="mf-room-number" name="room_number" type="text" required value="${escapeHtml(state.form.room_number)}" placeholder="e.g. 201, COMMONS, CHAPEL" />

@@ -87,7 +87,7 @@ function renderStats(summary) {
     </article>`;
 }
 
-function renderRoomCard(room) {
+function renderRoomCard(room, { hideBuilding = false } = {}) {
   const setup = getRoomSetupMeta(room);
   const roomType = room.room_type_label || room.room_type || 'Room';
   const icon = roomTypeIcon(roomType);
@@ -96,6 +96,9 @@ function renderRoomCard(room) {
 
   const capMin = room.capacity_min ?? 1;
   const capMax = room.capacity_max ?? capMin;
+  const buildingLine = hideBuilding
+    ? '<p class="fac-room-card__building">Global Missions Center</p>'
+    : `<p class="fac-room-card__building">${escapeHtml(room.building_name || 'Building')}</p>`;
 
   return `
     <button type="button" class="fac-room-card" data-room-id="${room.id}" aria-label="Update room ${escapeHtml(room.room_number)}">
@@ -107,7 +110,7 @@ function renderRoomCard(room) {
       <div class="fac-room-card__body">
         <div class="fac-room-card__title-row">
           <div>
-            <p class="fac-room-card__building">${escapeHtml(room.building_name || 'Building')}</p>
+            ${buildingLine}
             <h3 class="fac-room-card__title">
               <span class="material-symbols-outlined" aria-hidden="true">${escapeHtml(icon)}</span>
               Room ${escapeHtml(room.room_number)}
@@ -132,9 +135,18 @@ function renderRoomCard(room) {
     </button>`;
 }
 
-function renderBuildingSection(building) {
+function renderBuildingSection(building, { singleBuilding = false } = {}) {
   const rooms = filterRoomsClient(building.rooms);
   if (!rooms.length) return '';
+
+  const list = `
+      <div class="fac-room-list">
+        ${rooms.map((room) => renderRoomCard(room, { hideBuilding: singleBuilding })).join('')}
+      </div>`;
+
+  if (singleBuilding) {
+    return `<section class="fac-building-group fac-building-group--flat">${list}</section>`;
+  }
 
   return `
     <section class="fac-building-group">
@@ -143,9 +155,7 @@ function renderBuildingSection(building) {
         <span class="fac-building-group__count">${rooms.length} room${rooms.length === 1 ? '' : 's'}</span>
         <div class="fac-building-group__rule" aria-hidden="true"></div>
       </div>
-      <div class="fac-room-list">
-        ${rooms.map(renderRoomCard).join('')}
-      </div>
+      ${list}
     </section>`;
 }
 
@@ -161,8 +171,9 @@ function renderBoard() {
 
   renderStats(overview.summary);
 
+  const singleBuilding = (overview.buildings || []).length <= 1;
   const sections = (overview.buildings || [])
-    .map(renderBuildingSection)
+    .map((b) => renderBuildingSection(b, { singleBuilding }))
     .filter(Boolean);
 
   const resultCount = overview.buildings.reduce((n, b) => n + filterRoomsClient(b.rooms).length, 0);

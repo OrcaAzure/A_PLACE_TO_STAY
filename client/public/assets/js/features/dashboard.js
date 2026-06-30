@@ -80,7 +80,7 @@ function facilityLabelForBooking(b) {
   const norm = normalizeBooking(b);
   if (norm.facilityLabel && norm.facilityLabel !== `Booking #${norm.id}`) return norm.facilityLabel;
   if (b.room_number || b.building_name) {
-    return [b.building_name, b.room_number].filter(Boolean).join(' · ') || 'Room pending';
+    return b.room_number ? `Room ${b.room_number}` : (b.building_name || 'Room pending');
   }
   return 'Room not assigned yet';
 }
@@ -242,7 +242,7 @@ async function renderBuildingChart(buildingUsage) {
   if (!mount) return;
 
   if (!buildingUsage?.length) {
-    mount.innerHTML = '<p class="text-body-sm text-on-surface-variant absolute inset-0 flex items-center justify-center">No building data available.</p>';
+    mount.innerHTML = '<p class="text-body-sm text-on-surface-variant absolute inset-0 flex items-center justify-center">No room usage data yet.</p>';
     return;
   }
 

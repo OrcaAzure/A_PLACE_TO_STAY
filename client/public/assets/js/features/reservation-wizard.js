@@ -84,7 +84,7 @@ function renderRoomRow(room, { recommended = false } = {}) {
           <span class="material-symbols-outlined res-room-icon">meeting_room</span>
           <div>
             <strong class="res-room-row-num">Room ${escapeHtml(room.room_number)}</strong>
-            <span class="res-room-meta">${escapeHtml(room.building_name)} · ${escapeHtml(room.room_type_label || room.room_type)}</span>
+            <span class="res-room-meta">${escapeHtml(room.room_type_label || room.room_type)}</span>
             ${topPick ? '<span class="res-rec-badge">Top pick</span>' : ''}
             ${recommended && !topPick ? '<span class="res-rec-badge res-rec-badge--alt">Suggested</span>' : ''}
           </div>
@@ -101,7 +101,6 @@ function renderRoomRow(room, { recommended = false } = {}) {
 function getFilteredAvailableRooms() {
   return filterRoomsList(state.availableRooms, {
     search: state.roomSearch,
-    building: state.buildingFilter,
     status: 'available',
   });
 }
@@ -113,12 +112,6 @@ function renderStep3() {
   const requestedUnavailable = originalRoom && originalRoom.availability_status === 'booked';
   const recommended = recommendRooms(state.availableRooms, state.guestCount, 3);
   const filtered = getFilteredAvailableRooms();
-  const buildings = [...new Set(state.availableRooms
-    .filter((r) => r.availability_status === 'available')
-    .map((r) => r.building_name).filter(Boolean))].sort();
-  const buildingOpts = buildings.map((b) =>
-    `<option value="${escapeHtml(b)}"${state.buildingFilter === b ? ' selected' : ''}>${escapeHtml(b)}</option>`
-  ).join('');
 
   const conflictBanner = (requestedUnavailable || (state.modifyRequest && state.originalRoomLabel)) ? `
     <div class="res-banner res-banner--warn">
@@ -153,11 +146,7 @@ function renderStep3() {
     ${conflictBanner}
     ${state.loadingRooms ? '<p class="res-hint">Loading rooms…</p>' : ''}
     <div class="res-room-toolbar">
-      <input id="wiz-room-search" type="search" class="res-input" placeholder="Search building, room number, or type…" value="${escapeHtml(state.roomSearch)}" />
-      <select id="wiz-building-filter" class="res-input res-input--select">
-        <option value="">All buildings</option>
-        ${buildingOpts}
-      </select>
+      <input id="wiz-room-search" type="search" class="res-input" placeholder="Search room number or type…" value="${escapeHtml(state.roomSearch)}" />
       ${recToggle}
     </div>
     ${recBlock}
@@ -234,7 +223,7 @@ function renderStep5() {
     ${modifyBlock}
     <div class="res-review"><h4>Guest</h4><p>${escapeHtml(state.guestName)} · ${escapeHtml(state.contactPhone || '—')} · ${escapeHtml(state.email || '—')}</p></div>
     <div class="res-review"><h4>Stay</h4><p>${formatDateLong(state.checkIn)} to ${formatDateLong(state.checkOut)} · ${state.guestCount} guest(s)</p></div>
-    <div class="res-review"><h4>Room</h4><p>${r ? `Room ${escapeHtml(r.room_number)} (${escapeHtml(r.building_name)}) — ${formatMoney(state.roomTotal)}` : '—'}</p></div>
+    <div class="res-review"><h4>Room</h4><p>${r ? `Room ${escapeHtml(r.room_number)} · ${escapeHtml(r.room_type_label || r.room_type)} — ${formatMoney(state.roomTotal)}` : '—'}</p></div>
     ${mealLines ? `<div class="res-review"><h4>Meals</h4><p>${mealLines}</p></div>` : ''}
     ${state.fees.length ? `<div class="res-review"><h4>Extra fees</h4><p>${state.fees.map((f) => `${escapeHtml(f.fee_name)}: ${formatMoney(f.amount)}`).join('<br>')}</p></div>` : ''}
     <label class="res-label">Notes (optional)</label>
@@ -351,10 +340,6 @@ function bindEvents() {
 
   $('wiz-room-search')?.addEventListener('input', (e) => {
     state.roomSearch = e.target.value;
-    renderBody();
-  });
-  $('wiz-building-filter')?.addEventListener('change', (e) => {
-    state.buildingFilter = e.target.value;
     renderBody();
   });
   $('wiz-toggle-rec')?.addEventListener('click', () => {
