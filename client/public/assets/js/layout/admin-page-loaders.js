@@ -3,6 +3,7 @@
  */
 
 import { initAdminEnhancements, releaseChromeBoot } from '/assets/js/layout/animations.js';
+import { teardownGuestAccessPage } from '/assets/js/features/admin-guest-access.js';
 
 /** @type {(() => void) | null} */
 let pageCleanup = null;
@@ -10,6 +11,7 @@ let pageCleanup = null;
 export function cleanupAdminPage() {
   pageCleanup?.();
   pageCleanup = null;
+  teardownGuestAccessPage();
   document.getElementById('calendar-mount')?.replaceChildren();
   document.getElementById('page-content')?.scrollTo(0, 0);
 }

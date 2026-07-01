@@ -8,9 +8,7 @@
       </button>
     </div>
     <div class="px-5 py-4">
-      <form id="guest-access-form">
-        <div id="guest-access-feedback" class="hidden"></div>
-
+      <form id="guest-access-form" novalidate>
         <fieldset class="ga-modal-mode" role="radiogroup" aria-label="How to add this guest">
           <label class="ga-modal-mode__option">
             <span class="ga-modal-mode__control">
@@ -37,9 +35,9 @@
         <p id="ga-mode-hint" class="ga-mode-hint">Use this when you are ready to send login details to the guest.</p>
 
         <label class="catalog-label" for="guest-name">Full name</label>
-        <input id="guest-name" class="catalog-input" type="text" required placeholder="e.g. Rev. Samuel Park" autocomplete="name" />
+        <input id="guest-name" class="catalog-input" type="text" placeholder="e.g. Rev. Samuel Park" autocomplete="name" />
         <label class="catalog-label" for="guest-email">Email address</label>
-        <input id="guest-email" class="catalog-input" type="email" required placeholder="guest@organization.org" autocomplete="email" />
+        <input id="guest-email" class="catalog-input" type="email" placeholder="guest@organization.org" autocomplete="email" />
         <label class="catalog-label" for="guest-org">Organization <span class="text-slate-400 font-normal">(optional)</span></label>
         <input id="guest-org" class="catalog-input" type="text" placeholder="e.g. Grace Community Church" />
 
@@ -48,11 +46,14 @@
           <textarea id="guest-notes" class="catalog-input min-h-[4.5rem]" placeholder="How they contacted you, intended dates, etc."></textarea>
         </div>
 
-        <p id="ga-grant-hint" class="text-xs text-slate-500 mt-2 mb-4">A temporary password is emailed to the guest. You can copy it from the next screen.</p>
+        <p id="ga-grant-hint" class="text-xs text-slate-500 mt-2">A temporary password is emailed to the guest. You can copy it from the next screen.</p>
 
-        <div class="flex justify-end gap-2 pt-2">
-          <button type="button" id="guest-access-modal-cancel" class="admin-crud-btn-ghost">Cancel</button>
-          <button type="submit" id="guest-access-submit" class="admin-crud-btn-primary">Create account</button>
+        <div class="ga-form-footer">
+          <p id="guest-access-feedback" class="ga-form-feedback hidden" role="alert" aria-live="polite"></p>
+          <div class="ga-form-actions">
+            <button type="button" id="guest-access-modal-cancel" class="admin-crud-btn-ghost">Cancel</button>
+            <button type="submit" id="guest-access-submit" class="admin-crud-btn-primary">Create account</button>
+          </div>
         </div>
       </form>
 
@@ -71,5 +72,42 @@
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<div id="ga-pending-modal-overlay" class="hidden fixed inset-0 bg-black/50 z-[70]" aria-hidden="true"></div>
+<div id="ga-pending-modal" class="hidden fixed inset-0 z-[75] flex items-center justify-center p-4 pointer-events-none" role="dialog" aria-modal="true" aria-labelledby="ga-pending-modal-title">
+  <div class="ga-pending-shell pointer-events-auto">
+    <header class="ga-pending-head">
+      <div class="ga-pending-head__text">
+        <h2 id="ga-pending-modal-title">Pending requests</h2>
+        <p id="ga-pending-modal-subtitle">People waiting for approval before they can log in.</p>
+      </div>
+      <button type="button" id="ga-pending-modal-close" class="ga-pending-close" aria-label="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </header>
+
+    <div class="ga-pending-body">
+      <div id="ga-pending-empty" class="ga-empty">No pending requests right now.</div>
+      <div id="ga-pending-table-wrap" class="ga-table-wrap hidden">
+        <table class="data-table ga-table w-full">
+          <thead>
+            <tr>
+              <th>Requester</th>
+              <th>Email</th>
+              <th>Organization</th>
+              <th>Received</th>
+              <th class="ga-col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ga-pending-modal-requests-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer class="ga-pending-foot">
+      <button type="button" id="ga-pending-modal-done" class="admin-crud-btn-primary">Close</button>
+    </footer>
   </div>
 </div>

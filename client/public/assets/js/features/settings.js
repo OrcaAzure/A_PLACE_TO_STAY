@@ -360,7 +360,7 @@ function confirmSaveBookingRules() {
         </p>
         <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-outline-variant">
           <button type="button" class="settings-confirm-cancel px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant font-semibold text-sm hover:bg-surface-variant/30 transition-colors min-h-[2.75rem]" data-action="discard">
-            No, discard
+            Cancel
           </button>
           <button type="button" class="settings-confirm-save btn-primary px-5 py-2.5 min-h-[2.75rem]" data-action="confirm">
             Confirm
