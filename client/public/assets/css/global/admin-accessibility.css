@@ -884,6 +884,19 @@ html.admin-chrome-boot .app-tab-panels {
     box-shadow: 0 -2px 12px rgba(26, 54, 93, 0.08);
   }
 
+  .admin-bottom-nav {
+    width: 100%;
+    justify-content: space-between;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .admin-bottom-nav::-webkit-scrollbar {
+    display: none;
+  }
+
   .portal-bottom-nav-link {
     flex: 1 1 0;
     border-radius: 0.5rem;
@@ -892,6 +905,13 @@ html.admin-chrome-boot .app-tab-panels {
     max-height: 3.625rem;
     padding: 0.25rem 0.125rem;
     font-weight: 600;
+  }
+
+  .admin-bottom-nav .portal-bottom-nav-link {
+    flex: 1 1 0;
+    min-width: 3.25rem;
+    max-width: none;
+    width: auto;
   }
 
   .portal-bottom-nav-link .material-symbols-outlined {
