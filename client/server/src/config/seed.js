@@ -872,6 +872,31 @@ export async function runSchemaPatches() {
 
   try {
     await pool.execute(
+      `UPDATE users SET role = 'External Guest'
+       WHERE role IN ('Guest', 'guest', 'External guest')`
+    );
+  } catch {
+    /* legacy role labels may not exist */
+  }
+
+  try {
+    await pool.execute(
+      `UPDATE users u
+       INNER JOIN bookings_rooms b ON b.user_id = u.id
+       SET u.role = 'External Guest'
+       WHERE u.role NOT IN (
+         'Super Admin', 'Admin', 'Supervisory User', 'GMC',
+         'Faculty', 'Staff', 'Missionary', 'External Guest'
+       )
+         AND LOWER(u.email) NOT LIKE '%@apts.edu%'
+         AND LOWER(u.email) NOT LIKE '%@apts.edu.ph%'`
+    );
+  } catch {
+    /* lodging guests may not need role repair */
+  }
+
+  try {
+    await pool.execute(
       `CREATE TABLE IF NOT EXISTS bookings_facilities (
          id           INT AUTO_INCREMENT PRIMARY KEY,
          user_id      INT NOT NULL,

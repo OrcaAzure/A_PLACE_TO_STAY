@@ -193,6 +193,31 @@ function promptRejectRequest(req) {
   });
 }
 
+function updateAccountsHeading() {
+  const heading = $('ga-accounts-heading');
+  if (!heading) return;
+
+  const total = overview.guests?.length || 0;
+  const visible = filteredGuests().length;
+  if (!total) {
+    heading.textContent = 'Guest accounts';
+    return;
+  }
+  if (statusFilter !== 'all' || searchQuery) {
+    heading.textContent = `Guest accounts (${visible} of ${total})`;
+    return;
+  }
+  heading.textContent = `Guest accounts (${total})`;
+}
+
+function resetGuestListFilters() {
+  statusFilter = 'all';
+  searchQuery = '';
+  const searchEl = $('guest-access-search');
+  if (searchEl) searchEl.value = '';
+  updateFilterUi();
+}
+
 function updateFilterUi() {
   const label = $('ga-filter-label');
   const toggle = $('ga-filter-toggle');
@@ -219,6 +244,7 @@ function applyFilter(filter) {
   updateFilterUi();
   setFilterPanelOpen(false);
   renderAccountsTable();
+  updateAccountsHeading();
 }
 
 function getAddMode() {
@@ -647,11 +673,15 @@ function renderAccountsTable() {
   closeAllRowMenus();
   const rows = filteredGuests();
   if (!rows.length) {
+    const hasFilters = statusFilter !== 'all' || searchQuery;
     tbody.innerHTML = `<tr><td colspan="5"><p class="ga-empty">${
       overview.guests.length
-        ? 'No guest accounts match your filters.'
+        ? hasFilters
+          ? 'No guest accounts match your search or filter. <button type="button" class="ga-btn-text ga-btn-text--primary" data-ga-clear-filters>Clear search and filters</button>'
+          : 'No guest accounts match your filters.'
         : 'No guest accounts yet. Use <strong>Add guest</strong> to grant access or save a request for later.'
     }</p></td></tr>`;
+    updateAccountsHeading();
     return;
   }
 
@@ -668,6 +698,7 @@ function renderAccountsTable() {
       <td class="ga-col-actions">${actionMenu(guest)}</td>
     </tr>`;
   }).join('');
+  updateAccountsHeading();
 }
 
 function renderActivityList() {
@@ -690,29 +721,44 @@ function renderActivityList() {
 }
 
 export async function loadGuestAccessPage() {
+  resetGuestListFilters();
+
   const tbody = $('guest-access-tbody');
   if (tbody) {
     tbody.innerHTML = '<tr><td colspan="5"><p class="ga-empty">Loading…</p></td></tr>';
   }
 
-  try {
-    const [overviewData, requestData] = await Promise.all([
-      getGuestAccessOverview(),
-      getGuestAccessRequests(),
-    ]);
-    overview = overviewData;
-    overview.guests = overview.guests || [];
-    overview.summary = overview.summary || {};
-    requests = requestData;
+  let overviewError = null;
+  let requestsError = null;
 
-    updateStats();
-    renderAccountsTable();
-    bindPendingCard();
+  try {
+    overview = await getGuestAccessOverview();
   } catch (err) {
-    if (tbody) {
-      tbody.innerHTML = `<tr><td colspan="5"><p class="ga-empty text-error">${escapeHtml(err.message || 'Failed to load guest access.')}</p></td></tr>`;
-    }
+    overviewError = err.message || 'Failed to load guest accounts.';
+    overview = { summary: {}, guests: [] };
   }
+
+  overview.guests = overview.guests || [];
+  overview.summary = overview.summary || {};
+
+  try {
+    requests = await getGuestAccessRequests();
+  } catch (err) {
+    requestsError = err.message || 'Failed to load pending requests.';
+    requests = [];
+  }
+
+  updateStats();
+  renderAccountsTable();
+
+  if (overviewError && tbody) {
+    tbody.innerHTML = `<tr><td colspan="5"><p class="ga-empty text-error">${escapeHtml(overviewError)}</p></td></tr>`;
+    updateAccountsHeading();
+  } else if (requestsError) {
+    setFormFeedback(requestsError);
+  }
+
+  bindPendingCard();
 }
 
 async function loadGuestAccessActivity() {
@@ -942,14 +988,23 @@ function bindGuestPageListeners() {
   $('guest-access-search')?.addEventListener('input', (e) => {
     searchQuery = e.target.value.trim().toLowerCase();
     renderAccountsTable();
+    updateAccountsHeading();
   }, { signal });
 
   $('guest-access-search')?.addEventListener('search', (e) => {
     searchQuery = e.target.value.trim().toLowerCase();
     renderAccountsTable();
+    updateAccountsHeading();
   }, { signal });
 
   $('guest-access-tbody')?.addEventListener('click', (e) => {
+    const clearFilters = e.target.closest('[data-ga-clear-filters]');
+    if (clearFilters) {
+      resetGuestListFilters();
+      renderAccountsTable();
+      return;
+    }
+
     const menuToggle = e.target.closest('[data-ga-menu-toggle]');
     if (menuToggle) {
       e.stopPropagation();

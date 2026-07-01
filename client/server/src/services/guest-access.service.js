@@ -1,7 +1,7 @@
 import { pool } from '../config/db.js';
 import { safeUser } from '../utils/helpers.js';
-import { ROLES } from '../utils/constants.js';
-import { createGuestUser } from './user.service.js';
+import { ROLES, GUEST_ACCESS_ROLES } from '../utils/constants.js';
+import { createGuestUser, findUserByEmail, describeGuestEmailConflict } from './user.service.js';
 import { logAudit, AUDIT_ACTIONS, listGuestAccessActivity } from './audit.service.js';
 import { invalidateSession } from './session.service.js';
 
@@ -144,14 +144,20 @@ function resolveStayContext(stays, today) {
   };
 }
 
+async function loadGuestAccessAccounts() {
+  const rolePlaceholders = GUEST_ACCESS_ROLES.map(() => '?').join(', ');
+  const [guests] = await pool.query(
+    `SELECT * FROM users WHERE role IN (${rolePlaceholders}) ORDER BY created_at DESC`,
+    GUEST_ACCESS_ROLES,
+  );
+  return guests;
+}
+
 export async function getGuestAccessOverview() {
   const today = todayStr();
   const weekEnd = addDays(today, 7);
 
-  const [guests] = await pool.query(
-    'SELECT * FROM users WHERE role = ? ORDER BY created_at DESC',
-    [ROLES.EXTERNAL_GUEST]
-  );
+  const guests = await loadGuestAccessAccounts();
 
   if (!guests.length) {
     return {
@@ -306,6 +312,11 @@ export async function createGuestAccessRequest({ full_name, email, organization,
     throw new Error('A pending access request already exists for this email');
   }
 
+  const existingUser = await findUserByEmail(normalizedEmail);
+  if (existingUser) {
+    throw new Error(describeGuestEmailConflict(existingUser));
+  }
+
   const [result] = await pool.query(
     `INSERT INTO guest_access_requests (full_name, email, organization, notes)
      VALUES (?, ?, ?, ?)`,
@@ -339,13 +350,14 @@ export async function approveGuestAccessRequest(requestId, actorUserId) {
   let temporaryPassword = null;
   let user;
 
-  const [existingUser] = await pool.query(
-    'SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1',
-    [String(request.email).toLowerCase()]
-  );
+  const existingUser = await findUserByEmail(request.email);
 
-  if (existingUser.length) {
-    user = existingUser[0];
+  if (existingUser) {
+    if (existingUser.role !== ROLES.EXTERNAL_GUEST) {
+      throw new Error(describeGuestEmailConflict(existingUser));
+    }
+
+    user = existingUser;
     userId = user.id;
     if (user.status === 'Inactive') {
       await pool.query('UPDATE users SET status = ? WHERE id = ?', ['Active', userId]);
