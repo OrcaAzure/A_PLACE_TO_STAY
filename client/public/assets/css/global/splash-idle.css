@@ -397,8 +397,8 @@
 }
 
 .apt-idle--guest__lottie-wrap {
-  width: min(18rem, 78vw);
-  max-height: min(18rem, 52vh);
+  width: min(10rem, 42vw);
+  max-height: min(10rem, 28vh);
   margin: 0 auto 1rem;
   display: flex;
   align-items: center;
@@ -408,8 +408,8 @@
 
 .apt-idle--guest__lottie {
   display: block;
-  width: min(18rem, 78vw);
-  height: min(18rem, 52vh);
+  width: min(10rem, 42vw);
+  height: min(10rem, 28vh);
   background: transparent !important;
   --lottie-player-background: transparent;
 }

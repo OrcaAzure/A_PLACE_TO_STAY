@@ -9,6 +9,7 @@ const KIOSK_CORNER_CLICKS = 3;
 const KIOSK_LONG_PRESS_MS = 900;
 const KIOSK_PIN = '2468';
 const GUEST_LOTTIE_SRC = '/assets/animations/splash-animation.lottie';
+const GUEST_IDLE_LOTTIE_SRC = '/assets/animations/idle-magnifier-animation.lottie';
 const DOTLOTTIE_PLAYER_CDN = 'https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs';
 const DOTLOTTIE_LOAD_TIMEOUT_MS = 8000;
 
@@ -80,7 +81,7 @@ function guestIdleLottieMarkup() {
     <div class="apt-idle--guest__lottie-wrap" data-apt-kiosk-logo role="img" aria-label="AptSpace mascot">
       <dotlottie-player
         class="apt-idle--guest__lottie"
-        src="${GUEST_LOTTIE_SRC}"
+        src="${GUEST_IDLE_LOTTIE_SRC}"
         autoplay
         loop
         mode="normal"
