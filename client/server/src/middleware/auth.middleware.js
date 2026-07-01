@@ -10,7 +10,7 @@ export const requireAuth = async (req, res, next) => {
     const user = await resolveAuthUser(token);
     if (!user) {
       return res.status(401).json({
-        message: 'Session expired or signed in elsewhere. Please log in again.',
+        message: 'Your session has ended. Please log in again.',
       });
     }
     req.user = user;

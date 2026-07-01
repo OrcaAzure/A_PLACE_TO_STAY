@@ -17,12 +17,9 @@ Summary of security controls and caching added to the housing portal.
 
 ### 2. Single active session per account
 
-Each login rotates `users.session_id` and embeds it in the JWT (`sid`). Logging in elsewhere invalidates the previous device.
+Each account (admin **or** guest) may only be signed in on **one device at a time**. A second login with the same credentials is **rejected** until the first device logs out. Different users can still be logged in simultaneously.
 
-| File | Role |
-|------|------|
-| `client/server/src/services/session.service.js` | Session rotation & validation |
-| `users.session_id` | Schema patch in `seed.js` |
+Sessions expire after `JWT_EXPIRES_IN` (default 7 days) so a closed browser without logout does not lock the account forever.
 
 ### 3. Per-account login lockout
 

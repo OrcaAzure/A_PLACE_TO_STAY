@@ -9,6 +9,7 @@ import {
   checkLoginAllowed,
   recordFailedLogin,
   clearLoginAttempts,
+  assertLoginSlotAvailable,
   rotateSession,
   invalidateSession,
 } from './session.service.js';
@@ -51,6 +52,7 @@ export const login = async ({ email, password }) => {
   }
 
   await clearLoginAttempts(email);
+  assertLoginSlotAvailable(user);
   const sid = await rotateSession(user.id);
   const token = signUserToken(user, sid);
 

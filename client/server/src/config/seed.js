@@ -1234,6 +1234,17 @@ export async function runSchemaPatches() {
       console.warn('[schema] users.session_id skipped:', err.message);
     }
   }
+
+  if (await tableExists('users') && !(await columnExists('users', 'session_expires_at'))) {
+    try {
+      await pool.execute(
+        'ALTER TABLE users ADD COLUMN session_expires_at TIMESTAMP NULL AFTER session_id'
+      );
+      console.log('[schema] Added users.session_expires_at for session expiry');
+    } catch (err) {
+      console.warn('[schema] users.session_expires_at skipped:', err.message);
+    }
+  }
 }
 
 export async function seedGuestStayExamples() {
