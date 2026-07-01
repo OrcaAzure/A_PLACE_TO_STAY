@@ -7,10 +7,12 @@ import { invalidateSession } from '../services/session.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
+const USER_PUBLIC_COLUMNS = 'id, full_name, email, role, status, created_at, updated_at';
+
 export const getAllUsers = async (req, res) => {
   try {
     const { role, status } = req.query;
-    let sql = 'SELECT * FROM users WHERE 1=1';
+    let sql = `SELECT ${USER_PUBLIC_COLUMNS} FROM users WHERE 1=1`;
     const params = [];
 
     if (role) {
@@ -39,7 +41,10 @@ export const getUserById = async (req, res) => {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
-    const [rows] = await pool.query('SELECT * FROM users WHERE id = ? LIMIT 1', [req.params.id]);
+    const [rows] = await pool.query(
+      `SELECT ${USER_PUBLIC_COLUMNS} FROM users WHERE id = ? LIMIT 1`,
+      [req.params.id]
+    );
     if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
     res.status(200).json({ user: safeUser(rows[0]) });
   } catch (error) {
@@ -120,7 +125,10 @@ export const updateUser = async (req, res) => {
       });
     }
 
-    const [updated] = await pool.query('SELECT * FROM users WHERE id = ?', [req.params.id]);
+    const [updated] = await pool.query(
+      `SELECT ${USER_PUBLIC_COLUMNS} FROM users WHERE id = ?`,
+      [req.params.id]
+    );
     res.status(200).json({ message: 'User updated', user: safeUser(updated[0]) });
   } catch (error) {
     res.status(500).json({ message: error.message });

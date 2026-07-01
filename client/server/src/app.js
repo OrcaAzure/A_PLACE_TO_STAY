@@ -26,12 +26,15 @@ const publicDir  = path.join(__dirname, '../../public');
 
 const app = express();
 
+app.disable('x-powered-by');
+
 if (isProduction) {
   app.set('trust proxy', 1);
 }
 
 const helmetOptions = isProduction
   ? {
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       contentSecurityPolicy: {
         directives: {
           defaultSrc:     ["'self'"],
@@ -84,14 +87,17 @@ app.get('/api', (req, res) => {
 app.get('/api/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
+    if (isProduction) {
+      return res.json({ status: 'ok' });
+    }
     res.json({
       status: 'ok',
       db: 'connected',
-      env: isProduction ? 'production' : 'development',
+      env: 'development',
       cache: cache.stats(),
     });
   } catch {
-    res.status(503).json({ status: 'error', db: 'disconnected', cache: cache.stats() });
+    res.status(503).json(isProduction ? { status: 'error' } : { status: 'error', db: 'disconnected', cache: cache.stats() });
   }
 });
 
@@ -112,6 +118,7 @@ const authLimiter = rateLimit({
   message: { message: 'Too many requests, please try again later.' },
 });
 app.use('/api/auth/login',           authLimiter);
+app.use('/api/auth/register',        authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password',  authLimiter);
 

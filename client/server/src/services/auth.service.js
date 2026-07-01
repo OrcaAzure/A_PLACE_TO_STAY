@@ -35,7 +35,7 @@ export const login = async ({ email, password }) => {
   );
 
   if (rows.length === 0) {
-    await recordFailedLogin(email);
+    await recordFailedLogin(normalizedEmail);
     throw new Error('Invalid email or password');
   }
 
@@ -47,11 +47,11 @@ export const login = async ({ email, password }) => {
 
   const isMatch = await bcrypt.compare(password, user.password);
   if (!isMatch) {
-    await recordFailedLogin(email);
+    await recordFailedLogin(normalizedEmail);
     throw new Error('Invalid email or password');
   }
 
-  await clearLoginAttempts(email);
+  await clearLoginAttempts(normalizedEmail);
   const sid = await rotateSession(user.id);
   const token = signUserToken(user, sid);
 
@@ -116,9 +116,10 @@ export const requestPasswordReset = async (email) => {
     throw new Error('Email is required');
   }
 
+  const normalizedEmail = email.trim().toLowerCase();
   const [rows] = await pool.query(
-    'SELECT * FROM users WHERE email = ? LIMIT 1',
-    [email.trim()]
+    'SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1',
+    [normalizedEmail]
   );
 
   if (rows.length > 0) {
