@@ -57,7 +57,7 @@
       <div id="payments-feedback" class="hidden invoice-feedback" role="status" aria-live="polite"></div>
 
       <div class="billing-list-only">
-        <p class="billing-list-hint">Tap a row to open the invoice for review and approval.</p>
+        <p class="billing-list-hint">Tap a row to review the invoice, adjust billing, and record payment.</p>
         <div id="invoice-list" class="billing-table-wrap" role="listbox" aria-label="Invoices">
           <p class="invoice-empty__text">Loading…</p>
         </div>
@@ -96,7 +96,7 @@
         portal: 'admin',
         activePage: 'payments',
         title: 'Billing',
-        subtitle: 'Review, edit & approve payment',
+        subtitle: 'Review invoices and record payments',
       });
       await loadPaymentsPage();
     } catch (err) {

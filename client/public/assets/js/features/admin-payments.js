@@ -276,80 +276,54 @@ function hasUnsavedBillingChanges(p, form) {
   return discount_amount !== savedDiscount || discount_note !== savedNote;
 }
 
-function syncApproveButtonState(detailEl) {
-  const method = getPayMethodSelect(detailEl)?.value || '';
-  const approveBtn = detailEl?.querySelector('[data-mark-paid]');
-  const confirmOpen = detailEl?.querySelector('[data-approve-confirm]:not(.hidden)');
-  if (!approveBtn || confirmOpen) return;
-  approveBtn.disabled = !method;
+function formatPaidAt(value) {
+  if (!value) return null;
+  return new Date(value).toLocaleDateString('en-PH', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
 }
 
-function closeApproveConfirm(detailEl) {
-  const panel = detailEl?.querySelector('[data-approve-confirm]');
-  const approveBtn = detailEl?.querySelector('[data-mark-paid]');
-  const methodSelect = getPayMethodSelect(detailEl);
-  if (!panel) return;
-  panel.classList.add('hidden');
-  panel.hidden = true;
-  const check = panel.querySelector('[data-approve-check]');
-  if (check) check.checked = false;
-  const submitBtn = panel.querySelector('[data-confirm-paid]');
-  if (submitBtn) submitBtn.disabled = true;
-  if (methodSelect) methodSelect.disabled = false;
-  if (approveBtn) {
-    approveBtn.classList.remove('hidden');
-    approveBtn.hidden = false;
-    syncApproveButtonState(detailEl);
+function recordSummaryHtml(p, due, method) {
+  const guest = escapeHtml(p.guest_name || 'Guest');
+  const isWaived = due <= 0;
+  if (isWaived) {
+    return `Mark <strong>${guest}</strong> as complimentary / waived — no charge.`;
   }
+  const methodText = method ? escapeHtml(method) : 'the selected method';
+  return `Record <strong>${fmt(due)}</strong> from <strong>${guest}</strong> via <strong data-approve-method>${methodText}</strong>.`;
 }
 
-function openApproveConfirm(detailEl, p) {
-  const panel = detailEl?.querySelector('[data-approve-confirm]');
-  const approveBtn = detailEl?.querySelector('[data-mark-paid]');
-  const methodSelect = getPayMethodSelect(detailEl);
-  const method = methodSelect?.value || '';
-  if (!panel || !method) return;
+function recordConfirmLabel(isWaived) {
+  return isWaived
+    ? 'I confirm this booking is complimentary / waived and should be marked as paid with no charge.'
+    : 'I confirm the guest has paid the amount shown and the payment method is correct.';
+}
+
+function syncRecordPaymentUi(detailEl, p) {
+  const fresh = p || selectedPayment();
+  if (!detailEl || !fresh) return;
 
   const form = getBillingForm(detailEl);
-  const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
+  const subtotal = Number(fresh.subtotal ?? fresh.booking_total ?? fresh.amount ?? 0);
   const { discount_amount } = readBillingFormValues(form, subtotal);
   const due = computeDue(subtotal, discount_amount);
   const isWaived = due <= 0;
-  const summaryEl = panel.querySelector('.billing-approve-confirm__summary');
-  const checkLabel = panel.querySelector('.billing-approve-confirm__check span');
+  const method = getPayMethodSelect(detailEl)?.value || '';
 
-  if (summaryEl) {
-    summaryEl.innerHTML = isWaived
-      ? `Mark this invoice as <strong>complimentary / waived</strong> for <strong data-approve-guest>${escapeHtml(p.guest_name || 'Guest')}</strong>.`
-      : `Record <strong data-approve-amount>${fmt(due)}</strong> from <strong data-approve-guest>${escapeHtml(p.guest_name || 'Guest')}</strong> via <strong data-approve-method>${escapeHtml(method)}</strong>.`;
-  } else {
-    const amountEl = panel.querySelector('[data-approve-amount]');
-    const guestEl = panel.querySelector('[data-approve-guest]');
-    const methodEl = panel.querySelector('[data-approve-method]');
-    if (amountEl) amountEl.textContent = fmt(due);
-    if (guestEl) guestEl.textContent = p.guest_name || 'Guest';
-    if (methodEl) methodEl.textContent = method;
+  const summaryEl = detailEl.querySelector('[data-record-summary]');
+  if (summaryEl) summaryEl.innerHTML = recordSummaryHtml(fresh, due, method);
+
+  const checkLabel = detailEl.querySelector('[data-record-check] span');
+  if (checkLabel) checkLabel.textContent = recordConfirmLabel(isWaived);
+
+  const methodField = detailEl.querySelector('[data-record-method-field]');
+  if (methodField) methodField.classList.toggle('hidden', isWaived);
+
+  const recordBtn = detailEl.querySelector('[data-confirm-paid]');
+  const checked = detailEl.querySelector('[data-approve-check]')?.checked;
+  if (recordBtn) {
+    recordBtn.disabled = isWaived ? !checked : !method || !checked;
   }
-
-  if (checkLabel) {
-    checkLabel.textContent = isWaived
-      ? 'I confirm this booking is complimentary / waived and should be marked as paid with no charge.'
-      : 'I confirm the guest has paid the amount shown and the payment method is correct.';
-  }
-
-  const check = panel.querySelector('[data-approve-check]');
-  const submitBtn = panel.querySelector('[data-confirm-paid]');
-  if (check) check.checked = false;
-  if (submitBtn) submitBtn.disabled = true;
-
-  panel.classList.remove('hidden');
-  panel.hidden = false;
-  if (approveBtn) {
-    approveBtn.classList.add('hidden');
-    approveBtn.hidden = true;
-  }
-  if (methodSelect) methodSelect.disabled = true;
-  check?.focus();
 }
 
 function renderListRow(p) {
@@ -647,21 +621,34 @@ function renderBillingColumn(p, { isPending }) {
   const methodOptions = PAYMENT_METHODS.map((m) => `<option value="${m}">${m}</option>`).join('');
 
   if (!isPending) {
+    const paidWhen = formatPaidAt(p.paid_at);
     return `
-      <div class="billing-detail-total billing-detail-total--paid">
-        <span>Amount paid</span>
-        <strong>${fmt(p.amount)}</strong>
-        <small>via ${escapeHtml(p.method || '—')}</small>
-      </div>`;
+      <section class="billing-panel billing-panel--recorded">
+        <h4 class="billing-section-title">
+          <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
+          Payment recorded
+        </h4>
+        <div class="billing-recorded-card">
+          <div class="billing-recorded-card__amount">
+            <span>Amount received</span>
+            <strong>${fmt(p.amount)}</strong>
+          </div>
+          <dl class="billing-recorded-card__meta">
+            <div><dt>Method</dt><dd>${escapeHtml(p.method || '—')}</dd></div>
+            ${paidWhen ? `<div><dt>Recorded</dt><dd>${escapeHtml(paidWhen)}</dd></div>` : ''}
+          </dl>
+        </div>
+      </section>`;
   }
 
   return `
-    <section class="billing-edit-card">
+    <div class="billing-billing-stack">
+    <section class="billing-panel billing-panel--edit">
       <h4 class="billing-section-title">
         <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
-        Edit &amp; approve
+        Adjust invoice
       </h4>
-      <p class="billing-detail__lead">Set discount by percent or fixed peso amount, then save before approving.</p>
+      <p class="billing-panel__lead">Booking is already approved. Set discount if needed, then save.</p>
 
       <form class="billing-edit-form" data-detail-form="${p.id}">
         <label class="billing-edit-form__field billing-edit-form__field--subtotal">
@@ -711,70 +698,57 @@ function renderBillingColumn(p, { isPending }) {
         </div>
         <button type="submit" class="invoice-btn-secondary">Save changes</button>
       </form>
+    </section>
 
-      <div class="billing-detail-actions">
-        <div class="billing-email-status${billingInvoiceEmailed(p) ? ' billing-email-status--sent' : ''}">
-          <span class="material-symbols-outlined" aria-hidden="true">mail</span>
-          <span>${escapeHtml(billingEmailStatusLabel(p))}</span>
-        </div>
-        <button type="button" class="invoice-btn-secondary" data-send-invoice="${p.id}">
-          <span class="material-symbols-outlined" aria-hidden="true">send</span>
-          ${escapeHtml(invoiceEmailButtonLabel(p))}
-        </button>
-        <p class="billing-email-recipient-hint">
-          ${escapeHtml(invoiceEmailHint(p))}
-        </p>
-        <label class="billing-edit-form__field">
-          <span>Payment method (required to approve)</span>
-          <select class="billing-edit-form__input" data-pay-method="${p.id}">
-            <option value="">Select how guest paid…</option>
-            ${methodOptions}
-          </select>
-        </label>
-
-        <div class="billing-approve-confirm hidden" data-approve-confirm hidden role="region" aria-label="Confirm payment approval">
-          <div class="billing-approve-confirm__banner" role="alert">
-            <span class="material-symbols-outlined billing-approve-confirm__icon" aria-hidden="true">gpp_maybe</span>
-            <div>
-              <p class="billing-approve-confirm__title">Final approval — please verify</p>
-              <p class="billing-approve-confirm__summary">
-                ${isWaived
-    ? `Mark this invoice as <strong>complimentary / waived</strong> for <strong data-approve-guest>${escapeHtml(p.guest_name || 'Guest')}</strong>.`
-    : `Record <strong data-approve-amount>${fmt(due)}</strong> from
-                <strong data-approve-guest>${escapeHtml(p.guest_name || 'Guest')}</strong>
-                via <strong data-approve-method>—</strong>.`}
-              </p>
-              <p class="billing-approve-confirm__note">
-                This marks the housing bill as paid and emails a receipt. You cannot undo this from Billing.
-              </p>
-            </div>
-          </div>
-          <label class="billing-approve-confirm__check">
-            <input type="checkbox" data-approve-check />
-            <span>${isWaived
-    ? 'I confirm this booking is complimentary / waived and should be marked as paid with no charge.'
-    : 'I confirm the guest has paid the amount shown and the payment method is correct.'}</span>
-          </label>
-          <div class="billing-approve-confirm__actions">
-            <button type="button" class="invoice-btn-secondary" data-cancel-approve>Go back</button>
-            <button type="button" class="invoice-btn-confirm" data-confirm-paid="${p.id}" disabled>
-              <span class="material-symbols-outlined" aria-hidden="true">verified</span>
-              Yes, record payment
-            </button>
-          </div>
-        </div>
-
-        <button type="button" class="invoice-btn-confirm" data-mark-paid="${p.id}" disabled>
-          <span class="material-symbols-outlined" aria-hidden="true">verified</span>
-          Approve payment — final check
-        </button>
+    <section class="billing-panel billing-panel--email">
+      <h4 class="billing-section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">mail</span>
+        Invoice email
+      </h4>
+      <div class="billing-email-status${billingInvoiceEmailed(p) ? ' billing-email-status--sent' : ''}">
+        <span class="material-symbols-outlined" aria-hidden="true">outgoing_mail</span>
+        <span>${escapeHtml(billingEmailStatusLabel(p))}</span>
       </div>
-    </section>`;
+      <button type="button" class="invoice-btn-secondary billing-panel__btn" data-send-invoice="${p.id}">
+        <span class="material-symbols-outlined" aria-hidden="true">send</span>
+        ${escapeHtml(invoiceEmailButtonLabel(p))}
+      </button>
+      <p class="billing-email-recipient-hint">${escapeHtml(invoiceEmailHint(p))}</p>
+    </section>
+
+    <section class="billing-panel billing-panel--record" aria-label="Record payment">
+      <h4 class="billing-section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+        Record payment
+      </h4>
+      <p class="billing-panel__lead">Mark this bill as paid after payment is received. A receipt is emailed to the guest.</p>
+      <p class="billing-record-summary" data-record-summary>${recordSummaryHtml(p, due, '')}</p>
+
+      <label class="billing-edit-form__field billing-record-method${isWaived ? ' hidden' : ''}" data-record-method-field${isWaived ? ' hidden' : ''}>
+        <span>Payment method</span>
+        <select class="billing-edit-form__input" data-pay-method="${p.id}">
+          <option value="">Select how guest paid…</option>
+          ${methodOptions}
+        </select>
+      </label>
+
+      <label class="billing-record-check" data-record-check>
+        <input type="checkbox" data-approve-check />
+        <span>${recordConfirmLabel(isWaived)}</span>
+      </label>
+
+      <button type="button" class="invoice-btn-confirm billing-panel__btn" data-confirm-paid="${p.id}" disabled>
+        <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+        Record payment
+      </button>
+      <p class="billing-record-note">This cannot be undone from Billing.</p>
+    </section>
+    </div>`;
 }
 
 function renderDetailPanel(p) {
   const isPending = p.status === 'Pending';
-  const statusLabel = isPending ? 'Final review' : 'Paid';
+  const statusLabel = isPending ? 'Awaiting payment' : 'Paid';
 
   return `
     <div class="billing-detail">
@@ -816,6 +790,9 @@ function updateLiveDue(form) {
   dueEl?.classList.toggle('billing-detail-total--waived', isWaived);
 
   if (pesoHint) pesoHint.textContent = `−${fmt(discount_amount)} off subtotal`;
+
+  const detailEl = form.closest('.billing-detail');
+  if (detailEl) syncRecordPaymentUi(detailEl, selectedPayment());
 
   const percentInput = form.querySelector('[name="discount_percent"]');
   const fixedInput = form.querySelector('[name="discount_amount"]');
@@ -956,44 +933,33 @@ function bindDetailActions(p) {
   const methodSelect = getPayMethodSelect(detailEl);
   methodSelect?.addEventListener('change', () => {
     hideFeedback(detailFeedback);
-    syncApproveButtonState(detailEl);
+    syncRecordPaymentUi(detailEl, selectedPayment() || p);
   });
-  syncApproveButtonState(detailEl);
+  syncRecordPaymentUi(detailEl, p);
 
-  detailEl?.querySelector('[data-cancel-approve]')?.addEventListener('click', () => {
-    hideFeedback(detailFeedback);
-    closeApproveConfirm(detailEl);
-  });
-
-  detailEl?.querySelector('[data-approve-check]')?.addEventListener('change', (e) => {
-    const submitBtn = detailEl.querySelector('[data-confirm-paid]');
-    if (submitBtn) submitBtn.disabled = !e.target.checked;
-  });
-
-  detailEl?.querySelector('[data-mark-paid]')?.addEventListener('click', () => {
-    hideFeedback(detailFeedback);
-    const method = getPayMethodSelect(detailEl)?.value;
-    if (!method) {
-      showFeedback(detailFeedback, 'Select payment method before approving.', 'error');
-      methodSelect?.focus();
-      return;
-    }
-    const form = getBillingForm(detailEl);
-    if (hasUnsavedBillingChanges(selectedPayment() || p, form)) {
-      showFeedback(detailFeedback, 'Save discount changes before approving payment.', 'error');
-      form?.querySelector('button[type="submit"]')?.focus();
-      return;
-    }
-    openApproveConfirm(detailEl, selectedPayment() || p);
+  detailEl?.querySelector('[data-approve-check]')?.addEventListener('change', () => {
+    syncRecordPaymentUi(detailEl, selectedPayment() || p);
   });
 
   detailEl?.querySelector('[data-confirm-paid]')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     const check = detailEl.querySelector('[data-approve-check]');
-    const method = getPayMethodSelect(detailEl)?.value;
-    if (!method) {
-      showFeedback(detailFeedback, 'Select payment method before approving.', 'error');
-      closeApproveConfirm(detailEl);
+    const fresh = selectedPayment() || p;
+    const form = getBillingForm(detailEl);
+    const subtotal = Number(fresh.subtotal ?? fresh.booking_total ?? fresh.amount ?? 0);
+    const { discount_amount } = readBillingFormValues(form, subtotal);
+    const due = computeDue(subtotal, discount_amount);
+    const isWaived = due <= 0;
+    const method = isWaived ? 'Waived' : getPayMethodSelect(detailEl)?.value;
+
+    if (!isWaived && !method) {
+      showFeedback(detailFeedback, 'Select payment method before recording.', 'error');
+      methodSelect?.focus();
+      return;
+    }
+    if (hasUnsavedBillingChanges(fresh, form)) {
+      showFeedback(detailFeedback, 'Save discount changes before recording payment.', 'error');
+      form?.querySelector('button[type="submit"]')?.focus();
       return;
     }
     if (!check?.checked) {
@@ -1002,21 +968,19 @@ function bindDetailActions(p) {
       return;
     }
 
-    const fresh = selectedPayment() || p;
     hideFeedback(detailFeedback);
     btn.disabled = true;
     const label = btn.innerHTML;
-    btn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span> Approving…';
+    btn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span> Recording…';
     try {
       await updatePayment(p.id, { status: 'Paid', method });
       closeInvoiceModal();
       await reload();
-      showFeedback(pageFeedback, `Payment approved for ${fresh.guest_name}. Receipt emailed.`, 'ok');
+      showFeedback(pageFeedback, `Payment recorded for ${fresh.guest_name}. Receipt emailed.`, 'ok');
     } catch (err) {
-      showFeedback(detailFeedback, err.message || 'Could not approve payment.', 'error');
-      btn.disabled = !check.checked;
+      showFeedback(detailFeedback, err.message || 'Could not record payment.', 'error');
+      syncRecordPaymentUi(detailEl, fresh);
       btn.innerHTML = label;
-      closeApproveConfirm(detailEl);
     }
   });
 }
@@ -1069,12 +1033,6 @@ export async function loadPaymentsPage() {
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || !getModal() || getModal().hidden) return;
-    const detailEl = document.getElementById('invoice-detail');
-    const confirmOpen = detailEl?.querySelector('[data-approve-confirm]:not(.hidden)');
-    if (confirmOpen) {
-      closeApproveConfirm(detailEl);
-      return;
-    }
     closeInvoiceModal();
   });
 

@@ -821,6 +821,13 @@ html.admin-chrome-boot .app-tab-panels {
   font-size: 1rem;
 }
 
+.admin-shell input[type="checkbox"],
+.admin-shell input[type="radio"] {
+  min-height: unset;
+  width: auto;
+  font-size: inherit;
+}
+
 .admin-shell .admin-table th {
   font-size: 0.8125rem;
   padding: 1rem 1.25rem;
