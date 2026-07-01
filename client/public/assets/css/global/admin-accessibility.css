@@ -973,7 +973,17 @@ html.admin-chrome-boot .app-tab-panels {
 
 /* Admin hub shell — shared by Reservations, Guest Access & Facilities */
 .res-hub-page {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   padding-bottom: 2.5rem;
+}
+
+.res-hub-page > .ga-panel,
+.res-hub-page > .fac-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .res-hub-tabs,
