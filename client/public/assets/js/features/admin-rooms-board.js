@@ -1,17 +1,26 @@
 /**
- * Admin rooms board — live housekeeping status, grouped by building.
+ * Admin rooms board — housekeeping status + optional stay-date availability.
  */
 
-import { getRoomsOverview } from '/assets/js/services/api.js';
+import { getRoomsOverview, getRoomAvailability } from '/assets/js/services/api.js';
 import {
   liveStatusBadge,
   roomTypeImage,
+  availabilityBadge,
 } from '/assets/js/features/facility-display.js';
 
 const state = {
   overview: null,
   filter: { search: '', status: '', roomType: '' },
   loading: false,
+  viewMode: 'today',
+  datePanelOpen: false,
+  checkIn: '',
+  checkOut: '',
+  /** @type {Map<string, object> | null} */
+  availability: null,
+  availabilityLoading: false,
+  availabilityError: '',
 };
 
 /** @type {Map<string, string>} */
@@ -36,6 +45,31 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function dateOnly(d = new Date()) {
+  return d.toISOString().slice(0, 10);
+}
+
+function formatShortDate(iso) {
+  if (!iso) return '';
+  return new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function hasValidDateRange() {
+  return Boolean(
+    state.checkIn
+    && state.checkOut
+    && state.checkOut > state.checkIn,
+  );
+}
+
+function isDateViewActive() {
+  return state.viewMode === 'dates' && hasValidDateRange() && state.availability;
 }
 
 function normalizeRoomTypeFilterLabel(room) {
@@ -71,26 +105,73 @@ function renderRoomTypeFilters() {
     `).join('')}`;
 }
 
-function filterRoomsClient(rooms) {
+function availabilityForRoom(roomId) {
+  return state.availability?.get(String(roomId)) || null;
+}
+
+function matchesStatusFilter(room) {
+  const f = state.filter.status;
+  if (!f) return true;
+
+  if (isDateViewActive()) {
+    const st = availabilityForRoom(room.id)?.availability_status || 'booked';
+    if (f === 'avail-available') return st === 'available';
+    if (f === 'avail-booked') return st === 'booked' || st === 'occupied';
+    if (f === 'avail-blocked') return st === 'maintenance' || st === 'dirty';
+    if (f === 'avail-too_small') return st === 'too_small';
+    return true;
+  }
+
+  return room.status === f;
+}
+
+function filterRoomsClient(rooms, { includeStatus = true } = {}) {
   const q = state.filter.search.trim().toLowerCase();
   const typeFilter = state.filter.roomType;
   return (rooms || []).filter((room) => {
     if (typeFilter && (room.room_type || 'Room') !== typeFilter) return false;
+    if (includeStatus && !matchesStatusFilter(room)) return false;
     if (!q) return true;
+
+    const avail = availabilityForRoom(room.id);
+    const availLabel = avail ? availabilityBadge(avail.availability_status).label : '';
+
     const hay = [
       room.room_number,
       room.building_name,
       room.room_type,
       room.room_type_label,
       liveStatusBadge(room.status).label,
+      availLabel,
     ].join(' ').toLowerCase();
     return hay.includes(q);
   });
 }
 
+function computeAvailabilitySummary(rooms) {
+  const counts = {
+    total: rooms.length,
+    available: 0,
+    booked: 0,
+    blocked: 0,
+    too_small: 0,
+  };
+
+  for (const room of rooms) {
+    const st = availabilityForRoom(room.id)?.availability_status || 'booked';
+    if (st === 'available') counts.available += 1;
+    else if (st === 'booked' || st === 'occupied') counts.booked += 1;
+    else if (st === 'maintenance' || st === 'dirty') counts.blocked += 1;
+    else if (st === 'too_small') counts.too_small += 1;
+    else counts.booked += 1;
+  }
+
+  return counts;
+}
+
 function renderStats(summary) {
   const mount = document.getElementById('rooms-board-stats');
-  if (!mount || !summary) return;
+  if (!mount) return;
 
   const current = state.filter.status;
 
@@ -103,12 +184,38 @@ function renderStats(summary) {
       </button>`;
   }
 
+  if (isDateViewActive()) {
+    mount.innerHTML = `
+      ${statCard('', summary.total, 'All rooms', '')}
+      ${statCard('avail-available', summary.available, 'Available', 'rooms-stat--vacant')}
+      ${statCard('avail-booked', summary.booked, 'Booked', 'rooms-stat--busy')}
+      ${statCard('avail-blocked', summary.blocked, 'Blocked', 'rooms-stat--dirty')}
+      ${statCard('avail-too_small', summary.too_small, 'Too small', 'rooms-stat--repair')}`;
+    return;
+  }
+
+  if (!summary.total && summary.total !== 0) return;
+
   mount.innerHTML = `
     ${statCard('', summary.total, 'All rooms', '')}
     ${statCard('Available', summary.available, 'Vacant', 'rooms-stat--vacant')}
     ${statCard('Occupied', summary.occupied, 'Occupied', 'rooms-stat--busy')}
     ${statCard('Dirty', summary.dirty || 0, 'Dirty', 'rooms-stat--dirty')}
     ${statCard('Maintenance', summary.maintenance, 'Out of order', 'rooms-stat--repair')}`;
+}
+
+function availNoteHtml(room) {
+  if (!isDateViewActive()) return '';
+
+  const avail = availabilityForRoom(room.id);
+  const st = avail?.availability_status || 'booked';
+  const badge = availabilityBadge(st);
+
+  let tone = 'fac-room-card__avail-note--warn';
+  if (st === 'available') tone = 'fac-room-card__avail-note--ok';
+  if (st === 'booked' || st === 'maintenance') tone = 'fac-room-card__avail-note--bad';
+
+    return `<p class="fac-room-card__avail-note ${tone}">${escapeHtml(badge.label)} for selected dates</p>`;
 }
 
 function roomCardTypeLabel(room) {
@@ -141,6 +248,7 @@ function renderRoomCard(room) {
       <div class="fac-room-card__body">
         <h3 class="fac-room-card__title">Room ${escapeHtml(room.room_number)}</h3>
         <p class="fac-room-card__meta">${escapeHtml(roomType)} · ${capLabel}</p>
+        ${availNoteHtml(room)}
         <div class="fac-room-card__links">
           <a href="calendar.html?q=${encodeURIComponent(room.room_number || '')}" class="fac-room-card__link">Calendar</a>
           <a href="reservations.html?tab=rooms" class="fac-room-card__link">Bookings</a>
@@ -149,8 +257,7 @@ function renderRoomCard(room) {
     </button>`;
 }
 
-function renderBuildingSection(building, { singleBuilding = false } = {}) {
-  const rooms = filterRoomsClient(building.rooms);
+function renderBuildingSection(building, rooms, { singleBuilding = false } = {}) {
   if (!rooms.length) return '';
 
   const list = `
@@ -173,43 +280,272 @@ function renderBuildingSection(building, { singleBuilding = false } = {}) {
     </section>`;
 }
 
+function collectVisibleRooms(overview) {
+  const out = [];
+  for (const building of overview?.buildings || []) {
+    for (const room of filterRoomsClient(building.rooms)) {
+      out.push({ building, room });
+    }
+  }
+  return out;
+}
+
+function groupPaginatedRooms(entries) {
+  const byBuilding = new Map();
+  for (const { building, room } of entries) {
+    const key = building.id ?? building.name;
+    if (!byBuilding.has(key)) byBuilding.set(key, { building, rooms: [] });
+    byBuilding.get(key).rooms.push(room);
+  }
+  return [...byBuilding.values()];
+}
+
+function updateBoardChrome(visibleCount, totalInView) {
+  const hint = document.getElementById('rooms-board-hint');
+  const countEl = document.getElementById('rooms-board-result-count');
+
+  if (hint) {
+    hint.textContent = isDateViewActive()
+      ? 'Filtered by booking dates. Each card’s badge still shows today’s housekeeping status.'
+      : 'Tap a stat to filter, or tap a room to update its status.';
+  }
+
+  if (countEl) {
+    if (state.availabilityLoading) {
+      countEl.textContent = 'Checking availability…';
+    } else if (isDateViewActive()) {
+      const range = `${formatShortDate(state.checkIn)} – ${formatShortDate(state.checkOut)}`;
+      countEl.textContent = visibleCount
+        ? `${visibleCount} of ${totalInView} rooms · ${range}`
+        : `No rooms match · ${range}`;
+    } else {
+      countEl.textContent = visibleCount
+        ? `${visibleCount} room${visibleCount === 1 ? '' : 's'} · Housekeeping today`
+        : 'No rooms match your filters';
+    }
+  }
+}
+
+function updateDatePlanUi() {
+  const prompt = document.getElementById('rooms-plan-prompt');
+  const panel = document.getElementById('rooms-date-plan');
+  const feedback = document.getElementById('rooms-date-plan-feedback');
+  const checkInEl = document.getElementById('rooms-plan-check-in');
+  const checkOutEl = document.getElementById('rooms-plan-check-out');
+  const closeBtn = document.getElementById('rooms-date-plan-close');
+
+  const showPanel = state.datePanelOpen || isDateViewActive();
+  prompt?.classList.toggle('hidden', showPanel);
+  panel?.classList.toggle('hidden', !showPanel);
+
+  if (closeBtn) {
+    closeBtn.innerHTML = isDateViewActive()
+      ? '<span class="material-symbols-outlined" aria-hidden="true">today</span> Back to today'
+      : '<span class="material-symbols-outlined" aria-hidden="true">close</span> Close';
+  }
+
+  if (checkInEl && checkInEl.value !== state.checkIn) checkInEl.value = state.checkIn;
+  if (checkOutEl && checkOutEl.value !== state.checkOut) checkOutEl.value = state.checkOut;
+
+  if (!feedback) return;
+
+  if (state.availabilityLoading) {
+    feedback.classList.remove('hidden', 'is-error');
+    feedback.classList.add('is-loading');
+    feedback.textContent = 'Checking which rooms are open or booked…';
+    return;
+  }
+
+  if (state.availabilityError) {
+    feedback.classList.remove('hidden', 'is-loading');
+    feedback.classList.add('is-error');
+    feedback.textContent = state.availabilityError;
+    return;
+  }
+
+  if (state.datePanelOpen && state.checkIn && state.checkOut && state.checkOut <= state.checkIn) {
+    feedback.classList.remove('hidden', 'is-loading');
+    feedback.classList.add('is-error');
+    feedback.textContent = 'Check-out must be after check-in.';
+    return;
+  }
+
+  if (isDateViewActive()) {
+    const summary = computeAvailabilitySummary(
+      (state.overview?.buildings || []).flatMap((b) => filterRoomsClient(b.rooms, { includeStatus: false })),
+    );
+    feedback.classList.remove('hidden', 'is-error', 'is-loading');
+    feedback.textContent = `${summary.available} room${summary.available === 1 ? '' : 's'} open for these dates.`;
+    return;
+  }
+
+  if (state.datePanelOpen) {
+    feedback.classList.remove('hidden', 'is-error', 'is-loading');
+    feedback.textContent = 'Choose check-in and check-out — the board updates automatically.';
+    return;
+  }
+
+  feedback.classList.add('hidden');
+  feedback.textContent = '';
+}
+
+function setDatePanelOpen(open) {
+  state.datePanelOpen = open;
+  updateDatePlanUi();
+}
+
+function readDateInputs() {
+  const checkInEl = document.getElementById('rooms-plan-check-in');
+  const checkOutEl = document.getElementById('rooms-plan-check-out');
+  state.checkIn = checkInEl?.value || '';
+  state.checkOut = checkOutEl?.value || '';
+
+  if (state.checkIn && checkOutEl && !state.checkOut) {
+    const next = new Date(`${state.checkIn}T12:00:00`);
+    next.setDate(next.getDate() + 1);
+    state.checkOut = dateOnly(next);
+    checkOutEl.value = state.checkOut;
+    checkOutEl.min = state.checkOut;
+  }
+
+  if (state.checkIn && checkOutEl) {
+    checkOutEl.min = state.checkIn;
+  }
+}
+
+async function loadAvailability() {
+  if (!hasValidDateRange()) {
+    state.availability = null;
+    state.viewMode = 'today';
+    state.availabilityError = '';
+    return;
+  }
+
+  state.viewMode = 'dates';
+  state.availabilityLoading = true;
+  state.availabilityError = '';
+  updateDatePlanUi();
+  updateBoardChrome(0, 0);
+
+  try {
+    const data = await getRoomAvailability({
+      check_in: state.checkIn,
+      check_out: state.checkOut,
+      guest_count: 1,
+    });
+    state.availability = new Map((data.rooms || []).map((r) => [String(r.id), r]));
+    state.datePanelOpen = true;
+  } catch (err) {
+    state.availability = null;
+    state.viewMode = 'today';
+    state.availabilityError = err.message || 'Could not check availability for these dates.';
+  } finally {
+    state.availabilityLoading = false;
+  }
+}
+
+function clearDatePlan({ closePanel = false } = {}) {
+  state.checkIn = '';
+  state.checkOut = '';
+  state.viewMode = 'today';
+  state.availability = null;
+  state.availabilityError = '';
+  state.filter.status = '';
+
+  const checkInEl = document.getElementById('rooms-plan-check-in');
+  const checkOutEl = document.getElementById('rooms-plan-check-out');
+  if (checkInEl) checkInEl.value = '';
+  if (checkOutEl) checkOutEl.value = '';
+
+  if (closePanel) setDatePanelOpen(false);
+  updateDatePlanUi();
+}
+
+async function onDateInputsChanged() {
+  readDateInputs();
+  state.filter.status = '';
+
+  if (!state.checkIn && !state.checkOut) {
+    state.viewMode = 'today';
+    state.availability = null;
+    state.availabilityError = '';
+    updateDatePlanUi();
+    await loadOverview();
+    return;
+  }
+
+  if (!hasValidDateRange()) {
+    state.viewMode = 'today';
+    state.availability = null;
+    updateDatePlanUi();
+    renderBoard();
+    return;
+  }
+
+  await loadAvailability();
+  await loadOverview();
+}
+
+const debouncedDateChange = debounce(() => { onDateInputsChanged(); }, 350);
+
 function renderBoard() {
   const mount = document.getElementById('rooms-board-mount');
   if (!mount) return;
 
   const overview = state.overview;
+  updateDatePlanUi();
+
+  if (state.loading && !overview) {
+    mount.innerHTML = '<p class="rooms-board-message">Loading rooms…</p>';
+    return;
+  }
+
   if (!overview) {
     mount.innerHTML = '<p class="rooms-board-message">Loading rooms…</p>';
     return;
   }
 
-  renderStats(overview.summary);
   renderRoomTypeFilters();
 
-  const singleBuilding = (overview.buildings || []).length <= 1;
-  const sections = (overview.buildings || [])
-    .map((b) => renderBuildingSection(b, { singleBuilding }))
-    .filter(Boolean);
+  const candidateRooms = (overview.buildings || []).flatMap((b) => filterRoomsClient(b.rooms, { includeStatus: false }));
 
-  const resultCount = overview.buildings.reduce((n, b) => n + filterRoomsClient(b.rooms).length, 0);
+  const summary = isDateViewActive()
+    ? computeAvailabilitySummary(candidateRooms)
+    : overview.summary;
 
-  const countEl = document.getElementById('rooms-board-result-count');
-  if (countEl) {
-    countEl.textContent = resultCount
-      ? `${resultCount} room${resultCount === 1 ? '' : 's'} shown`
-      : 'No rooms match your filters';
+  renderStats(summary);
+
+  const allVisible = collectVisibleRooms(overview);
+  const resultCount = allVisible.length;
+  const totalInView = isDateViewActive()
+    ? candidateRooms.length
+    : overview.buildings.reduce((n, b) => n + filterRoomsClient(b.rooms).length, 0);
+
+  updateBoardChrome(resultCount, totalInView);
+
+  if (state.availabilityLoading) {
+    mount.innerHTML = '<p class="rooms-board-message">Checking availability…</p>';
+    return;
   }
 
-  if (!sections.length) {
+  if (!resultCount) {
     mount.innerHTML = `
       <div class="rooms-board-empty">
         <span class="material-symbols-outlined" aria-hidden="true">search_off</span>
         <p class="rooms-board-empty__title">No rooms found</p>
-        <p class="rooms-board-empty__text">Try a different search, room type, or tap a stat above to change status.</p>
+        <p class="rooms-board-empty__text">${isDateViewActive()
+    ? 'Try different dates, clear filters, or close the date range filter.'
+    : 'Try a different search, room type, or tap a stat above to change status.'}</p>
         <button type="button" class="admin-crud-btn-ghost" data-rooms-clear-filters>Clear filters</button>
       </div>`;
     return;
   }
+
+  const singleBuilding = (overview.buildings || []).length <= 1;
+  const grouped = groupPaginatedRooms(allVisible);
+  const sections = grouped
+    .map(({ building, rooms }) => renderBuildingSection(building, rooms, { singleBuilding }))
+    .filter(Boolean);
 
   mount.innerHTML = `<div class="fac-board-sections">${sections.join('')}</div>`;
   highlightRoomFromQuery();
@@ -227,14 +563,15 @@ function highlightRoomFromQuery() {
   });
 }
 
-async function loadBoard() {
+async function loadOverview() {
   const mount = document.getElementById('rooms-board-mount');
-  if (mount) mount.innerHTML = '<p class="rooms-board-message">Loading rooms…</p>';
+  if (mount && !state.overview) mount.innerHTML = '<p class="rooms-board-message">Loading rooms…</p>';
 
   state.loading = true;
   try {
+    const useServerStatus = !isDateViewActive() && state.filter.status && !state.filter.status.startsWith('avail-');
     state.overview = await getRoomsOverview({
-      status: state.filter.status || undefined,
+      status: useServerStatus ? state.filter.status : undefined,
       search: state.filter.search.trim() || undefined,
     });
   } catch (err) {
@@ -242,10 +579,20 @@ async function loadBoard() {
       mount.innerHTML = `<p class="rooms-board-message rooms-board-message--error">${escapeHtml(err.message || 'Could not load rooms.')}</p>`;
     }
     state.loading = false;
-    return;
+    return false;
   }
   state.loading = false;
   renderBoard();
+  return true;
+}
+
+async function loadBoard() {
+  if (isDateViewActive() || (state.datePanelOpen && hasValidDateRange())) {
+    if (hasValidDateRange() && !state.availability && !state.availabilityLoading) {
+      await loadAvailability();
+    }
+  }
+  await loadOverview();
 }
 
 function setRoomsFilterPanelOpen(open) {
@@ -280,6 +627,10 @@ function setRoomTypeFilter(roomType) {
 
 function setStatusFilter(status) {
   state.filter.status = status;
+  if (isDateViewActive() || (state.filter.status && state.filter.status.startsWith('avail-'))) {
+    renderBoard();
+    return;
+  }
   loadBoard();
 }
 
@@ -300,6 +651,23 @@ function clearFilters() {
   loadBoard();
 }
 
+function openDatePlanPanel() {
+  state.datePanelOpen = true;
+  updateDatePlanUi();
+  document.getElementById('rooms-date-plan')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeDatePlanPanel() {
+  if (isDateViewActive()) {
+    clearDatePlan({ closePanel: true });
+    loadBoard();
+    return;
+  }
+  state.datePanelOpen = false;
+  updateDatePlanUi();
+  renderBoard();
+}
+
 function openRoom(roomId) {
   window.dispatchEvent(new CustomEvent('manage-facilities:open', {
     detail: { roomId: Number(roomId), edit: false },
@@ -309,6 +677,12 @@ function openRoom(roomId) {
 export function initRoomsBoard() {
   if (boardInitialized) return;
   boardInitialized = true;
+
+  const today = dateOnly();
+  const checkInEl = document.getElementById('rooms-plan-check-in');
+  const checkOutEl = document.getElementById('rooms-plan-check-out');
+  if (checkInEl) checkInEl.min = today;
+  if (checkOutEl) checkOutEl.min = today;
 
   const debouncedSearch = debounce(() => {
     const input = document.getElementById('rooms-board-search');
@@ -324,6 +698,17 @@ export function initRoomsBoard() {
       state.filter.search = searchInput.value || '';
       loadBoard();
     }
+  });
+
+  checkInEl?.addEventListener('change', debouncedDateChange);
+  checkOutEl?.addEventListener('change', debouncedDateChange);
+
+  document.getElementById('rooms-date-plan-open')?.addEventListener('click', openDatePlanPanel);
+  document.getElementById('rooms-date-plan-close')?.addEventListener('click', closeDatePlanPanel);
+
+  document.getElementById('rooms-date-plan-clear')?.addEventListener('click', () => {
+    clearDatePlan();
+    loadBoard();
   });
 
   document.getElementById('rooms-filter-panel')?.addEventListener('click', (e) => {

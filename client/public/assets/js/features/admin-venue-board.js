@@ -12,6 +12,9 @@ const state = {
   data: null,
   showOpenOnly: false,
   search: '',
+  schedulePanelOpen: false,
+  scheduleLoading: false,
+  scheduleError: '',
 };
 
 const VENUE_SHOW_LABELS = {
@@ -213,27 +216,115 @@ function readSlotInputs() {
   state.endTime = normalizeTime(endInput?.value || state.endTime);
 }
 
+function updateSchedulePlanUi() {
+  const prompt = document.getElementById('venue-plan-prompt');
+  const panel = document.getElementById('venue-date-plan');
+  const feedback = document.getElementById('venue-schedule-feedback');
+
+  prompt?.classList.toggle('hidden', state.schedulePanelOpen);
+  panel?.classList.toggle('hidden', !state.schedulePanelOpen);
+
+  if (!feedback) return;
+
+  if (state.scheduleLoading) {
+    feedback.classList.remove('hidden', 'is-error');
+    feedback.classList.add('is-loading');
+    feedback.textContent = 'Loading schedule for the selected date and time…';
+    return;
+  }
+
+  if (state.scheduleError) {
+    feedback.classList.remove('hidden', 'is-loading');
+    feedback.classList.add('is-error');
+    feedback.textContent = state.scheduleError;
+    return;
+  }
+
+  if (state.schedulePanelOpen && state.endTime <= state.startTime) {
+    feedback.classList.remove('hidden', 'is-loading');
+    feedback.classList.add('is-error');
+    feedback.textContent = 'End time must be after start time.';
+    return;
+  }
+
+  if (state.schedulePanelOpen && state.data) {
+    const open = state.data.summary?.freeForSlot;
+    feedback.classList.remove('hidden', 'is-error', 'is-loading');
+    feedback.textContent = open != null
+      ? `${open} space${open === 1 ? '' : 's'} free for this slot.`
+      : 'Schedule loaded — adjust date or time to refresh.';
+    return;
+  }
+
+  if (state.schedulePanelOpen) {
+    feedback.classList.remove('hidden', 'is-error', 'is-loading');
+    feedback.textContent = 'Choose a date and time — the board updates automatically.';
+    return;
+  }
+
+  feedback.classList.add('hidden');
+  feedback.textContent = '';
+}
+
+function updateBoardChrome(visibleCount) {
+  const summaryEl = document.getElementById('venue-schedule-summary');
+  const data = state.data;
+
+  if (!summaryEl) return;
+
+  if (state.scheduleLoading) {
+    summaryEl.textContent = 'Loading schedule…';
+    return;
+  }
+
+  if (!data) {
+    summaryEl.textContent = 'No schedule loaded';
+    return;
+  }
+
+  const openNote = state.showOpenOnly ? ' · free for slot only' : '';
+  const searchNote = state.search.trim() ? ` · matching “${state.search.trim()}”` : '';
+  const slotNote = hasSlotCheck()
+    ? ` · ${formatTimeRange(data.check_start, data.check_end)}`
+    : '';
+  summaryEl.textContent = `${visibleCount} space${visibleCount === 1 ? '' : 's'} · ${formatDisplayDate(data.date)}${slotNote}${openNote}${searchNote}`;
+}
+
+function openSchedulePanel() {
+  state.schedulePanelOpen = true;
+  updateSchedulePlanUi();
+  document.getElementById('venue-date-plan')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeSchedulePanel() {
+  state.schedulePanelOpen = false;
+  updateSchedulePlanUi();
+  renderSchedule();
+}
+
 function renderSchedule() {
   const mount = document.getElementById('venue-schedule-mount');
-  const summaryEl = document.getElementById('venue-schedule-summary');
   if (!mount) return;
+
+  updateSchedulePlanUi();
 
   const data = state.data;
   if (!data) {
-    mount.innerHTML = '<p class="rooms-board-message">Loading venue schedule…</p>';
+    if (state.scheduleLoading) {
+      mount.innerHTML = '<p class="rooms-board-message">Loading venue schedule…</p>';
+    }
+    updateBoardChrome(0);
     return;
   }
 
   renderStats(data.summary);
 
   const visible = countVisibleSpaces();
-  if (summaryEl) {
-    const openNote = state.showOpenOnly ? ' · free for slot only' : '';
-    const searchNote = state.search.trim() ? ` · matching “${state.search.trim()}”` : '';
-    const slotNote = hasSlotCheck()
-      ? ` · checking ${formatTimeRange(data.check_start, data.check_end)}`
-      : '';
-    summaryEl.textContent = `${formatDisplayDate(data.date)}${slotNote} · ${visible} space${visible === 1 ? '' : 's'} shown${openNote}${searchNote}`;
+  updateBoardChrome(visible);
+
+  if (state.scheduleLoading) {
+    mount.innerHTML = '<p class="rooms-board-message">Loading venue schedule…</p>';
+    return;
   }
 
   if (!data.venues?.length) {
@@ -305,6 +396,7 @@ function setShowFilter(mode) {
 async function loadSchedule(date) {
   readSlotInputs();
   state.date = date || state.date || dateOnly();
+  state.scheduleError = '';
 
   const dateInput = document.getElementById('venue-schedule-date');
   const startInput = document.getElementById('venue-schedule-start');
@@ -314,30 +406,31 @@ async function loadSchedule(date) {
   if (endInput) endInput.value = state.endTime;
 
   if (state.endTime <= state.startTime) {
-    const mount = document.getElementById('venue-schedule-mount');
-    if (mount) {
-      mount.innerHTML = '<p class="rooms-board-message rooms-board-message--error">End time must be after start time.</p>';
-    }
+    state.scheduleError = 'End time must be after start time.';
+    updateSchedulePlanUi();
+    renderSchedule();
     return;
   }
 
-  const mount = document.getElementById('venue-schedule-mount');
-  const goBtn = document.getElementById('venue-schedule-go');
-  if (mount) mount.innerHTML = '<p class="rooms-board-message">Loading venue schedule…</p>';
-  if (goBtn) { goBtn.disabled = true; goBtn.textContent = '…'; }
+  state.scheduleLoading = true;
+  updateSchedulePlanUi();
+  renderSchedule();
 
   try {
     state.data = await getVenueScheduleOverview(state.date, {
       startTime: state.startTime,
       endTime: state.endTime,
     });
-    renderSchedule();
+    state.scheduleError = '';
   } catch (err) {
+    state.scheduleError = err.message || 'Could not load schedule.';
+    const mount = document.getElementById('venue-schedule-mount');
     if (mount) {
-      mount.innerHTML = `<p class="rooms-board-message rooms-board-message--error">${escapeHtml(err.message || 'Could not load schedule.')}</p>`;
+      mount.innerHTML = `<p class="rooms-board-message rooms-board-message--error">${escapeHtml(state.scheduleError)}</p>`;
     }
   } finally {
-    if (goBtn) { goBtn.disabled = false; goBtn.textContent = 'Go'; }
+    state.scheduleLoading = false;
+    renderSchedule();
   }
 }
 
@@ -345,8 +438,14 @@ function loadToday() {
   const today = dateOnly();
   const input = document.getElementById('venue-schedule-date');
   if (input) input.value = today;
+  state.date = today;
   loadSchedule(today);
 }
+
+const debouncedSlotChange = debounce(() => {
+  readSlotInputs();
+  loadSchedule(state.date);
+}, 350);
 
 export function initVenueScheduleBoard() {
   if (venueBoardInitialized) return;
@@ -357,16 +456,20 @@ export function initVenueScheduleBoard() {
   const endInput = document.getElementById('venue-schedule-end');
   const today = dateOnly();
   if (dateInput) {
+    dateInput.min = today;
     dateInput.value = today;
   }
   if (startInput && !startInput.value) startInput.value = '09:00';
   if (endInput && !endInput.value) endInput.value = '12:00';
 
-  document.getElementById('venue-schedule-go')?.addEventListener('click', () => {
-    loadSchedule(dateInput?.value || state.date);
-  });
+  document.getElementById('venue-schedule-open')?.addEventListener('click', openSchedulePanel);
+  document.getElementById('venue-schedule-close')?.addEventListener('click', closeSchedulePanel);
 
   document.getElementById('venue-schedule-today')?.addEventListener('click', loadToday);
+
+  dateInput?.addEventListener('change', debouncedSlotChange);
+  startInput?.addEventListener('change', debouncedSlotChange);
+  endInput?.addEventListener('change', debouncedSlotChange);
 
   dateInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {

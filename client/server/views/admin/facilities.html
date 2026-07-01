@@ -39,7 +39,7 @@
       </div>
 
       <section class="res-hub-panel">
-        <p class="admin-panel-hint admin-panel-hint--in-panel">Tap a stat to filter, or tap a room to update its status.</p>
+        <p id="rooms-board-hint" class="admin-panel-hint admin-panel-hint--in-panel">Tap a stat to filter, or tap a room to update its status.</p>
         <div class="res-hub-toolbar">
           <div class="res-hub-toolbar__search">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
@@ -65,7 +65,44 @@
             </div>
           </div>
         </div>
-        <p class="res-hub-count"><span id="rooms-board-result-count">Loading rooms…</span></p>
+        <div id="rooms-plan-prompt" class="rooms-plan-prompt">
+          <div class="rooms-plan-prompt__body">
+            <span class="rooms-plan-prompt__icon material-symbols-outlined" aria-hidden="true">date_range</span>
+            <p class="rooms-plan-prompt__label">Filter rooms by check-in and check-out to see what's open or already reserved.</p>
+          </div>
+          <button type="button" id="rooms-date-plan-open" class="rooms-plan-prompt__btn">
+            <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+            Select dates
+          </button>
+        </div>
+        <div id="rooms-date-plan" class="rooms-date-plan hidden" role="region" aria-label="Filter rooms by date range">
+          <div class="rooms-date-plan__head">
+            <div class="rooms-date-plan__head-text">
+              <span class="material-symbols-outlined rooms-date-plan__head-icon" aria-hidden="true">date_range</span>
+              <p class="rooms-date-plan__title">Date range filter</p>
+            </div>
+            <button type="button" id="rooms-date-plan-close" class="rooms-plan-prompt__btn rooms-plan-prompt__btn--ghost">
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+              Close
+            </button>
+          </div>
+          <div class="rooms-date-bar rooms-date-plan__fields">
+            <label class="rooms-date-plan__field">
+              <span class="rooms-date-plan__field-label">Check-in</span>
+              <input id="rooms-plan-check-in" type="date" class="fac-field-input fac-field-input--date" aria-label="Check-in date" />
+            </label>
+            <span class="rooms-date-sep" aria-hidden="true">→</span>
+            <label class="rooms-date-plan__field">
+              <span class="rooms-date-plan__field-label">Check-out</span>
+              <input id="rooms-plan-check-out" type="date" class="fac-field-input fac-field-input--date" aria-label="Check-out date" />
+            </label>
+            <button type="button" id="rooms-date-plan-clear" class="rooms-toolbar-text-btn">Clear dates</button>
+          </div>
+          <p id="rooms-date-plan-feedback" class="rooms-date-plan__feedback hidden" role="status"></p>
+        </div>
+        <p class="rooms-board-meta">
+          <span id="rooms-board-result-count" class="rooms-board-meta__count">Loading rooms…</span>
+        </p>
         <div id="rooms-board-mount">
           <p class="rooms-board-message">Loading rooms…</p>
         </div>
@@ -80,21 +117,13 @@
       </div>
 
       <section class="res-hub-panel">
-        <p class="admin-panel-hint admin-panel-hint--in-panel">Pick a date and time to see what's booked. To approve or create bookings, go to <a href="reservations.html" class="text-primary font-semibold hover:underline">Reservations</a>.</p>
+        <p id="venue-board-hint" class="admin-panel-hint admin-panel-hint--in-panel">Search or filter spaces below. To approve or create bookings, go to <a href="reservations.html" class="text-primary font-semibold hover:underline">Reservations</a>.</p>
         <div class="res-hub-toolbar">
           <div class="res-hub-toolbar__search">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
             <input id="venue-board-search" type="search" class="res-input" placeholder="Search by space name or category…" autocomplete="off" enterkeyhint="search" />
           </div>
           <div class="res-hub-toolbar__actions">
-            <div class="rooms-date-bar">
-              <input id="venue-schedule-date" type="date" class="fac-field-input fac-field-input--date" aria-label="View date" />
-              <input id="venue-schedule-start" type="time" class="fac-field-input fac-field-input--time" aria-label="Start time" value="09:00" />
-              <span class="rooms-date-sep" aria-hidden="true">→</span>
-              <input id="venue-schedule-end" type="time" class="fac-field-input fac-field-input--time" aria-label="End time" value="12:00" />
-              <button type="button" id="venue-schedule-go" class="rooms-toolbar-go">Go</button>
-              <button type="button" id="venue-schedule-today" class="rooms-toolbar-text-btn">Today</button>
-            </div>
             <div class="fac-filter-wrap">
               <button type="button" id="venue-filter-toggle" class="fac-filter-btn" aria-expanded="false" aria-controls="venue-filter-panel" aria-haspopup="true">
                 <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
@@ -108,7 +137,48 @@
             </div>
           </div>
         </div>
-        <p class="res-hub-count"><span id="venue-schedule-summary">Loading venue schedule…</span></p>
+        <div id="venue-plan-prompt" class="rooms-plan-prompt">
+          <div class="rooms-plan-prompt__body">
+            <span class="rooms-plan-prompt__icon material-symbols-outlined" aria-hidden="true">schedule</span>
+            <p class="rooms-plan-prompt__label">Filter by date and time to see what's booked or free for a slot.</p>
+          </div>
+          <button type="button" id="venue-schedule-open" class="rooms-plan-prompt__btn">
+            <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+            Select date &amp; time
+          </button>
+        </div>
+        <div id="venue-date-plan" class="rooms-date-plan hidden" role="region" aria-label="Filter venue spaces by date and time">
+          <div class="rooms-date-plan__head">
+            <div class="rooms-date-plan__head-text">
+              <span class="material-symbols-outlined rooms-date-plan__head-icon" aria-hidden="true">schedule</span>
+              <p class="rooms-date-plan__title">Date &amp; time filter</p>
+            </div>
+            <button type="button" id="venue-schedule-close" class="rooms-plan-prompt__btn rooms-plan-prompt__btn--ghost">
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+              Close
+            </button>
+          </div>
+          <div class="rooms-date-bar rooms-date-plan__fields">
+            <label class="rooms-date-plan__field">
+              <span class="rooms-date-plan__field-label">Date</span>
+              <input id="venue-schedule-date" type="date" class="fac-field-input fac-field-input--date" aria-label="View date" />
+            </label>
+            <label class="rooms-date-plan__field">
+              <span class="rooms-date-plan__field-label">Start</span>
+              <input id="venue-schedule-start" type="time" class="fac-field-input fac-field-input--time" aria-label="Start time" value="09:00" />
+            </label>
+            <span class="rooms-date-sep" aria-hidden="true">→</span>
+            <label class="rooms-date-plan__field">
+              <span class="rooms-date-plan__field-label">End</span>
+              <input id="venue-schedule-end" type="time" class="fac-field-input fac-field-input--time" aria-label="End time" value="12:00" />
+            </label>
+            <button type="button" id="venue-schedule-today" class="rooms-toolbar-text-btn">Today</button>
+          </div>
+          <p id="venue-schedule-feedback" class="rooms-date-plan__feedback hidden" role="status"></p>
+        </div>
+        <p class="rooms-board-meta">
+          <span id="venue-schedule-summary" class="rooms-board-meta__count">Loading venue schedule…</span>
+        </p>
         <div id="venue-schedule-mount">
           <p class="rooms-board-message">Loading venue schedule…</p>
         </div>
