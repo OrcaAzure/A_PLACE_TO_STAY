@@ -15,12 +15,6 @@ function sessionExpiresAt() {
   return new Date(Date.now() + n * (ms[unit] || ms.d));
 }
 
-function sessionStillActive(user) {
-  if (!user?.session_id) return false;
-  if (!user.session_expires_at) return true;
-  return new Date(user.session_expires_at) > new Date();
-}
-
 export async function checkLoginAllowed(email) {
   const normalized = email.trim().toLowerCase();
   const [rows] = await pool.query(
@@ -63,13 +57,6 @@ export async function recordFailedLogin(email) {
 
 export async function clearLoginAttempts(email) {
   await pool.query('DELETE FROM login_attempts WHERE email = ?', [email.trim().toLowerCase()]);
-}
-
-export function assertLoginSlotAvailable(user) {
-  if (!sessionStillActive(user)) return;
-  throw new Error(
-    'This account is already signed in on another device. Log out there first before signing in here.'
-  );
 }
 
 export async function rotateSession(userId) {

@@ -12,8 +12,7 @@ export const login = async (req, res) => {
     setAuthCookie(res, result.token);
     res.status(200).json(result);
   } catch (error) {
-    const alreadySignedIn = /already signed in on another device/i.test(error.message);
-    res.status(alreadySignedIn ? 403 : 400).json({ message: error.message });
+    res.status(400).json({ message: error.message });
   }
 };
 

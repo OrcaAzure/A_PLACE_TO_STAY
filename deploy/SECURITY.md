@@ -17,9 +17,9 @@ Summary of security controls and caching added to the housing portal.
 
 ### 2. Single active session per account
 
-Each account (admin **or** guest) may only be signed in on **one device at a time**. A second login with the same credentials is **rejected** until the first device logs out. Different users can still be logged in simultaneously.
+Each account (admin **or** guest) can only stay signed in on **one device at a time**. If they log in on a **second device**, the **first device is signed out automatically** — so a dead laptop does not block login on a phone.
 
-Sessions expire after `JWT_EXPIRES_IN` (default 7 days) so a closed browser without logout does not lock the account forever.
+The newest login always wins. Different users can still be logged in at the same time.
 
 ### 3. Per-account login lockout
 
