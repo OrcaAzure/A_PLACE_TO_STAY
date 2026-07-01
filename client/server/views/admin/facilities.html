@@ -39,7 +39,7 @@
       <header class="fac-panel-head">
         <div class="fac-panel-head__text">
           <h2>Rooms</h2>
-          <p>Today’s housekeeping view — vacant, occupied, dirty, or out of order. Tap a room to update its setup or status.</p>
+          <p>Daily housekeeping board — tap a stat to filter, or tap a room to update its status.</p>
         </div>
         <div class="fac-panel-head__actions">
           <button type="button" data-open-manage-facilities class="admin-crud-btn-primary shadow-sm">
@@ -59,22 +59,18 @@
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
             <input id="rooms-board-search" type="search" class="rooms-board-search" placeholder="Search room or type…" autocomplete="off" enterkeyhint="search" />
           </div>
-        </div>
-        <div class="rooms-toolbar-filters">
-          <div class="rooms-filter-group" role="group" aria-label="Filter by status">
-            <span class="rooms-filter-label">Status</span>
-            <button type="button" class="rooms-filter-chip is-active" data-rooms-status="" aria-pressed="true">All</button>
-            <button type="button" class="rooms-filter-chip" data-rooms-status="Available" aria-pressed="false">Vacant</button>
-            <button type="button" class="rooms-filter-chip" data-rooms-status="Occupied" aria-pressed="false">Occupied</button>
-            <button type="button" class="rooms-filter-chip" data-rooms-status="Dirty" aria-pressed="false">Dirty</button>
-            <button type="button" class="rooms-filter-chip" data-rooms-status="Maintenance" aria-pressed="false">Out of order</button>
-          </div>
-          <div class="rooms-filter-group" role="group" aria-label="Filter by setup">
-            <span class="rooms-filter-label">Setup</span>
-            <button type="button" class="rooms-filter-chip is-active" data-rooms-setup="all" aria-pressed="true">All</button>
-            <button type="button" class="rooms-filter-chip" data-rooms-setup="guest" aria-pressed="false">Guest</button>
-            <button type="button" class="rooms-filter-chip" data-rooms-setup="sleep" aria-pressed="false">Group sleep</button>
-            <button type="button" class="rooms-filter-chip" data-rooms-setup="meeting" aria-pressed="false">Meeting</button>
+          <div class="fac-filter-wrap">
+            <button type="button" id="rooms-filter-toggle" class="fac-filter-btn" aria-expanded="false" aria-controls="rooms-filter-panel" aria-haspopup="true">
+              <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
+              <span id="rooms-filter-label">Room type</span>
+            </button>
+            <div id="rooms-filter-panel" class="fac-filter-panel hidden" role="menu" aria-label="Filter by room type">
+              <p class="fac-filter-panel__title">Room type</p>
+              <div id="rooms-type-filter-options">
+                <button type="button" class="fac-filter-option is-active" data-rooms-type="" role="menuitem">All types</button>
+              </div>
+              <button type="button" class="fac-filter-clear hidden" data-rooms-clear-type-filter role="menuitem">Clear room type</button>
+            </div>
           </div>
         </div>
         <div class="rooms-board-meta">
@@ -115,12 +111,16 @@
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
             <input id="venue-board-search" type="search" class="rooms-board-search" placeholder="Search space or category…" autocomplete="off" enterkeyhint="search" />
           </div>
-        </div>
-        <div class="rooms-toolbar-filters">
-          <div class="rooms-filter-group" role="group" aria-label="Filter venue spaces">
-            <span class="rooms-filter-label">Show</span>
-            <button type="button" class="rooms-filter-chip is-active" data-venue-show="all" aria-pressed="true">All</button>
-            <button type="button" class="rooms-filter-chip" data-venue-show="open" aria-pressed="false">Free for slot</button>
+          <div class="fac-filter-wrap">
+            <button type="button" id="venue-filter-toggle" class="fac-filter-btn" aria-expanded="false" aria-controls="venue-filter-panel" aria-haspopup="true">
+              <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
+              <span id="venue-filter-label">Filters</span>
+            </button>
+            <div id="venue-filter-panel" class="fac-filter-panel hidden" role="menu" aria-label="Filter venue spaces">
+              <p class="fac-filter-panel__title">Show</p>
+              <button type="button" class="fac-filter-option is-active" data-venue-show="all" role="menuitem">All spaces</button>
+              <button type="button" class="fac-filter-option" data-venue-show="open" role="menuitem">Free for slot</button>
+            </div>
           </div>
         </div>
         <div class="rooms-board-meta">

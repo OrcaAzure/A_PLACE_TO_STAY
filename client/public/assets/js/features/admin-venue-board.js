@@ -14,6 +14,11 @@ const state = {
   search: '',
 };
 
+const VENUE_SHOW_LABELS = {
+  all: 'All spaces',
+  open: 'Free for slot',
+};
+
 let venueBoardInitialized = false;
 /** @type {(() => void) | null} */
 let onBookingUpdated = null;
@@ -265,13 +270,35 @@ function renderSchedule() {
   mount.innerHTML = `<div class="fac-board-sections">${sections.join('')}</div>`;
 }
 
-function setShowFilter(mode) {
-  state.showOpenOnly = mode === 'open';
+function setVenueFilterPanelOpen(open) {
+  const panel = document.getElementById('venue-filter-panel');
+  const toggle = document.getElementById('venue-filter-toggle');
+  if (!panel) return;
+  panel.classList.toggle('hidden', !open);
+  toggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function updateVenueFilterUi() {
+  const label = document.getElementById('venue-filter-label');
+  const toggle = document.getElementById('venue-filter-toggle');
+  const mode = state.showOpenOnly ? 'open' : 'all';
+  const active = state.showOpenOnly;
+
+  if (label) {
+    label.textContent = active ? VENUE_SHOW_LABELS.open : 'Filters';
+  }
+
+  toggle?.classList.toggle('fac-filter-btn--active', active);
+
   document.querySelectorAll('[data-venue-show]').forEach((btn) => {
     const on = btn.getAttribute('data-venue-show') === mode;
     btn.classList.toggle('is-active', on);
-    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
+}
+
+function setShowFilter(mode) {
+  state.showOpenOnly = mode === 'open';
+  updateVenueFilterUi();
   renderSchedule();
 }
 
@@ -373,13 +400,31 @@ export function initVenueScheduleBoard() {
   document.querySelectorAll('[data-venue-show]').forEach((btn) => {
     btn.addEventListener('click', () => {
       setShowFilter(btn.getAttribute('data-venue-show') || 'all');
+      setVenueFilterPanelOpen(false);
     });
+  });
+
+  document.getElementById('venue-filter-toggle')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const panel = document.getElementById('venue-filter-panel');
+    setVenueFilterPanelOpen(panel?.classList.contains('hidden'));
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('fac-panel-venue-spaces') || document.getElementById('fac-panel-venue-spaces')?.classList.contains('hidden')) return;
+    if (e.target.closest('.fac-filter-wrap')) return;
+    setVenueFilterPanelOpen(false);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setVenueFilterPanelOpen(false);
   });
 
   onBookingUpdated = () => {
     if (state.date) loadSchedule(state.date);
   };
   window.addEventListener('booking:updated', onBookingUpdated);
+  updateVenueFilterUi();
 }
 
 export function teardownVenueScheduleBoard() {

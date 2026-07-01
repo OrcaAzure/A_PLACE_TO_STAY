@@ -3,18 +3,19 @@
  */
 
 import { getRoomsOverview } from '/assets/js/services/api.js';
-import { getRoomSetupMeta } from '/assets/js/features/manage-facilities.js';
 import {
   liveStatusBadge,
-  roomTypeIcon,
   roomTypeImage,
 } from '/assets/js/features/facility-display.js';
 
 const state = {
   overview: null,
-  filter: { search: '', status: '', setup: 'all' },
+  filter: { search: '', status: '', roomType: '' },
   loading: false,
 };
+
+/** @type {Map<string, string>} */
+let roomTypeLabels = new Map();
 
 let boardInitialized = false;
 /** @type {(() => void) | null} */
@@ -37,25 +38,50 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
-function matchesSetupFilter(room, setupId) {
-  if (setupId === 'all') return true;
-  const meta = getRoomSetupMeta(room);
-  if (setupId === 'sleep') return meta.tone === 'sleep';
-  if (setupId === 'meeting') return meta.tone === 'meeting';
-  if (setupId === 'guest') return meta.tone === 'guest';
-  return true;
+function normalizeRoomTypeFilterLabel(room) {
+  const key = room.room_type || 'Room';
+  if (key === 'Deluxe Apartment') return 'Deluxe Apartment';
+  const raw = room.room_type_label || key;
+  return String(raw).replace(/\s*\(\d+\s*(beds?|bedrooms?)\)/i, '').trim() || key;
+}
+
+function collectRoomTypes(overview) {
+  const types = new Map();
+  for (const building of overview?.buildings || []) {
+    for (const room of building.rooms || []) {
+      const key = room.room_type || 'Room';
+      if (!types.has(key)) types.set(key, normalizeRoomTypeFilterLabel(room));
+    }
+  }
+  roomTypeLabels = types;
+  return [...types.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+}
+
+function renderRoomTypeFilters() {
+  const mount = document.getElementById('rooms-type-filter-options');
+  if (!mount || !state.overview) return;
+
+  const types = collectRoomTypes(state.overview);
+  const current = state.filter.roomType;
+
+  mount.innerHTML = `
+    <button type="button" class="fac-filter-option${!current ? ' is-active' : ''}" data-rooms-type="" role="menuitem">All types</button>
+    ${types.map(([key, label]) => `
+      <button type="button" class="fac-filter-option${current === key ? ' is-active' : ''}" data-rooms-type="${escapeHtml(key)}" role="menuitem">${escapeHtml(label)}</button>
+    `).join('')}`;
 }
 
 function filterRoomsClient(rooms) {
   const q = state.filter.search.trim().toLowerCase();
+  const typeFilter = state.filter.roomType;
   return (rooms || []).filter((room) => {
-    if (!matchesSetupFilter(room, state.filter.setup)) return false;
+    if (typeFilter && (room.room_type || 'Room') !== typeFilter) return false;
     if (!q) return true;
     const hay = [
       room.room_number,
       room.building_name,
       room.room_type,
-      getRoomSetupMeta(room).label,
+      room.room_type_label,
       liveStatusBadge(room.status).label,
     ].join(' ').toLowerCase();
     return hay.includes(q);
@@ -66,72 +92,58 @@ function renderStats(summary) {
   const mount = document.getElementById('rooms-board-stats');
   if (!mount || !summary) return;
 
+  const current = state.filter.status;
+
+  function statCard(filter, value, label, toneClass) {
+    const active = filter === current;
+    return `
+      <button type="button" class="rooms-stat ${toneClass}${active ? ' is-active' : ''}" data-rooms-stat-filter="${filter}" aria-pressed="${active ? 'true' : 'false'}" aria-label="${label}: ${value}. Tap to filter the list.">
+        <span class="rooms-stat__value">${value}</span>
+        <span class="rooms-stat__label">${label}</span>
+      </button>`;
+  }
+
   mount.innerHTML = `
-    <article class="rooms-stat">
-      <span class="rooms-stat__value">${summary.total}</span>
-      <span class="rooms-stat__label">All rooms</span>
-    </article>
-    <article class="rooms-stat rooms-stat--vacant">
-      <span class="rooms-stat__value">${summary.available}</span>
-      <span class="rooms-stat__label">Vacant</span>
-    </article>
-    <article class="rooms-stat rooms-stat--busy">
-      <span class="rooms-stat__value">${summary.occupied}</span>
-      <span class="rooms-stat__label">Occupied</span>
-    </article>
-    <article class="rooms-stat rooms-stat--dirty">
-      <span class="rooms-stat__value">${summary.dirty || 0}</span>
-      <span class="rooms-stat__label">Dirty</span>
-    </article>
-    <article class="rooms-stat rooms-stat--repair">
-      <span class="rooms-stat__value">${summary.maintenance}</span>
-      <span class="rooms-stat__label">Out of order</span>
-    </article>`;
+    ${statCard('', summary.total, 'All rooms', '')}
+    ${statCard('Available', summary.available, 'Vacant', 'rooms-stat--vacant')}
+    ${statCard('Occupied', summary.occupied, 'Occupied', 'rooms-stat--busy')}
+    ${statCard('Dirty', summary.dirty || 0, 'Dirty', 'rooms-stat--dirty')}
+    ${statCard('Maintenance', summary.maintenance, 'Out of order', 'rooms-stat--repair')}`;
 }
 
-function renderRoomCard(room, { hideBuilding = false } = {}) {
-  const setup = getRoomSetupMeta(room);
-  const roomType = room.room_type_label || room.room_type || 'Room';
-  const icon = roomTypeIcon(roomType);
-  const img = roomTypeImage(roomType);
+function roomCardTypeLabel(room) {
+  const key = room.room_type || 'Room';
+  const friendly = {
+    Dorm: 'Group sleep',
+    'Standard Apartment': 'Apartment',
+    'Superior Guest Room': 'Superior guest room',
+    'Deluxe Apartment': 'Deluxe apartment',
+  };
+  return friendly[key] || normalizeRoomTypeFilterLabel(room);
+}
+
+function renderRoomCard(room) {
+  const roomType = roomCardTypeLabel(room);
+  const img = roomTypeImage(room.room_type_label || room.room_type || roomType);
   const badge = liveStatusBadge(room.status);
 
   const capMin = room.capacity_min ?? 1;
   const capMax = room.capacity_max ?? capMin;
-  const buildingLine = hideBuilding
-    ? '<p class="fac-room-card__building">Global Missions Center</p>'
-    : `<p class="fac-room-card__building">${escapeHtml(room.building_name || 'Building')}</p>`;
+  const capLabel = capMin === capMax ? `${capMin} guests` : `${capMin}–${capMax} guests`;
 
   return `
-    <button type="button" class="fac-room-card" data-room-id="${room.id}" aria-label="Update room ${escapeHtml(room.room_number)}">
+    <button type="button" class="fac-room-card fac-room-card--board" data-room-id="${room.id}" aria-label="Room ${escapeHtml(room.room_number)}, ${escapeHtml(badge.label)}. Tap to update status.">
       <div class="fac-room-card__media">
-        <img src="${img}" alt="${escapeHtml(roomType)} room ${escapeHtml(room.room_number)}" loading="lazy" />
+        <img src="${img}" alt="" loading="lazy" />
         <div class="fac-room-card__overlay" aria-hidden="true"></div>
         <span class="fac-room-card__badge ${badge.badge}">${escapeHtml(badge.label)}</span>
       </div>
       <div class="fac-room-card__body">
-        <div class="fac-room-card__title-row">
-          <div>
-            ${buildingLine}
-            <h3 class="fac-room-card__title">
-              <span class="material-symbols-outlined" aria-hidden="true">${escapeHtml(icon)}</span>
-              Room ${escapeHtml(room.room_number)}
-            </h3>
-          </div>
-          <span class="fac-room-card__capacity">
-            <span class="material-symbols-outlined" aria-hidden="true">group</span>
-            ${capMin}-${capMax}
-          </span>
-        </div>
-        <p class="fac-room-card__type">${escapeHtml(roomType)}</p>
-        <p class="fac-room-card__setup">
-          <span class="material-symbols-outlined" aria-hidden="true">${escapeHtml(setup.icon)}</span>
-          ${escapeHtml(setup.label)}
-        </p>
-        <p class="fac-room-card__hint">Tap to update setup or status</p>
+        <h3 class="fac-room-card__title">Room ${escapeHtml(room.room_number)}</h3>
+        <p class="fac-room-card__meta">${escapeHtml(roomType)} · ${capLabel}</p>
         <div class="fac-room-card__links">
-          <a href="calendar.html?q=${encodeURIComponent(room.room_number || room.building_name || '')}" class="fac-room-card__link">View on calendar</a>
-          <a href="reservations.html?tab=rooms" class="fac-room-card__link">Manage bookings</a>
+          <a href="calendar.html?q=${encodeURIComponent(room.room_number || '')}" class="fac-room-card__link">Calendar</a>
+          <a href="reservations.html?tab=rooms" class="fac-room-card__link">Bookings</a>
         </div>
       </div>
     </button>`;
@@ -142,8 +154,8 @@ function renderBuildingSection(building, { singleBuilding = false } = {}) {
   if (!rooms.length) return '';
 
   const list = `
-      <div class="fac-room-list">
-        ${rooms.map((room) => renderRoomCard(room, { hideBuilding: singleBuilding })).join('')}
+      <div class="fac-room-list fac-room-list--grid">
+        ${rooms.map((room) => renderRoomCard(room)).join('')}
       </div>`;
 
   if (singleBuilding) {
@@ -172,6 +184,7 @@ function renderBoard() {
   }
 
   renderStats(overview.summary);
+  renderRoomTypeFilters();
 
   const singleBuilding = (overview.buildings || []).length <= 1;
   const sections = (overview.buildings || [])
@@ -192,7 +205,7 @@ function renderBoard() {
       <div class="rooms-board-empty">
         <span class="material-symbols-outlined" aria-hidden="true">search_off</span>
         <p class="rooms-board-empty__title">No rooms found</p>
-        <p class="rooms-board-empty__text">Try a different search, status filter, or setup type.</p>
+        <p class="rooms-board-empty__text">Try a different search, room type, or tap a stat above to change status.</p>
         <button type="button" class="admin-crud-btn-ghost" data-rooms-clear-filters>Clear filters</button>
       </div>`;
     return;
@@ -235,32 +248,56 @@ async function loadBoard() {
   renderBoard();
 }
 
+function setRoomsFilterPanelOpen(open) {
+  const panel = document.getElementById('rooms-filter-panel');
+  const toggle = document.getElementById('rooms-filter-toggle');
+  if (!panel) return;
+  panel.classList.toggle('hidden', !open);
+  toggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+
+function updateRoomsFilterUi() {
+  const label = document.getElementById('rooms-filter-label');
+  const toggle = document.getElementById('rooms-filter-toggle');
+  const clearBtn = document.querySelector('[data-rooms-clear-type-filter]');
+  const active = Boolean(state.filter.roomType);
+
+  if (label) {
+    label.textContent = active
+      ? (roomTypeLabels.get(state.filter.roomType) || state.filter.roomType)
+      : 'Room type';
+  }
+
+  toggle?.classList.toggle('fac-filter-btn--active', active);
+  clearBtn?.classList.toggle('hidden', !active);
+}
+
+function setRoomTypeFilter(roomType) {
+  state.filter.roomType = roomType;
+  updateRoomsFilterUi();
+  renderBoard();
+}
+
 function setStatusFilter(status) {
   state.filter.status = status;
-  document.querySelectorAll('[data-rooms-status]').forEach((btn) => {
-    const active = btn.getAttribute('data-rooms-status') === status;
-    btn.classList.toggle('is-active', active);
-    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-  });
   loadBoard();
 }
 
-function setSetupFilter(setup) {
-  state.filter.setup = setup;
-  document.querySelectorAll('[data-rooms-setup]').forEach((btn) => {
-    const active = btn.getAttribute('data-rooms-setup') === setup;
-    btn.classList.toggle('is-active', active);
-    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-  });
+function clearTypeFilter() {
+  state.filter.roomType = '';
+  updateRoomsFilterUi();
+  renderRoomTypeFilters();
+  setRoomsFilterPanelOpen(false);
   renderBoard();
 }
 
 function clearFilters() {
-  state.filter = { search: '', status: '', setup: 'all' };
+  state.filter = { search: '', status: '', roomType: '' };
   const search = document.getElementById('rooms-board-search');
   if (search) search.value = '';
-  setSetupFilter('all');
-  setStatusFilter('');
+  updateRoomsFilterUi();
+  setRoomsFilterPanelOpen(false);
+  loadBoard();
 }
 
 function openRoom(roomId) {
@@ -289,12 +326,40 @@ export function initRoomsBoard() {
     }
   });
 
-  document.querySelectorAll('[data-rooms-status]').forEach((btn) => {
-    btn.addEventListener('click', () => setStatusFilter(btn.getAttribute('data-rooms-status') || ''));
+  document.getElementById('rooms-filter-panel')?.addEventListener('click', (e) => {
+    const typeBtn = e.target.closest('[data-rooms-type]');
+    if (typeBtn) {
+      setRoomTypeFilter(typeBtn.getAttribute('data-rooms-type') || '');
+      setRoomsFilterPanelOpen(false);
+    }
   });
 
-  document.querySelectorAll('[data-rooms-setup]').forEach((btn) => {
-    btn.addEventListener('click', () => setSetupFilter(btn.getAttribute('data-rooms-setup') || 'all'));
+  document.querySelector('[data-rooms-clear-type-filter]')?.addEventListener('click', () => {
+    clearTypeFilter();
+  });
+
+  document.getElementById('rooms-filter-toggle')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const panel = document.getElementById('rooms-filter-panel');
+    setRoomsFilterPanelOpen(panel?.classList.contains('hidden'));
+  });
+
+  document.getElementById('rooms-board-stats')?.addEventListener('click', (e) => {
+    const stat = e.target.closest('[data-rooms-stat-filter]');
+    if (!stat) return;
+    const next = stat.getAttribute('data-rooms-stat-filter') || '';
+    setStatusFilter(next === state.filter.status ? '' : next);
+    document.getElementById('rooms-board-mount')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('fac-panel-rooms') || document.getElementById('fac-panel-rooms')?.classList.contains('hidden')) return;
+    if (e.target.closest('.fac-filter-wrap')) return;
+    setRoomsFilterPanelOpen(false);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setRoomsFilterPanelOpen(false);
   });
 
   document.getElementById('rooms-board-mount')?.addEventListener('click', (e) => {
@@ -304,11 +369,13 @@ export function initRoomsBoard() {
       return;
     }
     const card = e.target.closest('[data-room-id]');
+    if (e.target.closest('.fac-room-card__link')) return;
     if (card) openRoom(card.getAttribute('data-room-id'));
   });
 
   onRoomsChanged = () => loadBoard();
   window.addEventListener('rooms:changed', onRoomsChanged);
+  updateRoomsFilterUi();
 }
 
 export function teardownRoomsBoard() {
