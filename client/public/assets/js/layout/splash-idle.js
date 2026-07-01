@@ -75,8 +75,22 @@ function guestSplashLottieMarkup() {
     <p class="apt-splash--guest__brand" data-apt-kiosk-logo>AptSpace</p>`;
 }
 
-function startGuestLottiePlayer(splash) {
-  const player = splash?.querySelector('dotlottie-player');
+function guestIdleLottieMarkup() {
+  return `
+    <div class="apt-idle--guest__lottie-wrap" data-apt-kiosk-logo role="img" aria-label="AptSpace mascot">
+      <dotlottie-player
+        class="apt-idle--guest__lottie"
+        src="${GUEST_LOTTIE_SRC}"
+        autoplay
+        loop
+        mode="normal"
+        background="transparent"
+      ></dotlottie-player>
+    </div>`;
+}
+
+function startGuestLottiePlayer(container) {
+  const player = container?.querySelector('dotlottie-player');
   if (!player) return;
   requestAnimationFrame(() => {
     try {
@@ -234,7 +248,7 @@ function buildAdminSplash() {
   return overlay;
 }
 
-function buildGuestIdle() {
+function buildGuestIdle({ useLottie = true } = {}) {
   const slides = GUEST_FACILITY_IMAGES.map((url, i) =>
     `<div class="apt-idle--guest__slide${i === 0 ? ' is-active' : ''}" style="background-image:url('${url}')"></div>`,
   ).join('');
@@ -242,6 +256,10 @@ function buildGuestIdle() {
   const cards = GUEST_FACILITY_IMAGES.slice(0, 4).map((url) =>
     `<div class="apt-idle--guest__card" style="background-image:url('${url}')"></div>`,
   ).join('');
+
+  const mascot = useLottie
+    ? guestIdleLottieMarkup()
+    : guestCloudCatMarkup({ compact: true });
 
   const overlay = document.createElement('div');
   overlay.id = 'apt-idle';
@@ -255,7 +273,7 @@ function buildGuestIdle() {
     <div class="apt-idle--guest__vignette" aria-hidden="true"></div>
     <div class="apt-idle--guest__cards">${cards}</div>
     <div class="apt-idle--guest__message">
-      ${guestCloudCatMarkup({ compact: true })}
+      ${mascot}
       <h2>Welcome to AptSpace – Tap to explore.</h2>
       <p class="apt-idle--guest__hint">Touch anywhere to return</p>
     </div>
@@ -296,6 +314,7 @@ function showIdle(overlay) {
 
   if (overlay.classList.contains('apt-idle--guest')) {
     startGuestSlideShow(overlay);
+    startGuestLottiePlayer(overlay);
   }
 }
 
@@ -497,11 +516,12 @@ export async function initSplashIdle({ portal = 'guest', forceSplash = false, sk
   let splash = document.getElementById('apt-splash');
   const showSplash = forceSplash || shouldShowSplash(portal);
 
+  let guestUseLottie = false;
+  if (isGuest) {
+    guestUseLottie = await ensureDotLottiePlayer().then(() => true).catch(() => false);
+  }
+
   if (showSplash && !splash) {
-    let guestUseLottie = false;
-    if (isGuest) {
-      guestUseLottie = await ensureDotLottiePlayer().then(() => true).catch(() => false);
-    }
     splash = isAdmin ? buildAdminSplash() : buildGuestSplash({ useLottie: guestUseLottie });
     document.body.appendChild(splash);
     bindLiveClock(splash.querySelector('[data-apt-clock]'));
@@ -518,7 +538,7 @@ export async function initSplashIdle({ portal = 'guest', forceSplash = false, sk
 
   let idle = document.getElementById('apt-idle');
   if (!idle) {
-    idle = isAdmin ? buildAdminIdle() : buildGuestIdle();
+    idle = isAdmin ? buildAdminIdle() : buildGuestIdle({ useLottie: guestUseLottie });
     document.body.appendChild(idle);
     ensureKioskModal();
     if (!skipIdle && !idle.dataset.activityBound) {

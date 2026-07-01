@@ -9,6 +9,7 @@ import { ensureInvoiceForBooking, ensureInvoiceForFacilityBooking } from '../ser
 const SEED_USERS = [
   { full_name: 'System Administrator', email: 'admin@aptspace.com',          role: 'Super Admin',   status: 'Active' },
   { full_name: 'Admin User',           email: 'admin2@aptspace.com',         role: 'Admin',         status: 'Active' },
+  { full_name: 'Lyshael Bernal',       email: 'lyshael.bernal@apts.edu',     role: 'Admin',         status: 'Active' },
   { full_name: 'Maria Santos',         email: 'maria.santos@apts.edu.ph',    role: 'Faculty',       status: 'Active' },
   { full_name: 'James Reyes',          email: 'james.reyes@apts.edu.ph',     role: 'Faculty',       status: 'Active' },
   { full_name: 'Ruth Villanueva',      email: 'ruth.villanueva@apts.edu.ph', role: 'Staff',         status: 'Active' },
