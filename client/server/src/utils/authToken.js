@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../config/env.js';
-import { validateUserSession } from '../services/session.service.js';
+import { pool } from '../config/db.js';
 import { getCookie, AUTH_COOKIE } from './cookies.js';
 
 export function extractToken(req) {
@@ -21,7 +21,15 @@ export function signUserToken(user, sid) {
 
 export async function resolveAuthUser(token) {
   const payload = jwt.verify(token, JWT_SECRET);
-  const valid = await validateUserSession(payload.id, payload.sid);
-  if (!valid) return null;
-  return payload;
+  const [rows] = await pool.query(
+    `SELECT role, status, session_id, session_expires_at
+     FROM users WHERE id = ? LIMIT 1`,
+    [payload.id]
+  );
+  if (!rows.length || rows[0].status === 'Inactive') return null;
+  if (!rows[0].session_id || rows[0].session_id !== payload.sid) return null;
+  if (rows[0].session_expires_at && new Date(rows[0].session_expires_at) <= new Date()) {
+    return null;
+  }
+  return { ...payload, role: rows[0].role };
 }

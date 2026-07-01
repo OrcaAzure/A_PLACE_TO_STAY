@@ -1,7 +1,4 @@
-import jwt from 'jsonwebtoken';
-import { JWT_SECRET } from '../config/env.js';
-import { extractToken } from '../utils/authToken.js';
-import { validateUserSession } from '../services/session.service.js';
+import { extractToken, resolveAuthUser } from '../utils/authToken.js';
 import { clearAuthCookie } from '../utils/cookies.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
@@ -18,11 +15,10 @@ export function requirePortalPage(portal) {
     if (!token) return redirectToLogin(res, 'auth');
 
     try {
-      const payload = jwt.verify(token, JWT_SECRET);
-      const valid = await validateUserSession(payload.id, payload.sid);
-      if (!valid) return redirectToLogin(res, 'session');
+      const user = await resolveAuthUser(token);
+      if (!user) return redirectToLogin(res, 'session');
 
-      const isAdmin = ADMIN_ROLES.includes(payload.role);
+      const isAdmin = ADMIN_ROLES.includes(user.role);
       if (portal === 'admin' && !isAdmin) {
         return res.redirect('/guest/dashboard.html');
       }

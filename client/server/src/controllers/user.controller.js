@@ -1,8 +1,9 @@
 import { pool } from '../config/db.js';
 import { safeUser } from '../utils/helpers.js';
-import { ROLES } from '../utils/constants.js';
+import { ROLES, USER_ROLES, STATUS } from '../utils/constants.js';
 import { createGuestUser } from '../services/user.service.js';
 import { logAudit, AUDIT_ACTIONS } from '../services/audit.service.js';
+import { invalidateSession } from '../services/session.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -65,9 +66,24 @@ export const updateUser = async (req, res) => {
 
     const target = existing[0];
     const { full_name, role, status } = req.body;
+    const targetId = Number(req.params.id);
 
-    if (Number(req.params.id) === req.user?.id && status === 'Inactive') {
+    if (targetId === req.user?.id && status === STATUS.INACTIVE) {
       return res.status(400).json({ message: 'You cannot deactivate your own account' });
+    }
+
+    if (role && !USER_ROLES.includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+    if (status && ![STATUS.ACTIVE, STATUS.INACTIVE].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    if (role === ROLES.SUPER_ADMIN && req.user.role !== ROLES.SUPER_ADMIN) {
+      return res.status(403).json({ message: 'Only a Super Admin can assign the Super Admin role' });
+    }
+    if (target.role === ROLES.SUPER_ADMIN && req.user.role !== ROLES.SUPER_ADMIN && (role || status)) {
+      return res.status(403).json({ message: 'Only a Super Admin can modify Super Admin accounts' });
     }
 
     if (role && role !== ROLES.EXTERNAL_GUEST && target.role === ROLES.EXTERNAL_GUEST) {
@@ -82,6 +98,10 @@ export const updateUser = async (req, res) => {
       WHERE id = ?`,
       [full_name, role, status, req.params.id]
     );
+
+    if ((role && role !== target.role) || (status && status !== target.status)) {
+      await invalidateSession(targetId);
+    }
 
     if (
       target.role === ROLES.EXTERNAL_GUEST

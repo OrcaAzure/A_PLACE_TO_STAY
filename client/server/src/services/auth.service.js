@@ -28,9 +28,10 @@ export const login = async ({ email, password }) => {
 
   await checkLoginAllowed(email);
 
+  const normalizedEmail = email.trim().toLowerCase();
   const [rows] = await pool.query(
-    'SELECT * FROM users WHERE email = ? LIMIT 1',
-    [email]
+    'SELECT * FROM users WHERE LOWER(email) = ? LIMIT 1',
+    [normalizedEmail]
   );
 
   if (rows.length === 0) {

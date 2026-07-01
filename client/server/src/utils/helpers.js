@@ -1,7 +1,7 @@
 // Strip password from user object before sending to client
 export const safeUser = (user) => {
   if (!user) return null;
-  const { password, ...rest } = user;
+  const { password, session_id, session_expires_at, ...rest } = user;
   return rest;
 };
 

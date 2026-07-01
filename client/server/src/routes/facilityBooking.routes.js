@@ -13,7 +13,7 @@ import { requireRole, blockReadOnly } from '../middleware/role.middleware.js';
 
 const router = Router();
 
-router.get('/overview', requireAuth, getVenueScheduleOverview);
+router.get('/overview', requireAuth, requireRole('Super Admin', 'Admin'), getVenueScheduleOverview);
 router.get('/check-slot', requireAuth, checkVenueSlotAvailability);
 router.get('/',      requireAuth,                                       getAllFacilityBookings);
 router.get('/:id',   requireAuth,                                       getFacilityBookingById);

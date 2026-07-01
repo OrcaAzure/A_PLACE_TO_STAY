@@ -18,7 +18,7 @@ import {
   resolveSeason,
 } from '../services/booking.service.js';
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
-import { assertCanCancelRoomBooking, getGuestCancellationCutoffDays } from '../services/reservationLifecycle.service.js';
+import { assertCanCancelRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
 import { getInvoiceSnapshot, ensureInvoiceForBooking } from '../services/payment.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
