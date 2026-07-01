@@ -1162,6 +1162,13 @@ export async function runSchemaPatches() {
         console.warn('[schema] payments.invoice_sent_at skipped:', err.message);
       }
     }
+    if (!(await columnExists('payments', 'billing_invoice_sent_at'))) {
+      try {
+        await pool.execute('ALTER TABLE payments ADD COLUMN billing_invoice_sent_at TIMESTAMP NULL DEFAULT NULL AFTER invoice_sent_at');
+      } catch (err) {
+        console.warn('[schema] payments.billing_invoice_sent_at skipped:', err.message);
+      }
+    }
     try {
       await pool.execute(
         `ALTER TABLE payments MODIFY method ENUM('Cash', 'GCash', 'Bank Transfer') NULL DEFAULT NULL`

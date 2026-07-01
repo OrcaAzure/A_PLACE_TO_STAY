@@ -12,7 +12,7 @@ export const paymentRoomDetailSelect = `
   SELECT p.id, p.bookings_room_id AS booking_id, p.bookings_facility_id AS facility_booking_id,
          'room' AS invoice_kind,
          p.subtotal, p.discount_amount, p.discount_note,
-         p.amount, p.method, p.status, p.paid_at, p.invoice_sent_at, p.created_at, p.updated_at,
+         p.amount, p.method, p.status, p.paid_at, p.invoice_sent_at, p.billing_invoice_sent_at, p.created_at, p.updated_at,
          b.user_id, b.check_in, b.check_out, b.status AS booking_status, b.guest_count,
          b.total_amount AS booking_total, b.group_id, b.season, b.occupancy_item,
          b.notes, b.contact_phone, b.meal_allergen_notes,
@@ -35,7 +35,7 @@ export const paymentVenueDetailSelect = `
   SELECT p.id, NULL AS booking_id, p.bookings_facility_id AS facility_booking_id,
          'venue' AS invoice_kind,
          p.subtotal, p.discount_amount, p.discount_note,
-         p.amount, p.method, p.status, p.paid_at, p.invoice_sent_at, p.created_at, p.updated_at,
+         p.amount, p.method, p.status, p.paid_at, p.invoice_sent_at, p.billing_invoice_sent_at, p.created_at, p.updated_at,
          fb.user_id, NULL AS check_in, NULL AS check_out, fb.status AS booking_status, fb.guest_count,
          fb.total_amount AS booking_total, NULL AS group_id, fb.season, NULL AS occupancy_item,
          fb.notes, NULL AS contact_phone, NULL AS meal_allergen_notes,
@@ -44,11 +44,13 @@ export const paymentVenueDetailSelect = `
          NULL AS group_name,
          fb.event_date, fb.start_time, fb.end_time,
          f.facility_group AS facility_category, f.name AS facility_name,
-         f.room_code AS facility_room_code, f.package_name AS facility_package
+         f.room_code AS facility_room_code, f.package_name AS facility_package,
+         rf.rate AS facility_rate
   FROM payments p
   JOIN bookings_facilities fb ON p.bookings_facility_id = fb.id
   JOIN users u ON fb.user_id = u.id
   JOIN facilities f ON fb.facility_id = f.id
+  LEFT JOIN rates_facilities rf ON rf.facility_id = f.id AND rf.season = fb.season
 `;
 
 /** @deprecated use paymentRoomDetailSelect */
@@ -108,7 +110,7 @@ export async function enrichPaymentRows(rows) {
 
 export function computeDueAmount(subtotal, discountAmount = 0) {
   const due = Number(subtotal) - Number(discountAmount || 0);
-  return Math.max(0.01, Math.round(due * 100) / 100);
+  return Math.max(0, Math.round(due * 100) / 100);
 }
 
 export async function getInvoiceByBookingId(bookingId) {
@@ -296,7 +298,10 @@ export async function sendInvoiceEmail(paymentId) {
     );
   }
 
-  await pool.query('UPDATE payments SET invoice_sent_at = NOW() WHERE id = ?', [paymentId]);
+  await pool.query(
+    'UPDATE payments SET invoice_sent_at = NOW(), billing_invoice_sent_at = NOW() WHERE id = ?',
+    [paymentId]
+  );
   return loadPaymentDetail(paymentId);
 }
 

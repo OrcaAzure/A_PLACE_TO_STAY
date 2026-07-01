@@ -9,7 +9,7 @@ import { initTabGroup, switchTabPanel } from '/assets/js/layout/tabs.js';
 import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDrawerOpen, animateModalOpen, animateNotificationsPanel } from '/assets/js/layout/animations.js';
 import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
 import { initGuestPortalChrome } from '/assets/js/layout/guest-portal.js';
-import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
+import { initSplashIdle, dismissAptSplash } from '/assets/js/layout/splash-idle.js';
 import { formatRoleLabel } from '/assets/js/services/auth.js';
 import {
   isDesktopSidebar,
@@ -53,14 +53,94 @@ export const GUEST_NEW_RESERVATION_FOOTER = `
     </a>
   </div>`;
 
+const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v13';
+const COMPONENT_FETCH_MS = 10000;
+const BOOT_LOADER_ID = 'apt-boot-loader';
+const SHELL_BOOT_TIMEOUT_MS = 8000;
+
+function isShellReady() {
+  return document.body?.classList.contains('admin-shell')
+    || document.body?.classList.contains('guest-shell');
+}
+
+function ensureBootLoader() {
+  if (typeof document === 'undefined' || isShellReady() || document.getElementById(BOOT_LOADER_ID)) return;
+
+  const mount = () => {
+    if (!document.body || isShellReady() || document.getElementById(BOOT_LOADER_ID)) return;
+    const loader = document.createElement('div');
+    loader.id = BOOT_LOADER_ID;
+    loader.className = 'apt-boot-loader';
+    loader.setAttribute('role', 'status');
+    loader.setAttribute('aria-live', 'polite');
+    loader.setAttribute('aria-label', 'Loading AptSpace');
+    loader.innerHTML = `
+      <div class="apt-boot-loader__inner">
+        <div class="apt-boot-loader__spinner" aria-hidden="true"></div>
+        <p class="apt-boot-loader__text">
+          Loading AptSpace
+          <span class="apt-boot-loader__dots" aria-hidden="true">
+            <span>.</span><span>.</span><span>.</span>
+          </span>
+        </p>
+      </div>`;
+    document.body.appendChild(loader);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', mount, { once: true });
+  } else {
+    mount();
+  }
+}
+
+function removeBootLoader() {
+  document.getElementById(BOOT_LOADER_ID)?.remove();
+}
+
+function ensureMinimalShellVisible(isGuest = false) {
+  if (isShellReady()) return;
+  document.body.classList.add(isGuest ? 'guest-shell' : 'admin-shell');
+  const page = document.getElementById('page-content');
+  if (page) page.style.visibility = 'visible';
+}
+
+function scheduleShellBootFallback() {
+  const arm = () => {
+    window.setTimeout(() => {
+      if (!isShellReady()) {
+        const path = window.location.pathname;
+        if (path.includes('/guest/')) {
+          document.body.classList.add('guest-shell');
+        } else {
+          document.body.classList.add('admin-shell');
+        }
+        ensureMinimalShellVisible(path.includes('/guest/'));
+        document.documentElement.classList.remove('admin-chrome-boot');
+        removeBootLoader();
+        console.warn('[ui] Shell bootstrap timed out — forced page visibility');
+      }
+    }, SHELL_BOOT_TIMEOUT_MS);
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', arm, { once: true });
+  } else {
+    arm();
+  }
+}
+
 export async function loadComponent(url) {
-  const res = await fetch(url);
+  const res = await Promise.race([
+    fetch(url),
+    new Promise((_, reject) => {
+      window.setTimeout(() => reject(new Error(`Timed out loading ${url}`)), COMPONENT_FETCH_MS);
+    }),
+  ]);
   if (!res.ok) throw new Error(`Failed to load ${url}`);
   return res.text();
 }
-
-const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v13';
 
 /** @type {Promise<Record<string, string>> | null} */
 let templatesPromise = null;
@@ -121,6 +201,9 @@ async function loadAdminTemplates() {
       };
       writeTemplateCache(bundle);
       return bundle;
+    }).catch((err) => {
+      templatesPromise = null;
+      throw err;
     });
   }
 
@@ -145,6 +228,14 @@ async function loadGuestTemplates() {
     }));
   }
   return guestTemplatesPromise;
+}
+
+if (typeof window !== 'undefined') {
+  ensureBootLoader();
+  const path = window.location.pathname;
+  if (path.includes('/admin/') || path.includes('/guest/')) {
+    scheduleShellBootFallback();
+  }
 }
 
 if (typeof window !== 'undefined' && window.location.pathname.includes('/admin/')) {
@@ -458,113 +549,108 @@ export async function initAppLayout(config = {}) {
   const isGuest = portal === 'guest';
   const navItems = isGuest ? GUEST_NAV : ADMIN_NAV;
 
-  await initSplashIdle({ portal: isGuest ? 'guest' : 'admin' });
+  let splashRef = null;
+  try {
+    ({ splash: splashRef } = await initSplashIdle({
+      portal: isGuest ? 'guest' : 'admin',
+      autoDismiss: false,
+    }));
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const userName = user.full_name || user.name || (isGuest ? 'Guest User' : 'Admin User');
-  const userRole = formatRoleLabel(user.role) || (isGuest ? 'Guest' : 'Housing Admin');
-  const userInitial = userName.charAt(0).toUpperCase();
-  const collapsed = isSidebarCollapsedPreferred();
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userName = user.full_name || user.name || (isGuest ? 'Guest User' : 'Admin User');
+    const userRole = formatRoleLabel(user.role) || (isGuest ? 'Guest' : 'Housing Admin');
+    const userInitial = userName.charAt(0).toUpperCase();
+    const collapsed = isSidebarCollapsedPreferred();
 
-  document.documentElement.classList.add('admin-chrome-boot');
+    document.documentElement.classList.add('admin-chrome-boot');
 
-  let adminBootFallbackTimer = null;
-  if (!isGuest) {
-    adminBootFallbackTimer = window.setTimeout(() => {
-      if (!document.body.classList.contains('admin-shell')) {
-        document.body.classList.add('admin-shell');
-        document.documentElement.classList.remove('admin-chrome-boot');
-        console.warn('[ui] Admin shell bootstrap timed out — forced page visibility');
-      }
-    }, 10000);
-  }
+    const savedContent = document.getElementById('page-content')?.innerHTML || '';
+    const preservedNodes = extractPreservedLayoutNodes();
+    const existingSidebar = document.getElementById('app-sidebar');
+    const existingGuestNav = document.querySelector('.guest-top-nav');
 
-  const clearAdminBootFallback = () => {
-    if (adminBootFallbackTimer) {
-      clearTimeout(adminBootFallbackTimer);
-      adminBootFallbackTimer = null;
+    if (existingGuestNav && isGuest) {
+      document.body.className = 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen';
+      updateActiveNav(activePage, navItems);
+      updateGuestChrome({ userName, userRole, userInitial });
+      releaseChromeBoot();
+      return;
     }
-  };
 
-  const savedContent = document.getElementById('page-content')?.innerHTML || '';
-  const preservedNodes = extractPreservedLayoutNodes();
-  const existingSidebar = document.getElementById('app-sidebar');
-  const existingGuestNav = document.querySelector('.guest-top-nav');
+    if (existingSidebar) {
+      document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${isGuest ? ' guest-portal' : ''}${collapsed ? ' sidebar-collapsed' : ''}`;
+      updateActiveNav(activePage, navItems);
+      updateAdminHeader({ title, subtitle, userName, userRole, userInitial });
+      ensureSidebarUi();
+      lockStaticChrome();
+      if (!deferEnhancements && !isGuest) initAdminEnhancements().catch(() => releaseChromeBoot());
+      else releaseChromeBoot();
+      return;
+    }
 
-  if (existingGuestNav && isGuest) {
-    document.body.className = 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen';
-    updateActiveNav(activePage, navItems);
-    updateGuestChrome({ userName, userRole, userInitial });
-    clearAdminBootFallback();
+    const templates = isGuest ? await loadGuestTemplates() : await loadAdminTemplates();
+    const shellHtml = isGuest
+      ? buildGuestShell({
+          templates,
+          pageContent: savedContent,
+          activePage,
+          userName,
+          userRole,
+          userInitial,
+          landingHome,
+        })
+      : buildAdminShell({
+          templates,
+          pageContent: savedContent,
+          activePage,
+          title,
+          subtitle,
+          portalLabel,
+          userName,
+          userRole,
+          userInitial,
+          collapsed,
+          navItems: ADMIN_NAV,
+          brandHref: '/admin/dashboard.html',
+        }) + renderAdminBottomNav(ADMIN_MOBILE_NAV, activePage);
+
+    document.body.innerHTML = shellHtml;
+    if (preservedNodes.childNodes.length) {
+      document.body.appendChild(preservedNodes);
+    }
+    document.body.className = isGuest
+      ? 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen'
+      : `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
+
+    bindLayoutEvents({ isGuest });
+    if (isGuest) {
+      initGuestPortalChrome().catch(() => {});
+      initGuestPageNavTransitions();
+      releaseChromeBoot();
+    } else {
+      ensureSidebarUi();
+      initManageRequestsModal();
+      initManageReservationsModal();
+      initManageVenueBookingsModal();
+      initManageFacilitiesModal();
+      initReservationWizard();
+      initGroupWizard();
+      initVenueBookingWizard();
+      initDrawerTabs();
+      initAdminPageNavTransitions();
+      lockStaticChrome();
+      if (!deferEnhancements) initAdminEnhancements().catch(() => releaseChromeBoot());
+    }
+  } catch (err) {
+    console.error('[ui] initAppLayout failed:', err);
+    ensureMinimalShellVisible(isGuest);
+    throw err;
+  } finally {
+    removeBootLoader();
+    dismissAptSplash();
+    document.body.classList.remove('is-splash-active');
+    document.querySelector('.admin-shell')?.classList.remove('is-splash-active');
     releaseChromeBoot();
-    return;
-  }
-
-  if (existingSidebar) {
-    document.body.className = `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${isGuest ? ' guest-portal' : ''}${collapsed ? ' sidebar-collapsed' : ''}`;
-    updateActiveNav(activePage, navItems);
-    updateAdminHeader({ title, subtitle, userName, userRole, userInitial });
-    ensureSidebarUi();
-    lockStaticChrome();
-    clearAdminBootFallback();
-    if (!deferEnhancements && !isGuest) initAdminEnhancements().catch(() => releaseChromeBoot());
-    else releaseChromeBoot();
-    return;
-  }
-
-  const templates = isGuest ? await loadGuestTemplates() : await loadAdminTemplates();
-  const shellHtml = isGuest
-    ? buildGuestShell({
-        templates,
-        pageContent: savedContent,
-        activePage,
-        userName,
-        userRole,
-        userInitial,
-        landingHome,
-      })
-    : buildAdminShell({
-        templates,
-        pageContent: savedContent,
-        activePage,
-        title,
-        subtitle,
-        portalLabel,
-        userName,
-        userRole,
-        userInitial,
-        collapsed,
-        navItems: ADMIN_NAV,
-        brandHref: '/admin/dashboard.html',
-      }) + renderAdminBottomNav(ADMIN_MOBILE_NAV, activePage);
-
-  document.body.innerHTML = shellHtml;
-  if (preservedNodes.childNodes.length) {
-    document.body.appendChild(preservedNodes);
-  }
-  document.body.className = isGuest
-    ? 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen'
-    : `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
-
-  bindLayoutEvents({ isGuest });
-  clearAdminBootFallback();
-  if (isGuest) {
-    initGuestPortalChrome().catch(() => {});
-    initGuestPageNavTransitions();
-    releaseChromeBoot();
-  } else {
-    ensureSidebarUi();
-    initManageRequestsModal();
-    initManageReservationsModal();
-    initManageVenueBookingsModal();
-    initManageFacilitiesModal();
-    initReservationWizard();
-    initGroupWizard();
-    initVenueBookingWizard();
-    initDrawerTabs();
-    initAdminPageNavTransitions();
-    lockStaticChrome();
-    if (!deferEnhancements) initAdminEnhancements().catch(() => releaseChromeBoot());
   }
 }
 

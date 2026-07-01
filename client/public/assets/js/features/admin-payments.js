@@ -5,7 +5,7 @@
 import { getPayments, getPaymentById, updatePayment, sendPaymentInvoice } from '/assets/js/services/api.js';
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer'];
+const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer', 'Waived'];
 
 const state = {
   payments: [],
@@ -44,16 +44,33 @@ function formatSentAt(value) {
   return `Emailed ${new Date(value).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`;
 }
 
+function billingInvoiceEmailed(p) {
+  return Boolean(p?.billing_invoice_sent_at);
+}
+
+function billingEmailStatusLabel(p) {
+  if (billingInvoiceEmailed(p)) {
+    return formatSentAt(p.billing_invoice_sent_at);
+  }
+  if (p.invoice_sent_at) {
+    return 'Not emailed from Billing yet';
+  }
+  return 'Not emailed from Billing yet';
+}
+
 function invoiceEmailButtonLabel(p) {
   const email = p.guest_email || 'guest';
-  return p.invoice_sent_at ? `Resend invoice to ${email}` : `Email invoice to ${email}`;
+  return billingInvoiceEmailed(p) ? `Resend invoice to ${email}` : `Email invoice to ${email}`;
 }
 
 function invoiceEmailHint(p) {
-  if (p.invoice_sent_at) {
+  if (billingInvoiceEmailed(p)) {
     return 'Use resend after changing the discount or if the guest did not receive it.';
   }
-  return 'Not emailed yet — send the invoice to the guest\u2019s booking email.';
+  if (p.invoice_sent_at) {
+    return 'An invoice may have been sent automatically when the booking was approved. Use Email to send from Billing.';
+  }
+  return 'Send the invoice from Billing to the guest\u2019s booking email.';
 }
 
 function roomShort(p) {
@@ -125,10 +142,47 @@ function bookingDatesShort(p) {
   return isVenueInvoice(p) ? formatVenueWhen(p) : formatDateShort(p.check_in, p.check_out);
 }
 
+function computeDue(subtotal, discount) {
+  return Math.max(0, Math.round((Number(subtotal) - Number(discount || 0)) * 100) / 100);
+}
+
 function dueAmount(p) {
   const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
   const discount = Number(p.discount_amount || 0);
-  return Math.max(0.01, subtotal - discount);
+  return computeDue(subtotal, discount);
+}
+
+function discountPercent(subtotal, discountAmount) {
+  const base = Number(subtotal || 0);
+  if (base <= 0) return 0;
+  return Math.round((Number(discountAmount || 0) / base) * 10000) / 100;
+}
+
+function discountFromPercent(subtotal, percent) {
+  const base = Number(subtotal || 0);
+  const p = Math.max(0, Math.min(100, Number(percent) || 0));
+  return Math.round(base * (p / 100) * 100) / 100;
+}
+
+function parsePackageHours(itemName) {
+  if (!itemName) return null;
+  const s = String(itemName);
+  const explicit = s.match(/(\d+)\s*hr/i);
+  if (explicit) return Number(explicit[1]);
+  const word = s.match(/(\d+)\s*[- ]?\s*hour/i);
+  if (/minimum|min\./i.test(s) && word) return Number(word[1]);
+  return null;
+}
+
+function bookingDurationHours(startTime, endTime) {
+  if (!startTime || !endTime) return 0;
+  const start = String(startTime).slice(0, 5);
+  const end = String(endTime).slice(0, 5);
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  if (!Number.isFinite(sh) || !Number.isFinite(eh)) return 0;
+  const mins = (eh * 60 + em) - (sh * 60 + sm);
+  return mins > 0 ? mins / 60 : 0;
 }
 
 function filteredPayments() {
@@ -161,17 +215,62 @@ function getBillingForm(detailEl) {
   return detailEl?.querySelector('[data-detail-form]') || null;
 }
 
-function readBillingFormValues(form) {
+function getDiscountMode(form) {
+  return form?.querySelector('[name="discount_mode"]:checked')?.value || 'percent';
+}
+
+function inferDiscountMode(subtotal, discountAmount) {
+  if (!discountAmount) return 'percent';
+  const roundTrip = discountFromPercent(subtotal, discountPercent(subtotal, discountAmount));
+  return Math.abs(roundTrip - Number(discountAmount)) < 0.005 ? 'percent' : 'fixed';
+}
+
+function readBillingFormValues(form, subtotal = 0) {
   if (!form) return { discount_amount: 0, discount_note: '' };
+  const mode = getDiscountMode(form);
+  const discount_amount = mode === 'fixed'
+    ? Math.max(0, Math.min(subtotal, Number(form.querySelector('[name="discount_amount"]')?.value || 0)))
+    : discountFromPercent(subtotal, form.querySelector('[name="discount_percent"]')?.value);
   return {
-    discount_amount: Number(form.querySelector('[name="discount_amount"]')?.value || 0),
+    discount_amount,
     discount_note: String(form.querySelector('[name="discount_note"]')?.value || '').trim(),
   };
 }
 
+function getFormSubtotal(form) {
+  const el = form?.querySelector('[data-subtotal-input]');
+  if (!el) return 0;
+  return parseFloat(String(el.value || '').replace(/[^\d.]/g, '')) || 0;
+}
+
+function syncDiscountPanels(form, { seedOnModeChange = false } = {}) {
+  if (!form) return;
+  const mode = getDiscountMode(form);
+  const subtotal = getFormSubtotal(form);
+  const percentInput = form.querySelector('[name="discount_percent"]');
+  const fixedInput = form.querySelector('[name="discount_amount"]');
+
+  if (seedOnModeChange) {
+    if (mode === 'fixed' && percentInput && fixedInput) {
+      fixedInput.value = String(discountFromPercent(subtotal, percentInput.value));
+    } else if (mode === 'percent' && percentInput && fixedInput) {
+      percentInput.value = String(discountPercent(subtotal, Number(fixedInput.value || 0)));
+    }
+  }
+
+  form.querySelectorAll('[data-discount-panel]').forEach((el) => {
+    const show = el.getAttribute('data-discount-panel') === mode;
+    el.hidden = !show;
+    el.classList.toggle('hidden', !show);
+    const input = el.querySelector('input');
+    if (input) input.disabled = !show;
+  });
+}
+
 function hasUnsavedBillingChanges(p, form) {
   if (!form) return false;
-  const { discount_amount, discount_note } = readBillingFormValues(form);
+  const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
+  const { discount_amount, discount_note } = readBillingFormValues(form, subtotal);
   const savedDiscount = Number(p.discount_amount || 0);
   const savedNote = String(p.discount_note || '').trim();
   return discount_amount !== savedDiscount || discount_note !== savedNote;
@@ -212,13 +311,31 @@ function openApproveConfirm(detailEl, p) {
   if (!panel || !method) return;
 
   const form = getBillingForm(detailEl);
-  const { discount_amount } = readBillingFormValues(form);
   const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
-  const due = Math.max(0.01, subtotal - discount_amount);
+  const { discount_amount } = readBillingFormValues(form, subtotal);
+  const due = computeDue(subtotal, discount_amount);
+  const isWaived = due <= 0;
+  const summaryEl = panel.querySelector('.billing-approve-confirm__summary');
+  const checkLabel = panel.querySelector('.billing-approve-confirm__check span');
 
-  panel.querySelector('[data-approve-amount]').textContent = fmt(due);
-  panel.querySelector('[data-approve-guest]').textContent = p.guest_name || 'Guest';
-  panel.querySelector('[data-approve-method]').textContent = method;
+  if (summaryEl) {
+    summaryEl.innerHTML = isWaived
+      ? `Mark this invoice as <strong>complimentary / waived</strong> for <strong data-approve-guest>${escapeHtml(p.guest_name || 'Guest')}</strong>.`
+      : `Record <strong data-approve-amount>${fmt(due)}</strong> from <strong data-approve-guest>${escapeHtml(p.guest_name || 'Guest')}</strong> via <strong data-approve-method>${escapeHtml(method)}</strong>.`;
+  } else {
+    const amountEl = panel.querySelector('[data-approve-amount]');
+    const guestEl = panel.querySelector('[data-approve-guest]');
+    const methodEl = panel.querySelector('[data-approve-method]');
+    if (amountEl) amountEl.textContent = fmt(due);
+    if (guestEl) guestEl.textContent = p.guest_name || 'Guest';
+    if (methodEl) methodEl.textContent = method;
+  }
+
+  if (checkLabel) {
+    checkLabel.textContent = isWaived
+      ? 'I confirm this booking is complimentary / waived and should be marked as paid with no charge.'
+      : 'I confirm the guest has paid the amount shown and the payment method is correct.';
+  }
 
   const check = panel.querySelector('[data-approve-check]');
   const submitBtn = panel.querySelector('[data-confirm-paid]');
@@ -239,9 +356,9 @@ function renderListRow(p) {
   const isPending = p.status === 'Pending';
   const due = dueAmount(p);
   const isSelected = String(p.id) === String(state.selectedId);
-  const emailed = p.invoice_sent_at
-    ? '<span class="billing-row__tag billing-row__tag--sent" title="Invoice emailed">✉ Sent</span>'
-    : '<span class="billing-row__tag billing-row__tag--unsent" title="Not emailed yet">✉ Not sent</span>';
+  const emailed = billingInvoiceEmailed(p)
+    ? '<span class="billing-row__tag billing-row__tag--sent" title="Invoice emailed from Billing">✉ Sent</span>'
+    : '<span class="billing-row__tag billing-row__tag--unsent" title="Not emailed from Billing yet">✉ Not sent</span>';
 
   return `
     <button type="button"
@@ -270,21 +387,70 @@ function stayNights(p) {
   return p.nights || 1;
 }
 
+function venueChargeLines(p) {
+  const bookingTotal = Number(p.booking_total || p.subtotal || 0);
+  const rate = Number(p.facility_rate || 0);
+  const hours = bookingDurationHours(p.start_time, p.end_time);
+  const packageLabel = p.facility_package || '';
+  const packageHours = parsePackageHours(packageLabel);
+  const lines = [];
+
+  if (rate > 0 && hours > 0) {
+    if (packageHours) {
+      if (hours <= packageHours) {
+        lines.push({
+          icon: 'meeting_room',
+          label: `${packageHours}-hour package`,
+          detail: `${venueLabel(p)} · ${packageLabel}`,
+          amount: rate,
+        });
+      } else {
+        const perHour = rate / packageHours;
+        const extraHours = Math.round((hours - packageHours) * 100) / 100;
+        const extraAmount = Math.round(perHour * extraHours * 100) / 100;
+        lines.push({
+          icon: 'meeting_room',
+          label: `${packageHours}-hour package`,
+          detail: `${venueLabel(p)} · ${packageLabel}`,
+          amount: rate,
+        });
+        lines.push({
+          icon: 'schedule',
+          label: 'Additional hours',
+          detail: `${extraHours} hr × ${fmt(perHour)}/hr beyond package`,
+          amount: extraAmount,
+        });
+      }
+    } else {
+      const billedHours = Math.max(hours, 1);
+      const amount = Math.round(rate * billedHours * 100) / 100;
+      lines.push({
+        icon: 'schedule',
+        label: 'Venue rental',
+        detail: `${fmt(rate)}/hr × ${billedHours} hr · ${venueLabel(p)}`,
+        amount,
+      });
+    }
+  }
+
+  if (!lines.length && bookingTotal > 0) {
+    const time = [formatTime12(p.start_time), formatTime12(p.end_time)].filter(Boolean).join(' – ');
+    lines.push({
+      icon: 'meeting_room',
+      label: p.facility_name || 'Venue rental',
+      detail: `${venueLabel(p)}${time ? ` · ${time}` : ''} · ${p.guest_count || 1} guest${Number(p.guest_count) === 1 ? '' : 's'}`,
+      amount: bookingTotal,
+    });
+  }
+
+  return { lines, bookingTotal };
+}
+
 function chargeLines(p) {
   const bookingTotal = Number(p.booking_total || p.subtotal || 0);
 
   if (isVenueInvoice(p)) {
-    const time = [formatTime12(p.start_time), formatTime12(p.end_time)].filter(Boolean).join(' – ');
-    const packageNote = p.facility_package ? ` · ${p.facility_package}` : '';
-    return {
-      lines: [{
-        icon: 'sports_basketball',
-        label: p.facility_name || 'Venue rental',
-        detail: `${venueLabel(p)}${time ? ` · ${time}` : ''} · ${p.guest_count || 1} guest${Number(p.guest_count) === 1 ? '' : 's'}${p.season ? ` · ${p.season}` : ''}${packageNote}`,
-        amount: bookingTotal,
-      }],
-      bookingTotal,
-    };
+    return venueChargeLines(p);
   }
 
   const meals = (p.meals || []).filter((m) => Number(m.quantity) > 0);
@@ -335,6 +501,9 @@ function renderChargeTable(p) {
   if (!lines.length) {
     return '<p class="billing-charges-empty">No line-item breakdown on file.</p>';
   }
+  const subtotal = Number(p.subtotal ?? bookingTotal ?? 0);
+  const discount = Number(p.discount_amount || 0);
+  const percent = discountPercent(subtotal, discount);
   const rows = lines.map((line) => `
     <tr>
       <td>
@@ -360,6 +529,11 @@ function renderChargeTable(p) {
           <td>Booking subtotal</td>
           <td class="billing-charge-amount">${fmt(bookingTotal)}</td>
         </tr>
+        ${discount > 0 ? `
+        <tr class="billing-charges-discount">
+          <td>Discount${percent > 0 ? ` (${percent}%)` : ''}${p.discount_note ? ` — ${escapeHtml(p.discount_note)}` : ''}</td>
+          <td class="billing-charge-amount">−${fmt(discount)}</td>
+        </tr>` : ''}
       </tfoot>
     </table>`;
 }
@@ -376,33 +550,45 @@ function renderInfoChip(icon, label, value) {
     </div>`;
 }
 
+function renderVenueDetailItem(label, value, { wide = false } = {}) {
+  if (!value) return '';
+  return `
+    <div class="billing-venue-details__item${wide ? ' billing-venue-details__item--wide' : ''}">
+      <span class="billing-venue-details__label">${escapeHtml(label)}</span>
+      <span class="billing-venue-details__value">${escapeHtml(value)}</span>
+    </div>`;
+}
+
+function renderVenueDetailsCard(p) {
+  const timeLabel = `${formatTime12(p.start_time)} – ${formatTime12(p.end_time)}`;
+  return `
+    <div class="billing-venue-details">
+      <div class="billing-venue-details__grid billing-venue-details__grid--unified">
+        ${renderVenueDetailItem('Event date', formatDateLongSingle(p.event_date))}
+        ${renderVenueDetailItem('Time', timeLabel)}
+        ${renderVenueDetailItem('Guests', `${p.guest_count || 1} expected`)}
+        ${renderVenueDetailItem('Venue', venueLabel(p))}
+        ${renderVenueDetailItem('Season', p.season)}
+        ${renderVenueDetailItem('Package', p.facility_package)}
+        ${renderVenueDetailItem('Email', p.guest_email, { wide: true })}
+        ${renderVenueDetailItem('Booking notes', p.notes, { wide: true })}
+      </div>
+      <div class="billing-venue-details__footer">
+        <span class="billing-venue-details__ref">Booking ref #${escapeHtml(String(p.facility_booking_id))}</span>
+        <span class="billing-venue-details__type">Venue / facility</span>
+      </div>
+    </div>`;
+}
+
 function renderReservationSection(p) {
   if (isVenueInvoice(p)) {
-    const timeLabel = `${formatTime12(p.start_time)} – ${formatTime12(p.end_time)}`;
-    const chips = [
-      renderInfoChip('event', 'Event date', formatDateLongSingle(p.event_date)),
-      renderInfoChip('schedule', 'Time', timeLabel),
-      renderInfoChip('group', 'Guests', `${p.guest_count || 1} expected`),
-      renderInfoChip('location_on', 'Venue', venueLabel(p)),
-      p.season ? renderInfoChip('wb_sunny', 'Season', p.season) : '',
-      p.facility_package ? renderInfoChip('inventory_2', 'Package', p.facility_package) : '',
-    ].filter(Boolean).join('');
-
-    const extras = [
-      p.guest_email ? `<div class="billing-meta-row"><span>Email</span><span>${escapeHtml(p.guest_email)}</span></div>` : '',
-      p.notes ? `<div class="billing-meta-row"><span>Booking notes</span><span>${escapeHtml(p.notes)}</span></div>` : '',
-      `<div class="billing-meta-row"><span>Booking ref</span><span>#${p.facility_booking_id}</span></div>`,
-      '<div class="billing-meta-row"><span>Type</span><span>Venue / facility</span></div>',
-    ].filter(Boolean).join('');
-
     return `
     <section class="billing-reservation-card">
       <h4 class="billing-section-title">
         <span class="material-symbols-outlined" aria-hidden="true">meeting_room</span>
         Venue booking details
       </h4>
-      <div class="billing-info-chips">${chips}</div>
-      ${extras ? `<div class="billing-meta-list">${extras}</div>` : ''}
+      ${renderVenueDetailsCard(p)}
       <h4 class="billing-section-title billing-section-title--sub">
         <span class="material-symbols-outlined" aria-hidden="true">request_quote</span>
         Charge breakdown
@@ -451,28 +637,13 @@ function renderReservationSection(p) {
     </section>`;
 }
 
-function renderDetailHeader(p, { statusLabel, statusClass }) {
-  return `
-    <header class="billing-detail__header billing-detail__header--styled">
-      <div class="billing-detail__header-main">
-        <div class="billing-detail__avatar" aria-hidden="true">
-          <span class="material-symbols-outlined">${isVenueInvoice(p) ? 'meeting_room' : 'person'}</span>
-        </div>
-        <div>
-          <p class="billing-detail__eyebrow">Invoice #${p.id} · ${isVenueInvoice(p) ? 'Venue' : 'Housing'} · ${statusLabel}</p>
-          <h3 class="billing-detail__title" id="billing-modal-title">${escapeHtml(p.guest_name || 'Guest')}</h3>
-        </div>
-      </div>
-      <button type="button" class="billing-detail__close" data-close-detail aria-label="Close">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </header>`;
-}
-
 function renderBillingColumn(p, { isPending }) {
   const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
   const discount = Number(p.discount_amount || 0);
+  const percent = discountPercent(subtotal, discount);
+  const discountMode = inferDiscountMode(subtotal, discount);
   const due = dueAmount(p);
+  const isWaived = due <= 0;
   const methodOptions = PAYMENT_METHODS.map((m) => `<option value="${m}">${m}</option>`).join('');
 
   if (!isPending) {
@@ -490,36 +661,61 @@ function renderBillingColumn(p, { isPending }) {
         <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
         Edit &amp; approve
       </h4>
-      <p class="billing-detail__lead">When a stay or venue booking is approved, the invoice is emailed automatically to the guest. Adjust discount if needed, then approve payment.</p>
+      <p class="billing-detail__lead">Set discount by percent or fixed peso amount, then save before approving.</p>
 
       <form class="billing-edit-form" data-detail-form="${p.id}">
-        <div class="billing-edit-form__grid">
-          <label class="billing-edit-form__field">
-            <span>Subtotal</span>
-            <input type="text" class="billing-edit-form__input" value="${fmt(subtotal)}" disabled />
-          </label>
-          <label class="billing-edit-form__field">
-            <span>Discount (₱)</span>
-            <input type="number" min="0" step="0.01" max="${subtotal}" class="billing-edit-form__input"
-              name="discount_amount" value="${discount}" data-live-due />
-          </label>
+        <label class="billing-edit-form__field billing-edit-form__field--subtotal">
+          <span>Subtotal</span>
+          <input type="text" class="billing-edit-form__input billing-edit-form__input--amount" data-subtotal-input value="${fmt(subtotal)}" disabled />
+        </label>
+
+        <div class="billing-discount-block">
+          <span class="billing-discount-block__label">Discount</span>
+          <div class="billing-discount-mode" role="radiogroup" aria-label="Discount type">
+            <label class="billing-discount-mode__option">
+              <input type="radio" name="discount_mode" value="percent"${discountMode === 'percent' ? ' checked' : ''} />
+              <span>Percent (%)</span>
+            </label>
+            <label class="billing-discount-mode__option">
+              <input type="radio" name="discount_mode" value="fixed"${discountMode === 'fixed' ? ' checked' : ''} />
+              <span>Fixed amount</span>
+            </label>
+          </div>
+          <div class="billing-discount-panels">
+            <label class="billing-discount-panel${discountMode === 'percent' ? '' : ' hidden'}" data-discount-panel="percent"${discountMode === 'percent' ? '' : ' hidden'}>
+              <span class="billing-discount-panel__label">Rate</span>
+              <span class="billing-discount-field">
+                <input type="number" min="0" max="100" step="0.01"
+                  class="billing-edit-form__input billing-discount-field__input"
+                  name="discount_percent" value="${percent}" data-live-due${discountMode === 'percent' ? '' : ' disabled'} />
+                <span class="billing-discount-field__suffix" aria-hidden="true">%</span>
+              </span>
+            </label>
+            <label class="billing-discount-panel${discountMode === 'fixed' ? '' : ' hidden'}" data-discount-panel="fixed"${discountMode === 'fixed' ? '' : ' hidden'}>
+              <span class="billing-discount-panel__label">Amount off (₱)</span>
+              <input type="number" min="0" max="${subtotal}" step="0.01"
+                class="billing-edit-form__input billing-discount-field__input"
+                name="discount_amount" value="${discount}" data-live-due${discountMode === 'fixed' ? '' : ' disabled'} />
+            </label>
+          </div>
+          <p class="billing-discount-hint" data-discount-peso>−${fmt(discount)} off subtotal</p>
         </div>
         <label class="billing-edit-form__field">
           <span>Discount reason</span>
           <input type="text" class="billing-edit-form__input" name="discount_note" maxlength="255"
             placeholder="e.g. Staff rate, ministry partner" value="${escapeHtml(p.discount_note || '')}" />
         </label>
-        <div class="billing-detail-total" data-due-display>
-          <span>Amount due after discount</span>
+        <div class="billing-detail-total${isWaived ? ' billing-detail-total--waived' : ''}" data-due-display>
+          <span>${isWaived ? 'Complimentary — no amount due' : 'Amount due after discount'}</span>
           <strong>${fmt(due)}</strong>
         </div>
         <button type="submit" class="invoice-btn-secondary">Save changes</button>
       </form>
 
       <div class="billing-detail-actions">
-        <div class="billing-email-status${p.invoice_sent_at ? ' billing-email-status--sent' : ''}">
+        <div class="billing-email-status${billingInvoiceEmailed(p) ? ' billing-email-status--sent' : ''}">
           <span class="material-symbols-outlined" aria-hidden="true">mail</span>
-          <span>${escapeHtml(formatSentAt(p.invoice_sent_at))}</span>
+          <span>${escapeHtml(billingEmailStatusLabel(p))}</span>
         </div>
         <button type="button" class="invoice-btn-secondary" data-send-invoice="${p.id}">
           <span class="material-symbols-outlined" aria-hidden="true">send</span>
@@ -542,9 +738,11 @@ function renderBillingColumn(p, { isPending }) {
             <div>
               <p class="billing-approve-confirm__title">Final approval — please verify</p>
               <p class="billing-approve-confirm__summary">
-                Record <strong data-approve-amount>${fmt(due)}</strong> from
+                ${isWaived
+    ? `Mark this invoice as <strong>complimentary / waived</strong> for <strong data-approve-guest>${escapeHtml(p.guest_name || 'Guest')}</strong>.`
+    : `Record <strong data-approve-amount>${fmt(due)}</strong> from
                 <strong data-approve-guest>${escapeHtml(p.guest_name || 'Guest')}</strong>
-                via <strong data-approve-method>—</strong>.
+                via <strong data-approve-method>—</strong>.`}
               </p>
               <p class="billing-approve-confirm__note">
                 This marks the housing bill as paid and emails a receipt. You cannot undo this from Billing.
@@ -553,7 +751,9 @@ function renderBillingColumn(p, { isPending }) {
           </div>
           <label class="billing-approve-confirm__check">
             <input type="checkbox" data-approve-check />
-            <span>I confirm the guest has paid the amount shown and the payment method is correct.</span>
+            <span>${isWaived
+    ? 'I confirm this booking is complimentary / waived and should be marked as paid with no charge.'
+    : 'I confirm the guest has paid the amount shown and the payment method is correct.'}</span>
           </label>
           <div class="billing-approve-confirm__actions">
             <button type="button" class="invoice-btn-secondary" data-cancel-approve>Go back</button>
@@ -574,13 +774,14 @@ function renderBillingColumn(p, { isPending }) {
 
 function renderDetailPanel(p) {
   const isPending = p.status === 'Pending';
+  const statusLabel = isPending ? 'Final review' : 'Paid';
 
   return `
     <div class="billing-detail">
-      ${renderDetailHeader(p, {
-        statusLabel: isPending ? 'Final review' : 'Paid',
-        statusClass: isPending ? 'pending' : 'paid',
-      })}
+      <button type="button" class="billing-detail__close billing-detail__close--float" data-close-detail aria-label="Close invoice review">
+        <span class="material-symbols-outlined" aria-hidden="true">close</span>
+      </button>
+      <p id="billing-modal-title" class="sr-only">${escapeHtml(p.guest_name || 'Guest')} — Invoice #${p.id} · ${statusLabel}</p>
       <div class="billing-detail__body nice-scroll">
         <div class="billing-detail__columns">
           <div class="billing-detail__col">
@@ -596,14 +797,33 @@ function renderDetailPanel(p) {
 }
 
 function updateLiveDue(form) {
-  const subtotalInput = form.querySelector('[disabled]');
-  const discountInput = form.querySelector('[name="discount_amount"]');
-  const dueEl = form.closest('.billing-detail')?.querySelector('[data-due-display] strong');
-  if (!discountInput || !dueEl) return;
-  const subtotal = parseFloat(String(subtotalInput?.value || '').replace(/[^\d.]/g, '')) || 0;
-  const discount = Math.max(0, Number(discountInput.value) || 0);
-  const due = Math.max(0.01, subtotal - discount);
-  dueEl.textContent = fmt(due);
+  const dueEl = form.closest('.billing-detail')?.querySelector('[data-due-display]');
+  const dueStrong = dueEl?.querySelector('strong');
+  const dueLabel = dueEl?.querySelector('span');
+  const pesoHint = form.querySelector('[data-discount-peso]');
+  if (!dueStrong) return;
+
+  const subtotal = getFormSubtotal(form);
+  const mode = getDiscountMode(form);
+  const { discount_amount } = readBillingFormValues(form, subtotal);
+  const due = computeDue(subtotal, discount_amount);
+  const isWaived = due <= 0;
+
+  dueStrong.textContent = fmt(due);
+  if (dueLabel) {
+    dueLabel.textContent = isWaived ? 'Complimentary — no amount due' : 'Amount due after discount';
+  }
+  dueEl?.classList.toggle('billing-detail-total--waived', isWaived);
+
+  if (pesoHint) pesoHint.textContent = `−${fmt(discount_amount)} off subtotal`;
+
+  const percentInput = form.querySelector('[name="discount_percent"]');
+  const fixedInput = form.querySelector('[name="discount_amount"]');
+  if (mode === 'percent' && fixedInput) {
+    fixedInput.value = String(discount_amount);
+  } else if (mode === 'fixed' && percentInput) {
+    percentInput.value = String(discountPercent(subtotal, discount_amount));
+  }
 }
 
 function renderList() {
@@ -683,16 +903,27 @@ function bindDetailActions(p) {
   detailEl?.querySelector('[data-close-detail]')?.addEventListener('click', closeInvoiceModal);
 
   const form = detailEl?.querySelector('[data-detail-form]');
-  form?.querySelector('[data-live-due]')?.addEventListener('input', () => updateLiveDue(form));
+  form?.querySelectorAll('[data-live-due]').forEach((input) => {
+    input.addEventListener('input', () => updateLiveDue(form));
+  });
+  form?.querySelectorAll('[name="discount_mode"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      syncDiscountPanels(form, { seedOnModeChange: true });
+      updateLiveDue(form);
+    });
+  });
+  syncDiscountPanels(form);
 
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = form.querySelector('button[type="submit"]');
     btn.disabled = true;
+    const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
+    const { discount_amount, discount_note } = readBillingFormValues(form, subtotal);
     try {
       await updatePayment(p.id, {
-        discount_amount: form.querySelector('[name="discount_amount"]')?.value,
-        discount_note: form.querySelector('[name="discount_note"]')?.value,
+        discount_amount,
+        discount_note,
       });
       await reload({ keepSelection: true, keepModalOpen: true });
       showFeedback(detailFeedback, 'Billing updated.', 'ok');
@@ -706,7 +937,7 @@ function bindDetailActions(p) {
   detailEl?.querySelector('[data-send-invoice]')?.addEventListener('click', async (e) => {
     const btn = e.currentTarget;
     const fresh = selectedPayment() || p;
-    const verb = fresh.invoice_sent_at ? 'Resend' : 'Email';
+    const verb = billingInvoiceEmailed(fresh) ? 'Resend' : 'Email';
     if (!window.confirm(`${verb} invoice #${fresh.id} to ${fresh.guest_email}?`)) return;
     btn.disabled = true;
     const label = btn.innerHTML;

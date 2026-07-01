@@ -36,7 +36,25 @@ function ensureDotLottiePlayer() {
     };
 
     const waitForElement = () => {
-      customElements.whenDefined('dotlottie-player').then(done).catch(fail);
+      let settled = false;
+      const guard = window.setTimeout(() => {
+        if (!settled && !customElements.get('dotlottie-player')) {
+          settled = true;
+          fail(new Error('dotLottie player definition timed out'));
+        }
+      }, DOTLOTTIE_LOAD_TIMEOUT_MS);
+
+      customElements.whenDefined('dotlottie-player').then(() => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(guard);
+        done();
+      }).catch((err) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(guard);
+        fail(err);
+      });
     };
 
     if (document.querySelector('script[data-apt-dotlottie]')) {
@@ -307,6 +325,11 @@ function dismissSplash(overlay) {
   window.setTimeout(() => overlay.remove(), 600);
 }
 
+/** Dismiss the initial splash overlay if it is still visible. */
+export function dismissAptSplash() {
+  dismissSplash(document.getElementById('apt-splash'));
+}
+
 function showIdle(overlay) {
   if (!overlay || !overlay.classList.contains('is-hidden')) return;
   overlay.classList.remove('is-hidden');
@@ -501,9 +524,14 @@ function shouldShowSplash(portal) {
 }
 
 /**
- * @param {{ portal: 'admin'|'guest', forceSplash?: boolean, skipIdle?: boolean }} options
+ * @param {{ portal: 'admin'|'guest', forceSplash?: boolean, skipIdle?: boolean, autoDismiss?: boolean }} options
  */
-export async function initSplashIdle({ portal = 'guest', forceSplash = false, skipIdle = false } = {}) {
+export async function initSplashIdle({
+  portal = 'guest',
+  forceSplash = false,
+  skipIdle = false,
+  autoDismiss = true,
+} = {}) {
   ensureStylesheet();
 
   const isAdmin = portal === 'admin';
@@ -519,11 +547,15 @@ export async function initSplashIdle({ portal = 'guest', forceSplash = false, sk
 
   let guestUseLottie = false;
   if (isGuest) {
-    guestUseLottie = await ensureDotLottiePlayer().then(() => true).catch(() => false);
+    guestUseLottie = await Promise.race([
+      ensureDotLottiePlayer().then(() => true).catch(() => false),
+      new Promise((resolve) => { window.setTimeout(() => resolve(false), 2000); }),
+    ]);
   }
 
   if (showSplash && !splash) {
     splash = isAdmin ? buildAdminSplash() : buildGuestSplash({ useLottie: guestUseLottie });
+    if (!autoDismiss) splash.classList.add('apt-splash--hold');
     document.body.appendChild(splash);
     bindLiveClock(splash.querySelector('[data-apt-clock]'));
     if (isGuest) {
@@ -548,10 +580,10 @@ export async function initSplashIdle({ portal = 'guest', forceSplash = false, sk
     }
   }
 
-  if (splash && showSplash) {
+  if (splash && showSplash && autoDismiss) {
     if (splashDismissTimer) clearTimeout(splashDismissTimer);
     splashDismissTimer = window.setTimeout(() => dismissSplash(splash), SPLASH_DURATION_MS);
-  } else {
+  } else if (!showSplash) {
     document.body.classList.remove('is-splash-active');
     document.querySelector('.admin-shell')?.classList.remove('is-splash-active');
   }

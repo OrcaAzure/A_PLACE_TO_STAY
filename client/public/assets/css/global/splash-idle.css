@@ -313,6 +313,21 @@
   to { width: 100%; }
 }
 
+.apt-splash--hold .apt-splash--admin__progress span {
+  width: 35%;
+  animation: apt-boot-progress-loop 1.6s ease-in-out infinite;
+}
+
+.apt-splash--hold .apt-splash--guest__bar-fill {
+  animation: apt-splash-pulse-bar 1.1s ease-in-out infinite;
+}
+
+@keyframes apt-boot-progress-loop {
+  0% { width: 12%; margin-left: 0; }
+  50% { width: 88%; margin-left: 12%; }
+  100% { width: 12%; margin-left: 0; }
+}
+
 /* ── Guest idle (cinematic slideshow) ─────────────────────────────── */
 
 .apt-idle--guest {

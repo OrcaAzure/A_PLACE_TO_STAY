@@ -418,7 +418,8 @@ CREATE TABLE IF NOT EXISTS payments (
                  'Failed'
                ) NOT NULL DEFAULT 'Pending',
     paid_at          TIMESTAMP NULL DEFAULT NULL,
-    invoice_sent_at  TIMESTAMP NULL DEFAULT NULL,
+    invoice_sent_at       TIMESTAMP NULL DEFAULT NULL,
+    billing_invoice_sent_at TIMESTAMP NULL DEFAULT NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

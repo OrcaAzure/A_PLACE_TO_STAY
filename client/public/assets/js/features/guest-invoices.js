@@ -18,7 +18,7 @@ function escapeHtml(str) {
 function dueAmount(p) {
   const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
   const discount = Number(p.discount_amount || 0);
-  return Math.max(0.01, subtotal - discount);
+  return Math.max(0, Math.round((subtotal - discount) * 100) / 100);
 }
 
 function isVenueInvoice(p) {

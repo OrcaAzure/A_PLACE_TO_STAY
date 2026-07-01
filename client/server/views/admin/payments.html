@@ -74,20 +74,35 @@
   </div>
 
   <script type="module">
-    import { requireAuth }   from '/assets/js/services/auth.js';
+    import { requireAuth } from '/assets/js/services/auth.js';
     import { initAppLayout } from '/assets/js/layout/ui.js';
     import { loadPaymentsPage } from '/assets/js/features/admin-payments.js';
 
-    if (!requireAuth()) throw new Error('Not authenticated');
+    function showBootError(message) {
+      document.body.classList.add('admin-shell');
+      const page = document.getElementById('page-content');
+      if (page) page.style.visibility = 'visible';
+      const feedback = document.getElementById('payments-feedback');
+      if (feedback) {
+        feedback.textContent = message;
+        feedback.className = 'invoice-feedback invoice-feedback--error';
+        feedback.classList.remove('hidden');
+      }
+    }
 
-    await initAppLayout({
-      portal:     'admin',
-      activePage: 'payments',
-      title:      'Billing',
-      subtitle:   'Review, edit & approve payment',
-    });
-
-    await loadPaymentsPage();
+    try {
+      if (!requireAuth()) throw new Error('Not authenticated');
+      await initAppLayout({
+        portal: 'admin',
+        activePage: 'payments',
+        title: 'Billing',
+        subtitle: 'Review, edit & approve payment',
+      });
+      await loadPaymentsPage();
+    } catch (err) {
+      console.error('[billing] Page bootstrap failed:', err);
+      showBootError(err?.message || 'Could not load the billing page. Refresh or check that the server is running.');
+    }
   </script>
 </body>
 </html>
