@@ -1,8 +1,19 @@
 import crypto from 'crypto';
 import { pool } from '../config/db.js';
+import { JWT_EXPIRES_IN } from '../config/env.js';
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
+
+function sessionExpiresAt() {
+  const raw = String(JWT_EXPIRES_IN || '7d').trim();
+  const match = /^(\d+)\s*([dhms])?$/i.exec(raw);
+  if (!match) return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const n = Number(match[1]);
+  const unit = (match[2] || 'd').toLowerCase();
+  const ms = { d: 86400000, h: 3600000, m: 60000, s: 1000 };
+  return new Date(Date.now() + n * (ms[unit] || ms.d));
+}
 
 export async function checkLoginAllowed(email) {
   const normalized = email.trim().toLowerCase();
@@ -50,20 +61,31 @@ export async function clearLoginAttempts(email) {
 
 export async function rotateSession(userId) {
   const sid = crypto.randomBytes(32).toString('hex');
-  await pool.query('UPDATE users SET session_id = ? WHERE id = ?', [sid, userId]);
+  const expiresAt = sessionExpiresAt();
+  await pool.query(
+    'UPDATE users SET session_id = ?, session_expires_at = ? WHERE id = ?',
+    [sid, expiresAt, userId]
+  );
   return sid;
 }
 
 export async function validateUserSession(userId, sid) {
   if (!sid) return false;
   const [rows] = await pool.query(
-    'SELECT session_id, status FROM users WHERE id = ? LIMIT 1',
+    'SELECT session_id, session_expires_at, status FROM users WHERE id = ? LIMIT 1',
     [userId]
   );
   if (!rows.length || rows[0].status === 'Inactive') return false;
-  return rows[0].session_id === sid;
+  if (rows[0].session_id !== sid) return false;
+  if (rows[0].session_expires_at && new Date(rows[0].session_expires_at) <= new Date()) {
+    return false;
+  }
+  return true;
 }
 
 export async function invalidateSession(userId) {
-  await pool.query('UPDATE users SET session_id = NULL WHERE id = ?', [userId]);
+  await pool.query(
+    'UPDATE users SET session_id = NULL, session_expires_at = NULL WHERE id = ?',
+    [userId]
+  );
 }

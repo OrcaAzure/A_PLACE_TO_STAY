@@ -30,7 +30,7 @@ export async function apiRequest(endpoint, options = {}) {
 
   if (!response.ok) {
     const message = data?.message || `Request failed (${response.status})`;
-    if (response.status === 401 && token && /session expired|signed in elsewhere/i.test(message)) {
+    if (response.status === 401 && token && /signed out because|signed in elsewhere|session expired/i.test(message)) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       if (!window.location.pathname.includes('login.html')) {

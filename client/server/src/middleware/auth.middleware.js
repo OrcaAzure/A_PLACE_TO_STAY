@@ -10,7 +10,7 @@ export const requireAuth = async (req, res, next) => {
     const user = await resolveAuthUser(token);
     if (!user) {
       return res.status(401).json({
-        message: 'Session expired or signed in elsewhere. Please log in again.',
+        message: 'You were signed out because this account was used on another device. Please log in again.',
       });
     }
     req.user = user;

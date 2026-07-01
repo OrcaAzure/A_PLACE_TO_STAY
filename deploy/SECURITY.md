@@ -17,12 +17,9 @@ Summary of security controls and caching added to the housing portal.
 
 ### 2. Single active session per account
 
-Each login rotates `users.session_id` and embeds it in the JWT (`sid`). Logging in elsewhere invalidates the previous device.
+Each account (admin **or** guest) can only stay signed in on **one device at a time**. If they log in on a **second device**, the **first device is signed out automatically** — so a dead laptop does not block login on a phone.
 
-| File | Role |
-|------|------|
-| `client/server/src/services/session.service.js` | Session rotation & validation |
-| `users.session_id` | Schema patch in `seed.js` |
+The newest login always wins. Different users can still be logged in at the same time.
 
 ### 3. Per-account login lockout
 

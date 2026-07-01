@@ -48,7 +48,7 @@
     const errorEl = document.getElementById('loginError');
     const params = new URLSearchParams(window.location.search);
     if (params.get('reason') === 'session' && errorEl) {
-      errorEl.textContent = 'Your session expired or you signed in on another device. Please log in again.';
+      errorEl.textContent = 'You were signed out because this account was used on another device. Please log in again.';
       errorEl.classList.remove('hidden');
     }
 
