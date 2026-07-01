@@ -67,6 +67,7 @@ export function collectAnimatableBlocks(root = document) {
   for (const child of page.children) {
     if (child.classList.contains('hidden')) continue;
     if (child.hasAttribute('data-no-page-enter')) continue;
+    if (child.classList.contains('res-hub-tabs')) continue;
 
     if (child.classList.contains('settings-workspace')) {
       const visiblePanel = child.querySelector('.app-tab-panel:not(.is-tab-hidden)');

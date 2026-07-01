@@ -977,6 +977,8 @@ html.admin-chrome-boot .app-tab-panels {
   flex-direction: column;
   gap: 0.75rem;
   padding-bottom: 2.5rem;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .res-hub-page > .ga-panel,
@@ -984,23 +986,52 @@ html.admin-chrome-boot .app-tab-panels {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  flex-shrink: 0;
+  min-width: 0;
+}
+
+.admin-shell #page-content.res-hub-page > .res-hub-panel,
+.admin-shell #page-content.res-hub-page > section.res-hub-panel {
+  flex-shrink: 0;
+  min-width: 0;
 }
 
 .res-hub-tabs,
 .fac-tab-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 0.5rem;
   padding: 0.5rem;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 1rem;
   box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  flex-shrink: 0;
+  width: 100%;
+  min-height: calc(3rem + 1rem);
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e0 transparent;
+}
+
+.res-hub-tabs::-webkit-scrollbar,
+.fac-tab-bar::-webkit-scrollbar {
+  height: 4px;
+}
+
+.res-hub-tabs::-webkit-scrollbar-thumb,
+.fac-tab-bar::-webkit-scrollbar-thumb {
+  background: #cbd5e0;
+  border-radius: 999px;
 }
 
 .res-hub-tab,
 .fac-tab {
-  flex: 1 1 auto;
+  flex: 1 0 auto;
   min-height: 3rem;
   padding: 0.75rem 1.25rem;
   font-size: 1rem;
@@ -1056,6 +1087,8 @@ html.admin-chrome-boot .app-tab-panels {
 
 .res-hub-panel,
 .fac-catalog-section {
+  container-type: inline-size;
+  container-name: hub-panel;
   background: #fff;
   border: 1px solid #e2e8f0;
   border-radius: 1rem;
@@ -1162,6 +1195,7 @@ html.admin-chrome-boot .app-tab-panels {
   padding-bottom: 1rem;
   border-bottom: 1px solid #f1f5f9;
   margin-bottom: 0.75rem;
+  min-width: 0;
 }
 
 .res-hub-toolbar--actions-only {
@@ -1293,4 +1327,173 @@ html.admin-chrome-boot .app-tab-panels {
 
 .res-hub-toolbar__actions .rooms-toolbar-text-btn {
   min-height: 2.75rem;
+}
+
+/* ── Hub responsive — narrow panels (half-screen, sidebar open) ── */
+@container hub-panel (max-width: 900px) {
+  .res-hub-toolbar:not(.res-hub-toolbar--actions-only) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.625rem;
+  }
+
+  .res-hub-toolbar__search {
+    width: 100%;
+  }
+
+  .res-hub-toolbar__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .res-hub-toolbar__actions .rooms-date-bar {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .res-hub-toolbar__actions .fac-field-input--date {
+    min-width: 0;
+    flex: 1 1 8.5rem;
+  }
+
+  .res-hub-toolbar__actions .fac-field-input--time {
+    min-width: 0;
+    min-inline-size: 0;
+    flex: 1 1 7rem;
+  }
+
+  .res-hub-toolbar__actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .res-hub-toolbar__actions .rooms-date-bar {
+    grid-column: 1 / -1;
+  }
+
+  .res-hub-toolbar__actions .ga-filter-wrap,
+  .res-hub-toolbar__actions .fac-filter-wrap {
+    min-width: 0;
+    width: auto;
+  }
+
+  .res-hub-toolbar__actions .res-input--select,
+  .res-hub-toolbar__actions .res-btn,
+  .res-hub-toolbar__actions .ga-filter-btn,
+  .res-hub-toolbar__actions .fac-filter-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .res-hub-toolbar--actions-only .res-hub-toolbar__actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    width: 100%;
+    justify-items: stretch;
+  }
+
+  .res-hub-toolbar--actions-only .res-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@container hub-panel (max-width: 520px) {
+  .res-hub-toolbar__actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .res-hub-toolbar:not(.res-hub-toolbar--actions-only) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.625rem;
+  }
+
+  .res-hub-toolbar__search {
+    width: 100%;
+  }
+
+  .res-hub-toolbar__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .res-hub-toolbar__actions .rooms-date-bar {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .res-hub-toolbar__actions .fac-field-input--date {
+    min-width: 0;
+    flex: 1 1 8.5rem;
+  }
+
+  .res-hub-toolbar__actions .fac-field-input--time {
+    min-width: 0;
+    min-inline-size: 0;
+    flex: 1 1 7rem;
+  }
+
+  .res-hub-toolbar__actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: 0.5rem;
+    align-items: stretch;
+  }
+
+  .res-hub-toolbar__actions .rooms-date-bar {
+    grid-column: 1 / -1;
+  }
+
+  .res-hub-toolbar__actions .ga-filter-wrap,
+  .res-hub-toolbar__actions .fac-filter-wrap {
+    min-width: 0;
+    width: auto;
+  }
+
+  .res-hub-toolbar__actions .res-input--select,
+  .res-hub-toolbar__actions .res-btn,
+  .res-hub-toolbar__actions .ga-filter-btn,
+  .res-hub-toolbar__actions .fac-filter-btn {
+    width: 100%;
+    min-width: 0;
+    justify-content: center;
+  }
+
+  .res-hub-toolbar--actions-only .res-hub-toolbar__actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    width: 100%;
+    justify-items: stretch;
+  }
+
+  .res-hub-toolbar--actions-only .res-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 520px) {
+  .res-hub-toolbar__actions {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1023px) {
+  .res-hub-panel {
+    padding: 1rem;
+  }
+
+  .res-hub-panel--table .ga-table-wrap {
+    margin-left: -1rem;
+    margin-right: -1rem;
+  }
+
+  .res-hub-panel--flush .res-hub-toolbar {
+    margin-left: 1rem;
+    margin-right: 1rem;
+  }
 }

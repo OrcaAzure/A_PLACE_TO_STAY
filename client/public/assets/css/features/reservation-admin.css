@@ -1155,6 +1155,23 @@
 }
 .res-hub-link:hover { text-decoration: underline; }
 
+/* Equal-width toolbar controls on narrow panels (loads after admin-accessibility) */
+@container hub-panel (max-width: 900px) {
+  .res-hub-toolbar__actions .res-input--select,
+  .res-hub-toolbar__actions .res-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .res-hub-toolbar__actions .res-input--select,
+  .res-hub-toolbar__actions .res-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+
 .cal-deep-link-notice {
   display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;
   padding: 0.75rem 1rem; margin: 0 1.25rem 0;
