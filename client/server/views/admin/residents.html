@@ -22,29 +22,14 @@
 </head>
 <body class="h-full bg-slate-50/50">
 
-  <div id="page-content" class="ga-page antialiased text-slate-700">
+  <div id="page-content" class="res-hub-page p-6 space-y-5 max-w-[1600px] mx-auto w-full antialiased text-slate-700">
 
-    <div class="ga-shell">
-      <nav class="fac-tab-bar ga-tab-bar" aria-label="Guest access sections">
-        <button type="button" data-ga-tab="main" class="fac-tab is-active">Guest access</button>
-        <button type="button" data-ga-tab="activity" class="fac-tab">Activity</button>
-      </nav>
-    </div>
+    <nav class="res-hub-tabs" aria-label="Guest access sections">
+      <button type="button" data-ga-tab="main" class="res-hub-tab is-active">Accounts</button>
+      <button type="button" data-ga-tab="activity" class="res-hub-tab">Activity</button>
+    </nav>
 
-    <div id="ga-panel-main" class="ga-panel">
-      <header class="ga-panel-head">
-        <div class="ga-panel-head__text">
-          <h2>Guest access</h2>
-          <p>Manage guest logins and see who is arriving or staying.</p>
-        </div>
-        <div class="ga-panel-head__actions">
-          <button type="button" id="add-guest-btn" class="admin-crud-btn-primary shadow-sm">
-            <span class="material-symbols-outlined text-[20px]">person_add</span>
-            Add guest
-          </button>
-        </div>
-      </header>
-
+    <div id="ga-panel-main" class="ga-panel space-y-5">
       <div class="ga-stats ga-stats--ops">
         <article class="ga-stat ga-stat--ops ga-stat--pending" id="ga-stat-pending-card">
           <span class="ga-stat__value" id="ga-stat-pending">—</span>
@@ -61,11 +46,7 @@
         </article>
       </div>
 
-      <section class="fac-catalog-section ga-accounts-section">
-        <div class="ga-section-label">
-          <h3 id="ga-accounts-heading">Guest accounts</h3>
-          <p>People who can log in to submit reservations.</p>
-        </div>
+      <section class="res-hub-panel res-hub-panel--table">
         <div id="ga-review-notice" class="ga-review-notice hidden" role="status">
           <p id="ga-review-notice-text">Some guests may no longer need portal access.</p>
           <div class="ga-review-notice__actions">
@@ -76,24 +57,34 @@
             </button>
           </div>
         </div>
-        <div class="ga-workspace-toolbar">
-          <input id="guest-access-search" type="search" class="ga-search" placeholder="Search by name or email…" autocomplete="off" />
-          <div class="ga-filter-wrap">
-            <button type="button" id="ga-filter-toggle" class="ga-filter-btn" aria-expanded="false" aria-controls="ga-filter-panel" aria-haspopup="true">
-              <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
-              <span id="ga-filter-label">All guests</span>
-            </button>
-            <div id="ga-filter-panel" class="ga-filter-panel hidden" role="menu" aria-label="Filter guest accounts">
-              <p class="ga-filter-panel__title">Show accounts</p>
-              <button type="button" class="ga-filter-option is-active" data-ga-filter="all" role="menuitem">All guests</button>
-              <button type="button" class="ga-filter-option" data-ga-filter="active" role="menuitem">Active only</button>
-              <button type="button" class="ga-filter-option" data-ga-filter="inactive" role="menuitem">Inactive only</button>
-              <button type="button" class="ga-filter-option" data-ga-filter="in_stay" role="menuitem">Currently staying</button>
-              <button type="button" class="ga-filter-option" data-ga-filter="arriving" role="menuitem">Arriving soon</button>
-              <button type="button" class="ga-filter-option" data-ga-filter="review" role="menuitem">Needs review</button>
+        <div class="res-hub-toolbar">
+          <div class="res-hub-toolbar__search">
+            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+            <input id="guest-access-search" type="search" class="res-input" placeholder="Search by name or email…" autocomplete="off" />
+          </div>
+          <div class="res-hub-toolbar__actions">
+            <div class="ga-filter-wrap">
+              <button type="button" id="ga-filter-toggle" class="ga-filter-btn" aria-expanded="false" aria-controls="ga-filter-panel" aria-haspopup="true">
+                <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
+                <span id="ga-filter-label">All guests</span>
+              </button>
+              <div id="ga-filter-panel" class="ga-filter-panel hidden" role="menu" aria-label="Filter guest accounts">
+                <p class="ga-filter-panel__title">Show accounts</p>
+                <button type="button" class="ga-filter-option is-active" data-ga-filter="all" role="menuitem">All guests</button>
+                <button type="button" class="ga-filter-option" data-ga-filter="active" role="menuitem">Active only</button>
+                <button type="button" class="ga-filter-option" data-ga-filter="inactive" role="menuitem">Inactive only</button>
+                <button type="button" class="ga-filter-option" data-ga-filter="in_stay" role="menuitem">Currently staying</button>
+                <button type="button" class="ga-filter-option" data-ga-filter="arriving" role="menuitem">Arriving soon</button>
+                <button type="button" class="ga-filter-option" data-ga-filter="review" role="menuitem">Needs review</button>
+              </div>
             </div>
+            <button type="button" id="add-guest-btn" class="res-btn res-btn--primary">
+              <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
+              Add guest
+            </button>
           </div>
         </div>
+        <p id="ga-accounts-count" class="res-hub-count">Loading guest accounts…</p>
         <div class="ga-table-wrap">
           <table class="data-table ga-table w-full">
             <thead>
@@ -114,13 +105,7 @@
     </div>
 
     <div id="ga-panel-activity" class="ga-panel hidden">
-      <header class="ga-panel-head">
-        <div class="ga-panel-head__text">
-          <h2>Activity log</h2>
-          <p>Who created accounts, approved requests, and deactivated access.</p>
-        </div>
-      </header>
-      <section class="fac-catalog-section ga-activity-section">
+      <section class="res-hub-panel res-hub-panel--flush">
         <ul id="guest-activity-list" class="ga-activity-list">
           <li class="ga-empty">Loading activity…</li>
         </ul>
@@ -139,7 +124,7 @@
       portal:     'admin',
       activePage: 'residents',
       title:      'Guest Access',
-      subtitle:   'Guest accounts and login access',
+      subtitle:   'Manage guest logins and portal access',
       deferEnhancements: true,
     });
 

@@ -1097,7 +1097,7 @@
 .res-manage-cal-link:hover { background: #2C5282; }
 .res-manage-cal-link .material-symbols-outlined { font-size: 1.25rem; }
 
-/* Reservations hub — Phase 2 inline layout */
+/* Reservations hub — panel/tabs/toolbar live in admin-accessibility.css */
 .res-hub-page { padding-bottom: 2.5rem; }
 
 .res-pending-banner {
@@ -1129,56 +1129,6 @@
 }
 .res-pending-banner__btn:hover { background: #7F1D1D; }
 
-.res-hub-tabs {
-  display: flex; flex-wrap: wrap; gap: 0.5rem; padding: 0.5rem;
-  background: #fff; border: 1px solid #E2E8F0; border-radius: 1rem;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-}
-.res-hub-tab {
-  flex: 1 1 auto; min-height: 3rem; padding: 0.75rem 1.25rem;
-  font-size: 1rem; font-weight: 600; color: #64748B;
-  border-radius: 0.625rem; border: none; background: transparent;
-  cursor: pointer; white-space: nowrap; text-align: center;
-  display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-}
-.res-hub-tab.is-active {
-  background: #1A365D; color: #fff;
-  box-shadow: 0 2px 8px rgba(26, 54, 93, 0.18);
-}
-.res-hub-tab:not(.is-active):hover { background: #F1F5F9; color: #334155; }
-.res-hub-tab-badge {
-  display: inline-flex; align-items: center; justify-content: center;
-  min-width: 1.375rem; height: 1.375rem; padding: 0 0.35rem;
-  border-radius: 9999px; font-size: 0.75rem; font-weight: 800;
-  background: #DC2626; color: #fff;
-}
-.res-hub-tab.is-active .res-hub-tab-badge { background: rgba(255,255,255,0.25); color: #fff; }
-.res-hub-tab-badge.hidden { display: none; }
-
-.res-hub-panel {
-  background: #fff; border: 1px solid #E2E8F0; border-radius: 1rem;
-  padding: 1.25rem 1.5rem; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-}
-.res-hub-toolbar {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem;
-  padding-bottom: 1rem; border-bottom: 1px solid #F1F5F9; margin-bottom: 0.75rem;
-}
-.res-hub-toolbar__search {
-  position: relative; flex: 1 1 14rem; min-width: 0;
-}
-.res-hub-toolbar__search .material-symbols-outlined {
-  position: absolute; left: 0.875rem; top: 50%; transform: translateY(-50%);
-  color: #94A3B8; pointer-events: none; font-size: 1.25rem;
-}
-.res-hub-toolbar__search .res-input {
-  padding-left: 2.75rem; margin: 0;
-}
-.res-hub-toolbar__actions {
-  display: flex; flex-wrap: wrap; gap: 0.5rem; margin-left: auto;
-}
-.res-hub-count {
-  margin: 0 0 1rem; font-size: 0.875rem; font-weight: 600; color: #64748B;
-}
 .res-hub-guest-filter {
   margin: 0 0 1rem;
   padding: 0.75rem 1rem;

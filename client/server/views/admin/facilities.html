@@ -23,135 +23,113 @@
 </head>
 <body class="h-full bg-slate-50/50">
 
-  <div id="page-content" class="fac-page antialiased text-slate-700">
+  <div id="page-content" class="res-hub-page p-6 space-y-5 max-w-[1600px] mx-auto w-full antialiased text-slate-700">
 
-    <div class="fac-shell">
-      <nav class="fac-tab-bar" aria-label="Facilities sections">
-        <button type="button" data-fac-tab="rooms" class="fac-tab is-active">Rooms</button>
-        <button type="button" data-fac-tab="venue-spaces" class="fac-tab">Venue spaces</button>
-        <button type="button" data-fac-tab="meals" class="fac-tab">Meal prices</button>
-        <button type="button" data-fac-tab="extras" class="fac-tab">Extra fees</button>
-      </nav>
-    </div>
+    <nav class="res-hub-tabs" aria-label="Facilities sections">
+      <button type="button" data-fac-tab="rooms" class="res-hub-tab is-active">Rooms</button>
+      <button type="button" data-fac-tab="venue-spaces" class="res-hub-tab">Venue spaces</button>
+      <button type="button" data-fac-tab="meals" class="res-hub-tab">Meal prices</button>
+      <button type="button" data-fac-tab="extras" class="res-hub-tab">Extra fees</button>
+    </nav>
 
-    <div id="fac-panel-rooms" class="fac-panel">
-
-      <header class="fac-panel-head">
-        <div class="fac-panel-head__text">
-          <h2>Rooms</h2>
-          <p>Daily housekeeping board — tap a stat to filter, or tap a room to update its status.</p>
-        </div>
-        <div class="fac-panel-head__actions">
-          <button type="button" data-open-manage-facilities class="admin-crud-btn-primary shadow-sm">
-            <span class="material-symbols-outlined text-[20px]">tune</span>
-            Manage rooms
-          </button>
-        </div>
-      </header>
+    <div id="fac-panel-rooms" class="fac-panel space-y-5">
 
       <div id="rooms-board-stats" class="rooms-board-stats">
         <article class="rooms-stat"><span class="rooms-stat__value">…</span><span class="rooms-stat__label">Loading</span></article>
       </div>
 
-      <div class="rooms-board-toolbar">
-        <div class="rooms-toolbar-head">
-          <div class="rooms-board-search-wrap">
+      <section class="res-hub-panel">
+        <p class="admin-panel-hint admin-panel-hint--in-panel">Tap a stat to filter, or tap a room to update its status.</p>
+        <div class="res-hub-toolbar">
+          <div class="res-hub-toolbar__search">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
-            <input id="rooms-board-search" type="search" class="rooms-board-search" placeholder="Search room or type…" autocomplete="off" enterkeyhint="search" />
+            <input id="rooms-board-search" type="search" class="res-input" placeholder="Search by room number or type…" autocomplete="off" enterkeyhint="search" />
           </div>
-          <div class="fac-filter-wrap">
-            <button type="button" id="rooms-filter-toggle" class="fac-filter-btn" aria-expanded="false" aria-controls="rooms-filter-panel" aria-haspopup="true">
-              <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
-              <span id="rooms-filter-label">Room type</span>
+          <div class="res-hub-toolbar__actions">
+            <button type="button" data-open-manage-facilities class="res-btn res-btn--primary">
+              <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+              Manage rooms
             </button>
-            <div id="rooms-filter-panel" class="fac-filter-panel hidden" role="menu" aria-label="Filter by room type">
-              <p class="fac-filter-panel__title">Room type</p>
-              <div id="rooms-type-filter-options">
-                <button type="button" class="fac-filter-option is-active" data-rooms-type="" role="menuitem">All types</button>
+            <div class="fac-filter-wrap">
+              <button type="button" id="rooms-filter-toggle" class="fac-filter-btn" aria-expanded="false" aria-controls="rooms-filter-panel" aria-haspopup="true">
+                <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
+                <span id="rooms-filter-label">Room type</span>
+              </button>
+              <div id="rooms-filter-panel" class="fac-filter-panel hidden" role="menu" aria-label="Filter by room type">
+                <p class="fac-filter-panel__title">Room type</p>
+                <div id="rooms-type-filter-options">
+                  <button type="button" class="fac-filter-option is-active" data-rooms-type="" role="menuitem">All types</button>
+                </div>
+                <button type="button" class="fac-filter-clear hidden" data-rooms-clear-type-filter role="menuitem">Clear room type</button>
               </div>
-              <button type="button" class="fac-filter-clear hidden" data-rooms-clear-type-filter role="menuitem">Clear room type</button>
             </div>
           </div>
         </div>
-        <div class="rooms-board-meta">
-          <span id="rooms-board-result-count">Loading rooms…</span>
+        <p class="res-hub-count"><span id="rooms-board-result-count">Loading rooms…</span></p>
+        <div id="rooms-board-mount">
+          <p class="rooms-board-message">Loading rooms…</p>
         </div>
-      </div>
-
-      <div id="rooms-board-mount">
-        <p class="rooms-board-message">Loading rooms…</p>
-      </div>
+      </section>
 
     </div>
 
-    <div id="fac-panel-venue-spaces" class="fac-panel hidden">
-
-      <header class="fac-panel-head">
-        <div class="fac-panel-head__text">
-          <h2>Venue spaces</h2>
-          <p>Read-only snapshot — pick a date and time to see what’s booked. To approve or create bookings, go to <a href="reservations.html" class="text-primary font-semibold hover:underline">Reservations</a>.</p>
-        </div>
-      </header>
+    <div id="fac-panel-venue-spaces" class="fac-panel hidden space-y-5">
 
       <div id="venue-board-stats" class="rooms-board-stats">
         <article class="rooms-stat"><span class="rooms-stat__value">…</span><span class="rooms-stat__label">Loading</span></article>
       </div>
 
-      <div class="rooms-board-toolbar">
-        <div class="rooms-toolbar-head">
-          <div class="rooms-date-bar">
-            <input id="venue-schedule-date" type="date" class="rooms-board-search rooms-board-search--date" aria-label="View date" />
-            <input id="venue-schedule-start" type="time" class="rooms-board-search rooms-board-search--time" aria-label="Start time" value="09:00" />
-            <span class="rooms-date-sep" aria-hidden="true">→</span>
-            <input id="venue-schedule-end" type="time" class="rooms-board-search rooms-board-search--time" aria-label="End time" value="12:00" />
-            <button type="button" id="venue-schedule-go" class="rooms-toolbar-go">Go</button>
-            <button type="button" id="venue-schedule-today" class="rooms-toolbar-text-btn">Today</button>
-          </div>
-          <div class="rooms-board-search-wrap">
+      <section class="res-hub-panel">
+        <p class="admin-panel-hint admin-panel-hint--in-panel">Pick a date and time to see what's booked. To approve or create bookings, go to <a href="reservations.html" class="text-primary font-semibold hover:underline">Reservations</a>.</p>
+        <div class="res-hub-toolbar">
+          <div class="res-hub-toolbar__search">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
-            <input id="venue-board-search" type="search" class="rooms-board-search" placeholder="Search space or category…" autocomplete="off" enterkeyhint="search" />
+            <input id="venue-board-search" type="search" class="res-input" placeholder="Search by space name or category…" autocomplete="off" enterkeyhint="search" />
           </div>
-          <div class="fac-filter-wrap">
-            <button type="button" id="venue-filter-toggle" class="fac-filter-btn" aria-expanded="false" aria-controls="venue-filter-panel" aria-haspopup="true">
-              <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
-              <span id="venue-filter-label">Filters</span>
-            </button>
-            <div id="venue-filter-panel" class="fac-filter-panel hidden" role="menu" aria-label="Filter venue spaces">
-              <p class="fac-filter-panel__title">Show</p>
-              <button type="button" class="fac-filter-option is-active" data-venue-show="all" role="menuitem">All spaces</button>
-              <button type="button" class="fac-filter-option" data-venue-show="open" role="menuitem">Free for slot</button>
+          <div class="res-hub-toolbar__actions">
+            <div class="rooms-date-bar">
+              <input id="venue-schedule-date" type="date" class="fac-field-input fac-field-input--date" aria-label="View date" />
+              <input id="venue-schedule-start" type="time" class="fac-field-input fac-field-input--time" aria-label="Start time" value="09:00" />
+              <span class="rooms-date-sep" aria-hidden="true">→</span>
+              <input id="venue-schedule-end" type="time" class="fac-field-input fac-field-input--time" aria-label="End time" value="12:00" />
+              <button type="button" id="venue-schedule-go" class="rooms-toolbar-go">Go</button>
+              <button type="button" id="venue-schedule-today" class="rooms-toolbar-text-btn">Today</button>
+            </div>
+            <div class="fac-filter-wrap">
+              <button type="button" id="venue-filter-toggle" class="fac-filter-btn" aria-expanded="false" aria-controls="venue-filter-panel" aria-haspopup="true">
+                <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
+                <span id="venue-filter-label">Filters</span>
+              </button>
+              <div id="venue-filter-panel" class="fac-filter-panel hidden" role="menu" aria-label="Filter venue spaces">
+                <p class="fac-filter-panel__title">Show</p>
+                <button type="button" class="fac-filter-option is-active" data-venue-show="all" role="menuitem">All spaces</button>
+                <button type="button" class="fac-filter-option" data-venue-show="open" role="menuitem">Free for slot</button>
+              </div>
             </div>
           </div>
         </div>
-        <div class="rooms-board-meta">
-          <span id="venue-schedule-summary">Loading venue schedule…</span>
+        <p class="res-hub-count"><span id="venue-schedule-summary">Loading venue schedule…</span></p>
+        <div id="venue-schedule-mount">
+          <p class="rooms-board-message">Loading venue schedule…</p>
         </div>
-      </div>
-
-      <div id="venue-schedule-mount">
-        <p class="rooms-board-message">Loading venue schedule…</p>
-      </div>
+      </section>
 
     </div>
 
     <div id="fac-panel-meals" class="fac-panel hidden">
-      <header class="fac-panel-head">
-        <div class="fac-panel-head__text">
-          <h2>Meal prices</h2>
-          <p>Per-person rates shown when guests add meals to a room booking.</p>
+      <section class="res-hub-panel res-hub-panel--flush">
+        <div class="res-hub-toolbar res-hub-toolbar--actions-only">
+          <div class="res-hub-toolbar__actions">
+            <button type="button" data-catalog-edit-toggle data-catalog-for="meals" class="res-btn" aria-pressed="false">
+              <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+              Edit prices
+            </button>
+            <button type="button" data-catalog-add="meal" class="res-btn res-btn--primary">
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Add meal
+            </button>
+          </div>
         </div>
-        <div class="fac-panel-head__actions">
-          <button type="button" data-catalog-edit-toggle data-catalog-for="meals" class="admin-crud-btn-ghost shadow-sm" aria-pressed="false">
-            <span class="material-symbols-outlined text-[20px]">edit</span>
-            Edit prices
-          </button>
-          <button type="button" data-catalog-add="meal" class="admin-crud-btn-primary shadow-sm">
-            <span class="material-symbols-outlined text-[20px]">add</span>
-            Add meal
-          </button>
-        </div>
-      </header>
-      <section class="fac-catalog-section">
         <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="meals" role="note">
           <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
           <div class="admin-notice__body">
@@ -165,23 +143,19 @@
     </div>
 
     <div id="fac-panel-extras" class="fac-panel hidden">
-      <header class="fac-panel-head">
-        <div class="fac-panel-head__text">
-          <h2>Extra services &amp; fees</h2>
-          <p>Laundry, corkage, maid service, extra mattresses, and other add-ons.</p>
+      <section class="res-hub-panel res-hub-panel--flush">
+        <div class="res-hub-toolbar res-hub-toolbar--actions-only">
+          <div class="res-hub-toolbar__actions">
+            <button type="button" data-catalog-edit-toggle data-catalog-for="extras" class="res-btn" aria-pressed="false">
+              <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+              Edit prices
+            </button>
+            <button type="button" data-catalog-add="extra" class="res-btn res-btn--primary">
+              <span class="material-symbols-outlined" aria-hidden="true">add</span>
+              Add extra
+            </button>
+          </div>
         </div>
-        <div class="fac-panel-head__actions">
-          <button type="button" data-catalog-edit-toggle data-catalog-for="extras" class="admin-crud-btn-ghost shadow-sm" aria-pressed="false">
-            <span class="material-symbols-outlined text-[20px]">edit</span>
-            Edit prices
-          </button>
-          <button type="button" data-catalog-add="extra" class="admin-crud-btn-primary shadow-sm">
-            <span class="material-symbols-outlined text-[20px]">add</span>
-            Add extra
-          </button>
-        </div>
-      </header>
-      <section class="fac-catalog-section">
         <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="extras" role="note">
           <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
           <div class="admin-notice__body">

@@ -24,6 +24,13 @@ const TABS = [
   { id: 'venues', label: 'Venues' },
 ];
 
+const SEARCH_PLACEHOLDERS = {
+  pending: 'Search by guest name, email, or ID…',
+  rooms: 'Search by guest name, room, or ID…',
+  groups: 'Search by group name, contact, or ID…',
+  venues: 'Search by guest name, venue, or ID…',
+};
+
 const state = {
   tab: 'pending',
   loading: false,
@@ -827,6 +834,11 @@ function updateFilterUi() {
   createRoom?.classList.toggle('hidden', state.tab !== 'rooms');
   createGroup?.classList.toggle('hidden', state.tab !== 'groups');
   createVenue?.classList.toggle('hidden', state.tab !== 'venues');
+
+  const searchEl = $('res-hub-search');
+  if (searchEl) {
+    searchEl.placeholder = SEARCH_PLACEHOLDERS[state.tab] || SEARCH_PLACEHOLDERS.pending;
+  }
 }
 
 function onTabChange(tab) {

@@ -169,15 +169,7 @@
   background: #fff;
 }
 
-.fac-panel .rooms-board-search--time {
-  padding: 0.4375rem 0.625rem;
-  min-width: 9.5rem;
-  max-width: none;
-  flex: 0 0 auto;
-}
-
-/* WebKit truncates time unless the control has enough inline size */
-.fac-panel input[type="time"].rooms-board-search--time {
+.fac-panel input[type="time"].fac-field-input--time {
   min-inline-size: 9.5rem;
 }
 

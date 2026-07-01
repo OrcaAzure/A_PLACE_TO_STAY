@@ -151,7 +151,8 @@
     font-size: 0.875rem;
   }
 
-  /* ── Facilities page ── */
+  /* ── Hub tabs (Reservations, Guest Access, Facilities) ── */
+  #page-content .res-hub-tab,
   #page-content .fac-tab {
     padding: 0.5rem 0.875rem;
     font-size: 0.8125rem;

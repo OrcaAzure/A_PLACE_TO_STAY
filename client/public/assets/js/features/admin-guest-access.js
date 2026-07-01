@@ -193,21 +193,21 @@ function promptRejectRequest(req) {
   });
 }
 
-function updateAccountsHeading() {
-  const heading = $('ga-accounts-heading');
-  if (!heading) return;
+function updateAccountsCount() {
+  const countEl = $('ga-accounts-count');
+  if (!countEl) return;
 
   const total = overview.guests?.length || 0;
   const visible = filteredGuests().length;
   if (!total) {
-    heading.textContent = 'Guest accounts';
+    countEl.textContent = 'No guest accounts yet';
     return;
   }
   if (statusFilter !== 'all' || searchQuery) {
-    heading.textContent = `Guest accounts (${visible} of ${total})`;
+    countEl.textContent = `${visible} of ${total} guest accounts`;
     return;
   }
-  heading.textContent = `Guest accounts (${total})`;
+  countEl.textContent = `${total} guest account${total === 1 ? '' : 's'}`;
 }
 
 function resetGuestListFilters() {
@@ -244,7 +244,7 @@ function applyFilter(filter) {
   updateFilterUi();
   setFilterPanelOpen(false);
   renderAccountsTable();
-  updateAccountsHeading();
+  updateAccountsCount();
 }
 
 function getAddMode() {
@@ -681,7 +681,7 @@ function renderAccountsTable() {
           : 'No guest accounts match your filters.'
         : 'No guest accounts yet. Use <strong>Add guest</strong> to grant access or save a request for later.'
     }</p></td></tr>`;
-    updateAccountsHeading();
+    updateAccountsCount();
     return;
   }
 
@@ -698,7 +698,7 @@ function renderAccountsTable() {
       <td class="ga-col-actions">${actionMenu(guest)}</td>
     </tr>`;
   }).join('');
-  updateAccountsHeading();
+  updateAccountsCount();
 }
 
 function renderActivityList() {
@@ -753,7 +753,7 @@ export async function loadGuestAccessPage() {
 
   if (overviewError && tbody) {
     tbody.innerHTML = `<tr><td colspan="5"><p class="ga-empty text-error">${escapeHtml(overviewError)}</p></td></tr>`;
-    updateAccountsHeading();
+    updateAccountsCount();
   } else if (requestsError) {
     setFormFeedback(requestsError);
   }
@@ -988,13 +988,13 @@ function bindGuestPageListeners() {
   $('guest-access-search')?.addEventListener('input', (e) => {
     searchQuery = e.target.value.trim().toLowerCase();
     renderAccountsTable();
-    updateAccountsHeading();
+    updateAccountsCount();
   }, { signal });
 
   $('guest-access-search')?.addEventListener('search', (e) => {
     searchQuery = e.target.value.trim().toLowerCase();
     renderAccountsTable();
-    updateAccountsHeading();
+    updateAccountsCount();
   }, { signal });
 
   $('guest-access-tbody')?.addEventListener('click', (e) => {
