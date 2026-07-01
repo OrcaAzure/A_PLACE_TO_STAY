@@ -4,6 +4,7 @@ export const AUDIT_ACTIONS = {
   GUEST_ACCOUNT_CREATED: 'guest_account_created',
   GUEST_ACCOUNT_ACTIVATED: 'guest_account_activated',
   GUEST_ACCOUNT_DEACTIVATED: 'guest_account_deactivated',
+  GUEST_ACCOUNT_DELETED: 'guest_account_deleted',
   GUEST_BULK_DEACTIVATED: 'guest_bulk_deactivated',
   GUEST_ACCESS_REQUEST_CREATED: 'guest_access_request_created',
   GUEST_ACCESS_REQUEST_APPROVED: 'guest_access_request_approved',
@@ -44,6 +45,8 @@ function formatAuditSummary(row) {
       return `${actor} reactivated guest access for ${target || 'a guest'}`;
     case AUDIT_ACTIONS.GUEST_ACCOUNT_DEACTIVATED:
       return `${actor} deactivated guest access for ${target || 'a guest'}`;
+    case AUDIT_ACTIONS.GUEST_ACCOUNT_DELETED:
+      return `${actor} deleted guest account for ${target || 'a guest'}`;
     case AUDIT_ACTIONS.GUEST_BULK_DEACTIVATED:
       return `${actor} bulk-deactivated ${details.count || 0} guest account(s)`;
     case AUDIT_ACTIONS.GUEST_ACCESS_REQUEST_CREATED:

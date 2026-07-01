@@ -11,6 +11,7 @@ import {
   approveGuestAccessRequest,
   rejectGuestAccessRequest,
   bulkDeactivateGuests,
+  deleteGuestAccount,
   getGuestAccessActivity,
 } from '/assets/js/services/api.js';
 import { openModal, closeModal } from '/assets/js/layout/ui.js';
@@ -56,6 +57,33 @@ const STAY_BADGE = {
   ended: 'ga-stay-badge--ended',
   none: 'ga-stay-badge--none',
 };
+
+const STAY_STATUS_LABEL = {
+  in_stay: 'In stay',
+  arriving: 'Arriving soon',
+  pending: 'Pending approval',
+  upcoming: 'Upcoming stay',
+  ended: 'Stay ended',
+  none: 'No reservations',
+};
+
+function stayDatesLine(stay, reservation) {
+  if (!reservation) return '';
+  const { checkIn, checkOut } = reservation;
+  const phase = stay.phase || 'none';
+
+  if (phase === 'ended' && checkOut) {
+    return `Ended ${formatDate(checkOut)}`;
+  }
+  if (phase === 'arriving' && checkIn) {
+    return `Arrives ${formatDate(checkIn)}`;
+  }
+  if (checkIn && checkOut) {
+    return `${formatDate(checkIn)} → ${formatDate(checkOut)}`;
+  }
+  if (checkIn) return formatDate(checkIn);
+  return '';
+}
 
 function formatDate(iso) {
   if (!iso) return '—';
@@ -433,41 +461,97 @@ function updateStats() {
 
 function stayCell(guest) {
   const stay = guest.stay || {};
-  const badgeClass = STAY_BADGE[stay.phase] || STAY_BADGE.none;
+  const phase = stay.phase || 'none';
+  const badgeClass = STAY_BADGE[phase] || STAY_BADGE.none;
+  const statusLabel = STAY_STATUS_LABEL[phase] || STAY_STATUS_LABEL.none;
   const reservation = stay.reservation;
-  const detail = reservation
-    ? `<span class="ga-stay-detail">${escapeHtml(reservation.label)}</span>`
-    : '';
+  const datesLine = stayDatesLine(stay, reservation);
+  const locationLine = reservation?.label ? escapeHtml(reservation.label) : '';
+  const showReview = stay.needsReview && guest.status === 'Active';
 
-  let reviewHint = '';
-  if (stay.needsReview && guest.status === 'Active') {
-    reviewHint = `<span class="ga-stay-review-hint">Needs review</span>`;
+  if (phase === 'none' && !reservation) {
+    return `<div class="ga-stay-cell ga-stay-cell--minimal">
+      <span class="ga-stay-badge ${badgeClass}">${escapeHtml(statusLabel)}</span>
+    </div>`;
   }
 
+  const datesHtml = datesLine
+    ? `<p class="ga-stay-dates">${escapeHtml(datesLine)}</p>`
+    : '';
+  const locationHtml = locationLine
+    ? `<p class="ga-stay-location">${locationLine}</p>`
+    : '';
+  const reviewHtml = showReview
+    ? '<p class="ga-stay-review-hint">Needs review</p>'
+    : '';
+
   return `<div class="ga-stay-cell">
-    <span class="ga-stay-badge ${badgeClass}">${escapeHtml(stay.summary || 'No reservations')}</span>
-    ${detail}
-    ${reviewHint}
+    <span class="ga-stay-badge ${badgeClass}">${escapeHtml(statusLabel)}</span>
+    ${datesHtml}
+    ${locationHtml}
+    ${reviewHtml}
   </div>`;
 }
 
-function actionButtons(guest) {
+function closeAllRowMenus() {
+  document.querySelectorAll('.ga-row-menu').forEach((wrap) => {
+    wrap.querySelector('.ga-row-menu__panel')?.classList.add('hidden');
+    wrap.querySelector('.ga-row-menu__trigger')?.setAttribute('aria-expanded', 'false');
+  });
+}
+
+function toggleRowMenu(guestId) {
+  const wrap = document.querySelector(`.ga-row-menu[data-ga-row-menu="${guestId}"]`);
+  if (!wrap) return;
+  const panel = wrap.querySelector('.ga-row-menu__panel');
+  const trigger = wrap.querySelector('.ga-row-menu__trigger');
+  const willOpen = panel?.classList.contains('hidden');
+  closeAllRowMenus();
+  if (willOpen && panel && trigger) {
+    panel.classList.remove('hidden');
+    trigger.setAttribute('aria-expanded', 'true');
+  }
+}
+
+function actionMenu(guest) {
   const isActive = guest.status === 'Active';
-  const parts = [];
+  const menuId = `ga-row-menu-${guest.id}`;
+  const items = [];
 
   if (isActive && guest.stay?.needsReview) {
-    parts.push(`<button type="button" class="ga-btn-text ga-btn-text--danger ga-btn-text--emphasis" data-ga-deactivate="${guest.id}" data-ga-review="1">Deactivate</button>`);
+    items.push(`<button type="button" class="ga-row-menu__item ga-row-menu__item--danger" role="menuitem" data-ga-deactivate="${guest.id}" data-ga-review="1">Deactivate</button>`);
   } else if (isActive) {
-    parts.push(`<button type="button" class="ga-btn-text ga-btn-text--danger" data-ga-deactivate="${guest.id}">Deactivate</button>`);
+    items.push(`<button type="button" class="ga-row-menu__item ga-row-menu__item--danger" role="menuitem" data-ga-deactivate="${guest.id}">Deactivate</button>`);
   } else {
-    parts.push(`<button type="button" class="ga-btn-text ga-btn-text--primary" data-ga-activate="${guest.id}">Reactivate</button>`);
+    items.push(`<button type="button" class="ga-row-menu__item" role="menuitem" data-ga-activate="${guest.id}">Reactivate</button>`);
   }
 
   if (guest.stay?.reservation) {
-    parts.push(`<a href="/admin/reservations.html" class="ga-btn-text ga-btn-text--primary">View bookings</a>`);
+    items.push(`<a href="${guestReservationsHref(guest)}" class="ga-row-menu__item" role="menuitem">View bookings</a>`);
   }
 
-  return `<span class="ga-actions">${parts.join('')}</span>`;
+  items.push(`<button type="button" class="ga-row-menu__item ga-row-menu__item--danger" role="menuitem" data-ga-delete="${guest.id}">Delete account</button>`);
+
+  return `<div class="ga-row-menu" data-ga-row-menu="${guest.id}">
+    <button type="button" class="ga-row-menu__trigger" aria-label="Actions for ${escapeHtml(guest.full_name)}" aria-haspopup="true" aria-expanded="false" aria-controls="${menuId}" data-ga-menu-toggle="${guest.id}">
+      <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
+    </button>
+    <div id="${menuId}" class="ga-row-menu__panel hidden" role="menu">
+      ${items.join('')}
+    </div>
+  </div>`;
+}
+
+function guestReservationsHref(guest) {
+  const reservation = guest.stay?.reservation;
+  const tab = reservation?.kind === 'group' ? 'groups' : 'rooms';
+  const params = new URLSearchParams({
+    guest: String(guest.id),
+    tab,
+  });
+  const name = guest.full_name?.trim();
+  if (name) params.set('guestName', name);
+  return `/admin/reservations.html?${params.toString()}`;
 }
 
 let guestPendingClickBound = false;
@@ -560,6 +644,7 @@ function renderAccountsTable() {
   const tbody = $('guest-access-tbody');
   if (!tbody) return;
 
+  closeAllRowMenus();
   const rows = filteredGuests();
   if (!rows.length) {
     tbody.innerHTML = `<tr><td colspan="5"><p class="ga-empty">${
@@ -576,11 +661,11 @@ function renderAccountsTable() {
     const rowClass = guest.stay?.needsReview && isActive ? 'ga-row--review' : '';
 
     return `<tr class="${rowClass}">
-      <td class="font-medium">${escapeHtml(guest.full_name)}</td>
-      <td>${escapeHtml(guest.email)}</td>
-      <td><span class="ga-access-pill ${statusClass}">${escapeHtml(guest.status)}</span></td>
-      <td>${stayCell(guest)}</td>
-      <td class="ga-col-actions">${actionButtons(guest)}</td>
+      <td class="ga-col-name font-medium">${escapeHtml(guest.full_name)}</td>
+      <td class="ga-col-email">${escapeHtml(guest.email)}</td>
+      <td class="ga-col-access"><span class="ga-access-pill ${statusClass}">${escapeHtml(guest.status)}</span></td>
+      <td class="ga-col-reservation">${stayCell(guest)}</td>
+      <td class="ga-col-actions">${actionMenu(guest)}</td>
     </tr>`;
   }).join('');
 }
@@ -730,6 +815,30 @@ async function toggleGuestStatus(id, nextStatus, { isReview = false } = {}) {
   }
 }
 
+async function deleteGuestAccountAction(id) {
+  const guest = overview.guests.find((u) => u.id === Number(id));
+  if (!guest) return;
+
+  const label = `${escapeHtml(guest.full_name)} (${escapeHtml(guest.email)})`;
+  const confirmed = await confirmAction(
+    'Delete guest account',
+    `Permanently delete ${label}?<br><br>This removes the login account from the list. It cannot be undone.<br><br>Accounts with pending or active reservations, unpaid billing, or reservation history cannot be deleted — use <strong>Deactivate</strong> instead.`,
+    { confirmLabel: 'Delete account', danger: true },
+  );
+  if (!confirmed) return;
+
+  try {
+    await deleteGuestAccount(id);
+    await refreshGuestAccessData();
+  } catch (err) {
+    await showAlertModal(
+      'Cannot delete account',
+      escapeHtml(err.message || 'Could not delete this guest account.'),
+      { confirmLabel: 'OK' },
+    );
+  }
+}
+
 async function bulkDeactivateReviewed() {
   const count = overview.summary?.needsReview || 0;
   if (!count) return;
@@ -823,6 +932,11 @@ function bindGuestPageListeners() {
     if (!document.getElementById('guest-access-tbody')) return;
     if (e.target.closest('.ga-filter-wrap')) return;
     setFilterPanelOpen(false);
+    if (!e.target.closest('.ga-row-menu')) closeAllRowMenus();
+  }, { signal });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeAllRowMenus();
   }, { signal });
 
   $('guest-access-search')?.addEventListener('input', (e) => {
@@ -836,8 +950,16 @@ function bindGuestPageListeners() {
   }, { signal });
 
   $('guest-access-tbody')?.addEventListener('click', (e) => {
+    const menuToggle = e.target.closest('[data-ga-menu-toggle]');
+    if (menuToggle) {
+      e.stopPropagation();
+      toggleRowMenu(menuToggle.getAttribute('data-ga-menu-toggle'));
+      return;
+    }
+
     const deactivate = e.target.closest('[data-ga-deactivate]');
     if (deactivate) {
+      closeAllRowMenus();
       toggleGuestStatus(
         deactivate.getAttribute('data-ga-deactivate'),
         'Inactive',
@@ -846,7 +968,16 @@ function bindGuestPageListeners() {
       return;
     }
     const activate = e.target.closest('[data-ga-activate]');
-    if (activate) toggleGuestStatus(activate.getAttribute('data-ga-activate'), 'Active');
+    if (activate) {
+      closeAllRowMenus();
+      toggleGuestStatus(activate.getAttribute('data-ga-activate'), 'Active');
+      return;
+    }
+    const del = e.target.closest('[data-ga-delete]');
+    if (del) {
+      closeAllRowMenus();
+      deleteGuestAccountAction(del.getAttribute('data-ga-delete'));
+    }
   }, { signal });
 
   syncAddGuestModal();

@@ -3,6 +3,7 @@ import { safeUser } from '../utils/helpers.js';
 import { ROLES } from '../utils/constants.js';
 import { createGuestUser } from './user.service.js';
 import { logAudit, AUDIT_ACTIONS, listGuestAccessActivity } from './audit.service.js';
+import { invalidateSession } from './session.service.js';
 
 const REVIEW_DAYS = 7;
 
@@ -458,4 +459,141 @@ export async function bulkDeactivateGuests({ actorUserId, userIds = null }) {
   }
 
   return { deactivated: ids.length, userIds: ids };
+}
+
+async function loadGuestForDeletion(userId) {
+  const [rows] = await pool.query(
+    'SELECT id, full_name, email, role FROM users WHERE id = ? LIMIT 1',
+    [userId],
+  );
+  return rows[0] || null;
+}
+
+export async function assessGuestAccountDeletion(userId) {
+  const guest = await loadGuestForDeletion(userId);
+  if (!guest) {
+    return { canDelete: false, blockers: ['Guest account not found.'] };
+  }
+  if (guest.role !== ROLES.EXTERNAL_GUEST) {
+    return { canDelete: false, blockers: ['Only external guest accounts can be deleted from Guest Access.'] };
+  }
+
+  const today = todayStr();
+  const blockers = [];
+
+  const [[{ pendingRooms }]] = await pool.query(
+    `SELECT COUNT(*) AS pendingRooms FROM bookings_rooms
+     WHERE user_id = ? AND status = 'Pending'`,
+    [userId],
+  );
+  if (Number(pendingRooms) > 0) {
+    blockers.push(`${pendingRooms} pending room booking request${Number(pendingRooms) === 1 ? '' : 's'}`);
+  }
+
+  const [[{ pendingGroups }]] = await pool.query(
+    `SELECT COUNT(*) AS pendingGroups FROM reservation_groups
+     WHERE user_id = ? AND status = 'Pending'`,
+    [userId],
+  );
+  if (Number(pendingGroups) > 0) {
+    blockers.push(`${pendingGroups} pending group stay request${Number(pendingGroups) === 1 ? '' : 's'}`);
+  }
+
+  const [[{ pendingVenues }]] = await pool.query(
+    `SELECT COUNT(*) AS pendingVenues FROM bookings_facilities
+     WHERE user_id = ? AND status = 'Pending'`,
+    [userId],
+  );
+  if (Number(pendingVenues) > 0) {
+    blockers.push(`${pendingVenues} pending venue booking request${Number(pendingVenues) === 1 ? '' : 's'}`);
+  }
+
+  const [[{ activeRooms }]] = await pool.query(
+    `SELECT COUNT(*) AS activeRooms FROM bookings_rooms
+     WHERE user_id = ? AND status = 'Approved' AND check_out > ?`,
+    [userId, today],
+  );
+  if (Number(activeRooms) > 0) {
+    blockers.push(`${activeRooms} active or upcoming room stay${Number(activeRooms) === 1 ? '' : 's'}`);
+  }
+
+  const [[{ activeGroups }]] = await pool.query(
+    `SELECT COUNT(*) AS activeGroups FROM reservation_groups
+     WHERE user_id = ? AND status = 'Approved' AND check_out > ?`,
+    [userId, today],
+  );
+  if (Number(activeGroups) > 0) {
+    blockers.push(`${activeGroups} active or upcoming group stay${Number(activeGroups) === 1 ? '' : 's'}`);
+  }
+
+  const [[{ activeVenues }]] = await pool.query(
+    `SELECT COUNT(*) AS activeVenues FROM bookings_facilities
+     WHERE user_id = ? AND status = 'Approved' AND event_date >= ?`,
+    [userId, today],
+  );
+  if (Number(activeVenues) > 0) {
+    blockers.push(`${activeVenues} active or upcoming venue booking${Number(activeVenues) === 1 ? '' : 's'}`);
+  }
+
+  const [[{ unpaidInvoices }]] = await pool.query(
+    `SELECT COUNT(*) AS unpaidInvoices FROM payments p
+     LEFT JOIN bookings_rooms b ON p.bookings_room_id = b.id
+     LEFT JOIN bookings_facilities fb ON p.bookings_facility_id = fb.id
+     WHERE p.status = 'Pending'
+       AND ((b.user_id = ? AND b.status = 'Approved') OR (fb.user_id = ? AND fb.status = 'Approved'))`,
+    [userId, userId],
+  );
+  if (Number(unpaidInvoices) > 0) {
+    blockers.push(`${unpaidInvoices} unpaid invoice${Number(unpaidInvoices) === 1 ? '' : 's'}`);
+  }
+
+  const [[{ pendingAccess }]] = await pool.query(
+    `SELECT COUNT(*) AS pendingAccess FROM guest_access_requests
+     WHERE status = 'Pending' AND (user_id = ? OR LOWER(email) = LOWER(?))`,
+    [userId, guest.email],
+  );
+  if (Number(pendingAccess) > 0) {
+    blockers.push(`${pendingAccess} pending guest access request${Number(pendingAccess) === 1 ? '' : 's'}`);
+  }
+
+  return { canDelete: blockers.length === 0, blockers };
+}
+
+export async function deleteGuestAccount(userId, actorUserId) {
+  const guest = await loadGuestForDeletion(userId);
+  if (!guest) throw new Error('Guest account not found');
+  if (guest.role !== ROLES.EXTERNAL_GUEST) {
+    throw new Error('Only external guest accounts can be deleted from Guest Access');
+  }
+
+  const assessment = await assessGuestAccountDeletion(userId);
+  if (!assessment.canDelete) {
+    const detail = assessment.blockers.join('; ');
+    throw new Error(`Cannot delete this account: ${detail}.`);
+  }
+
+  await invalidateSession(userId);
+
+  try {
+    await pool.query('DELETE FROM users WHERE id = ?', [userId]);
+  } catch (err) {
+    if (err?.code === 'ER_ROW_IS_REFERENCED_2' || err?.errno === 1451) {
+      throw new Error(
+        'This guest has reservation records on file and cannot be permanently deleted. Deactivate the account instead.',
+      );
+    }
+    throw err;
+  }
+
+  if (actorUserId) {
+    await logAudit({
+      actorUserId,
+      action: AUDIT_ACTIONS.GUEST_ACCOUNT_DELETED,
+      entityType: 'user',
+      entityId: Number(userId),
+      details: { full_name: guest.full_name, email: guest.email },
+    });
+  }
+
+  return { deleted: true, userId: Number(userId) };
 }

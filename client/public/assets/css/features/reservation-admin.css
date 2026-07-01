@@ -1179,6 +1179,17 @@
 .res-hub-count {
   margin: 0 0 1rem; font-size: 0.875rem; font-weight: 600; color: #64748B;
 }
+.res-hub-guest-filter {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: #1e3a8a;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.625rem;
+}
+.res-hub-guest-filter strong { color: #1a365d; }
 .res-hub-section-title {
   margin: 0 0 0.75rem; font-size: 0.9375rem; font-weight: 800; color: #475569;
   text-transform: uppercase; letter-spacing: 0.04em;

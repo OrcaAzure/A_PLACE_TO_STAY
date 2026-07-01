@@ -29,6 +29,8 @@ const state = {
   loading: false,
   search: '',
   filter: 'all',
+  guestUserId: null,
+  guestName: '',
   roomRequests: [],
   groupRequests: [],
   roomStays: [],
@@ -46,8 +48,35 @@ let onBookingUpdatedRes = null;
 function $(id) { return document.getElementById(id); }
 
 function readInitialTab() {
-  const tab = new URLSearchParams(window.location.search).get('tab');
-  return TABS.some((t) => t.id === tab) ? tab : 'pending';
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  if (tab && TABS.some((t) => t.id === tab)) return tab;
+  if (params.get('guest')) return 'rooms';
+  return 'pending';
+}
+
+function readInitialGuestFilter() {
+  const params = new URLSearchParams(window.location.search);
+  const guest = params.get('guest');
+  state.guestUserId = guest && /^\d+$/.test(guest) ? guest : null;
+  state.guestName = params.get('guestName')?.trim() || '';
+}
+
+function itemUserId(item) {
+  return item?.userId ?? item?.user_id ?? null;
+}
+
+function matchesGuestUser(item) {
+  if (!state.guestUserId) return true;
+  const uid = itemUserId(item);
+  return uid != null && String(uid) === String(state.guestUserId);
+}
+
+function guestFilterBannerHtml() {
+  if (!state.guestUserId) return '';
+  const name = escapeHtml(state.guestName || `Guest #${state.guestUserId}`);
+  const clearHref = `reservations.html?tab=${encodeURIComponent(state.tab)}`;
+  return `<p class="res-hub-guest-filter">Showing bookings for <strong>${name}</strong>. <a href="${clearHref}" class="res-hub-link">View all guests</a></p>`;
 }
 
 function setTab(tab, { pushUrl = true } = {}) {
@@ -549,16 +578,16 @@ function renderList(items, renderFn, emptyMessage) {
 }
 
 function filterStays(items) {
-  const q = state.search.trim().toLowerCase();
   return items.filter((item) => {
+    if (!matchesGuestUser(item)) return false;
     if (state.filter !== 'all' && getReservationCategory(item) !== state.filter) return false;
     return matchesSearch(item._search || '');
   });
 }
 
 function filterVenues(items) {
-  const q = state.search.trim().toLowerCase();
   return items.filter((item) => {
+    if (!matchesGuestUser(item)) return false;
     const cat = item._category;
     if (state.filter === 'pending' && cat !== 'pending') return false;
     if (state.filter === 'active' && !['pending', 'today', 'upcoming'].includes(cat)) return false;
@@ -579,11 +608,11 @@ function renderActivePanel() {
 
   if (state.tab === 'pending') {
     const roomPending = pendingRoomGroups().filter((r) =>
-      matchesSearch([
+      matchesGuestUser(r) && matchesSearch([
         r.requester?.name, r.requester?.email, r.contactPhone,
         r.groupName, r.facility?.building, r.facility?.roomNumber, r.notes,
       ].join(' ').toLowerCase()));
-    const venuePending = pendingVenues().filter((v) => matchesSearch(v._search));
+    const venuePending = pendingVenues().filter((v) => matchesGuestUser(v) && matchesSearch(v._search));
     items = [...roomPending, ...venuePending];
     const blocks = [];
     if (roomPending.length) {
@@ -610,8 +639,15 @@ function renderActivePanel() {
     countLabel = `${items.length} venue booking${items.length === 1 ? '' : 's'}`;
   }
 
-  mount.innerHTML = html;
-  if (countEl) countEl.textContent = countLabel;
+  mount.innerHTML = guestFilterBannerHtml() + html;
+  if (countEl) {
+    const guestSuffix = state.guestUserId && state.guestName
+      ? ` for ${state.guestName}`
+      : state.guestUserId
+        ? ` for guest #${state.guestUserId}`
+        : '';
+    countEl.textContent = `${countLabel}${guestSuffix}`;
+  }
   renderTabBadges();
 }
 
@@ -878,6 +914,7 @@ export function teardownReservationsHub() {
 }
 
 export async function bootstrapReservationsHub() {
+  readInitialGuestFilter();
   state.tab = readInitialTab();
   bindEvents();
   updateFilterUi();

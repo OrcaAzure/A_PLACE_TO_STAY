@@ -145,6 +145,10 @@ export async function bulkDeactivateGuests(payload = {}) {
   });
 }
 
+export async function deleteGuestAccount(id) {
+  return apiRequest(`/users/guest-access/${id}`, { method: 'DELETE' });
+}
+
 export async function getGuestAccessActivity(limit = 25) {
   const data = await apiRequest(`/users/guest-access/activity?limit=${limit}`);
   return data.entries || [];
@@ -607,6 +611,7 @@ export function normalizeFacilityBooking(row) {
     endLabel: fmtTime(row.end_time),
     guestName: row.guest_name,
     guestEmail: row.guest_email,
+    userId: row.user_id,
     guestCount: row.guest_count,
     status: row.status,
     notes: row.notes,

@@ -16,6 +16,7 @@ import {
   rejectGuestAccessRequestHandler,
   bulkDeactivateGuestAccounts,
   getGuestAccessActivity,
+  deleteGuestAccountHandler,
 } from '../controllers/guest-access.controller.js';
 
 const router = Router();
@@ -27,6 +28,7 @@ router.post('/guest-access/requests', ...adminOnly, postGuestAccessRequest);
 router.post('/guest-access/requests/:id/approve', ...adminOnly, approveGuestAccessRequestHandler);
 router.post('/guest-access/requests/:id/reject', ...adminOnly, rejectGuestAccessRequestHandler);
 router.post('/guest-access/bulk-deactivate', ...adminOnly, bulkDeactivateGuestAccounts);
+router.delete('/guest-access/:id', ...adminOnly, deleteGuestAccountHandler);
 router.get('/guest-access', ...adminOnly, getGuestAccessOverview);
 
 router.get('/', ...adminOnly, getAllUsers);

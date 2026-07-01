@@ -5,6 +5,7 @@ import {
   approveGuestAccessRequest,
   rejectGuestAccessRequest,
   bulkDeactivateGuests,
+  deleteGuestAccount,
 } from '../services/guest-access.service.js';
 import { listGuestAccessActivity } from '../services/audit.service.js';
 
@@ -78,5 +79,14 @@ export const getGuestAccessActivity = async (req, res) => {
     res.status(200).json({ entries });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const deleteGuestAccountHandler = async (req, res) => {
+  try {
+    const result = await deleteGuestAccount(req.params.id, req.user.id);
+    res.status(200).json({ message: 'Guest account deleted', ...result });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 };
