@@ -458,8 +458,10 @@ CREATE TABLE IF NOT EXISTS payments (
                ) DEFAULT NULL,
     status     ENUM(
                  'Pending',
+                 'Partially Paid',
                  'Paid',
-                 'Failed'
+                 'Failed',
+                 'Refunded'
                ) NOT NULL DEFAULT 'Pending',
     paid_at          TIMESTAMP NULL DEFAULT NULL,
     invoice_sent_at       TIMESTAMP NULL DEFAULT NULL,
@@ -486,6 +488,34 @@ CREATE TABLE IF NOT EXISTS payments (
     CONSTRAINT chk_amount CHECK (amount > 0),
 
     UNIQUE KEY uq_payment_facility (bookings_facility_id)
+);
+
+-- ============================================
+-- PAYMENT TRANSACTIONS (deposits, advances, settlements, refunds)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS payment_transactions (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    payment_id  INT NOT NULL,
+    type        ENUM('Deposit', 'Advance', 'Settlement', 'Refund', 'Adjustment') NOT NULL,
+    amount      DECIMAL(10,2) NOT NULL,
+    method      ENUM('Cash', 'GCash', 'Bank Transfer', 'Waived') NOT NULL,
+    notes       VARCHAR(255) DEFAULT NULL,
+    recorded_by INT DEFAULT NULL,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_pt_payment
+        FOREIGN KEY (payment_id) REFERENCES payments(id)
+         ON DELETE RESTRICT ON UPDATE CASCADE,
+
+    CONSTRAINT fk_pt_recorded_by
+        FOREIGN KEY (recorded_by) REFERENCES users(id)
+        ON DELETE SET NULL ON UPDATE CASCADE,
+
+    CONSTRAINT chk_pt_amount CHECK (amount > 0),
+
+    INDEX idx_pt_payment (payment_id),
+    INDEX idx_pt_recorded (recorded_at)
 );
 
 -- ============================================
@@ -787,7 +817,10 @@ INSERT INTO system_settings (setting_key, setting_value) VALUES
     ('fiscal_year_start_month', '7'),
     ('fiscal_year_start_day', '1'),
     ('booking_advance_months', '12'),
-    ('active_lodging_season', 'Regular')
+    ('active_lodging_season', 'Regular'),
+    ('deposit_required', '0'),
+    ('deposit_mode', 'percent'),
+    ('deposit_value', '50')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
 
 -- Demo bookings, payments, and room status samples are seeded by the server

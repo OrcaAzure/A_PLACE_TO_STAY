@@ -2,10 +2,11 @@
  * Admin billing — clickable list; invoice review opens in a popup modal.
  */
 
-import { getPayments, getPaymentById, updatePayment, sendPaymentInvoice } from '/assets/js/services/api.js';
+import { getPayments, getPaymentById, updatePayment, sendPaymentInvoice, recordPaymentTransaction } from '/assets/js/services/api.js';
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer', 'Waived'];
+const TX_TYPES = ['Deposit', 'Advance', 'Settlement', 'Refund'];
 
 const state = {
   payments: [],
@@ -161,6 +162,49 @@ function dueAmount(p) {
   return computeDue(subtotal, discount);
 }
 
+function paymentSummary(p) {
+  if (p.summary) return p.summary;
+  const totalDue = dueAmount(p);
+  return {
+    total_due: totalDue,
+    amount_paid: p.status === 'Paid' ? totalDue : 0,
+    balance_due: p.status === 'Paid' ? 0 : totalDue,
+    credit_balance: 0,
+  };
+}
+
+function balanceDue(p) {
+  return paymentSummary(p).balance_due;
+}
+
+function isOpenInvoice(p) {
+  return p.status === 'Pending' || p.status === 'Partially Paid';
+}
+
+function defaultTxType(p) {
+  const summary = paymentSummary(p);
+  const suggested = Number(p.suggested_deposit || 0);
+  const depositOutstanding = Number(p.deposit_outstanding ?? Math.max(0, suggested - (p.transactions || []).filter((t) => t.type === 'Deposit').reduce((s, t) => s + Number(t.amount), 0)));
+  if (depositOutstanding > 0 && summary.balance_due > 0) return 'Deposit';
+  if (summary.balance_due > 0) return 'Settlement';
+  if (summary.credit_balance > 0) return 'Refund';
+  return 'Advance';
+}
+
+function defaultTxAmount(p, type) {
+  const summary = paymentSummary(p);
+  if (type === 'Refund') return summary.credit_balance;
+  if (type === 'Deposit') {
+    const outstanding = Number(p.deposit_outstanding || 0);
+    if (outstanding > 0) return Math.min(outstanding, summary.balance_due);
+    if (Number(p.suggested_deposit || 0) > 0) {
+      return Math.min(Number(p.suggested_deposit), summary.balance_due);
+    }
+  }
+  if (type === 'Advance') return summary.balance_due || summary.total_due;
+  return summary.balance_due;
+}
+
 function discountPercent(subtotal, discountAmount) {
   const base = Number(subtotal || 0);
   if (base <= 0) return 0;
@@ -195,9 +239,9 @@ function bookingDurationHours(startTime, endTime) {
 }
 
 function filteredPayments() {
-  const pending = state.payments.filter((p) => p.status === 'Pending');
+  const open = state.payments.filter((p) => isOpenInvoice(p));
   const paid = state.payments.filter((p) => p.status === 'Paid');
-  return state.activeFilter === 'paid' ? paid : pending;
+  return state.activeFilter === 'paid' ? paid : open;
 }
 
 function selectedPayment() {
@@ -295,20 +339,27 @@ function formatPaidAt(value) {
   });
 }
 
-function recordSummaryHtml(p, due, method) {
+function recordSummaryHtml(p, balance, method, type = 'Settlement') {
   const guest = escapeHtml(p.guest_name || 'Guest');
-  const isWaived = due <= 0;
+  const isWaived = balance <= 0 && type !== 'Refund';
+  const typeLabel = type.toLowerCase();
+  if (type === 'Refund') {
+    return `Refund <strong>${fmt(balance)}</strong> to <strong>${guest}</strong> via <strong>${method ? escapeHtml(method) : 'selected method'}</strong>.`;
+  }
   if (isWaived) {
     return `Mark <strong>${guest}</strong> as complimentary / waived — no charge.`;
   }
   const methodText = method ? escapeHtml(method) : 'the selected method';
-  return `Record <strong>${fmt(due)}</strong> from <strong>${guest}</strong> via <strong data-approve-method>${methodText}</strong>.`;
+  return `Record <strong>${typeLabel}</strong> of <strong>${fmt(balance)}</strong> from <strong>${guest}</strong> via <strong data-approve-method>${methodText}</strong>.`;
 }
 
-function recordConfirmLabel(isWaived) {
+function recordConfirmLabel(isWaived, type = 'Settlement') {
+  if (type === 'Refund') {
+    return 'I confirm this refund amount and payment method are correct.';
+  }
   return isWaived
     ? 'I confirm this booking is complimentary / waived and should be marked as paid with no charge.'
-    : 'I confirm the guest has paid the amount shown and the payment method is correct.';
+    : `I confirm the guest has paid this ${type.toLowerCase()} and the payment method is correct.`;
 }
 
 function syncRecordPaymentUi(detailEl, p) {
@@ -318,33 +369,58 @@ function syncRecordPaymentUi(detailEl, p) {
   const form = getBillingForm(detailEl);
   const subtotal = Number(fresh.subtotal ?? fresh.booking_total ?? fresh.amount ?? 0);
   const { discount_amount } = readBillingFormValues(form, subtotal);
-  const due = computeDue(subtotal, discount_amount);
-  const isWaived = due <= 0;
-  const method = getPayMethodSelect(detailEl)?.value || '';
+  const totalDue = computeDue(subtotal, discount_amount);
+  const txForm = detailEl.querySelector('[data-tx-form]');
+  const txType = txForm?.querySelector('[name="tx_type"]')?.value || defaultTxType(fresh);
+  const txAmountRaw = txForm?.querySelector('[name="tx_amount"]')?.value;
+  const txAmount = txAmountRaw != null && txAmountRaw !== ''
+    ? Number(txAmountRaw)
+    : defaultTxAmount(fresh, txType);
+  const isWaived = totalDue <= 0 && txType !== 'Refund';
+  const method = getPayMethodSelect(detailEl)?.value || txForm?.querySelector('[name="tx_method"]')?.value || '';
+  const displayAmount = txType === 'Refund'
+    ? paymentSummary(fresh).credit_balance
+    : (Number.isFinite(txAmount) && txAmount > 0 ? txAmount : defaultTxAmount(fresh, txType));
 
   const summaryEl = detailEl.querySelector('[data-record-summary]');
-  if (summaryEl) summaryEl.innerHTML = recordSummaryHtml(fresh, due, method);
+  if (summaryEl) summaryEl.innerHTML = recordSummaryHtml(fresh, displayAmount, method, txType);
 
   const checkLabel = detailEl.querySelector('[data-record-check] span');
-  if (checkLabel) checkLabel.textContent = recordConfirmLabel(isWaived);
+  if (checkLabel) checkLabel.textContent = recordConfirmLabel(isWaived, txType);
 
   const methodField = detailEl.querySelector('[data-record-method-field]');
-  if (methodField) methodField.classList.toggle('hidden', isWaived);
+  if (methodField) methodField.classList.toggle('hidden', isWaived || txType === 'Refund');
 
   const recordBtn = detailEl.querySelector('[data-confirm-paid]');
   const checked = detailEl.querySelector('[data-approve-check]')?.checked;
   if (recordBtn) {
-    recordBtn.disabled = isWaived ? !checked : !method || !checked;
+    const needsMethod = !isWaived || txType === 'Refund';
+    recordBtn.disabled = (needsMethod && !method) || !checked || (!isWaived && displayAmount <= 0);
   }
 }
 
 function renderListRow(p) {
-  const isPending = p.status === 'Pending';
-  const due = dueAmount(p);
+  const isOpen = isOpenInvoice(p);
+  const balance = balanceDue(p);
+  const summary = paymentSummary(p);
   const isSelected = String(p.id) === String(state.selectedId);
   const emailed = billingInvoiceEmailed(p)
     ? '<span class="billing-row__tag billing-row__tag--sent" title="Invoice emailed from Billing">✉ Sent</span>'
     : '<span class="billing-row__tag billing-row__tag--unsent" title="Not emailed from Billing yet">✉ Not sent</span>';
+
+  let statusClass = 'pending';
+  let statusLabel = 'Due';
+  if (p.status === 'Partially Paid') {
+    statusClass = 'partial';
+    statusLabel = 'Partial';
+  } else if (!isOpen) {
+    statusClass = 'paid';
+    statusLabel = 'Paid';
+  }
+
+  const amountLabel = isOpen
+    ? (summary.amount_paid > 0 ? fmt(balance) : fmt(balance))
+    : fmt(summary.amount_paid || p.amount);
 
   return `
     <button type="button"
@@ -354,14 +430,14 @@ function renderListRow(p) {
       aria-selected="${isSelected}">
       <span class="billing-row__main">
         <span class="billing-row__guest">${escapeHtml(p.guest_name || 'Guest')}</span>
-        <span class="billing-row__meta">${escapeHtml(bookingShort(p))} · ${escapeHtml(bookingDatesShort(p))}</span>
+        <span class="billing-row__meta">${escapeHtml(bookingShort(p))} · ${escapeHtml(bookingDatesShort(p))}${summary.amount_paid > 0 && isOpen ? ` · ${fmt(summary.amount_paid)} paid` : ''}</span>
       </span>
       <span class="billing-row__side">
-        <span class="billing-row__amount">${fmt(isPending ? due : p.amount)}</span>
+        <span class="billing-row__amount">${amountLabel}</span>
         <span class="billing-row__badges">
           ${isVenueInvoice(p) ? '<span class="billing-row__tag billing-row__tag--venue">Venue</span>' : '<span class="billing-row__tag billing-row__tag--room">Room</span>'}
-          <span class="billing-row__status billing-row__status--${isPending ? 'pending' : 'paid'}">${isPending ? 'Due' : 'Paid'}</span>
-          ${isPending ? emailed : ''}
+          <span class="billing-row__status billing-row__status--${statusClass}">${statusLabel}</span>
+          ${isOpen ? emailed : ''}
         </span>
         <span class="billing-row__id">#${p.id}</span>
       </span>
@@ -627,6 +703,56 @@ function renderReservationSection(p) {
     </section>`;
 }
 
+function formatTxAt(value) {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString('en-PH', {
+    month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+  });
+}
+
+function renderPaymentSummaryCard(p) {
+  const summary = paymentSummary(p);
+  const suggested = Number(p.suggested_deposit || 0);
+  const depositOutstanding = Number(p.deposit_outstanding || 0);
+
+  return `
+    <section class="billing-panel billing-panel--summary">
+      <h4 class="billing-section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">account_balance_wallet</span>
+        Payment balance
+      </h4>
+      <dl class="billing-balance-grid">
+        <div><dt>Total due</dt><dd>${fmt(summary.total_due)}</dd></div>
+        <div><dt>Paid so far</dt><dd>${fmt(summary.amount_paid)}</dd></div>
+        <div class="billing-balance-grid__due"><dt>Balance due</dt><dd>${fmt(summary.balance_due)}</dd></div>
+        ${summary.credit_balance > 0 ? `<div><dt>Credit</dt><dd>${fmt(summary.credit_balance)}</dd></div>` : ''}
+      </dl>
+      ${suggested > 0 ? `<p class="billing-deposit-hint">Suggested deposit: <strong>${fmt(suggested)}</strong>${depositOutstanding > 0 ? ` · <strong>${fmt(depositOutstanding)}</strong> still outstanding` : ''}</p>` : ''}
+    </section>`;
+}
+
+function renderLedger(p) {
+  const transactions = p.transactions || [];
+  if (!transactions.length) {
+    return '<p class="billing-ledger-empty">No payments recorded yet.</p>';
+  }
+  const rows = transactions.map((t) => `
+    <tr>
+      <td>${escapeHtml(formatTxAt(t.recorded_at))}</td>
+      <td><span class="billing-ledger-type billing-ledger-type--${t.type.toLowerCase()}">${escapeHtml(t.type)}</span></td>
+      <td class="billing-charge-amount">${t.type === 'Refund' ? '−' : ''}${fmt(t.amount)}</td>
+      <td>${escapeHtml(t.method || '—')}</td>
+    </tr>`).join('');
+
+  return `
+    <table class="billing-ledger-table">
+      <thead>
+        <tr><th>Date</th><th>Type</th><th>Amount</th><th>Method</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
 function renderBillingColumn(p, { isPending }) {
   const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
   const discount = Number(p.discount_amount || 0);
@@ -635,10 +761,22 @@ function renderBillingColumn(p, { isPending }) {
   const due = dueAmount(p);
   const isWaived = due <= 0;
   const methodOptions = PAYMENT_METHODS.map((m) => `<option value="${m}">${m}</option>`).join('');
+  const summary = paymentSummary(p);
+  const defaultType = defaultTxType(p);
+  const defaultAmount = defaultTxAmount(p, defaultType);
+  const txTypeOptions = TX_TYPES.map((t) => `<option value="${t}"${t === defaultType ? ' selected' : ''}>${t}</option>`).join('');
 
   if (!isPending) {
     const paidWhen = formatPaidAt(p.paid_at);
     return `
+      ${renderPaymentSummaryCard(p)}
+      <section class="billing-panel billing-panel--ledger">
+        <h4 class="billing-section-title">
+          <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+          Payment history
+        </h4>
+        ${renderLedger(p)}
+      </section>
       <section class="billing-panel billing-panel--recorded">
         <h4 class="billing-section-title">
           <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
@@ -647,11 +785,11 @@ function renderBillingColumn(p, { isPending }) {
         <div class="billing-recorded-card">
           <div class="billing-recorded-card__amount">
             <span>Amount received</span>
-            <strong>${fmt(p.amount)}</strong>
+            <strong>${fmt(summary.amount_paid)}</strong>
           </div>
           <dl class="billing-recorded-card__meta">
             <div><dt>Method</dt><dd>${escapeHtml(p.method || '—')}</dd></div>
-            ${paidWhen ? `<div><dt>Recorded</dt><dd>${escapeHtml(paidWhen)}</dd></div>` : ''}
+            ${paidWhen ? `<div><dt>Completed</dt><dd>${escapeHtml(paidWhen)}</dd></div>` : ''}
           </dl>
         </div>
       </section>`;
@@ -659,6 +797,7 @@ function renderBillingColumn(p, { isPending }) {
 
   return `
     <div class="billing-billing-stack">
+    ${renderPaymentSummaryCard(p)}
     <section class="billing-panel billing-panel--edit">
       <h4 class="billing-section-title">
         <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
@@ -709,17 +848,60 @@ function renderBillingColumn(p, { isPending }) {
             <strong>${fmt(due)}</strong>
           </div>
           <div class="billing-edit-footer__actions">
-            <label class="billing-edit-form__field billing-record-method${isWaived ? ' hidden' : ''}" data-record-method-field${isWaived ? ' hidden' : ''}>
-              <span>Payment method</span>
-              <select class="billing-edit-form__input" data-pay-method="${p.id}">
-                <option value="">Select how guest paid…</option>
-                ${methodOptions}
-              </select>
-            </label>
             <button type="submit" class="invoice-btn-secondary billing-edit-footer__save">Save changes</button>
           </div>
         </div>
       </form>
+    </section>
+    <section class="billing-panel billing-panel--record" aria-label="Record payment">
+      <h4 class="billing-section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">payments</span>
+        Record payment
+      </h4>
+      <form class="billing-tx-form" data-tx-form="${p.id}">
+        <label class="billing-edit-form__field">
+          <span>Payment type</span>
+          <select class="billing-edit-form__input" name="tx_type">
+            ${txTypeOptions}
+          </select>
+        </label>
+        <label class="billing-edit-form__field">
+          <span>Amount (₱)</span>
+          <input type="number" class="billing-edit-form__input" name="tx_amount" min="0.01" step="0.01"
+            value="${defaultAmount}" data-live-record />
+        </label>
+        <label class="billing-edit-form__field billing-record-method" data-record-method-field>
+          <span>Payment method</span>
+          <select class="billing-edit-form__input" name="tx_method" data-pay-method="${p.id}">
+            <option value="">Select how guest paid…</option>
+            ${methodOptions}
+          </select>
+        </label>
+        <label class="billing-edit-form__field">
+          <span>Notes (optional)</span>
+          <input type="text" class="billing-edit-form__input" name="tx_notes" maxlength="255"
+            placeholder="e.g. Deposit upon booking" />
+        </label>
+      </form>
+      <p class="billing-record-summary" data-record-summary>${recordSummaryHtml(p, defaultAmount, '', defaultType)}</p>
+
+      <label class="billing-record-check" data-record-check>
+        <input type="checkbox" data-approve-check />
+        <span>${recordConfirmLabel(due <= 0, defaultType)}</span>
+      </label>
+
+      <button type="button" class="invoice-btn-confirm billing-panel__btn" data-confirm-paid="${p.id}" disabled>
+        <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
+        Record payment
+      </button>
+      <p class="billing-record-note">Deposits and advances reduce the balance due. Settlement pays the remaining balance.</p>
+    </section>
+    <section class="billing-panel billing-panel--ledger">
+      <h4 class="billing-section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
+        Payment history
+      </h4>
+      ${renderLedger(p)}
     </section>
 
     <section class="billing-panel billing-panel--email">
@@ -737,31 +919,14 @@ function renderBillingColumn(p, { isPending }) {
       </button>
       <p class="billing-email-recipient-hint">${escapeHtml(invoiceEmailHint(p))}</p>
     </section>
-
-    <section class="billing-panel billing-panel--record" aria-label="Record payment">
-      <h4 class="billing-section-title">
-        <span class="material-symbols-outlined" aria-hidden="true">payments</span>
-        Record payment
-      </h4>
-      <p class="billing-record-summary" data-record-summary>${recordSummaryHtml(p, due, '')}</p>
-
-      <label class="billing-record-check" data-record-check>
-        <input type="checkbox" data-approve-check />
-        <span>${recordConfirmLabel(isWaived)}</span>
-      </label>
-
-      <button type="button" class="invoice-btn-confirm billing-panel__btn" data-confirm-paid="${p.id}" disabled>
-        <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
-        Record payment
-      </button>
-      <p class="billing-record-note">This cannot be undone from Billing.</p>
-    </section>
     </div>`;
 }
 
 function renderDetailPanel(p) {
-  const isPending = p.status === 'Pending';
-  const statusLabel = isPending ? 'Awaiting payment' : 'Paid';
+  const isOpen = isOpenInvoice(p);
+  const statusLabel = isOpen
+    ? (p.status === 'Partially Paid' ? 'Partially paid' : 'Awaiting payment')
+    : 'Paid';
 
   return `
     <div class="billing-detail">
@@ -775,7 +940,7 @@ function renderDetailPanel(p) {
             ${renderReservationSection(p)}
           </div>
           <div class="billing-detail__col billing-detail__col--billing">
-            ${renderBillingColumn(p, { isPending })}
+            ${renderBillingColumn(p, { isPending: isOpen })}
           </div>
         </div>
       </div>
@@ -943,6 +1108,19 @@ function bindDetailActions(p) {
     }
   });
 
+  const txForm = detailEl?.querySelector('[data-tx-form]');
+  txForm?.querySelector('[name="tx_type"]')?.addEventListener('change', () => {
+    const fresh = selectedPayment() || p;
+    const type = txForm.querySelector('[name="tx_type"]')?.value;
+    const amountInput = txForm.querySelector('[name="tx_amount"]');
+    if (amountInput && type) amountInput.value = String(defaultTxAmount(fresh, type));
+    syncRecordPaymentUi(detailEl, fresh);
+  });
+  txForm?.querySelectorAll('[data-live-record], [name="tx_method"]').forEach((input) => {
+    input.addEventListener('input', () => syncRecordPaymentUi(detailEl, selectedPayment() || p));
+    input.addEventListener('change', () => syncRecordPaymentUi(detailEl, selectedPayment() || p));
+  });
+
   const methodSelect = getPayMethodSelect(detailEl);
   methodSelect?.addEventListener('change', () => {
     hideFeedback(detailFeedback);
@@ -958,21 +1136,24 @@ function bindDetailActions(p) {
     const btn = e.currentTarget;
     const check = detailEl.querySelector('[data-approve-check]');
     const fresh = selectedPayment() || p;
-    const form = getBillingForm(detailEl);
+    const billingForm = getBillingForm(detailEl);
     const subtotal = Number(fresh.subtotal ?? fresh.booking_total ?? fresh.amount ?? 0);
-    const { discount_amount } = readBillingFormValues(form, subtotal);
-    const due = computeDue(subtotal, discount_amount);
-    const isWaived = due <= 0;
-    const method = isWaived ? 'Waived' : getPayMethodSelect(detailEl)?.value;
+    const { discount_amount } = readBillingFormValues(billingForm, subtotal);
+    const totalDue = computeDue(subtotal, discount_amount);
+    const isWaived = totalDue <= 0;
+    const type = txForm?.querySelector('[name="tx_type"]')?.value || 'Settlement';
+    const amount = Number(txForm?.querySelector('[name="tx_amount"]')?.value || 0);
+    const method = isWaived ? 'Waived' : (txForm?.querySelector('[name="tx_method"]')?.value || getPayMethodSelect(detailEl)?.value);
+    const notes = String(txForm?.querySelector('[name="tx_notes"]')?.value || '').trim();
 
     if (!isWaived && !method) {
       showFeedback(detailFeedback, 'Select payment method before recording.', 'error');
-      methodSelect?.focus();
+      txForm?.querySelector('[name="tx_method"]')?.focus();
       return;
     }
-    if (hasUnsavedBillingChanges(fresh, form)) {
+    if (hasUnsavedBillingChanges(fresh, billingForm)) {
       showFeedback(detailFeedback, 'Save discount changes before recording payment.', 'error');
-      form?.querySelector('button[type="submit"]')?.focus();
+      billingForm?.querySelector('button[type="submit"]')?.focus();
       return;
     }
     if (!check?.checked) {
@@ -986,32 +1167,45 @@ function bindDetailActions(p) {
     const label = btn.innerHTML;
     btn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span> Recording…';
     try {
-      await updatePayment(p.id, { status: 'Paid', method });
-      closeInvoiceModal();
-      await reload();
-      showFeedback(pageFeedback, `Payment recorded for ${fresh.guest_name}. Receipt emailed.`, 'ok');
+      let result;
+      if (isWaived) {
+        result = await updatePayment(fresh.id, { status: 'Paid', method: 'Waived' });
+      } else {
+        result = await recordPaymentTransaction(fresh.id, {
+          type,
+          amount,
+          method,
+          notes: notes || undefined,
+        });
+      }
+      const updated = result.payment || fresh;
+      const stillOpen = isOpenInvoice(updated);
+      await reload({ keepSelection: true, keepModalOpen: stillOpen });
+      if (!stillOpen) closeInvoiceModal();
+      showFeedback(pageFeedback, result.message || `${type} recorded for ${fresh.guest_name}.`, 'ok');
     } catch (err) {
       showFeedback(detailFeedback, err.message || 'Could not record payment.', 'error');
       syncRecordPaymentUi(detailEl, fresh);
+      btn.disabled = false;
       btn.innerHTML = label;
     }
   });
 }
 
 function updateSummary() {
-  const pending = state.payments.filter((x) => x.status === 'Pending');
+  const open = state.payments.filter((x) => isOpenInvoice(x));
   const paid = state.payments.filter((x) => x.status === 'Paid');
-  const due = pending.reduce((s, x) => s + dueAmount(x), 0);
-  const collected = paid.reduce((s, x) => s + parseFloat(x.amount || 0), 0);
+  const due = open.reduce((s, x) => s + balanceDue(x), 0);
+  const collected = state.payments.reduce((s, x) => s + paymentSummary(x).amount_paid, 0);
 
   document.getElementById('invoice-due-total').textContent = fmt(due);
-  document.getElementById('invoice-due-count').textContent = `${pending.length} open`;
+  document.getElementById('invoice-due-count').textContent = `${open.length} open`;
   document.getElementById('invoice-collected-total').textContent = fmt(collected);
   document.getElementById('invoice-paid-count').textContent = `${paid.length} paid`;
 
   document.querySelectorAll('[data-invoice-count]').forEach((el) => {
     const key = el.getAttribute('data-invoice-count');
-    el.textContent = String(key === 'pending' ? pending.length : paid.length);
+    el.textContent = String(key === 'pending' ? open.length : paid.length);
   });
 }
 

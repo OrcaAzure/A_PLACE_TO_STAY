@@ -1244,6 +1244,55 @@ export async function runSchemaPatches() {
     } catch (err) {
       console.warn('[schema] venue invoice backfill skipped:', err.message);
     }
+
+    try {
+      await pool.execute(
+        `ALTER TABLE payments MODIFY status ENUM(
+           'Pending', 'Partially Paid', 'Paid', 'Failed', 'Refunded'
+         ) NOT NULL DEFAULT 'Pending'`
+      );
+    } catch (err) {
+      console.warn('[schema] payments.status enum skipped:', err.message);
+    }
+
+    if (!(await tableExists('payment_transactions'))) {
+      try {
+        await pool.execute(
+          `CREATE TABLE payment_transactions (
+             id          INT AUTO_INCREMENT PRIMARY KEY,
+             payment_id  INT NOT NULL,
+             type        ENUM('Deposit', 'Advance', 'Settlement', 'Refund', 'Adjustment') NOT NULL,
+             amount      DECIMAL(10,2) NOT NULL,
+             method      ENUM('Cash', 'GCash', 'Bank Transfer', 'Waived') NOT NULL,
+             notes       VARCHAR(255) DEFAULT NULL,
+             recorded_by INT DEFAULT NULL,
+             recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+             CONSTRAINT fk_pt_payment FOREIGN KEY (payment_id) REFERENCES payments(id)
+               ON DELETE RESTRICT ON UPDATE CASCADE,
+             CONSTRAINT fk_pt_recorded_by FOREIGN KEY (recorded_by) REFERENCES users(id)
+               ON DELETE SET NULL ON UPDATE CASCADE,
+             CONSTRAINT chk_pt_amount CHECK (amount > 0),
+             INDEX idx_pt_payment (payment_id),
+             INDEX idx_pt_recorded (recorded_at)
+           )`
+        );
+        console.log('[schema] payment_transactions table ready');
+      } catch (err) {
+        console.warn('[schema] payment_transactions skipped:', err.message);
+      }
+    }
+
+    try {
+      await pool.execute(
+        `INSERT INTO system_settings (setting_key, setting_value) VALUES
+           ('deposit_required', '0'),
+           ('deposit_mode', 'percent'),
+           ('deposit_value', '50')
+         ON DUPLICATE KEY UPDATE setting_key = setting_key`
+      );
+    } catch (err) {
+      console.warn('[schema] deposit settings skipped:', err.message);
+    }
   }
 
   try {

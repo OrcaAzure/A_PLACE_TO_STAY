@@ -9,6 +9,7 @@ import {
   sendInvoiceEmail,
   updateInvoiceBilling,
   markInvoicePaid,
+  recordPaymentTransaction,
 } from '../services/payment.service.js';
 import { isEmailDevMode } from '../services/email.service.js';
 
@@ -57,7 +58,10 @@ export const createPayment = async (req, res) => {
     }
 
     if (amount != null) {
-      await pool.query('UPDATE payments SET amount = ? WHERE id = ? AND status = ?', [amount, invoiceId, 'Pending']);
+      await pool.query(
+        'UPDATE payments SET amount = ? WHERE id = ? AND status IN (?, ?)',
+        [amount, invoiceId, 'Pending', 'Partially Paid']
+      );
     }
     if (method) {
       await pool.query('UPDATE payments SET method = ? WHERE id = ?', [method, invoiceId]);
@@ -98,7 +102,7 @@ export const updatePayment = async (req, res) => {
     }
 
     if (status === 'Paid') {
-      payment = await markInvoicePaid(req.params.id, { method });
+      payment = await markInvoicePaid(req.params.id, { method }, req.user.id);
       return res.status(200).json({
         message: 'Payment recorded. Reservation stays active — room availability is based on stay dates, not payment.',
         payment,
@@ -110,7 +114,45 @@ export const updatePayment = async (req, res) => {
       payment = await loadPaymentDetail(req.params.id);
     }
 
-    res.status(200).json({ message: 'Invoice updated', payment });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const getPaymentTransactions = async (req, res) => {
+  try {
+    const payment = await loadPaymentDetail(req.params.id);
+    if (!payment) return res.status(404).json({ message: 'Invoice not found' });
+    if (!ADMIN_ROLES.includes(req.user.role) && payment.user_id !== req.user.id) {
+      return res.status(403).json({ message: 'Forbidden' });
+    }
+    res.status(200).json({
+      transactions: payment.transactions || [],
+      summary: payment.summary || null,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const createPaymentTransaction = async (req, res) => {
+  try {
+    const { type, amount, method, notes } = req.body;
+    if (!type) return res.status(400).json({ message: 'type is required' });
+    if (amount == null) return res.status(400).json({ message: 'amount is required' });
+
+    const payment = await recordPaymentTransaction(
+      req.params.id,
+      { type, amount, method, notes },
+      req.user.id,
+      { skipReceipt: false }
+    );
+
+    const typeLabel = type.charAt(0) + type.slice(1).toLowerCase();
+    res.status(201).json({
+      message: `${typeLabel} recorded for ${payment.guest_name}.`,
+      payment,
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

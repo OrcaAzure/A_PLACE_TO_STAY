@@ -21,6 +21,21 @@ function dueAmount(p) {
   return Math.max(0, Math.round((subtotal - discount) * 100) / 100);
 }
 
+function paymentSummary(p) {
+  if (p.summary) return p.summary;
+  const totalDue = dueAmount(p);
+  return {
+    total_due: totalDue,
+    amount_paid: p.status === 'Paid' ? totalDue : 0,
+    balance_due: p.status === 'Paid' ? 0 : totalDue,
+    credit_balance: 0,
+  };
+}
+
+function isOpenInvoice(p) {
+  return p.status === 'Pending' || p.status === 'Partially Paid';
+}
+
 function isVenueInvoice(p) {
   return p.invoice_kind === 'venue' || Boolean(p.facility_booking_id);
 }
@@ -51,10 +66,22 @@ function invoiceTitle(p) {
 
 function renderCard(p) {
   const isPaid = p.status === 'Paid';
-  const due = dueAmount(p);
+  const isPartial = p.status === 'Partially Paid';
+  const summary = paymentSummary(p);
   const discount = Number(p.discount_amount || 0);
   const isVenue = isVenueInvoice(p);
   const when = isVenue ? formatVenueWhen(p) : formatDateRange(p.check_in, p.check_out);
+  const suggested = Number(p.suggested_deposit || 0);
+
+  let badgeLabel = 'Payment due';
+  let badgeClass = 'due';
+  if (isPaid) {
+    badgeLabel = 'Paid';
+    badgeClass = 'paid';
+  } else if (isPartial) {
+    badgeLabel = 'Partially paid';
+    badgeClass = 'partial';
+  }
 
   return `
     <article class="guest-invoice-card ${isPaid ? 'guest-invoice-card--paid' : 'guest-invoice-card--due'}">
@@ -64,22 +91,24 @@ function renderCard(p) {
           <h4 class="guest-invoice-card__room">${escapeHtml(invoiceTitle(p))}</h4>
           <p class="guest-invoice-card__dates">${escapeHtml(when)}</p>
         </div>
-        <span class="guest-invoice-card__badge guest-invoice-card__badge--${isPaid ? 'paid' : 'due'}">
-          ${isPaid ? 'Paid' : 'Payment due'}
+        <span class="guest-invoice-card__badge guest-invoice-card__badge--${badgeClass}">
+          ${badgeLabel}
         </span>
       </div>
       <div class="guest-invoice-card__amount-row">
         <div>
-          <p class="guest-invoice-card__amount-label">${isPaid ? 'You paid' : 'Amount due'}</p>
-          <p class="guest-invoice-card__amount">${fmt(isPaid ? p.amount : due)}</p>
+          <p class="guest-invoice-card__amount-label">${isPaid ? 'Total paid' : 'Balance due'}</p>
+          <p class="guest-invoice-card__amount">${fmt(isPaid ? summary.amount_paid : summary.balance_due)}</p>
+          ${!isPaid && summary.amount_paid > 0 ? `<p class="guest-invoice-card__discount">${fmt(summary.amount_paid)} paid so far · ${fmt(summary.total_due)} total</p>` : ''}
           ${discount > 0 && !isPaid ? `<p class="guest-invoice-card__discount">Includes ${fmt(discount)} discount${p.discount_note ? ` (${escapeHtml(p.discount_note)})` : ''}</p>` : ''}
+          ${suggested > 0 && isOpenInvoice(p) ? `<p class="guest-invoice-card__discount">Suggested deposit: ${fmt(suggested)}</p>` : ''}
         </div>
       </div>
       ${isPaid
         ? `<p class="guest-invoice-card__hint">Thank you — payment recorded via ${escapeHtml(p.method || 'housing office')}.</p>`
         : `<p class="guest-invoice-card__hint">
             Please pay the <strong>APTS Housing Department</strong>${isVenue ? ' for your venue reservation' : ' before or during your stay'}.
-            Cash, GCash, and bank transfer are accepted.
+            You may pay a deposit or the full amount in advance. Cash, GCash, and bank transfer are accepted.
           </p>`}
     </article>`;
 }
@@ -92,7 +121,7 @@ export async function loadGuestInvoices() {
 
   try {
     const payments = await getPayments();
-    const open = payments.filter((p) => p.status === 'Pending');
+    const open = payments.filter((p) => isOpenInvoice(p));
 
     if (!payments.length) {
       section.classList.add('hidden');

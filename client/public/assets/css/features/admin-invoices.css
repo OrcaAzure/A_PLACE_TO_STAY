@@ -1239,6 +1239,118 @@
   color: #92400e;
 }
 
+.billing-row__status--partial {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+/* Payment balance & ledger */
+.billing-balance-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+}
+
+.billing-balance-grid > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.billing-balance-grid dt {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #64748b;
+}
+
+.billing-balance-grid dd {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #1a365d;
+}
+
+.billing-balance-grid__due dd {
+  color: #b45309;
+}
+
+.billing-deposit-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.billing-ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.billing-ledger-table th,
+.billing-ledger-table td {
+  padding: 0.5rem 0.625rem;
+  border-bottom: 1px solid #edf2f7;
+  text-align: left;
+}
+
+.billing-ledger-table th:last-child,
+.billing-ledger-table td:last-child {
+  text-align: right;
+}
+
+.billing-ledger-table th {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #718096;
+  background: #f8fafc;
+}
+
+.billing-ledger-empty {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.billing-ledger-type {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.billing-ledger-type--deposit { background: #dbeafe; color: #1e40af; }
+.billing-ledger-type--advance { background: #e0e7ff; color: #3730a3; }
+.billing-ledger-type--settlement { background: #d1fae5; color: #065f46; }
+.billing-ledger-type--refund { background: #fee2e2; color: #991b1b; }
+
+.billing-tx-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.guest-invoice-card__badge--partial {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
 .billing-row__status--paid {
   background: #d1fae5;
   color: #065f46;

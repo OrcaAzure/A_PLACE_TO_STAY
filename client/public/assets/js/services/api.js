@@ -452,6 +452,13 @@ export async function sendPaymentInvoice(id) {
   return apiRequest(`/payments/${id}/send-invoice`, { method: 'POST' });
 }
 
+export async function recordPaymentTransaction(id, payload) {
+  return apiRequest(`/payments/${id}/transactions`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export function normalizeRoom(room) {
   const bedCount = room.bed_count != null ? Number(room.bed_count) : null;
   let roomTypeLabel = room.room_type_label;

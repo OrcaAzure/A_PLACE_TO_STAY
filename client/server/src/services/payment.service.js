@@ -58,8 +58,9 @@ export const paymentDetailSelect = paymentRoomDetailSelect;
 
 function sortPaymentRows(rows) {
   return [...rows].sort((a, b) => {
-    const pendingA = a.status === 'Pending' ? 0 : 1;
-    const pendingB = b.status === 'Pending' ? 0 : 1;
+    const openStatuses = ['Pending', 'Partially Paid'];
+    const pendingA = openStatuses.includes(a.status) ? 0 : 1;
+    const pendingB = openStatuses.includes(b.status) ? 0 : 1;
     if (pendingA !== pendingB) return pendingA - pendingB;
     return new Date(b.created_at) - new Date(a.created_at);
   });
@@ -105,12 +106,144 @@ export async function enrichPaymentRow(row) {
 }
 
 export async function enrichPaymentRows(rows) {
-  return Promise.all(rows.map(enrichPaymentRow));
+  const enriched = await Promise.all(rows.map(enrichPaymentRow));
+  return attachSummariesToPayments(enriched);
 }
 
 export function computeDueAmount(subtotal, discountAmount = 0) {
   const due = Number(subtotal) - Number(discountAmount || 0);
   return Math.max(0, Math.round(due * 100) / 100);
+}
+
+const PAYMENT_IN_TYPES = ['Deposit', 'Advance', 'Settlement'];
+const PAYMENT_OUT_TYPES = ['Refund'];
+
+export async function getPaymentLedger(paymentId) {
+  const [rows] = await pool.query(
+    `SELECT pt.*, u.full_name AS recorded_by_name
+     FROM payment_transactions pt
+     LEFT JOIN users u ON u.id = pt.recorded_by
+     WHERE pt.payment_id = ?
+     ORDER BY pt.recorded_at ASC, pt.id ASC`,
+    [paymentId]
+  );
+  return rows;
+}
+
+export function computePaymentSummary(invoice, transactions = []) {
+  const subtotal = Number(invoice.subtotal ?? invoice.booking_total ?? invoice.amount ?? 0);
+  const totalDue = computeDueAmount(subtotal, invoice.discount_amount);
+
+  if (!transactions.length && invoice.status === 'Paid') {
+    return {
+      total_due: totalDue,
+      amount_paid: totalDue,
+      balance_due: 0,
+      credit_balance: 0,
+    };
+  }
+
+  const paidIn = transactions
+    .filter((t) => PAYMENT_IN_TYPES.includes(t.type))
+    .reduce((s, t) => s + Number(t.amount), 0);
+  const refunded = transactions
+    .filter((t) => PAYMENT_OUT_TYPES.includes(t.type))
+    .reduce((s, t) => s + Number(t.amount), 0);
+  const amountPaid = Math.round((paidIn - refunded) * 100) / 100;
+  const balanceDue = Math.max(0, Math.round((totalDue - amountPaid) * 100) / 100);
+  const creditBalance = Math.max(0, Math.round((amountPaid - totalDue) * 100) / 100);
+
+  return {
+    total_due: totalDue,
+    amount_paid: amountPaid,
+    balance_due: balanceDue,
+    credit_balance: creditBalance,
+  };
+}
+
+export async function getDepositSettings() {
+  const [rows] = await pool.query(
+    `SELECT setting_key, setting_value FROM system_settings
+     WHERE setting_key IN ('deposit_required', 'deposit_mode', 'deposit_value')`
+  );
+  const map = Object.fromEntries(rows.map((r) => [r.setting_key, r.setting_value]));
+  return {
+    deposit_required: map.deposit_required === '1',
+    deposit_mode: map.deposit_mode === 'fixed' ? 'fixed' : 'percent',
+    deposit_value: Number(map.deposit_value) || 50,
+  };
+}
+
+export function computeSuggestedDeposit(totalDue, settings) {
+  if (!settings?.deposit_required || totalDue <= 0) return 0;
+  if (settings.deposit_mode === 'fixed') {
+    return Math.min(totalDue, Math.round(Number(settings.deposit_value) * 100) / 100);
+  }
+  return Math.round(totalDue * (Number(settings.deposit_value) / 100) * 100) / 100;
+}
+
+export async function getSuggestedDeposit(totalDue) {
+  const settings = await getDepositSettings();
+  return computeSuggestedDeposit(totalDue, settings);
+}
+
+async function syncPaymentStatus(paymentId) {
+  const [rows] = await pool.query('SELECT * FROM payments WHERE id = ? LIMIT 1', [paymentId]);
+  if (!rows.length) return;
+  const invoice = rows[0];
+  const transactions = await getPaymentLedger(paymentId);
+  const summary = computePaymentSummary(invoice, transactions);
+
+  let status = 'Pending';
+  if (summary.total_due <= 0 && summary.amount_paid <= 0) {
+    status = invoice.status === 'Paid' ? 'Paid' : 'Pending';
+  } else if (summary.balance_due <= 0 && summary.amount_paid > 0) {
+    status = 'Paid';
+  } else if (summary.amount_paid > 0) {
+    status = 'Partially Paid';
+  }
+
+  const lastInTx = [...transactions].reverse().find((t) => PAYMENT_IN_TYPES.includes(t.type));
+  const paidAt = status === 'Paid' ? (invoice.paid_at || new Date()) : null;
+  const method = status === 'Paid' ? (lastInTx?.method || invoice.method) : invoice.method;
+
+  await pool.query(
+    `UPDATE payments
+     SET status = ?, method = ?, paid_at = ?
+     WHERE id = ?`,
+    [status, method, paidAt, paymentId]
+  );
+}
+
+export async function attachSummariesToPayments(rows) {
+  if (!rows.length) return rows;
+  const ids = rows.map((r) => r.id);
+  const settings = await getDepositSettings();
+  const [txRows] = await pool.query(
+    `SELECT * FROM payment_transactions WHERE payment_id IN (?) ORDER BY recorded_at ASC, id ASC`,
+    [ids]
+  );
+  const byPayment = new Map();
+  for (const tx of txRows) {
+    if (!byPayment.has(tx.payment_id)) byPayment.set(tx.payment_id, []);
+    byPayment.get(tx.payment_id).push(tx);
+  }
+  return rows.map((row) => {
+    const transactions = byPayment.get(row.id) || [];
+    const summary = computePaymentSummary(row, transactions);
+    const suggested_deposit = computeSuggestedDeposit(summary.total_due, settings);
+    const deposit_paid = transactions
+      .filter((t) => t.type === 'Deposit')
+      .reduce((s, t) => s + Number(t.amount), 0);
+    return {
+      ...row,
+      summary,
+      transaction_count: transactions.length,
+      suggested_deposit,
+      deposit_paid,
+      deposit_outstanding: Math.max(0, Math.round((suggested_deposit - deposit_paid) * 100) / 100),
+    };
+  });
 }
 
 export async function getInvoiceByBookingId(bookingId) {
@@ -165,11 +298,11 @@ export async function ensureInvoiceForBooking(bookingId, { autoEmail = false } =
 
   const existing = await getInvoiceByBookingId(bookingId);
   if (existing) {
-    if (existing.status === 'Pending') {
+    if (existing.status !== 'Paid') {
       const amount = computeDueAmount(subtotal, existing.discount_amount);
       await pool.query(
-        'UPDATE payments SET subtotal = ?, amount = ? WHERE id = ? AND status = ?',
-        [subtotal, amount, existing.id, 'Pending']
+        'UPDATE payments SET subtotal = ?, amount = ? WHERE id = ? AND status != ?',
+        [subtotal, amount, existing.id, 'Paid']
       );
     }
     if (autoEmail && existing.status === 'Pending' && !existing.invoice_sent_at) {
@@ -203,11 +336,11 @@ export async function ensureInvoiceForFacilityBooking(facilityBookingId, { autoE
 
   const existing = await getInvoiceByFacilityBookingId(facilityBookingId);
   if (existing) {
-    if (existing.status === 'Pending') {
+    if (existing.status !== 'Paid') {
       const amount = computeDueAmount(subtotal, existing.discount_amount);
       await pool.query(
-        'UPDATE payments SET subtotal = ?, amount = ? WHERE id = ? AND status = ?',
-        [subtotal, amount, existing.id, 'Pending']
+        'UPDATE payments SET subtotal = ?, amount = ? WHERE id = ? AND status != ?',
+        [subtotal, amount, existing.id, 'Paid']
       );
     }
     if (autoEmail && existing.status === 'Pending' && !existing.invoice_sent_at) {
@@ -249,13 +382,33 @@ export async function loadPaymentDetail(paymentId) {
   );
   if (!meta.length) return null;
 
+  let row;
   if (meta[0].bookings_facility_id) {
     const [rows] = await pool.query(`${paymentVenueDetailSelect} WHERE p.id = ? LIMIT 1`, [paymentId]);
-    return enrichPaymentRow(rows[0]);
+    row = rows[0];
+  } else {
+    const [rows] = await pool.query(`${paymentRoomDetailSelect} WHERE p.id = ? LIMIT 1`, [paymentId]);
+    row = rows[0];
   }
 
-  const [rows] = await pool.query(`${paymentRoomDetailSelect} WHERE p.id = ? LIMIT 1`, [paymentId]);
-  return enrichPaymentRow(rows[0]);
+  const payment = await enrichPaymentRow(row);
+  if (!payment) return null;
+
+  const transactions = await getPaymentLedger(paymentId);
+  const summary = computePaymentSummary(payment, transactions);
+  const suggested_deposit = await getSuggestedDeposit(summary.total_due);
+  const deposit_paid = transactions
+    .filter((t) => t.type === 'Deposit')
+    .reduce((s, t) => s + Number(t.amount), 0);
+
+  return {
+    ...payment,
+    transactions,
+    summary,
+    suggested_deposit,
+    deposit_paid,
+    deposit_outstanding: Math.max(0, Math.round((suggested_deposit - deposit_paid) * 100) / 100),
+  };
 }
 
 export async function tryAutoSendInvoiceEmail(paymentId) {
@@ -321,25 +474,97 @@ export async function updateInvoiceBilling(paymentId, { discount_amount, discoun
     `UPDATE payments SET subtotal = ?, discount_amount = ?, discount_note = ?, amount = ? WHERE id = ?`,
     [subtotal, discount, note, amount, paymentId]
   );
+
+  await syncPaymentStatus(paymentId);
   return loadPaymentDetail(paymentId);
 }
 
-export async function markInvoicePaid(paymentId, { method } = {}) {
+export async function markInvoicePaid(paymentId, { method } = {}, actorUserId = null) {
   const payment = await loadPaymentDetail(paymentId);
   if (!payment) throw new Error('Invoice not found');
   if (payment.status === 'Paid') throw new Error('Invoice is already marked as paid');
-  if (!method) throw new Error('Payment method is required');
 
-  const paidAt = new Date();
-  await pool.query(
-    `UPDATE payments SET status = 'Paid', method = ?, paid_at = ? WHERE id = ?`,
-    [method, paidAt, paymentId]
-  );
+  const summary = payment.summary || computePaymentSummary(payment, payment.transactions || []);
+  const payMethod = method || 'Waived';
+
+  if (summary.total_due <= 0) {
+    await pool.query(
+      `UPDATE payments SET status = 'Paid', method = ?, paid_at = ? WHERE id = ?`,
+      [payMethod, new Date(), paymentId]
+    );
+  } else if (summary.balance_due > 0) {
+    if (!method) throw new Error('Payment method is required');
+    await recordPaymentTransaction(
+      paymentId,
+      { type: 'Settlement', amount: summary.balance_due, method: payMethod },
+      actorUserId,
+      { skipReceipt: true, reload: false }
+    );
+  } else {
+    await syncPaymentStatus(paymentId);
+  }
 
   const updated = await loadPaymentDetail(paymentId);
   void sendPaymentReceiptEmail(
     { full_name: updated.guest_name, email: updated.guest_email },
     updated
   );
+  return updated;
+}
+
+export async function recordPaymentTransaction(
+  paymentId,
+  { type, amount, method, notes },
+  actorUserId = null,
+  { skipReceipt = true, reload = true } = {}
+) {
+  const [invoiceRows] = await pool.query('SELECT * FROM payments WHERE id = ? LIMIT 1', [paymentId]);
+  if (!invoiceRows.length) throw new Error('Invoice not found');
+  const invoice = invoiceRows[0];
+
+  if (invoice.status === 'Paid' && type !== 'Refund') {
+    throw new Error('Invoice is already fully paid');
+  }
+
+  const validTypes = ['Deposit', 'Advance', 'Settlement', 'Refund', 'Adjustment'];
+  if (!validTypes.includes(type)) throw new Error('Invalid transaction type');
+
+  const txAmount = Number(amount);
+  if (!Number.isFinite(txAmount) || txAmount <= 0) {
+    throw new Error('Amount must be greater than zero');
+  }
+  if (!method) throw new Error('Payment method is required');
+
+  const transactions = await getPaymentLedger(paymentId);
+  const summary = computePaymentSummary(invoice, transactions);
+
+  if (type === 'Refund') {
+    if (summary.credit_balance <= 0) throw new Error('No credit available to refund');
+    if (txAmount > summary.credit_balance) {
+      throw new Error('Refund exceeds available credit');
+    }
+  } else if (type === 'Advance') {
+    // Advance may exceed balance due (prepayment)
+  } else if (txAmount > summary.balance_due) {
+    throw new Error('Amount exceeds balance due. Use Advance for prepayment beyond the balance.');
+  }
+
+  await pool.query(
+    `INSERT INTO payment_transactions (payment_id, type, amount, method, notes, recorded_by)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [paymentId, type, txAmount, method, notes || null, actorUserId]
+  );
+
+  await syncPaymentStatus(paymentId);
+
+  if (!reload) return null;
+
+  const updated = await loadPaymentDetail(paymentId);
+  if (!skipReceipt && updated.status === 'Paid') {
+    void sendPaymentReceiptEmail(
+      { full_name: updated.guest_name, email: updated.guest_email },
+      updated
+    );
+  }
   return updated;
 }
