@@ -7,6 +7,8 @@ import {
   sendPaymentInvoice,
   getPaymentTransactions,
   createPaymentTransaction,
+  clearPaidPayments,
+  deletePaidPayment,
 } from '../controllers/payment.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/role.middleware.js';
@@ -19,6 +21,8 @@ router.get('/:id/transactions', requireAuth, getPaymentTransactions);
 router.post('/', requireAuth, requireRole('Super Admin', 'Admin'), createPayment);
 router.post('/:id/send-invoice', requireAuth, requireRole('Super Admin', 'Admin'), sendPaymentInvoice);
 router.post('/:id/transactions', requireAuth, requireRole('Super Admin', 'Admin'), createPaymentTransaction);
+router.delete('/closed', requireAuth, requireRole('Super Admin', 'Admin'), clearPaidPayments);
+router.delete('/:id', requireAuth, requireRole('Super Admin', 'Admin'), deletePaidPayment);
 router.patch('/:id', requireAuth, requireRole('Super Admin', 'Admin'), updatePayment);
 
 export default router;

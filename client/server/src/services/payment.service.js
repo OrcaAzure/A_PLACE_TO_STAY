@@ -118,8 +118,30 @@ export function computeDueAmount(subtotal, discountAmount = 0) {
 const PAYMENT_IN_TYPES = ['Deposit', 'Advance', 'Settlement'];
 const PAYMENT_OUT_TYPES = ['Refund'];
 
+function mapPaymentDbError(err) {
+  if (!err) return new Error('Something went wrong. Please try again.');
+  if (err.code === 'ER_NO_SUCH_TABLE') {
+    return new Error('Billing tables are missing. Restart the server or run the payment ledger migration.');
+  }
+  if (err.code === 'ER_BAD_FIELD_ERROR') {
+    return new Error('Billing schema is out of date. Restart the server to apply database updates.');
+  }
+  if (err.code === 'ECONNREFUSED' || err.code === 'PROTOCOL_CONNECTION_LOST') {
+    return new Error('Database connection failed. Please try again shortly.');
+  }
+  return err;
+}
+
+async function runPaymentQuery(sql, params) {
+  try {
+    return await pool.query(sql, params);
+  } catch (err) {
+    throw mapPaymentDbError(err);
+  }
+}
+
 export async function getPaymentLedger(paymentId) {
-  const [rows] = await pool.query(
+  const [rows] = await runPaymentQuery(
     `SELECT pt.*, u.full_name AS recorded_by_name
      FROM payment_transactions pt
      LEFT JOIN users u ON u.id = pt.recorded_by
@@ -549,11 +571,15 @@ export async function recordPaymentTransaction(
     throw new Error('Amount exceeds balance due. Use Advance for prepayment beyond the balance.');
   }
 
-  await pool.query(
-    `INSERT INTO payment_transactions (payment_id, type, amount, method, notes, recorded_by)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [paymentId, type, txAmount, method, notes || null, actorUserId]
-  );
+  try {
+    await runPaymentQuery(
+      `INSERT INTO payment_transactions (payment_id, type, amount, method, notes, recorded_by)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [paymentId, type, txAmount, method, notes || null, actorUserId]
+    );
+  } catch (err) {
+    throw mapPaymentDbError(err);
+  }
 
   await syncPaymentStatus(paymentId);
 
@@ -567,4 +593,78 @@ export async function recordPaymentTransaction(
     );
   }
   return updated;
+}
+
+export async function deletePaidInvoice(paymentId, actorUserId = null) {
+  const payment = await loadPaymentDetail(paymentId);
+  if (!payment) throw new Error('Invoice not found');
+  if (payment.status !== 'Paid') {
+    throw new Error('Only fully paid invoices can be cleared. Open or partial invoices cannot be deleted.');
+  }
+
+  try {
+    await runPaymentQuery('DELETE FROM payment_transactions WHERE payment_id = ?', [paymentId]);
+    const [result] = await runPaymentQuery(
+      'DELETE FROM payments WHERE id = ? AND status = ?',
+      [paymentId, 'Paid']
+    );
+    if (!result.affectedRows) throw new Error('Invoice could not be cleared');
+  } catch (err) {
+    throw mapPaymentDbError(err);
+  }
+
+  try {
+    const { logAudit } = await import('./audit.service.js');
+    await logAudit({
+      actorUserId,
+      action: 'payment_invoice_cleared',
+      entityType: 'payment',
+      entityId: Number(paymentId),
+      details: {
+        guest_name: payment.guest_name,
+        amount: payment.summary?.amount_paid ?? payment.amount,
+        booking_id: payment.booking_id,
+        facility_booking_id: payment.facility_booking_id,
+      },
+    });
+  } catch {
+    /* audit is best-effort */
+  }
+
+  return {
+    id: Number(paymentId),
+    guest_name: payment.guest_name,
+  };
+}
+
+export async function clearAllPaidInvoices(actorUserId = null) {
+  const [rows] = await pool.query(
+    `SELECT id FROM payments WHERE status = 'Paid'`
+  );
+  if (!rows.length) return { deleted: 0 };
+
+  const ids = rows.map((r) => r.id);
+  let deleted = 0;
+  try {
+    await runPaymentQuery('DELETE FROM payment_transactions WHERE payment_id IN (?)', [ids]);
+    const [result] = await runPaymentQuery('DELETE FROM payments WHERE status = ?', ['Paid']);
+    deleted = result.affectedRows;
+  } catch (err) {
+    throw mapPaymentDbError(err);
+  }
+
+  try {
+    const { logAudit } = await import('./audit.service.js');
+    await logAudit({
+      actorUserId,
+      action: 'payment_invoices_bulk_cleared',
+      entityType: 'payment',
+      entityId: null,
+      details: { count: deleted, payment_ids: ids },
+    });
+  } catch {
+    /* audit is best-effort */
+  }
+
+  return { deleted };
 }

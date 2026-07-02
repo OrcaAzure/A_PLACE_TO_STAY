@@ -16,16 +16,25 @@ export async function apiRequest(endpoint, options = {}) {
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: 'include',
-  });
+  let response;
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+      credentials: 'include',
+    });
+  } catch {
+    throw new Error('Network error — could not reach the server. Check your connection and try again.');
+  }
 
   let data = null;
   const contentType = response.headers.get('content-type');
   if (contentType?.includes('application/json')) {
-    data = await response.json();
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('Server returned an invalid response. Please try again.');
+    }
   }
 
   if (!response.ok) {
@@ -457,6 +466,14 @@ export async function recordPaymentTransaction(id, payload) {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export async function deletePayment(id) {
+  return apiRequest(`/payments/${id}`, { method: 'DELETE' });
+}
+
+export async function clearPaidPayments() {
+  return apiRequest('/payments/closed', { method: 'DELETE' });
 }
 
 export function normalizeRoom(room) {

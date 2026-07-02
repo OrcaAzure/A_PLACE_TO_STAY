@@ -10,10 +10,30 @@ import {
   updateInvoiceBilling,
   markInvoicePaid,
   recordPaymentTransaction,
+  deletePaidInvoice,
+  clearAllPaidInvoices,
 } from '../services/payment.service.js';
 import { isEmailDevMode } from '../services/email.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
+
+function parsePaymentId(raw) {
+  const id = Number.parseInt(String(raw), 10);
+  if (!Number.isInteger(id) || id <= 0) return null;
+  return id;
+}
+
+function paymentErrorStatus(error) {
+  const msg = String(error?.message || '').toLowerCase();
+  if (msg.includes('not found')) return 404;
+  if (msg.includes('forbidden')) return 403;
+  return 400;
+}
+
+function paymentErrorMessage(error) {
+  if (!error) return 'Something went wrong. Please try again.';
+  return error.message || 'Something went wrong. Please try again.';
+}
 
 export const getAllPayments = async (req, res) => {
   try {
@@ -24,20 +44,23 @@ export const getAllPayments = async (req, res) => {
     const payments = await enrichPaymentRows(rows);
     res.status(200).json({ payments });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: paymentErrorMessage(error) });
   }
 };
 
 export const getPaymentById = async (req, res) => {
   try {
-    const payment = await loadPaymentDetail(req.params.id);
+    const paymentId = parsePaymentId(req.params.id);
+    if (!paymentId) return res.status(400).json({ message: 'Invalid invoice id' });
+
+    const payment = await loadPaymentDetail(paymentId);
     if (!payment) return res.status(404).json({ message: 'Invoice not found' });
     if (!ADMIN_ROLES.includes(req.user.role) && payment.user_id !== req.user.id) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     res.status(200).json({ payment });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: paymentErrorMessage(error) });
   }
 };
 
@@ -70,39 +93,45 @@ export const createPayment = async (req, res) => {
     const payment = await loadPaymentDetail(invoiceId);
     res.status(201).json({ message: 'Invoice ready', payment });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(paymentErrorStatus(error)).json({ message: paymentErrorMessage(error) });
   }
 };
 
 export const sendPaymentInvoice = async (req, res) => {
   try {
-    const payment = await loadPaymentDetail(req.params.id);
+    const paymentId = parsePaymentId(req.params.id);
+    if (!paymentId) return res.status(400).json({ message: 'Invalid invoice id' });
+
+    const payment = await loadPaymentDetail(paymentId);
     if (!payment) return res.status(404).json({ message: 'Invoice not found' });
 
-    const updated = await sendInvoiceEmail(req.params.id);
+    const updated = await sendInvoiceEmail(paymentId);
     const message = isEmailDevMode()
       ? `Invoice marked as sent (dev mode — logged to server console, not emailed to ${updated.guest_email})`
       : `Invoice emailed to ${updated.guest_email}`;
     res.status(200).json({ message, payment: updated, emailDevMode: isEmailDevMode() });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(paymentErrorStatus(error)).json({ message: paymentErrorMessage(error) });
   }
 };
 
 export const updatePayment = async (req, res) => {
   try {
+    const paymentId = parsePaymentId(req.params.id);
+    if (!paymentId) return res.status(400).json({ message: 'Invalid invoice id' });
+
     const { status, method, discount_amount, discount_note } = req.body;
-    const existing = await loadPaymentDetail(req.params.id);
+    const existing = await loadPaymentDetail(paymentId);
     if (!existing) return res.status(404).json({ message: 'Invoice not found' });
 
     let payment = existing;
 
     if (discount_amount != null || discount_note != undefined) {
-      payment = await updateInvoiceBilling(req.params.id, { discount_amount, discount_note });
+      payment = await updateInvoiceBilling(paymentId, { discount_amount, discount_note });
     }
 
     if (status === 'Paid') {
-      payment = await markInvoicePaid(req.params.id, { method }, req.user.id);
+      payment = await markInvoicePaid(paymentId, { method }, req.user.id);
       return res.status(200).json({
         message: 'Payment recorded. Reservation stays active — room availability is based on stay dates, not payment.',
         payment,
@@ -110,18 +139,22 @@ export const updatePayment = async (req, res) => {
     }
 
     if (status) {
-      await pool.query('UPDATE payments SET status = ? WHERE id = ?', [status, req.params.id]);
-      payment = await loadPaymentDetail(req.params.id);
+      await pool.query('UPDATE payments SET status = ? WHERE id = ?', [status, paymentId]);
+      payment = await loadPaymentDetail(paymentId);
     }
 
+    res.status(200).json({ message: 'Invoice updated', payment });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(paymentErrorStatus(error)).json({ message: paymentErrorMessage(error) });
   }
 };
 
 export const getPaymentTransactions = async (req, res) => {
   try {
-    const payment = await loadPaymentDetail(req.params.id);
+    const paymentId = parsePaymentId(req.params.id);
+    if (!paymentId) return res.status(400).json({ message: 'Invalid invoice id' });
+
+    const payment = await loadPaymentDetail(paymentId);
     if (!payment) return res.status(404).json({ message: 'Invoice not found' });
     if (!ADMIN_ROLES.includes(req.user.role) && payment.user_id !== req.user.id) {
       return res.status(403).json({ message: 'Forbidden' });
@@ -131,22 +164,28 @@ export const getPaymentTransactions = async (req, res) => {
       summary: payment.summary || null,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: paymentErrorMessage(error) });
   }
 };
 
 export const createPaymentTransaction = async (req, res) => {
   try {
+    const paymentId = parsePaymentId(req.params.id);
+    if (!paymentId) return res.status(400).json({ message: 'Invalid invoice id' });
+
     const { type, amount, method, notes } = req.body;
     if (!type) return res.status(400).json({ message: 'type is required' });
     if (amount == null) return res.status(400).json({ message: 'amount is required' });
 
     const payment = await recordPaymentTransaction(
-      req.params.id,
+      paymentId,
       { type, amount, method, notes },
       req.user.id,
       { skipReceipt: false }
     );
+    if (!payment) {
+      return res.status(500).json({ message: 'Payment was recorded but the invoice could not be reloaded.' });
+    }
 
     const typeLabel = type.charAt(0) + type.slice(1).toLowerCase();
     res.status(201).json({
@@ -154,6 +193,35 @@ export const createPaymentTransaction = async (req, res) => {
       payment,
     });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(paymentErrorStatus(error)).json({ message: paymentErrorMessage(error) });
+  }
+};
+
+export const clearPaidPayments = async (req, res) => {
+  try {
+    const { deleted } = await clearAllPaidInvoices(req.user.id);
+    res.status(200).json({
+      message: deleted
+        ? `Cleared ${deleted} paid invoice${deleted === 1 ? '' : 's'} from billing records.`
+        : 'No paid invoices to clear.',
+      deleted,
+    });
+  } catch (error) {
+    res.status(paymentErrorStatus(error)).json({ message: paymentErrorMessage(error) });
+  }
+};
+
+export const deletePaidPayment = async (req, res) => {
+  try {
+    const paymentId = parsePaymentId(req.params.id);
+    if (!paymentId) return res.status(400).json({ message: 'Invalid invoice id' });
+
+    const cleared = await deletePaidInvoice(paymentId, req.user.id);
+    res.status(200).json({
+      message: `Invoice #${cleared.id} for ${cleared.guest_name} cleared from billing records.`,
+      cleared,
+    });
+  } catch (error) {
+    res.status(paymentErrorStatus(error)).json({ message: paymentErrorMessage(error) });
   }
 };

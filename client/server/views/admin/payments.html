@@ -19,15 +19,25 @@
 <body>
   <div id="page-content">
     <div class="billing-page">
-    <div class="invoice-summary-grid">
+    <div class="invoice-summary-grid invoice-summary-grid--billing">
       <div class="invoice-summary-card">
         <div class="invoice-summary-card__icon invoice-summary-card__icon--due" aria-hidden="true">
           <span class="material-symbols-outlined text-[24px]">hourglass_top</span>
         </div>
         <div class="invoice-summary-card__body">
-          <p class="invoice-summary-card__label">Awaiting payment</p>
+          <p class="invoice-summary-card__label">Balance due</p>
           <p id="invoice-due-total" class="invoice-summary-card__value invoice-summary-card__value--due">—</p>
           <p id="invoice-due-count" class="invoice-summary-card__hint">Loading…</p>
+        </div>
+      </div>
+      <div class="invoice-summary-card">
+        <div class="invoice-summary-card__icon invoice-summary-card__icon--partial" aria-hidden="true">
+          <span class="material-symbols-outlined text-[24px]">payments</span>
+        </div>
+        <div class="invoice-summary-card__body">
+          <p class="invoice-summary-card__label">Partial payments</p>
+          <p id="invoice-partial-paid-total" class="invoice-summary-card__value invoice-summary-card__value--partial">—</p>
+          <p id="invoice-partial-count" class="invoice-summary-card__hint">Loading…</p>
         </div>
       </div>
       <div class="invoice-summary-card">
@@ -48,16 +58,23 @@
           <button type="button" class="invoice-tab is-active" data-invoice-filter="pending" role="tab" aria-selected="true">
             Needs payment <span class="invoice-tab__count" data-invoice-count="pending">0</span>
           </button>
+          <button type="button" class="invoice-tab invoice-tab--partial" data-invoice-filter="partial" role="tab" aria-selected="false">
+            Partial payments <span class="invoice-tab__count" data-invoice-count="partial">0</span>
+          </button>
           <button type="button" class="invoice-tab" data-invoice-filter="paid" role="tab" aria-selected="false">
             Paid &amp; closed <span class="invoice-tab__count" data-invoice-count="paid">0</span>
           </button>
         </div>
+        <button type="button" id="billing-clear-paid" class="billing-clear-paid hidden" aria-label="Clear all paid invoices">
+          <span class="material-symbols-outlined" aria-hidden="true">delete_sweep</span>
+          Clear all paid
+        </button>
       </div>
 
       <div id="payments-feedback" class="hidden invoice-feedback" role="status" aria-live="polite"></div>
 
       <div class="billing-list-only">
-        <p class="billing-list-hint">Tap a row to review the invoice, adjust billing, and record payment.</p>
+        <p id="billing-list-hint" class="billing-list-hint">Tap a row to review the invoice, adjust billing, and record payment.</p>
         <div id="invoice-list" class="billing-table-wrap" role="listbox" aria-label="Invoices">
           <p class="invoice-empty__text">Loading…</p>
         </div>

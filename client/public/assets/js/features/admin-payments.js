@@ -2,7 +2,7 @@
  * Admin billing — clickable list; invoice review opens in a popup modal.
  */
 
-import { getPayments, getPaymentById, updatePayment, sendPaymentInvoice, recordPaymentTransaction } from '/assets/js/services/api.js';
+import { getPayments, getPaymentById, updatePayment, sendPaymentInvoice, recordPaymentTransaction, deletePayment, clearPaidPayments } from '/assets/js/services/api.js';
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer', 'Waived'];
@@ -181,6 +181,34 @@ function isOpenInvoice(p) {
   return p.status === 'Pending' || p.status === 'Partially Paid';
 }
 
+function isPartialInvoice(p) {
+  return p.status === 'Partially Paid';
+}
+
+function isPendingInvoice(p) {
+  return p.status === 'Pending';
+}
+
+function listFilterHint() {
+  if (state.activeFilter === 'partial') {
+    return 'Guests who paid a deposit or advance — balance due is shown with how much they already paid.';
+  }
+  if (state.activeFilter === 'paid') {
+    return 'Fully settled invoices. Tap a row to review payment history, or clear records you no longer need.';
+  }
+  return 'No payment recorded yet. Tap a row to email the invoice or record a deposit.';
+}
+
+function filteredPayments() {
+  if (state.activeFilter === 'paid') {
+    return state.payments.filter((p) => p.status === 'Paid');
+  }
+  if (state.activeFilter === 'partial') {
+    return state.payments.filter((p) => isPartialInvoice(p));
+  }
+  return state.payments.filter((p) => isPendingInvoice(p));
+}
+
 function defaultTxType(p) {
   const summary = paymentSummary(p);
   const suggested = Number(p.suggested_deposit || 0);
@@ -238,10 +266,58 @@ function bookingDurationHours(startTime, endTime) {
   return mins > 0 ? mins / 60 : 0;
 }
 
-function filteredPayments() {
-  const open = state.payments.filter((p) => isOpenInvoice(p));
+function syncClearPaidButton() {
+  const btn = document.getElementById('billing-clear-paid');
+  if (!btn) return;
+  const paidCount = state.payments.filter((p) => p.status === 'Paid').length;
+  const show = state.activeFilter === 'paid' && paidCount > 0;
+  btn.classList.toggle('hidden', !show);
+  btn.disabled = !show;
+}
+
+async function handleClearInvoice(id, { closeModal = false, feedbackEl } = {}) {
+  const payment = state.payments.find((p) => String(p.id) === String(id));
+  const guest = payment?.guest_name || 'this guest';
+  if (!window.confirm(`Clear invoice #${id} for ${guest}?\n\nThis removes the billing record only. The reservation stays on file.`)) {
+    return;
+  }
+
+  const targetFeedback = feedbackEl || document.getElementById('payments-feedback');
+  await withBillingAction({
+    feedbackEl: targetFeedback,
+    run: async () => {
+      const result = await deletePayment(id);
+      if (closeModal) closeInvoiceModal();
+      await reload();
+      showFeedback(targetFeedback, result.message || 'Invoice cleared.', 'ok');
+    },
+  });
+}
+
+async function handleClearAllPaid() {
   const paid = state.payments.filter((p) => p.status === 'Paid');
-  return state.activeFilter === 'paid' ? paid : open;
+  if (!paid.length) return;
+  if (!window.confirm(`Clear all ${paid.length} paid invoice${paid.length === 1 ? '' : 's'} from billing?\n\nReservations are not deleted. This cannot be undone.`)) {
+    return;
+  }
+
+  const feedback = document.getElementById('payments-feedback');
+  const clearBtn = document.getElementById('billing-clear-paid');
+  if (clearBtn) clearBtn.disabled = true;
+
+  try {
+    await withBillingAction({
+      feedbackEl: feedback,
+      run: async () => {
+        const result = await clearPaidPayments();
+        closeInvoiceModal();
+        await reload();
+        showFeedback(feedback, result.message || 'Paid invoices cleared.', 'ok');
+      },
+    });
+  } finally {
+    syncClearPaidButton();
+  }
 }
 
 function selectedPayment() {
@@ -254,6 +330,43 @@ function showFeedback(el, message, type = 'ok') {
   const base = el.id === 'billing-detail-feedback' ? 'billing-detail-feedback' : 'invoice-feedback';
   el.className = `${base} invoice-feedback--${type}`;
   el.classList.remove('hidden');
+  if (type === 'error') {
+    el.setAttribute('role', 'alert');
+  } else {
+    el.setAttribute('role', 'status');
+  }
+}
+
+function getBillingErrorMessage(err) {
+  if (!err) return 'Something went wrong. Please try again.';
+  const msg = String(err.message || '').trim();
+  if (!msg) return 'Something went wrong. Please try again.';
+  if (/^Request failed \(\d+\)$/.test(msg)) {
+    return 'Could not complete the request. Please try again.';
+  }
+  return msg;
+}
+
+function renderInvoiceLoadError(id, message) {
+  return `
+    <div class="billing-detail-error-panel">
+      <p class="billing-detail-error">${escapeHtml(message)}</p>
+      <div class="billing-detail-error-actions">
+        <button type="button" class="invoice-btn-secondary" data-retry-invoice="${escapeHtml(String(id))}">Try again</button>
+        <button type="button" class="invoice-btn-secondary" data-close-detail>Close</button>
+      </div>
+    </div>`;
+}
+
+async function withBillingAction({ feedbackEl, onError, run }) {
+  try {
+    return await run();
+  } catch (err) {
+    const message = getBillingErrorMessage(err);
+    if (feedbackEl) showFeedback(feedbackEl, message, 'error');
+    if (onError) onError(err);
+    throw err;
+  }
 }
 
 function hideFeedback(el) {
@@ -401,8 +514,9 @@ function syncRecordPaymentUi(detailEl, p) {
 
 function renderListRow(p) {
   const isOpen = isOpenInvoice(p);
-  const balance = balanceDue(p);
+  const isPartial = isPartialInvoice(p);
   const summary = paymentSummary(p);
+  const balance = summary.balance_due;
   const isSelected = String(p.id) === String(state.selectedId);
   const emailed = billingInvoiceEmailed(p)
     ? '<span class="billing-row__tag billing-row__tag--sent" title="Invoice emailed from Billing">✉ Sent</span>'
@@ -410,7 +524,7 @@ function renderListRow(p) {
 
   let statusClass = 'pending';
   let statusLabel = 'Due';
-  if (p.status === 'Partially Paid') {
+  if (isPartial) {
     statusClass = 'partial';
     statusLabel = 'Partial';
   } else if (!isOpen) {
@@ -418,31 +532,60 @@ function renderListRow(p) {
     statusLabel = 'Paid';
   }
 
-  const amountLabel = isOpen
-    ? (summary.amount_paid > 0 ? fmt(balance) : fmt(balance))
-    : fmt(summary.amount_paid || p.amount);
+  let amountLabel = 'Amount due';
+  let amountValue = fmt(balance);
+  let amountSub = '';
+
+  if (state.activeFilter === 'paid' || (!isOpen && state.activeFilter !== 'partial')) {
+    amountValue = fmt(summary.amount_paid || p.amount);
+  } else if (isPartial || (isOpen && summary.amount_paid > 0)) {
+    amountLabel = 'Balance due';
+    amountValue = fmt(balance);
+    amountSub = `${fmt(summary.amount_paid)} paid of ${fmt(summary.total_due)}`;
+  }
+
+  const isPaidTab = state.activeFilter === 'paid';
+  const showAmountLabel = !(isPaidTab && !isOpen);
+  const showStatusBadge = !(isPaidTab && statusClass === 'paid');
+  const amountClass = isPartial
+    ? ' billing-row__amount--due'
+    : (isPaidTab && !isOpen ? ' billing-row__amount--settled' : '');
+
+  const rowModifier = isPartial ? ' billing-row--partial' : (isPaidTab ? ' billing-row-wrap--paid' : '');
+  const deleteBtn = isPaidTab
+    ? `<button type="button" class="billing-row__delete" data-delete-invoice="${p.id}" aria-label="Clear invoice #${p.id}" title="Clear from billing records">
+        <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+      </button>`
+    : '';
 
   return `
+    <div class="billing-row-wrap${isSelected ? ' is-selected' : ''}${rowModifier}">
     <button type="button"
-      class="billing-row${isSelected ? ' is-selected' : ''}"
+      class="billing-row${isPartial ? ' billing-row--partial' : ''}"
       data-invoice-row="${p.id}"
       role="option"
       aria-selected="${isSelected}">
       <span class="billing-row__main">
         <span class="billing-row__guest">${escapeHtml(p.guest_name || 'Guest')}</span>
-        <span class="billing-row__meta">${escapeHtml(bookingShort(p))} · ${escapeHtml(bookingDatesShort(p))}${summary.amount_paid > 0 && isOpen ? ` · ${fmt(summary.amount_paid)} paid` : ''}</span>
+        <span class="billing-row__meta">${escapeHtml(bookingShort(p))} · ${escapeHtml(bookingDatesShort(p))}</span>
       </span>
       <span class="billing-row__side">
-        <span class="billing-row__amount">${amountLabel}</span>
+        <span class="billing-row__amount-wrap">
+          ${showAmountLabel ? `<span class="billing-row__amount-label">${amountLabel}</span>` : ''}
+          <span class="billing-row__amount${amountClass}">${amountValue}</span>
+          ${amountSub ? `<span class="billing-row__amount-sub">${amountSub}</span>` : ''}
+        </span>
         <span class="billing-row__badges">
           ${isVenueInvoice(p) ? '<span class="billing-row__tag billing-row__tag--venue">Venue</span>' : '<span class="billing-row__tag billing-row__tag--room">Room</span>'}
-          <span class="billing-row__status billing-row__status--${statusClass}">${statusLabel}</span>
+          ${showStatusBadge ? `<span class="billing-row__status billing-row__status--${statusClass}">${statusLabel}</span>` : ''}
           ${isOpen ? emailed : ''}
         </span>
         <span class="billing-row__id">#${p.id}</span>
       </span>
       <span class="material-symbols-outlined billing-row__chevron" aria-hidden="true">chevron_right</span>
-    </button>`;
+    </button>
+    ${deleteBtn}
+    </div>`;
 }
 
 function stayNights(p) {
@@ -792,6 +935,17 @@ function renderBillingColumn(p, { isPending }) {
             ${paidWhen ? `<div><dt>Completed</dt><dd>${escapeHtml(paidWhen)}</dd></div>` : ''}
           </dl>
         </div>
+      </section>
+      <section class="billing-panel billing-panel--clear" aria-label="Clear invoice">
+        <h4 class="billing-section-title">
+          <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+          Clear record
+        </h4>
+        <p class="billing-clear-lead">Remove this paid invoice from billing. The reservation is not deleted — only the payment record is cleared.</p>
+        <button type="button" class="invoice-btn-secondary billing-panel__btn billing-panel__btn--danger" data-delete-invoice="${p.id}">
+          <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+          Clear invoice #${p.id}
+        </button>
       </section>`;
   }
 
@@ -983,21 +1137,36 @@ function updateLiveDue(form) {
 
 function renderList() {
   const listEl = document.getElementById('invoice-list');
+  const hintEl = document.getElementById('billing-list-hint');
   if (!listEl) return;
+
+  if (hintEl) hintEl.textContent = listFilterHint();
 
   const list = filteredPayments();
 
   if (!list.length) {
-    const emptyTitle = state.activeFilter === 'paid' ? 'No paid invoices' : 'No open invoices';
-    const emptyText = state.activeFilter === 'paid'
-      ? 'Approved payments will appear here.'
-      : 'Approved stays generate bills here for your review.';
+    const emptyCopy = {
+      pending: {
+        title: 'No unpaid invoices',
+        text: 'New approved bookings will appear here when payment is still needed.',
+      },
+      partial: {
+        title: 'No partial payments',
+        text: 'When a guest pays a deposit or advance, the invoice moves here with paid and balance amounts.',
+      },
+      paid: {
+        title: 'No paid invoices',
+        text: 'Fully settled invoices will appear here.',
+      },
+    };
+    const copy = emptyCopy[state.activeFilter] || emptyCopy.pending;
     listEl.innerHTML = `
       <div class="invoice-empty">
         <span class="material-symbols-outlined invoice-empty__icon" aria-hidden="true">receipt_long</span>
-        <p class="invoice-empty__title">${emptyTitle}</p>
-        <p class="invoice-empty__text">${emptyText}</p>
+        <p class="invoice-empty__title">${copy.title}</p>
+        <p class="invoice-empty__text">${copy.text}</p>
       </div>`;
+    syncClearPaidButton();
     return;
   }
 
@@ -1009,6 +1178,25 @@ function renderList() {
       await openInvoiceModal(btn.getAttribute('data-invoice-row'));
     });
   });
+
+  listEl.querySelectorAll('[data-delete-invoice]').forEach((btn) => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      hideFeedback(document.getElementById('payments-feedback'));
+      btn.disabled = true;
+      try {
+        await handleClearInvoice(btn.getAttribute('data-delete-invoice'), {
+          feedbackEl: document.getElementById('payments-feedback'),
+        });
+      } catch {
+        /* feedback shown by handler */
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+
+  syncClearPaidButton();
 }
 
 function getModal() {
@@ -1037,7 +1225,12 @@ async function openInvoiceModal(id) {
     detailEl.innerHTML = renderDetailPanel(p);
     bindDetailActions(p);
   } catch (err) {
-    detailEl.innerHTML = `<p class="billing-detail-error">${escapeHtml(err.message || 'Could not load invoice.')}</p>`;
+    detailEl.innerHTML = renderInvoiceLoadError(id, getBillingErrorMessage(err));
+    detailEl.querySelector('[data-retry-invoice]')?.addEventListener('click', () => {
+      openInvoiceModal(id);
+    });
+    detailEl.querySelector('[data-close-detail]')?.addEventListener('click', closeInvoiceModal);
+    showFeedback(document.getElementById('payments-feedback'), getBillingErrorMessage(err), 'error');
   }
 }
 
@@ -1083,7 +1276,7 @@ function bindDetailActions(p) {
       await reload({ keepSelection: true, keepModalOpen: true });
       showFeedback(detailFeedback, 'Billing updated.', 'ok');
     } catch (err) {
-      showFeedback(detailFeedback, err.message || 'Could not save.', 'error');
+      showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
     } finally {
       btn.disabled = false;
     }
@@ -1102,7 +1295,7 @@ function bindDetailActions(p) {
       await reload({ keepSelection: true, keepModalOpen: true });
       showFeedback(pageFeedback, result.message || 'Invoice emailed.', 'ok');
     } catch (err) {
-      showFeedback(detailFeedback, err.message || 'Could not send email.', 'error');
+      showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
       btn.disabled = false;
       btn.innerHTML = label;
     }
@@ -1184,42 +1377,81 @@ function bindDetailActions(p) {
       if (!stillOpen) closeInvoiceModal();
       showFeedback(pageFeedback, result.message || `${type} recorded for ${fresh.guest_name}.`, 'ok');
     } catch (err) {
-      showFeedback(detailFeedback, err.message || 'Could not record payment.', 'error');
+      showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
       syncRecordPaymentUi(detailEl, fresh);
       btn.disabled = false;
       btn.innerHTML = label;
     }
   });
+
+  detailEl?.querySelector('[data-delete-invoice]')?.addEventListener('click', async (e) => {
+    const id = e.currentTarget.getAttribute('data-delete-invoice');
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    try {
+      await handleClearInvoice(id, {
+        closeModal: true,
+        feedbackEl: pageFeedback,
+      });
+    } catch {
+      btn.disabled = false;
+    }
+  });
 }
 
 function updateSummary() {
-  const open = state.payments.filter((x) => isOpenInvoice(x));
+  const pending = state.payments.filter((x) => isPendingInvoice(x));
+  const partial = state.payments.filter((x) => isPartialInvoice(x));
   const paid = state.payments.filter((x) => x.status === 'Paid');
-  const due = open.reduce((s, x) => s + balanceDue(x), 0);
-  const collected = state.payments.reduce((s, x) => s + paymentSummary(x).amount_paid, 0);
+  const open = state.payments.filter((x) => isOpenInvoice(x));
 
-  document.getElementById('invoice-due-total').textContent = fmt(due);
-  document.getElementById('invoice-due-count').textContent = `${open.length} open`;
-  document.getElementById('invoice-collected-total').textContent = fmt(collected);
-  document.getElementById('invoice-paid-count').textContent = `${paid.length} paid`;
+  const balanceDueTotal = open.reduce((s, x) => s + balanceDue(x), 0);
+  const partialPaidTotal = partial.reduce((s, x) => s + paymentSummary(x).amount_paid, 0);
+  const partialBalanceTotal = partial.reduce((s, x) => s + balanceDue(x), 0);
+  const collectedTotal = paid.reduce((s, x) => s + paymentSummary(x).amount_paid, 0);
+
+  document.getElementById('invoice-due-total').textContent = fmt(balanceDueTotal);
+  document.getElementById('invoice-due-count').textContent = `${open.length} open · ${pending.length} unpaid`;
+
+  const partialPaidEl = document.getElementById('invoice-partial-paid-total');
+  const partialCountEl = document.getElementById('invoice-partial-count');
+  if (partialPaidEl) partialPaidEl.textContent = fmt(partialPaidTotal);
+  if (partialCountEl) {
+    partialCountEl.textContent = partial.length
+      ? `${partial.length} guest${partial.length === 1 ? '' : 's'} · ${fmt(partialBalanceTotal)} still owed`
+      : 'No deposits or advances yet';
+  }
+
+  document.getElementById('invoice-collected-total').textContent = fmt(collectedTotal);
+  document.getElementById('invoice-paid-count').textContent = `${paid.length} fully paid`;
 
   document.querySelectorAll('[data-invoice-count]').forEach((el) => {
     const key = el.getAttribute('data-invoice-count');
-    el.textContent = String(key === 'pending' ? open.length : paid.length);
+    const counts = { pending: pending.length, partial: partial.length, paid: paid.length };
+    el.textContent = String(counts[key] ?? 0);
   });
+
+  syncClearPaidButton();
 }
 
 async function reload({ keepSelection = false, keepModalOpen = false } = {}) {
   const prevId = state.selectedId;
   const wasOpen = keepModalOpen && prevId;
-  state.payments = await getPayments();
-  updateSummary();
-  renderList();
+  const feedback = document.getElementById('payments-feedback');
 
-  if (wasOpen && state.payments.some((x) => String(x.id) === String(prevId))) {
-    await openInvoiceModal(prevId);
-  } else if (!keepModalOpen) {
-    closeInvoiceModal();
+  try {
+    state.payments = await getPayments();
+    updateSummary();
+    renderList();
+
+    if (wasOpen && state.payments.some((x) => String(x.id) === String(prevId))) {
+      await openInvoiceModal(prevId);
+    } else if (!keepModalOpen) {
+      closeInvoiceModal();
+    }
+  } catch (err) {
+    showFeedback(feedback, getBillingErrorMessage(err), 'error');
+    throw err;
   }
 }
 
@@ -1231,11 +1463,23 @@ export async function loadPaymentsPage() {
       state.activeFilter = btn.getAttribute('data-invoice-filter') || 'pending';
       closeInvoiceModal();
       document.querySelectorAll('[data-invoice-filter]').forEach((tab) => {
-        tab.classList.toggle('is-active', tab === btn);
+        const isActive = tab === btn;
+        tab.classList.toggle('is-active', isActive);
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
       });
       hideFeedback(feedback);
       renderList();
+      syncClearPaidButton();
     });
+  });
+
+  document.getElementById('billing-clear-paid')?.addEventListener('click', async () => {
+    hideFeedback(feedback);
+    try {
+      await handleClearAllPaid();
+    } catch {
+      /* feedback shown by handler */
+    }
   });
 
   document.addEventListener('keydown', (e) => {
@@ -1253,8 +1497,14 @@ export async function loadPaymentsPage() {
       listEl.innerHTML = `
         <div class="invoice-empty">
           <p class="invoice-empty__title">Could not load invoices</p>
-          <p class="invoice-empty__text">${escapeHtml(err.message)}</p>
+          <p class="invoice-empty__text">${escapeHtml(getBillingErrorMessage(err))}</p>
+          <button type="button" class="invoice-btn-secondary billing-list-retry">Try again</button>
         </div>`;
+      listEl.querySelector('.billing-list-retry')?.addEventListener('click', () => {
+        hideFeedback(feedback);
+        reload().catch(() => {});
+      });
     }
+    showFeedback(feedback, getBillingErrorMessage(err), 'error');
   }
 }
