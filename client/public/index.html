@@ -21,61 +21,103 @@
 <body class="lp-shell bg-background text-on-surface font-body-md overflow-x-hidden">
 
 <!-- NAV -->
-<header class="lp-nav fixed top-0 inset-x-0 z-50 bg-white/90 border-b border-outline-variant/20">
-  <div class="lp-nav-inner flex items-center justify-between gap-3 w-full px-4 sm:px-6 max-w-[1280px] mx-auto min-h-[4rem] h-16">
-    <a href="/" class="lp-nav-brand flex items-center gap-2 min-w-0 shrink">
-      <span class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shadow-sm shrink-0">
-        <span class="material-symbols-outlined text-white text-[18px]">apartment</span>
+<header class="lp-nav fixed top-0 inset-x-0 z-50 border-b border-outline-variant/15">
+  <div class="lp-nav-inner relative flex items-center gap-3 w-full px-4 sm:px-6 max-w-[1280px] mx-auto min-h-[4.25rem] h-[4.25rem]">
+    <a href="/" class="lp-nav-brand flex items-center gap-2.5 min-w-0 shrink-0 z-[1]">
+      <span class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/20 shrink-0">
+        <span class="material-symbols-outlined text-white text-[19px]">apartment</span>
       </span>
-      <span class="text-headline-sm font-bold text-primary tracking-tight truncate">AptSpace</span>
+      <span class="hidden sm:block min-w-0">
+        <span class="text-headline-sm font-bold text-primary tracking-tight block leading-tight">AptSpace</span>
+        <span class="text-[11px] text-on-surface-variant font-medium tracking-wide block truncate">APTS Housing</span>
+      </span>
     </a>
 
-    <nav class="lp-nav-links hidden md:flex items-center gap-7 shrink-0" aria-label="Primary">
-      <a class="text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#facilities">Facilities</a>
-      <a class="text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#how-it-works">How It Works</a>
-      <a class="text-label-md text-on-surface-variant hover:text-primary transition-colors" href="#contact">Contact</a>
+    <nav class="lp-nav-links hidden md:flex flex-1 justify-center items-center gap-1 px-2 min-w-0" aria-label="Primary">
+      <a class="lp-nav-link" href="#facilities" data-nav-section="facilities">Facilities</a>
+      <a class="lp-nav-link" href="#how-it-works" data-nav-section="how-it-works">How it works</a>
+      <a class="lp-nav-link" href="#contact" data-nav-section="contact">Contact</a>
     </nav>
 
-    <div class="lp-nav-actions flex items-center gap-2 shrink-0 ml-auto">
-      <div class="lp-nav-desktop-extras hidden lg:flex items-center gap-2">
-        <div class="flex items-center bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant/50 min-w-0 max-w-[11rem]">
-          <span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">search</span>
-          <input id="landing-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full ml-1 min-w-0" placeholder="Search facilities…" type="search" aria-label="Search facilities"/>
-        </div>
+    <div class="lp-nav-actions flex items-center gap-2 shrink-0 ml-auto md:ml-0 z-[1]">
+      <div class="lp-nav-desktop-extras hidden lg:flex items-center">
+        <label class="lp-nav-search group flex items-center gap-2 bg-surface-container-low/80 px-3.5 py-2 rounded-full border border-outline-variant/40 min-w-0 w-[12.5rem] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 transition-all">
+          <span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0 group-focus-within:text-primary transition-colors">search</span>
+          <input id="landing-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0 placeholder:text-on-surface-variant/70" placeholder="Search…" type="search" aria-label="Search facilities"/>
+        </label>
       </div>
 
       <button type="button" id="lp-menu-toggle" class="lp-menu-btn md:hidden" aria-label="Open menu" aria-expanded="false" aria-controls="lp-mobile-menu">
         <span class="material-symbols-outlined">menu</span>
       </button>
 
-      <a href="/login.html" class="lp-login-btn lp-magnetic inline-flex items-center justify-center px-4 sm:px-6 py-2.5 bg-primary text-white rounded-xl text-label-md font-semibold hover:bg-primary-container transition-colors shadow-md whitespace-nowrap">
+      <a href="/login.html" class="lp-login-btn lp-magnetic hidden sm:inline-flex items-center justify-center gap-1.5 px-5 py-2.5 bg-primary text-white rounded-full text-label-md font-semibold hover:bg-primary-container transition-all shadow-md shadow-primary/25 whitespace-nowrap">
         Sign in
+        <span class="material-symbols-outlined text-[17px]">arrow_forward</span>
       </a>
     </div>
   </div>
 
   <div id="lp-mobile-menu" class="lp-mobile-menu hidden md:hidden" aria-hidden="true">
-    <nav class="flex flex-col gap-1 p-4" aria-label="Mobile">
-      <a class="lp-mobile-link" href="#facilities">Facilities</a>
-      <a class="lp-mobile-link" href="#how-it-works">How It Works</a>
-      <a class="lp-mobile-link" href="#contact">Contact</a>
+    <nav class="flex flex-col gap-1 p-4 pb-5" aria-label="Mobile">
+      <a class="lp-mobile-link" href="#facilities" data-nav-section="facilities">
+        <span class="material-symbols-outlined text-[20px] text-primary/80">domain</span>
+        Facilities
+      </a>
+      <a class="lp-mobile-link" href="#how-it-works" data-nav-section="how-it-works">
+        <span class="material-symbols-outlined text-[20px] text-primary/80">route</span>
+        How it works
+      </a>
+      <a class="lp-mobile-link" href="#contact" data-nav-section="contact">
+        <span class="material-symbols-outlined text-[20px] text-primary/80">support_agent</span>
+        Contact
+      </a>
       <div class="pt-3 mt-2 border-t border-outline-variant/30">
-        <label class="text-label-sm text-on-surface-variant block mb-2" for="landing-search-mobile">Search facilities</label>
-        <input id="landing-search-mobile" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Search…" type="search"/>
+        <label class="text-label-sm text-on-surface-variant block mb-2 px-1" for="landing-search-mobile">Search facilities</label>
+        <div class="lp-nav-search flex items-center gap-2 bg-surface-container-low px-3 py-2.5 rounded-xl border border-outline-variant/40">
+          <span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">search</span>
+          <input id="landing-search-mobile" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0" placeholder="Chapel, GMC, basketball…" type="search"/>
+        </div>
       </div>
+      <a href="/login.html" class="lp-mobile-signin mt-4 inline-flex items-center justify-center gap-2 w-full py-3 bg-primary text-white rounded-xl font-semibold text-label-md shadow-md">
+        Sign in
+        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+      </a>
     </nav>
   </div>
 </header>
 
+<nav class="lp-section-scroller hidden xl:block" aria-label="Page sections">
+  <div class="lp-section-scroller-inner">
+    <a href="#hero" class="lp-section-scroller-item" data-nav-section="hero">
+      <span class="lp-section-scroller-label">Home</span>
+      <span class="lp-section-scroller-marker" aria-hidden="true"></span>
+    </a>
+    <a href="#facilities" class="lp-section-scroller-item" data-nav-section="facilities">
+      <span class="lp-section-scroller-label">Facilities</span>
+      <span class="lp-section-scroller-marker" aria-hidden="true"></span>
+    </a>
+    <a href="#how-it-works" class="lp-section-scroller-item" data-nav-section="how-it-works">
+      <span class="lp-section-scroller-label">How it works</span>
+      <span class="lp-section-scroller-marker" aria-hidden="true"></span>
+    </a>
+    <a href="#contact" class="lp-section-scroller-item" data-nav-section="contact">
+      <span class="lp-section-scroller-label">Contact</span>
+      <span class="lp-section-scroller-marker" aria-hidden="true"></span>
+    </a>
+  </div>
+</nav>
+
 <main class="lp-main">
 
   <!-- HERO -->
-  <section class="lp-hero relative flex items-center overflow-hidden">
-    <div
-      class="lp-hero-bg"
-      style="background-image: url('https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1920&q=80');"
-      aria-hidden="true"
-    ></div>
+  <section id="hero" class="lp-hero relative flex items-center overflow-hidden">
+    <div class="lp-hero-bg-wrap absolute inset-0" aria-hidden="true">
+      <div
+        class="lp-hero-bg"
+        style="background-image: url('https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1920&q=80');"
+      ></div>
+    </div>
     <div class="lp-hero-overlay" aria-hidden="true"></div>
     <div class="lp-hero-grid absolute inset-0 pointer-events-none" aria-hidden="true"></div>
     <div class="lp-hero-glow w-[420px] h-[420px] bg-primary/40 top-[-120px] right-[-80px]" aria-hidden="true"></div>
@@ -85,44 +127,61 @@
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-14 lg:gap-10 items-center">
 
         <div class="lp-gwill-hide">
-          <div class="lp-hero-badge inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 bg-white/10 mb-8 max-w-full">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)] shrink-0"></span>
-            <span class="text-white/85 text-label-sm uppercase tracking-widest sm:hidden">APTS Housing · Baguio</span>
-            <span class="text-white/85 text-label-sm uppercase tracking-widest hidden sm:inline">Asia Pacific Theological Seminary — Housing &amp; Facilities</span>
+          <div class="lp-hero-badge inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-white/20 bg-white/10 mb-8 max-w-full backdrop-blur-sm">
+            <span class="lp-hero-live-dot shrink-0" aria-hidden="true"></span>
+            <span class="material-symbols-outlined text-emerald-300/90 text-[16px] shrink-0">verified</span>
+            <span class="text-white/90 text-label-sm uppercase tracking-widest sm:hidden">APTS Housing · Baguio</span>
+            <span class="text-white/90 text-label-sm uppercase tracking-widest hidden sm:inline">Asia Pacific Theological Seminary — Housing &amp; Facilities</span>
           </div>
 
-          <h1 class="text-4xl sm:text-5xl lg:text-[3.35rem] font-bold leading-[1.08] text-white mb-6 tracking-tight">
+          <h1 class="text-4xl sm:text-5xl lg:text-[3.35rem] font-bold leading-[1.08] text-white mb-5 tracking-tight">
             <span class="lp-hero-line block">Book campus lodging</span>
-            <span class="lp-hero-line block text-primary-fixed-dim">&amp; venues in one place.</span>
+            <span class="lp-hero-line lp-hero-accent block">&amp; venues in one place.</span>
           </h1>
 
-          <p class="lp-hero-sub text-white/75 text-body-lg max-w-xl mb-10 leading-relaxed">
-            AptSpace is APTS&rsquo;s online booking portal — GMC guest rooms, conference halls, chapel, recreation spaces, and group stays. Sign in with your seminary account or approved guest access.
+          <p class="lp-hero-rule" aria-hidden="true"></p>
+
+          <p class="lp-hero-sub text-body-lg max-w-xl mb-9 leading-relaxed">
+            <span class="text-white/92">AptSpace is APTS&rsquo;s online booking portal for </span>
+            <span class="lp-hero-type-wrap">
+              <span id="lp-hero-typed" class="lp-hero-typed" aria-live="polite">GMC rooms</span><span class="lp-hero-type-cursor" aria-hidden="true"></span>
+            </span><span class="text-white/92">.</span>
+            <span class="lp-hero-sub-tail block mt-2.5 text-white/72 text-body-md sm:text-body-lg">
+              Sign in with your seminary account or approved guest access.
+            </span>
           </p>
 
-          <div class="lp-hero-cta flex flex-wrap gap-4 mb-12">
-            <a href="/login.html" class="lp-magnetic inline-flex items-center gap-2 px-8 py-4 bg-white text-primary rounded-xl font-bold text-label-md hover:bg-white/95 transition-all shadow-xl">
+          <div class="lp-hero-cta flex flex-wrap gap-3 sm:gap-4 mb-8">
+            <a href="/login.html" class="lp-hero-cta-primary lp-magnetic inline-flex items-center gap-2 px-7 sm:px-8 py-3.5 sm:py-4 bg-white text-primary rounded-full font-bold text-label-md hover:bg-white/95 transition-all shadow-xl shadow-black/15">
               Sign in to book
               <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
             </a>
-            <a href="#facilities" class="inline-flex items-center gap-2 px-8 py-4 border border-white/30 text-white rounded-xl font-medium text-label-md hover:bg-white/10 transition-all">
+            <a href="#facilities" class="lp-hero-cta-secondary inline-flex items-center gap-2 px-7 sm:px-8 py-3.5 sm:py-4 border border-white/35 text-white rounded-full font-medium text-label-md hover:bg-white/10 hover:border-white/50 transition-all backdrop-blur-sm">
               See what&rsquo;s bookable
               <span class="material-symbols-outlined text-[18px]">arrow_downward</span>
             </a>
           </div>
 
+          <div class="lp-hero-tags flex flex-wrap gap-2 mb-8" aria-label="Quick links">
+            <a href="#facilities" class="lp-hero-tag">Rooms</a>
+            <a href="#facilities" class="lp-hero-tag">Venues</a>
+            <a href="#facilities" class="lp-hero-tag">Group stays</a>
+          </div>
+
           <div class="grid grid-cols-2 gap-3 max-w-md">
-            <div class="lp-stat rounded-xl px-4 py-4">
-              <p class="text-2xl font-bold text-white"><span data-count="30" data-suffix="+">30+</span></p>
-              <p class="text-white/55 text-label-sm mt-0.5">GMC lodging units</p>
+            <div class="lp-stat rounded-2xl px-4 py-4">
+              <span class="material-symbols-outlined text-white/45 text-[20px] mb-2 block">bed</span>
+              <p class="text-2xl font-bold text-white leading-none"><span data-count="30" data-suffix="+">30+</span></p>
+              <p class="text-white/55 text-label-sm mt-1.5">GMC lodging units</p>
             </div>
-            <div class="lp-stat rounded-xl px-4 py-4">
-              <p class="text-2xl font-bold text-white"><span data-count="15" data-suffix="+">15+</span></p>
-              <p class="text-white/55 text-label-sm mt-0.5">Campus venues</p>
+            <div class="lp-stat rounded-2xl px-4 py-4">
+              <span class="material-symbols-outlined text-white/45 text-[20px] mb-2 block">location_city</span>
+              <p class="text-2xl font-bold text-white leading-none"><span data-count="15" data-suffix="+">15+</span></p>
+              <p class="text-white/55 text-label-sm mt-1.5">Campus venues</p>
             </div>
           </div>
 
-          <div class="lp-hero-mobile-visual mt-8 lg:hidden rounded-2xl overflow-hidden border border-white/20 shadow-xl max-h-48">
+          <div class="lp-hero-mobile-visual mt-8 lg:hidden rounded-2xl overflow-hidden border border-white/20 shadow-xl max-h-52">
             <img
               src="https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80"
               alt="APTS campus"
@@ -131,6 +190,7 @@
               loading="eager"
               class="w-full h-full object-cover"
             />
+            <div class="lp-hero-mobile-caption absolute inset-x-0 bottom-0 px-4 py-3 text-label-sm text-white/90 font-medium">Baguio City campus</div>
           </div>
         </div>
 
@@ -143,26 +203,35 @@
               height="1125"
               loading="eager"
             />
+            <div class="lp-hero-visual-label absolute top-4 left-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/35 backdrop-blur-md border border-white/15 text-white text-label-sm font-medium">
+              <span class="material-symbols-outlined text-[15px]">photo_camera</span>
+              On campus
+            </div>
           </div>
-          <div class="lp-hero-float w-36 h-28 bottom-8 -left-6">
+          <div class="lp-hero-float lp-hero-float-a w-36 h-28 bottom-8 -left-6">
             <img src="https://images.unsplash.com/photo-1498243691581-b145c3f44a6a?auto=format&fit=crop&w=400&q=80" alt="" width="400" height="300" loading="lazy"/>
           </div>
-          <div class="lp-hero-float w-44 h-32 -top-4 right-4">
+          <div class="lp-hero-float lp-hero-float-b w-44 h-32 -top-4 right-4">
             <img src="https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=500&q=80" alt="" width="500" height="350" loading="lazy"/>
           </div>
-          <div class="absolute -bottom-4 right-8 bg-white/95 backdrop-blur rounded-2xl px-5 py-4 shadow-2xl border border-white/50 max-w-[220px]">
-            <p class="text-label-sm text-primary font-bold uppercase tracking-wider mb-1">Now booking</p>
-            <p class="text-body-sm text-on-surface-variant">FY2026 rates · Lodging &amp; venue bookings</p>
+          <div class="lp-hero-booking-card absolute -bottom-4 right-8 flex items-start gap-3 rounded-2xl px-5 py-4 max-w-[240px]">
+            <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-primary text-[20px]">event_available</span>
+            </span>
+            <div class="min-w-0">
+              <p class="text-label-sm text-primary font-bold uppercase tracking-wider mb-0.5">Now booking</p>
+              <p class="text-body-sm text-on-surface-variant leading-snug">FY2026 rates · Lodging &amp; venue bookings</p>
+            </div>
           </div>
         </div>
 
       </div>
     </div>
 
-    <div class="lp-scroll-hint absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-white/40 lp-gwill-hide">
-      <span class="text-[10px] uppercase tracking-[0.2em]">Scroll</span>
-      <span class="material-symbols-outlined text-[22px]">keyboard_arrow_down</span>
-    </div>
+    <a href="#facilities" class="lp-scroll-hint xl:hidden absolute bottom-8 left-1/2 flex flex-col items-center gap-1 text-white/45 hover:text-white/70 transition-colors lp-gwill-hide" aria-label="Scroll to facilities">
+      <span class="text-[10px] uppercase tracking-[0.2em]">Explore</span>
+      <span class="material-symbols-outlined text-[22px] lp-scroll-hint-icon">keyboard_arrow_down</span>
+    </a>
   </section>
 
   <!-- TRUST -->
@@ -202,11 +271,11 @@
 
       <div class="lp-facilities-grid grid grid-cols-1 md:grid-cols-12 gap-5">
 
-        <a href="/login.html" class="lp-facility-card md:col-span-7 md:min-h-[22rem] group block" data-facility-name="Guest Houses Global Missions Center rooms dorm">
-          <img src="https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1400&q=80" alt="Guest house room interior" loading="lazy"/>
+        <a href="/login.html" class="lp-facility-card md:col-span-7 md:min-h-[22rem] group block" data-facility-name="Rooms Global Missions Center GMC dorm lodging">
+          <img src="https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1400&q=80" alt="GMC room interior" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
             <span class="inline-block w-fit px-3 py-1 bg-white/15 text-white text-label-sm rounded-full mb-3 backdrop-blur-sm">Global Missions Center</span>
-            <h3 class="text-white text-2xl font-bold mb-2">Guest Houses</h3>
+            <h3 class="text-white text-2xl font-bold mb-2">Rooms</h3>
             <p class="text-white/75 text-body-sm mb-4 max-w-md">Superior, standard, deluxe, and dorm units at GMC — for individuals, families, and ministry groups.</p>
             <span class="inline-flex items-center gap-1 text-white font-label-md group-hover:gap-3 transition-all">
               View rooms <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -398,46 +467,32 @@
 </main>
 
 <!-- FOOTER -->
-<footer class="bg-white border-t border-outline-variant/30 py-14">
-  <div class="max-w-[1280px] mx-auto lp-page-gutter sm:px-6 grid grid-cols-1 md:grid-cols-4 gap-12">
-    <div class="md:col-span-1">
-      <div class="flex items-center gap-2 mb-4">
-        <span class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center">
+<footer class="bg-white border-t border-outline-variant/30 py-10">
+  <div class="max-w-[1280px] mx-auto lp-page-gutter sm:px-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 pb-8 border-b border-outline-variant/20">
+      <div class="flex items-start gap-3 min-w-0">
+        <span class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0">
           <span class="material-symbols-outlined text-white text-[18px]">apartment</span>
         </span>
-        <span class="text-headline-sm font-bold text-primary">AptSpace</span>
+        <div class="min-w-0">
+          <p class="text-headline-sm font-bold text-primary">AptSpace</p>
+          <p class="text-body-sm text-on-surface-variant mt-1 leading-relaxed max-w-md">Housing and facilities booking for Asia Pacific Theological Seminary.</p>
+        </div>
       </div>
-      <p class="text-body-sm text-on-surface-variant mb-6 leading-relaxed">Official housing and facilities booking portal for Asia Pacific Theological Seminary.</p>
+      <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-body-sm shrink-0">
+        <a class="text-on-surface-variant hover:text-primary transition-colors" href="mailto:facilities@apts.edu.ph">facilities@apts.edu.ph</a>
+        <span class="hidden sm:inline text-outline-variant/60" aria-hidden="true">·</span>
+        <a class="font-semibold text-primary hover:text-primary-container transition-colors" href="/login.html">Sign in</a>
+        <span class="hidden sm:inline text-outline-variant/60" aria-hidden="true">·</span>
+        <a class="text-on-surface-variant hover:text-primary transition-colors" href="https://apts.edu.ph" target="_blank" rel="noopener noreferrer">apts.edu.ph</a>
+      </div>
     </div>
-    <div>
-      <h6 class="text-label-md font-bold text-on-surface mb-5 uppercase tracking-wider">Explore</h6>
-      <ul class="space-y-3">
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#facilities">Bookable facilities</a></li>
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#how-it-works">How booking works</a></li>
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="/login.html">Sign in</a></li>
-      </ul>
-    </div>
-    <div>
-      <h6 class="text-label-md font-bold text-on-surface mb-5 uppercase tracking-wider">Support</h6>
-      <ul class="space-y-3">
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#contact">Contact facilities</a></li>
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="mailto:facilities@apts.edu.ph">facilities@apts.edu.ph</a></li>
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="/login.html">Account &amp; login help</a></li>
-      </ul>
-    </div>
-    <div>
-      <h6 class="text-label-md font-bold text-on-surface mb-5 uppercase tracking-wider">Campus</h6>
-      <ul class="space-y-3">
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="https://apts.edu.ph" target="_blank" rel="noopener noreferrer">APTS website</a></li>
-        <li><span class="text-body-sm text-on-surface-variant">17 Falkland St, Baguio City</span></li>
-      </ul>
-    </div>
-  </div>
-  <div class="max-w-[1280px] mx-auto lp-page-gutter sm:px-6 mt-12 pt-8 border-t border-outline-variant/20 flex flex-col md:flex-row justify-between items-center gap-4">
-    <p class="text-label-sm text-on-surface-variant">© 2026 Asia Pacific Theological Seminary. All rights reserved.</p>
-    <div class="flex items-center gap-2 text-label-sm text-on-surface-variant">
-      <span class="material-symbols-outlined text-[14px]">location_on</span>
-      Baguio City, Philippines
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 text-label-sm text-on-surface-variant">
+      <p>© 2026 Asia Pacific Theological Seminary. All rights reserved.</p>
+      <p class="flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[14px]">location_on</span>
+        17 Falkland St, Baguio City, Philippines
+      </p>
     </div>
   </div>
 </footer>
