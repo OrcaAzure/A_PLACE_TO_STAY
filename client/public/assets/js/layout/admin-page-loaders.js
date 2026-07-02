@@ -159,9 +159,10 @@ async function bootResidents() {
 }
 
 async function bootPayments() {
-  const { loadPaymentsPage } = await import('/assets/js/features/admin-payments.js');
+  const { loadPaymentsPage, teardownPaymentsPage } = await import('/assets/js/features/admin-payments.js');
   await loadPaymentsPage();
   await initAdminEnhancements();
+  return () => teardownPaymentsPage();
 }
 
 async function bootSettings() {

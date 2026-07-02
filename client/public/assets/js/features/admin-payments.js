@@ -3,6 +3,7 @@
  */
 
 import { getPayments, getPaymentById, updatePayment, sendPaymentInvoice, recordPaymentTransaction, deletePayment, clearPaidPayments } from '/assets/js/services/api.js';
+import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer', 'Waived'];
@@ -13,6 +14,12 @@ const state = {
   activeFilter: 'pending',
   selectedId: null,
 };
+
+/** @type {(() => void) | null} */
+let stopBookingPoll = null;
+/** @type {(() => void) | null} */
+let onBookingUpdated = null;
+let paymentsPageBound = false;
 
 function escapeHtml(str) {
   if (str == null) return '';
@@ -1434,7 +1441,7 @@ function updateSummary() {
   syncClearPaidButton();
 }
 
-async function reload({ keepSelection = false, keepModalOpen = false } = {}) {
+async function reload({ keepSelection = false, keepModalOpen = false, background = false } = {}) {
   const prevId = state.selectedId;
   const wasOpen = keepModalOpen && prevId;
   const feedback = document.getElementById('payments-feedback');
@@ -1450,12 +1457,16 @@ async function reload({ keepSelection = false, keepModalOpen = false } = {}) {
       closeInvoiceModal();
     }
   } catch (err) {
+    if (background) return;
     showFeedback(feedback, getBillingErrorMessage(err), 'error');
     throw err;
   }
 }
 
-export async function loadPaymentsPage() {
+function bindPaymentsPageEvents() {
+  if (paymentsPageBound) return;
+  paymentsPageBound = true;
+
   const feedback = document.getElementById('payments-feedback');
 
   document.querySelectorAll('[data-invoice-filter]').forEach((btn) => {
@@ -1488,6 +1499,21 @@ export async function loadPaymentsPage() {
   });
 
   getModal()?.querySelector('.billing-modal__backdrop')?.addEventListener('click', closeInvoiceModal);
+}
+
+export function teardownPaymentsPage() {
+  stopBookingPoll?.();
+  stopBookingPoll = null;
+  if (onBookingUpdated) {
+    window.removeEventListener('booking:updated', onBookingUpdated);
+    onBookingUpdated = null;
+  }
+  paymentsPageBound = false;
+}
+
+export async function loadPaymentsPage() {
+  const feedback = document.getElementById('payments-feedback');
+  bindPaymentsPageEvents();
 
   try {
     await reload();
@@ -1507,4 +1533,16 @@ export async function loadPaymentsPage() {
     }
     showFeedback(feedback, getBillingErrorMessage(err), 'error');
   }
+
+  if (onBookingUpdated) {
+    window.removeEventListener('booking:updated', onBookingUpdated);
+  }
+  onBookingUpdated = () => reload({ keepSelection: true, keepModalOpen: true, background: true });
+  window.addEventListener('booking:updated', onBookingUpdated);
+  stopBookingPoll?.();
+  stopBookingPoll = createBookingPoll(() => reload({
+    keepSelection: true,
+    keepModalOpen: true,
+    background: true,
+  }));
 }
