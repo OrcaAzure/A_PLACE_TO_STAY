@@ -11,6 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/assets/css/global/landing.css"/>
+  <link rel="stylesheet" href="/assets/css/global/landing-preloader.css"/>
   <style>
     .material-symbols-outlined {
       font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -18,7 +19,13 @@
     }
   </style>
 </head>
-<body class="lp-shell bg-background text-on-surface font-body-md overflow-x-hidden">
+<body class="lp-shell bg-background text-on-surface font-body-md overflow-x-hidden lp-preloader-active">
+
+<div id="lp-preloader" class="lp-preloader" role="status" aria-live="polite" aria-label="Loading AptSpace">
+  <div class="lp-preloader-surface" aria-hidden="true"></div>
+  <div class="lp-preloader-circle" aria-hidden="true"></div>
+  <p class="lp-preloader-word" id="lp-preloader-word">Hello</p>
+</div>
 
 <!-- NAV -->
 <header class="lp-nav fixed top-0 inset-x-0 z-50 border-b border-outline-variant/15">
@@ -256,6 +263,19 @@
     </div>
   </section>
 
+  <!-- SCROLL TEXT -->
+  <section class="lp-scroll-text-band lp-scroll-text-band--light" aria-label="Campus booking highlights">
+    <div class="lp-scroll-text-stage">
+      <div class="lp-scroll-text-pin">
+        <p class="lp-scroll-text-hint" aria-hidden="true">Scroll</p>
+        <p class="lp-scroll-text-display">
+          <span class="lp-scroll-text-line block" data-scroll-line>Rooms, venues,</span>
+          <span class="lp-scroll-text-line lp-scroll-text-accent block" data-scroll-line>and group stays</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
   <!-- FACILITIES -->
   <section id="facilities" class="lp-section-mobile py-24 lg:py-28 bg-white">
     <div class="max-w-[1280px] mx-auto lp-page-gutter sm:px-6">
@@ -377,6 +397,19 @@
           <h3 class="text-headline-sm font-bold text-on-surface mb-2">Pay &amp; confirm</h3>
           <p class="text-body-sm text-on-surface-variant leading-relaxed">Once approved, complete payment (GCash, cash, or bank transfer) and receive your invoice by email.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCROLL TEXT -->
+  <section class="lp-scroll-text-band lp-scroll-text-band--dark" aria-label="Call to explore">
+    <div class="lp-scroll-text-stage">
+      <div class="lp-scroll-text-pin">
+        <p class="lp-scroll-text-hint" aria-hidden="true">Scroll</p>
+        <p class="lp-scroll-text-display">
+          <span class="lp-scroll-text-line block" data-scroll-line>One portal</span>
+          <span class="lp-scroll-text-line lp-scroll-text-accent block" data-scroll-line>for all of campus</span>
+        </p>
       </div>
     </div>
   </section>
@@ -508,10 +541,13 @@
 </div>
 
 <script type="module">
-  import { redirectIfLoggedIn } from '/assets/js/services/auth.js';
+  import { runLandingPreloader } from '/assets/js/layout/landing-preloader.js';
   import { initLandingPage } from '/assets/js/layout/landing.js';
+  import { redirectIfLoggedIn } from '/assets/js/services/auth.js';
 
-  redirectIfLoggedIn();
+  await runLandingPreloader();
+
+  redirectIfLoggedIn().catch(() => {});
   initLandingPage();
 </script>
 

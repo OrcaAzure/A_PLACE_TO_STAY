@@ -111,6 +111,9 @@ function revealStatic() {
       clearProps: 'all',
     });
   }
+  document.querySelectorAll('.lp-scroll-char').forEach((el) => {
+    el.style.removeProperty('transform');
+  });
 }
 
 export function initMobileMenu() {
@@ -265,6 +268,86 @@ function initSmoothAnchors() {
   });
 }
 
+function splitScrollTextLines(container) {
+  if (container.dataset.split === '1') return;
+
+  const allChars = [];
+  container.querySelectorAll('[data-scroll-line]').forEach((line) => {
+    const text = line.textContent;
+    line.textContent = '';
+    [...text].forEach((char) => {
+      const span = document.createElement('span');
+      const isSpace = char === ' ' || char === '\u00A0';
+      span.className = `lp-scroll-char${isSpace ? ' lp-scroll-char--space' : ''}`;
+      span.textContent = isSpace ? '\u00A0' : char;
+      if (isSpace) span.setAttribute('aria-hidden', 'true');
+      line.appendChild(span);
+      allChars.push(span);
+    });
+  });
+
+  const centerIndex = Math.floor(allChars.length / 2);
+  allChars.forEach((span, index) => {
+    span.dataset.distance = String(index - centerIndex);
+  });
+
+  container.dataset.split = '1';
+}
+
+function applyScrollCharProgress(chars, progress) {
+  const p = Math.min(Math.max(progress, 0), 1);
+  chars.forEach((charEl) => {
+    const distance = Number(charEl.dataset.distance) || 0;
+    const spread = 1 - p;
+    const x = distance * 55 * spread;
+    const rotateX = distance * 45 * spread;
+    charEl.style.transform = `translate3d(${x}px, 0, 0) rotateX(${rotateX}deg)`;
+  });
+}
+
+function initScrollTextBands(gsap, ScrollTrigger) {
+  const stages = document.querySelectorAll('.lp-scroll-text-stage');
+  if (!stages.length || !ScrollTrigger) return;
+
+  const instances = [];
+
+  stages.forEach((stage) => {
+    const display = stage.querySelector('.lp-scroll-text-display');
+    const hint = stage.querySelector('.lp-scroll-text-hint');
+    if (!display) return;
+
+    splitScrollTextLines(display);
+    const chars = [...display.querySelectorAll('.lp-scroll-char')];
+    if (!chars.length) return;
+
+    if (prefersReducedMotion()) {
+      applyScrollCharProgress(chars, 1);
+      if (hint) hint.style.display = 'none';
+      return;
+    }
+
+    const update = (progress) => {
+      const assemble = Math.min(progress / 0.5, 1);
+      applyScrollCharProgress(chars, assemble);
+      if (hint) hint.style.opacity = assemble > 0.4 ? '0' : '1';
+    };
+
+    const st = ScrollTrigger.create({
+      trigger: stage,
+      start: 'top top',
+      end: 'bottom bottom',
+      scrub: 0.45,
+      invalidateOnRefresh: true,
+      onUpdate: (self) => update(self.progress),
+    });
+
+    update(st.progress);
+    instances.push(st);
+  });
+
+  return instances;
+}
+
 function animateCounters(gsap) {
   document.querySelectorAll('[data-count]').forEach((el) => {
     const raw = el.dataset.count;
@@ -298,6 +381,11 @@ export async function initLandingPage() {
   });
 
   if (prefersReducedMotion()) {
+    document.querySelectorAll('.lp-scroll-text-display').forEach((display) => {
+      splitScrollTextLines(display);
+      applyScrollCharProgress([...display.querySelectorAll('.lp-scroll-char')], 1);
+    });
+    document.querySelectorAll('.lp-scroll-text-hint').forEach((h) => { h.style.display = 'none'; });
     revealStatic();
     return;
   }
@@ -309,6 +397,10 @@ export async function initLandingPage() {
   try {
     gsap = await loadGsapWithScrollTrigger();
   } catch {
+    document.querySelectorAll('.lp-scroll-text-display').forEach((display) => {
+      splitScrollTextLines(display);
+      applyScrollCharProgress([...display.querySelectorAll('.lp-scroll-char')], 1);
+    });
     revealStatic();
     return;
   }
@@ -454,6 +546,8 @@ export async function initLandingPage() {
       gsap.to(btn, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.5)' });
     });
   });
+
+  initScrollTextBands(gsap, ST);
 
   ST?.refresh();
 }

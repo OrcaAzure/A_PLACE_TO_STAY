@@ -1,0 +1,117 @@
+/* Landing page — greeting preloader + circle reveal */
+
+body.lp-preloader-active {
+  overflow: hidden;
+}
+
+body.lp-preloader-active > :not(#lp-preloader) {
+  visibility: hidden;
+}
+
+.lp-preloader {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  overflow: hidden;
+  pointer-events: auto;
+  background: #ffffff;
+  opacity: 1;
+  transition: opacity 0.48s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lp-preloader.is-exiting {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lp-preloader-surface {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: #ffffff;
+}
+
+/* Hidden during greetings — only appears for the wipe */
+.lp-preloader-circle {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  z-index: 2;
+  width: 165vmax;
+  height: 165vmax;
+  border-radius: 50%;
+  background: #1a365d;
+  opacity: 0;
+  transform: translate(-50%, 118%);
+  will-change: transform, opacity;
+  transition: none;
+  pointer-events: none;
+}
+
+.lp-preloader.is-wiping .lp-preloader-circle {
+  opacity: 1;
+  transform: translate(-50%, -50%);
+  transition:
+    transform 0.92s cubic-bezier(0.33, 1, 0.68, 1),
+    opacity 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lp-preloader-word {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  z-index: 10;
+  margin: 0;
+  padding: 0 1.5rem;
+  text-align: center;
+  font-family: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  font-size: clamp(1.875rem, 5.5vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: #1a365d;
+  transform: translateY(-50%);
+  opacity: 1;
+  pointer-events: none;
+  transition:
+    opacity 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.lp-preloader-word.is-out {
+  opacity: 0;
+  transform: translateY(calc(-50% + 12px));
+}
+
+.lp-preloader-word.is-in {
+  animation: lp-preloader-in 0.32s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes lp-preloader-in {
+  from {
+    opacity: 0;
+    transform: translateY(calc(-50% - 12px));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-preloader.is-wiping .lp-preloader-circle {
+    transition-duration: 0.25s;
+  }
+
+  .lp-preloader.is-exiting {
+    transition-duration: 0.15s;
+  }
+
+  .lp-preloader-word {
+    transition: none;
+  }
+
+  .lp-preloader-word.is-in {
+    animation: none;
+  }
+}
