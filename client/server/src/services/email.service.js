@@ -328,7 +328,7 @@ export async function sendVenueInvoiceEmail(user, payment) {
     html: `
       <h2>Your Venue Invoice</h2>
       <p>Hi ${name},</p>
-      <p>Your <strong>facility / venue reservation</strong> has been approved. This email is your venue invoice — not a room lodging bill.</p>
+      <p>Your <strong>facility / venue reservation</strong> has been approved. This email is your venue invoice </p>
       <p><strong>Invoice #${payment.id}</strong> · Booking #${payment.facility_booking_id || '—'}</p>
       <ul>
         <li><strong>Venue:</strong> ${venue}</li>
