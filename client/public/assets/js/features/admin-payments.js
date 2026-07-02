@@ -104,8 +104,17 @@ function formatTime12(t) {
 }
 
 function venueLabel(p) {
-  const parts = [p.facility_category, p.facility_room_code || p.facility_name].filter(Boolean);
+  const category = String(p.facility_category || '').trim();
+  const roomOrName = String(p.facility_room_code || p.facility_name || '').trim();
+  if (category && roomOrName && category.toLowerCase() === roomOrName.toLowerCase()) {
+    return category;
+  }
+  const parts = [category, roomOrName].filter(Boolean);
   return parts.join(' · ') || 'Venue';
+}
+
+function venueChargeDetail(p, text) {
+  return text || venueLabel(p);
 }
 
 function venueShort(p) {
@@ -238,7 +247,10 @@ function readBillingFormValues(form, subtotal = 0) {
 }
 
 function getFormSubtotal(form) {
-  const el = form?.querySelector('[data-subtotal-input]');
+  if (!form) return 0;
+  const attr = form.getAttribute('data-subtotal');
+  if (attr != null && attr !== '') return Number(attr) || 0;
+  const el = form.querySelector('[data-subtotal-input]');
   if (!el) return 0;
   return parseFloat(String(el.value || '').replace(/[^\d.]/g, '')) || 0;
 }
@@ -375,7 +387,7 @@ function venueChargeLines(p) {
         lines.push({
           icon: 'meeting_room',
           label: `${packageHours}-hour package`,
-          detail: `${venueLabel(p)} · ${packageLabel}`,
+          detail: venueChargeDetail(p, packageLabel),
           amount: rate,
         });
       } else {
@@ -385,7 +397,7 @@ function venueChargeLines(p) {
         lines.push({
           icon: 'meeting_room',
           label: `${packageHours}-hour package`,
-          detail: `${venueLabel(p)} · ${packageLabel}`,
+          detail: venueChargeDetail(p, packageLabel),
           amount: rate,
         });
         lines.push({
@@ -401,18 +413,17 @@ function venueChargeLines(p) {
       lines.push({
         icon: 'schedule',
         label: 'Venue rental',
-        detail: `${fmt(rate)}/hr × ${billedHours} hr · ${venueLabel(p)}`,
+        detail: venueChargeDetail(p, `${fmt(rate)}/hr × ${billedHours} hr`),
         amount,
       });
     }
   }
 
   if (!lines.length && bookingTotal > 0) {
-    const time = [formatTime12(p.start_time), formatTime12(p.end_time)].filter(Boolean).join(' – ');
     lines.push({
       icon: 'meeting_room',
       label: p.facility_name || 'Venue rental',
-      detail: `${venueLabel(p)}${time ? ` · ${time}` : ''} · ${p.guest_count || 1} guest${Number(p.guest_count) === 1 ? '' : 's'}`,
+      detail: venueChargeDetail(p, [formatTime12(p.start_time), formatTime12(p.end_time)].filter(Boolean).join(' – ') || `${p.guest_count || 1} guest${Number(p.guest_count) === 1 ? '' : 's'}`),
       amount: bookingTotal,
     });
   }
@@ -478,6 +489,7 @@ function renderChargeTable(p) {
   const subtotal = Number(p.subtotal ?? bookingTotal ?? 0);
   const discount = Number(p.discount_amount || 0);
   const percent = discountPercent(subtotal, discount);
+  const due = computeDue(subtotal, discount);
   const rows = lines.map((line) => `
     <tr>
       <td>
@@ -508,6 +520,10 @@ function renderChargeTable(p) {
           <td>Discount${percent > 0 ? ` (${percent}%)` : ''}${p.discount_note ? ` — ${escapeHtml(p.discount_note)}` : ''}</td>
           <td class="billing-charge-amount">−${fmt(discount)}</td>
         </tr>` : ''}
+        <tr class="billing-charges-due">
+          <td>Amount due</td>
+          <td class="billing-charge-amount">${fmt(due)}</td>
+        </tr>
       </tfoot>
     </table>`;
 }
@@ -648,14 +664,8 @@ function renderBillingColumn(p, { isPending }) {
         <span class="material-symbols-outlined" aria-hidden="true">edit_note</span>
         Adjust invoice
       </h4>
-      <p class="billing-panel__lead">Booking is already approved. Set discount if needed, then save.</p>
 
-      <form class="billing-edit-form" data-detail-form="${p.id}">
-        <label class="billing-edit-form__field billing-edit-form__field--subtotal">
-          <span>Subtotal</span>
-          <input type="text" class="billing-edit-form__input billing-edit-form__input--amount" data-subtotal-input value="${fmt(subtotal)}" disabled />
-        </label>
-
+      <form class="billing-edit-form" data-detail-form="${p.id}" data-subtotal="${subtotal}">
         <div class="billing-discount-block">
           <span class="billing-discount-block__label">Discount</span>
           <div class="billing-discount-mode" role="radiogroup" aria-label="Discount type">
@@ -692,11 +702,23 @@ function renderBillingColumn(p, { isPending }) {
           <input type="text" class="billing-edit-form__input" name="discount_note" maxlength="255"
             placeholder="e.g. Staff rate, ministry partner" value="${escapeHtml(p.discount_note || '')}" />
         </label>
-        <div class="billing-detail-total${isWaived ? ' billing-detail-total--waived' : ''}" data-due-display>
-          <span>${isWaived ? 'Complimentary — no amount due' : 'Amount due after discount'}</span>
-          <strong>${fmt(due)}</strong>
+
+        <div class="billing-edit-footer">
+          <div class="billing-detail-total billing-detail-total--inline${isWaived ? ' billing-detail-total--waived' : ''}" data-due-display>
+            <span>${isWaived ? 'Complimentary' : 'Amount due'}</span>
+            <strong>${fmt(due)}</strong>
+          </div>
+          <div class="billing-edit-footer__actions">
+            <label class="billing-edit-form__field billing-record-method${isWaived ? ' hidden' : ''}" data-record-method-field${isWaived ? ' hidden' : ''}>
+              <span>Payment method</span>
+              <select class="billing-edit-form__input" data-pay-method="${p.id}">
+                <option value="">Select how guest paid…</option>
+                ${methodOptions}
+              </select>
+            </label>
+            <button type="submit" class="invoice-btn-secondary billing-edit-footer__save">Save changes</button>
+          </div>
         </div>
-        <button type="submit" class="invoice-btn-secondary">Save changes</button>
       </form>
     </section>
 
@@ -721,16 +743,7 @@ function renderBillingColumn(p, { isPending }) {
         <span class="material-symbols-outlined" aria-hidden="true">payments</span>
         Record payment
       </h4>
-      <p class="billing-panel__lead">Mark this bill as paid after payment is received. A receipt is emailed to the guest.</p>
       <p class="billing-record-summary" data-record-summary>${recordSummaryHtml(p, due, '')}</p>
-
-      <label class="billing-edit-form__field billing-record-method${isWaived ? ' hidden' : ''}" data-record-method-field${isWaived ? ' hidden' : ''}>
-        <span>Payment method</span>
-        <select class="billing-edit-form__input" data-pay-method="${p.id}">
-          <option value="">Select how guest paid…</option>
-          ${methodOptions}
-        </select>
-      </label>
 
       <label class="billing-record-check" data-record-check>
         <input type="checkbox" data-approve-check />
@@ -785,7 +798,7 @@ function updateLiveDue(form) {
 
   dueStrong.textContent = fmt(due);
   if (dueLabel) {
-    dueLabel.textContent = isWaived ? 'Complimentary — no amount due' : 'Amount due after discount';
+    dueLabel.textContent = isWaived ? 'Complimentary' : 'Amount due';
   }
   dueEl?.classList.toggle('billing-detail-total--waived', isWaived);
 
