@@ -4,6 +4,7 @@
 
 import { getVenueScheduleOverview } from '/assets/js/services/api.js';
 import { venueEventPhase } from '/assets/js/features/reservation-shared.js';
+import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
 const state = {
   date: '',
@@ -25,6 +26,8 @@ const VENUE_SHOW_LABELS = {
 let venueBoardInitialized = false;
 /** @type {(() => void) | null} */
 let onBookingUpdated = null;
+/** @type {(() => void) | null} */
+let stopBookingPoll = null;
 
 function escapeHtml(str) {
   if (str == null) return '';
@@ -393,7 +396,7 @@ function setShowFilter(mode) {
   renderSchedule();
 }
 
-async function loadSchedule(date) {
+async function loadSchedule(date, { background = false } = {}) {
   readSlotInputs();
   state.date = date || state.date || dateOnly();
   state.scheduleError = '';
@@ -412,9 +415,11 @@ async function loadSchedule(date) {
     return;
   }
 
-  state.scheduleLoading = true;
-  updateSchedulePlanUi();
-  renderSchedule();
+  if (!background) {
+    state.scheduleLoading = true;
+    updateSchedulePlanUi();
+    renderSchedule();
+  }
 
   try {
     state.data = await getVenueScheduleOverview(state.date, {
@@ -531,6 +536,8 @@ export function initVenueScheduleBoard() {
 }
 
 export function teardownVenueScheduleBoard() {
+  stopBookingPoll?.();
+  stopBookingPoll = null;
   if (onBookingUpdated) {
     window.removeEventListener('booking:updated', onBookingUpdated);
     onBookingUpdated = null;
@@ -542,6 +549,11 @@ export async function bootstrapVenueScheduleBoard() {
   initVenueScheduleBoard();
   const dateParam = new URLSearchParams(window.location.search).get('date');
   await loadSchedule(dateParam || dateOnly());
+  stopBookingPoll?.();
+  stopBookingPoll = createBookingPoll(
+    () => loadSchedule(state.date, { background: true }),
+    { shouldPoll: () => Boolean(state.date) },
+  );
 }
 
 export function refreshVenueScheduleBoard() {

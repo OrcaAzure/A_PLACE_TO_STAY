@@ -4,6 +4,7 @@
 
 import { initAdminEnhancements, releaseChromeBoot } from '/assets/js/layout/animations.js';
 import { teardownGuestAccessPage } from '/assets/js/features/admin-guest-access.js';
+import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
 /** @type {(() => void) | null} */
 let pageCleanup = null;
@@ -49,10 +50,14 @@ export async function bootAdminPage(pageName) {
 async function bootDashboard() {
   const { loadDashboard } = await import('/assets/js/features/dashboard.js');
   await loadDashboard();
-  const onUpdate = () => loadDashboard();
+  const onUpdate = () => loadDashboard({ background: true });
   window.addEventListener('booking:updated', onUpdate);
+  const stopPoll = createBookingPoll(() => loadDashboard({ background: true }));
   await initAdminEnhancements();
-  return () => window.removeEventListener('booking:updated', onUpdate);
+  return () => {
+    stopPoll();
+    window.removeEventListener('booking:updated', onUpdate);
+  };
 }
 
 async function bootCalendar() {

@@ -16,6 +16,7 @@ import {
   normStatus, stayNights, getReservationCategory, lifecyclePhaseForBooking, lifecyclePhaseBadge,
   canAdminCancelVenueBooking,
 } from '/assets/js/features/reservation-shared.js';
+import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
 const TABS = [
   { id: 'pending', label: 'Pending' },
@@ -51,6 +52,8 @@ const state = {
 let eventsBound = false;
 /** @type {(() => void) | null} */
 let onBookingUpdatedRes = null;
+/** @type {(() => void) | null} */
+let stopBookingPoll = null;
 
 function $(id) { return document.getElementById(id); }
 
@@ -668,9 +671,11 @@ function venueCategory(row) {
   return 'past';
 }
 
-async function loadAll() {
-  state.loading = true;
-  renderActivePanel();
+async function loadAll({ background = false } = {}) {
+  if (!background) {
+    state.loading = true;
+    renderActivePanel();
+  }
 
   try {
     const [bookings, groups, venues] = await Promise.all([
@@ -918,6 +923,8 @@ function bindEvents() {
 }
 
 export function teardownReservationsHub() {
+  stopBookingPoll?.();
+  stopBookingPoll = null;
   if (onBookingUpdatedRes) {
     window.removeEventListener('booking:updated', onBookingUpdatedRes);
     onBookingUpdatedRes = null;
@@ -932,4 +939,6 @@ export async function bootstrapReservationsHub() {
   updateFilterUi();
   setTab(state.tab, { pushUrl: false });
   await loadAll();
+  stopBookingPoll?.();
+  stopBookingPoll = createBookingPoll(() => loadAll({ background: true }));
 }

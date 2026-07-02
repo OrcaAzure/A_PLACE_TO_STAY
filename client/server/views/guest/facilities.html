@@ -215,6 +215,7 @@
   import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
   import { initAppLayout } from '/assets/js/layout/ui.js';
   import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
+  import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
   import { getRooms, getRoomAvailability, normalizeRoom, getVenueFacilities, getVenueRateQuote, createFacilityBooking, checkVenueSlotAvailability } from '/assets/js/services/api.js';
   import {
     buildBookReservationUrl,
@@ -758,24 +759,26 @@
     }
   }
 
-  async function checkAvailability() {
+  async function checkAvailability({ background = false } = {}) {
     const checkIn = checkInEl.value;
     const checkOut = checkOutEl.value;
     const guests = Number(guestsEl.value) || 1;
 
     if (!checkIn || !checkOut) {
-      setAvailabilityFeedback('Please choose both check-in and check-out dates.', true);
+      if (!background) setAvailabilityFeedback('Please choose both check-in and check-out dates.', true);
       return;
     }
     if (new Date(checkOut) <= new Date(checkIn)) {
-      setAvailabilityFeedback('Check-out must be after check-in.', true);
+      if (!background) setAvailabilityFeedback('Check-out must be after check-in.', true);
       return;
     }
 
-    findRoomsBtn.disabled = true;
-    findRoomsBtn.classList.add('is-loading');
-    if (findRoomsBtnText) findRoomsBtnText.textContent = 'Checking…';
-    setAvailabilityFeedback('');
+    if (!background) {
+      findRoomsBtn.disabled = true;
+      findRoomsBtn.classList.add('is-loading');
+      if (findRoomsBtnText) findRoomsBtnText.textContent = 'Checking…';
+      setAvailabilityFeedback('');
+    }
     try {
       const data = await getRoomAvailability({ check_in: checkIn, check_out: checkOut, guest_count: guests });
       availability = new Map((data.rooms || []).map((r) => [String(r.id), r]));
@@ -788,23 +791,28 @@
       updateRoomBrowseVisibility();
       renderFilters();
       render();
-      persistStayCriteria();
-      setStayStatus(`${avail} room${avail === 1 ? '' : 's'} available`, avail > 0 ? 'success' : 'warn');
-      setAvailabilityFeedback(
-        avail > 0
-          ? `Showing ${avail} bookable room${avail === 1 ? '' : 's'} for ${fmtStayDate(checkIn)} → ${fmtStayDate(checkOut)}.`
-          : 'No rooms are open for these dates. Try different dates or fewer guests.',
-      );
-      document.getElementById('rooms-mount')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (!background) {
+        persistStayCriteria();
+        setStayStatus(`${avail} room${avail === 1 ? '' : 's'} available`, avail > 0 ? 'success' : 'warn');
+        setAvailabilityFeedback(
+          avail > 0
+            ? `Showing ${avail} bookable room${avail === 1 ? '' : 's'} for ${fmtStayDate(checkIn)} → ${fmtStayDate(checkOut)}.`
+            : 'No rooms are open for these dates. Try different dates or fewer guests.',
+        );
+        document.getElementById('rooms-mount')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
     } catch (err) {
+      if (background) return;
       availability = null;
       updateRoomBrowseVisibility();
       render();
       setStayStatus('');
       setAvailabilityFeedback(err.message || 'Could not check availability.', true);
     } finally {
-      findRoomsBtn.classList.remove('is-loading');
-      updateStayFormState();
+      if (!background) {
+        findRoomsBtn.classList.remove('is-loading');
+        updateStayFormState();
+      }
     }
   }
 
@@ -1173,5 +1181,10 @@
   } else if (browseQ.focus === 'venues' || !categoryShowsRooms(selectedCategory)) {
     document.getElementById('venues')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
+
+  createBookingPoll(
+    () => checkAvailability({ background: true }),
+    { shouldPoll: () => isRoomBrowseUnlocked() && availability !== null },
+  );
 </script>
 </body></html>

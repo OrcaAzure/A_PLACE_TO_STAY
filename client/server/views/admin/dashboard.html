@@ -118,6 +118,7 @@
     import { initAppLayout } from '/assets/js/layout/ui.js';
     import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
     import { loadDashboard } from '/assets/js/features/dashboard.js';
+    import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
     initSplashIdle({ portal: 'admin' });
     if (!requireAuth()) throw new Error('Not authenticated');
@@ -132,7 +133,9 @@
 
     try {
       await loadDashboard();
-      window.addEventListener('booking:updated', loadDashboard);
+      const onUpdate = () => loadDashboard({ background: true });
+      window.addEventListener('booking:updated', onUpdate);
+      createBookingPoll(() => loadDashboard({ background: true }));
 
       const { initAdminEnhancements } = await import('/assets/js/layout/animations.js');
       await initAdminEnhancements();

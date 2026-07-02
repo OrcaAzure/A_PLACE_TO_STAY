@@ -3,6 +3,8 @@
  * Vanilla JS; clocks use local 24-hour HH:MM:SS with no timezone labels.
  */
 
+import { BOOKING_REFRESH_MS } from '/assets/js/config/booking-refresh.js';
+
 const SPLASH_DURATION_MS = 1500;
 const IDLE_TIMEOUT_MS = 300_000;
 const KIOSK_CORNER_CLICKS = 3;
@@ -359,7 +361,7 @@ function startGuestSlideShow(overlay) {
     slides[index]?.classList.remove('is-active');
     index = (index + 1) % slides.length;
     slides[index]?.classList.add('is-active');
-  }, 6000);
+  }, BOOKING_REFRESH_MS);
 }
 
 function stopGuestSlideShow() {

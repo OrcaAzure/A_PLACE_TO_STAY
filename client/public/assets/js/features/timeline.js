@@ -11,6 +11,7 @@ import {
   escapeHtml, formatDate, formatDateLong, formatMoney, normStatus, stayNights,
   toLocalDateString, lifecyclePhaseForBooking, lifecycleEventClass, venuePhaseLabel,
 } from '/assets/js/features/reservation-shared.js';
+import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
 export const DAY_WIDTH = 80;
 
@@ -1139,15 +1140,26 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
 
 export async function mountBookingTimeline({ mountEl, title, onData }) {
   const controller = createCalendarController({ mountEl, title, onData, withFilters: false });
-  if (!controller) return;
+  if (!controller) return () => {};
   await controller.refresh();
-  window.addEventListener('booking:updated', controller.refresh);
+  const onUpdate = () => controller.refresh();
+  window.addEventListener('booking:updated', onUpdate);
+  const stopPoll = createBookingPoll(() => controller.refresh());
+  return () => {
+    stopPoll();
+    window.removeEventListener('booking:updated', onUpdate);
+  };
 }
 
 export async function mountAdminCalendar({ mountEl, title = 'Calendar', onData }) {
   const controller = createCalendarController({ mountEl, title, onData, withFilters: true });
   if (!controller) return () => {};
   await controller.refresh();
-  window.addEventListener('booking:updated', controller.refresh);
-  return () => window.removeEventListener('booking:updated', controller.refresh);
+  const onUpdate = () => controller.refresh();
+  window.addEventListener('booking:updated', onUpdate);
+  const stopPoll = createBookingPoll(() => controller.refresh());
+  return () => {
+    stopPoll();
+    window.removeEventListener('booking:updated', onUpdate);
+  };
 }

@@ -8,6 +8,7 @@ import {
   roomTypeImage,
   availabilityBadge,
 } from '/assets/js/features/facility-display.js';
+import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
 const state = {
   overview: null,
@@ -29,6 +30,8 @@ let roomTypeLabels = new Map();
 let boardInitialized = false;
 /** @type {(() => void) | null} */
 let onRoomsChanged = null;
+/** @type {(() => void) | null} */
+let stopBookingPoll = null;
 
 function debounce(fn, ms = 280) {
   let t;
@@ -563,11 +566,13 @@ function highlightRoomFromQuery() {
   });
 }
 
-async function loadOverview() {
+async function loadOverview({ background = false } = {}) {
   const mount = document.getElementById('rooms-board-mount');
-  if (mount && !state.overview) mount.innerHTML = '<p class="rooms-board-message">Loading rooms…</p>';
+  if (!background && mount && !state.overview) {
+    mount.innerHTML = '<p class="rooms-board-message">Loading rooms…</p>';
+  }
 
-  state.loading = true;
+  if (!background) state.loading = true;
   try {
     const useServerStatus = !isDateViewActive() && state.filter.status && !state.filter.status.startsWith('avail-');
     state.overview = await getRoomsOverview({
@@ -586,13 +591,13 @@ async function loadOverview() {
   return true;
 }
 
-async function loadBoard() {
+async function loadBoard({ background = false } = {}) {
   if (isDateViewActive() || (state.datePanelOpen && hasValidDateRange())) {
     if (hasValidDateRange() && !state.availability && !state.availabilityLoading) {
       await loadAvailability();
     }
   }
-  await loadOverview();
+  await loadOverview({ background });
 }
 
 function setRoomsFilterPanelOpen(open) {
@@ -764,6 +769,8 @@ export function initRoomsBoard() {
 }
 
 export function teardownRoomsBoard() {
+  stopBookingPoll?.();
+  stopBookingPoll = null;
   if (onRoomsChanged) {
     window.removeEventListener('rooms:changed', onRoomsChanged);
     onRoomsChanged = null;
@@ -774,6 +781,8 @@ export function teardownRoomsBoard() {
 export async function bootstrapRoomsBoard() {
   initRoomsBoard();
   await loadBoard();
+  stopBookingPoll?.();
+  stopBookingPoll = createBookingPoll(() => loadBoard({ background: true }));
 }
 
 export function refreshRoomsBoard() {

@@ -14,6 +14,7 @@ import {
   deleteGuestAccount,
   getGuestAccessActivity,
 } from '/assets/js/services/api.js';
+import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { openModal, closeModal } from '/assets/js/layout/ui.js';
 
 function $(id) {
@@ -33,6 +34,8 @@ let requests = [];
 let guestShellInitialized = false;
 /** @type {AbortController | null} */
 let guestPageAbort = null;
+/** @type {(() => void) | null} */
+let stopBookingPoll = null;
 /** @type {((e: KeyboardEvent) => void) | null} */
 let guestEscapeHandler = null;
 let activityEntries = [];
@@ -647,9 +650,9 @@ function renderPendingModal() {
   }
 }
 
-async function refreshGuestAccessData() {
-  await loadGuestAccessPage();
-  if (activeTab === 'activity') await loadGuestAccessActivity();
+async function refreshGuestAccessData({ background = false } = {}) {
+  await loadGuestAccessPage({ background });
+  if (activeTab === 'activity') await loadGuestAccessActivity({ background });
   if (!$('ga-pending-modal')?.classList.contains('hidden')) {
     renderPendingModal();
     if (pendingCount() === 0) hidePendingModal();
@@ -720,12 +723,14 @@ function renderActivityList() {
     </li>`).join('');
 }
 
-export async function loadGuestAccessPage() {
-  resetGuestListFilters();
+export async function loadGuestAccessPage({ background = false } = {}) {
+  if (!background) {
+    resetGuestListFilters();
 
-  const tbody = $('guest-access-tbody');
-  if (tbody) {
-    tbody.innerHTML = '<tr><td colspan="5"><p class="ga-empty">Loading…</p></td></tr>';
+    const tbody = $('guest-access-tbody');
+    if (tbody) {
+      tbody.innerHTML = '<tr><td colspan="5"><p class="ga-empty">Loading…</p></td></tr>';
+    }
   }
 
   let overviewError = null;
@@ -761,9 +766,9 @@ export async function loadGuestAccessPage() {
   bindPendingCard();
 }
 
-async function loadGuestAccessActivity() {
+async function loadGuestAccessActivity({ background = false } = {}) {
   const list = $('guest-activity-list');
-  if (list) list.innerHTML = '<li class="ga-empty">Loading activity…</li>';
+  if (!background && list) list.innerHTML = '<li class="ga-empty">Loading activity…</li>';
 
   try {
     activityEntries = await getGuestAccessActivity(30);
@@ -1087,9 +1092,14 @@ export function initGuestAccessPage() {
   }
 
   bindGuestPageListeners();
+
+  stopBookingPoll?.();
+  stopBookingPoll = createBookingPoll(() => refreshGuestAccessData({ background: true }));
 }
 
 export function teardownGuestAccessPage() {
+  stopBookingPoll?.();
+  stopBookingPoll = null;
   guestPageAbort?.abort();
   guestPageAbort = null;
   const card = $('ga-stat-pending-card');

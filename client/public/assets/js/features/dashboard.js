@@ -210,7 +210,7 @@ function renderQueueItem(item) {
     </article>`;
 }
 
-export async function loadDashboard() {
+export async function loadDashboard({ background = false } = {}) {
   const summary = await getAdminSummary();
   const { kpis, bookingUsage, recentActivity } = summary;
 
@@ -218,6 +218,19 @@ export async function loadDashboard() {
   setText('kpi-rooms-available-label', `${kpis.availableRooms} ready`);
   setText('kpi-maintenance-label', `${kpis.maintenanceRooms} in repair`);
   setText('kpi-approval-rate', `${kpis.approvalRate}% rate`);
+
+  if (background) {
+    setText('kpi-upcoming', String(kpis.upcoming));
+    setText('kpi-pending-count', String(kpis.pending));
+    setText('kpi-approved', String(kpis.approved));
+    setText('kpi-total-rooms', String(kpis.totalRooms));
+    setText('kpi-occupancy', `${kpis.occupancyPct}%`);
+    setText('kpi-revenue', formatPHP(kpis.paidRevenue));
+    await renderBookingUsageChart(bookingUsage);
+    renderRecentActivity(recentActivity);
+    setText('chart-period-label', 'Last 30 days · rooms & venues');
+    return;
+  }
 
   await animateStatCards();
 

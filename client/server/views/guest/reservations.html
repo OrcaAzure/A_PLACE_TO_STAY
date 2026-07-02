@@ -474,6 +474,7 @@
   import { createGuestBookingExtras } from '/assets/js/features/guest-booking-extras.js';
   import { loadGuestInvoices } from '/assets/js/features/guest-invoices.js';
   import { initGuestSupportCompose } from '/assets/js/features/guest-support-compose.js';
+  import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
   requireAuth();
   await initAppLayout({
@@ -693,7 +694,7 @@
   let activeStatus = '';
   let searchTerm = '';
 
-  async function loadBookings() {
+  async function loadBookings({ background = false } = {}) {
     try {
       const [raw, groups, venueRows] = await Promise.all([
         getBookings(),
@@ -732,8 +733,9 @@
       renderFeatured(allBookings);
       renderTimeline(allBookings);
       applyAndRender();
-      await loadGuestInvoices();
+      if (!background) await loadGuestInvoices();
     } catch (err) {
+      if (background) return;
       document.getElementById('reservations-list').innerHTML =
         `<div class="text-center py-12 text-error animate-fade-in"><span class="material-symbols-outlined text-[40px] mb-2 block">error</span><p>${err.message}</p></div>`;
     }
@@ -1289,10 +1291,10 @@
     mount.innerHTML = bookings.map((b, i) => renderVenueCard(b, i)).join('');
   }
 
-  async function loadVenueBookings() {
+  async function loadVenueBookings({ background = false } = {}) {
     const mount = document.getElementById('venue-bookings-list');
     if (!mount) return;
-    if (!venueBookingsLoaded) {
+    if (!background && !venueBookingsLoaded) {
       mount.innerHTML = `
         <div class="skeleton h-28 rounded-2xl"></div>
         <div class="skeleton h-28 rounded-2xl"></div>`;
@@ -1305,6 +1307,7 @@
       refreshVenueCountsInStats();
       applyAndRenderVenues();
     } catch (err) {
+      if (background) return;
       mount.innerHTML = `<div class="text-center py-12 text-error animate-fade-in"><span class="material-symbols-outlined text-[40px] mb-2 block">error</span><p>${escapeHtml(err.message)}</p></div>`;
     }
   }
@@ -1398,6 +1401,12 @@
   }
 
   await applyBookingFromQuery();
+
+  createBookingPoll(async () => {
+    const activeTab = document.querySelector('[data-res-tab].app-tab-active')?.dataset.resTab;
+    await loadBookings({ background: true });
+    if (activeTab === 'venues') await loadVenueBookings({ background: true });
+  });
 </script>
 </body>
 </html>
