@@ -258,9 +258,25 @@
           <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl float-blob"></div>
           <h4 class="font-headline-sm text-headline-sm mb-4 relative z-10">Need Assistance?</h4>
           <p class="font-body-sm text-body-sm text-white/80 mb-6 relative z-10">Our facility managers are available to help you with special equipment requests or catering.</p>
-          <button class="w-full bg-white text-primary py-3 rounded-xl font-bold font-label-md text-label-md hover:bg-primary-fixed transition-all relative z-10 active:scale-[0.98] hover:shadow-lg">
+          <button type="button" id="contact-support-btn" class="w-full bg-white text-primary py-3 rounded-xl font-bold font-label-md text-label-md hover:bg-primary-fixed transition-all relative z-10 active:scale-[0.98] hover:shadow-lg">
             Contact Support
           </button>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.38s" id="guest-support-mail-card">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-primary mt-1">mail</span>
+            <div class="min-w-0">
+              <h5 class="font-label-md text-label-md font-bold text-on-surface mb-2">Admin reply email</h5>
+              <p class="text-body-sm text-on-surface-variant leading-relaxed mb-3">
+                Replies to your support messages and reservation updates are sent from this address. Check your inbox (and spam folder) for messages from the facilities team.
+              </p>
+              <a id="guest-support-reply-mail" href="mailto:facilities@apts.edu.ph" class="inline-flex items-start gap-1.5 text-body-sm font-semibold text-primary hover:underline no-underline break-all">
+                <span class="material-symbols-outlined text-[18px] shrink-0">outgoing_mail</span>
+                <span id="guest-support-reply-mail-text">facilities@apts.edu.ph</span>
+              </a>
+            </div>
+          </div>
         </div>
 
         <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.42s">
@@ -448,7 +464,7 @@
     getBookings, getGroups, createBooking, updateBooking, updateGroup,
     getRoomAvailability, normalizeBooking, formatGroupId,
     getFacilityBookings, cancelFacilityBooking, normalizeFacilityBooking,
-    getFiscalYear,
+    getFiscalYear, getSupportContact,
   } from '/assets/js/services/api.js';
   import {
     loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
@@ -457,12 +473,32 @@
   import { parseBookQuery, priceNoticeHtml, hasCompleteBookIntent } from '/assets/js/features/guest-booking-flow.js';
   import { createGuestBookingExtras } from '/assets/js/features/guest-booking-extras.js';
   import { loadGuestInvoices } from '/assets/js/features/guest-invoices.js';
+  import { initGuestSupportCompose } from '/assets/js/features/guest-support-compose.js';
 
   requireAuth();
   await initAppLayout({
     portal: 'guest',
     activePage: 'reservations',
   });
+
+  initGuestSupportCompose({ trigger: '#contact-support-btn' });
+
+  async function loadSupportReplyMail() {
+    const link = document.getElementById('guest-support-reply-mail');
+    const text = document.getElementById('guest-support-reply-mail-text');
+    if (!link || !text) return;
+    try {
+      const contact = await getSupportContact();
+      const email = contact.email || 'facilities@apts.edu.ph';
+      text.textContent = email;
+      link.href = `mailto:${encodeURIComponent(email)}`;
+      link.title = `Email ${contact.label || 'facilities team'} at ${email}`;
+    } catch {
+      text.textContent = 'facilities@apts.edu.ph';
+      link.href = 'mailto:facilities@apts.edu.ph';
+    }
+  }
+  loadSupportReplyMail();
 
   document.getElementById('booking-price-notice').innerHTML = priceNoticeHtml();
 
@@ -659,7 +695,12 @@
 
   async function loadBookings() {
     try {
-      const [raw, groups] = await Promise.all([getBookings(), getGroups()]);
+      const [raw, groups, venueRows] = await Promise.all([
+        getBookings(),
+        getGroups(),
+        // Stats on this page should reflect both room stays + venue bookings.
+        getFacilityBookings(),
+      ]);
       const singles = raw
         .filter((b) => !b.group_id)
         .map(normalizeBooking)
@@ -677,10 +718,16 @@
       }));
       allBookings = [...singles, ...groupItems].sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)));
 
-      countTo(document.getElementById('stat-total'), allBookings.length);
-      countTo(document.getElementById('stat-pending'), allBookings.filter((b) => b.status === 'pending').length);
-      countTo(document.getElementById('stat-approved'), allBookings.filter((b) => b.status === 'approved').length);
-      countTo(document.getElementById('stat-upcoming'), allBookings.filter((b) => b.status === 'approved' && b.startDate >= todayStr).length);
+      const venueBookingsForStats = (venueRows || []).map(normalizeFacilityBooking);
+      const combinedForStats = [...allBookings, ...venueBookingsForStats];
+
+      countTo(document.getElementById('stat-total'), combinedForStats.length);
+      countTo(document.getElementById('stat-pending'), combinedForStats.filter((b) => normStatus(b.status) === 'pending').length);
+      countTo(document.getElementById('stat-approved'), combinedForStats.filter((b) => normStatus(b.status) === 'approved').length);
+      countTo(
+        document.getElementById('stat-upcoming'),
+        combinedForStats.filter((b) => normStatus(b.status) === 'approved' && String(b.startDate || '') >= todayStr).length
+      );
 
       renderFeatured(allBookings);
       renderTimeline(allBookings);
@@ -1157,6 +1204,18 @@
   let venueSearchTerm = '';
   let venueBookingsLoaded = false;
 
+  function refreshVenueCountsInStats() {
+    // Keep the top summary in sync when the venue tab loads/cancels.
+    const combinedForStats = [...allBookings, ...allVenueBookings];
+    countTo(document.getElementById('stat-total'), combinedForStats.length);
+    countTo(document.getElementById('stat-pending'), combinedForStats.filter((b) => normStatus(b.status) === 'pending').length);
+    countTo(document.getElementById('stat-approved'), combinedForStats.filter((b) => normStatus(b.status) === 'approved').length);
+    countTo(
+      document.getElementById('stat-upcoming'),
+      combinedForStats.filter((b) => normStatus(b.status) === 'approved' && String(b.startDate || '') >= todayStr).length
+    );
+  }
+
   function renderVenueCard(b, index) {
     const idLabel = `#VEN-${b.id}`;
     const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
@@ -1243,6 +1302,7 @@
       allVenueBookings = rows.map(normalizeFacilityBooking)
         .sort((a, b) => `${b.eventDate}${b.startTime}`.localeCompare(`${a.eventDate}${a.startTime}`));
       venueBookingsLoaded = true;
+      refreshVenueCountsInStats();
       applyAndRenderVenues();
     } catch (err) {
       mount.innerHTML = `<div class="text-center py-12 text-error animate-fade-in"><span class="material-symbols-outlined text-[40px] mb-2 block">error</span><p>${escapeHtml(err.message)}</p></div>`;

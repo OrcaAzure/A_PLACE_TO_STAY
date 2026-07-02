@@ -79,6 +79,17 @@ export async function getProfile() {
   return apiRequest('/auth/me');
 }
 
+export async function getSupportContact() {
+  return apiRequest('/support/contact');
+}
+
+export async function sendSupportMessage(payload) {
+  return apiRequest('/support/message', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function updateProfile(payload) {
   return apiRequest('/auth/me', {
     method: 'PATCH',

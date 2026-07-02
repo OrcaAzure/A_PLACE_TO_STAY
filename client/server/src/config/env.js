@@ -28,6 +28,7 @@ export const SMTP_PORT = process.env.SMTP_PORT || process.env.MAIL_PORT;
 export const SMTP_USER = process.env.SMTP_USER || process.env.MAIL_USER;
 export const SMTP_PASS = process.env.SMTP_PASS || process.env.MAIL_PASS;
 export const SMTP_FROM = process.env.SMTP_FROM || process.env.MAIL_FROM;
+export const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || process.env.ADMIN_EMAIL;
 
 export const DB_SSL = process.env.DB_SSL === 'true';
 export const DB_CONNECTION_LIMIT = Number(process.env.DB_CONNECTION_LIMIT) || 10;

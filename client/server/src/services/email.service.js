@@ -6,6 +6,7 @@ import {
   SMTP_USER,
   SMTP_PASS,
   SMTP_FROM,
+  SUPPORT_EMAIL,
 } from '../config/env.js';
 
 const PLACEHOLDER_HOSTS = new Set(['smtp.example.com', '']);
@@ -107,13 +108,31 @@ export function isVenuePayment(payment) {
   return Boolean(payment.event_date && !payment.check_in);
 }
 
-async function sendMail({ to, subject, html }) {
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+export function getSupportEmail() {
+  const configured = String(SUPPORT_EMAIL || '').trim();
+  if (configured) return configured;
+  const smtpUser = String(SMTP_USER || '').trim();
+  if (smtpUser && !PLACEHOLDER_USERS.has(smtpUser.toLowerCase())) return smtpUser;
+  return 'facilities@apts.edu.ph';
+}
+
+async function sendMail({ to, subject, html, text, replyTo }) {
   try {
     const info = await transporter.sendMail({
       from: fromAddress(),
       to,
       subject,
       html,
+      text,
+      ...(replyTo ? { replyTo } : {}),
     });
     lastEmailError = null;
     if (isEmailDevMode()) {
@@ -403,6 +422,36 @@ export async function sendGroupModifiedEmail(user, group, { message, previousChe
       <p><strong>Confirmed stay:</strong> ${group.check_in} to ${group.check_out} · ${group.total_guests} guest(s)</p>
       <p><strong>Assigned rooms:</strong> ${roomLines}</p>
       <p>Log in to AptSpace to view full details.</p>
+    `,
+  });
+}
+
+export async function sendSupportMessageEmail({ guestName, guestEmail, subject, message, page }) {
+  const to = getSupportEmail();
+  const safeName = escapeHtml(guestName || 'Guest');
+  const safeEmail = escapeHtml(guestEmail || 'unknown');
+  const safeSubject = escapeHtml(subject);
+  const safeMessage = escapeHtml(message);
+  const safePage = page ? escapeHtml(page) : '';
+
+  return sendMail({
+    to,
+    replyTo: guestEmail || undefined,
+    subject: `[AptSpace Support] ${subject}`,
+    text: [
+      `From: ${guestName || 'Guest'} <${guestEmail || 'unknown'}>`,
+      page ? `Page: ${page}` : '',
+      `Subject: ${subject}`,
+      '',
+      message,
+    ].filter(Boolean).join('\n'),
+    html: `
+      <h2>New guest support message</h2>
+      <p><strong>From:</strong> ${safeName} &lt;${safeEmail}&gt;</p>
+      ${safePage ? `<p><strong>Page:</strong> ${safePage}</p>` : ''}
+      <p><strong>Subject:</strong> ${safeSubject}</p>
+      <hr />
+      <div style="white-space:pre-wrap;font-family:Arial,sans-serif;line-height:1.5;">${safeMessage}</div>
     `,
   });
 }

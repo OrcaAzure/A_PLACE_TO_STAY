@@ -15,6 +15,7 @@ import facilityRoutes        from './routes/facility.routes.js';
 import facilityBookingRoutes from './routes/facilityBooking.routes.js';
 import ancillaryRoutes       from './routes/ancillary.routes.js';
 import settingsRoutes  from './routes/settings.routes.js';
+import supportRoutes   from './routes/support.routes.js';
 import pageRoutes      from './routes/pages.routes.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { pool }        from './config/db.js';
@@ -122,6 +123,15 @@ app.use('/api/auth/register',        authLimiter);
 app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/auth/reset-password',  authLimiter);
 
+const supportLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 8,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: 'Too many support messages. Please wait a few minutes and try again.' },
+});
+app.use('/api/support/message', supportLimiter);
+
 app.use('/api/auth',     authRoutes);
 app.use('/api/users',    userRoutes);
 app.use('/api/rooms',    roomRoutes);
@@ -133,6 +143,7 @@ app.use('/api/facilities',        facilityRoutes);
 app.use('/api/facility-bookings', facilityBookingRoutes);
 app.use('/api/catalog',           ancillaryRoutes);
 app.use('/api/settings',   settingsRoutes);
+app.use('/api/support',    supportRoutes);
 
 app.use(pageRoutes);
 
