@@ -3,15 +3,14 @@
 <head>
   <meta charset="utf-8"/>
   <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
-  <title>AptSpace | Seminary Facility Management</title>
+  <meta name="description" content="AptSpace — book Global Missions Center lodging and APTS campus venues. For faculty, staff, students, missionaries, and approved guests."/>
+  <title>AptSpace | APTS Housing &amp; Facilities</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="/assets/js/config/tailwind-theme-base.js"></script>
   <script src="/assets/js/config/tailwind-guest.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/assets/css/global/landing.css"/>
-  <link rel="stylesheet" href="/assets/css/global/splash-idle.css"/>
-  <script type="module" src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" data-apt-dotlottie></script>
   <style>
     .material-symbols-outlined {
       font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -41,11 +40,8 @@
       <div class="lp-nav-desktop-extras hidden lg:flex items-center gap-2">
         <div class="flex items-center bg-surface-container-low px-3 py-1.5 rounded-full border border-outline-variant/50 min-w-0 max-w-[11rem]">
           <span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">search</span>
-          <input id="landing-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full ml-1 min-w-0" placeholder="Search…" type="search" aria-label="Search facilities"/>
+          <input id="landing-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full ml-1 min-w-0" placeholder="Search facilities…" type="search" aria-label="Search facilities"/>
         </div>
-        <button type="button" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all" aria-label="Notifications">notifications</button>
-        <button type="button" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all" aria-label="Settings">settings</button>
-        <div class="h-8 w-px bg-outline-variant/40"></div>
       </div>
 
       <button type="button" id="lp-menu-toggle" class="lp-menu-btn md:hidden" aria-label="Open menu" aria-expanded="false" aria-controls="lp-mobile-menu">
@@ -53,7 +49,7 @@
       </button>
 
       <a href="/login.html" class="lp-login-btn lp-magnetic inline-flex items-center justify-center px-4 sm:px-6 py-2.5 bg-primary text-white rounded-xl text-label-md font-semibold hover:bg-primary-container transition-colors shadow-md whitespace-nowrap">
-        Log In
+        Sign in
       </a>
     </div>
   </div>
@@ -91,39 +87,50 @@
         <div class="lp-gwill-hide">
           <div class="lp-hero-badge inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/20 bg-white/10 mb-8 max-w-full">
             <span class="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.8)] shrink-0"></span>
-            <span class="text-white/85 text-label-sm uppercase tracking-widest sm:hidden">APTS · Baguio City</span>
-            <span class="text-white/85 text-label-sm uppercase tracking-widest hidden sm:inline">Asia Pacific Theological Seminary — Baguio City</span>
+            <span class="text-white/85 text-label-sm uppercase tracking-widest sm:hidden">APTS Housing · Baguio</span>
+            <span class="text-white/85 text-label-sm uppercase tracking-widest hidden sm:inline">Asia Pacific Theological Seminary — Housing &amp; Facilities</span>
           </div>
 
           <h1 class="text-4xl sm:text-5xl lg:text-[3.35rem] font-bold leading-[1.08] text-white mb-6 tracking-tight">
-            <span class="lp-hero-line block">Reserve campus facilities</span>
-            <span class="lp-hero-line block text-primary-fixed-dim">the simple way.</span>
+            <span class="lp-hero-line block">Book campus lodging</span>
+            <span class="lp-hero-line block text-primary-fixed-dim">&amp; venues in one place.</span>
           </h1>
 
           <p class="lp-hero-sub text-white/75 text-body-lg max-w-xl mb-10 leading-relaxed">
-            Guest houses, conference rooms, classrooms, and more — all bookable in one place. For students, faculty, staff, and visiting ministry partners.
+            AptSpace is APTS&rsquo;s online booking portal — GMC guest rooms, conference halls, chapel, recreation spaces, and group stays. Sign in with your seminary account or approved guest access.
           </p>
 
           <div class="lp-hero-cta flex flex-wrap gap-4 mb-12">
             <a href="/login.html" class="lp-magnetic inline-flex items-center gap-2 px-8 py-4 bg-white text-primary rounded-xl font-bold text-label-md hover:bg-white/95 transition-all shadow-xl">
-              Book a Facility
+              Sign in to book
               <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
             </a>
             <a href="#facilities" class="inline-flex items-center gap-2 px-8 py-4 border border-white/30 text-white rounded-xl font-medium text-label-md hover:bg-white/10 transition-all">
-              Browse Facilities
+              See what&rsquo;s bookable
               <span class="material-symbols-outlined text-[18px]">arrow_downward</span>
             </a>
           </div>
 
           <div class="grid grid-cols-2 gap-3 max-w-md">
             <div class="lp-stat rounded-xl px-4 py-4">
-              <p class="text-2xl font-bold text-white"><span data-count="90" data-suffix="+">90+</span></p>
-              <p class="text-white/55 text-label-sm mt-0.5">Rooms & Spaces</p>
+              <p class="text-2xl font-bold text-white"><span data-count="30" data-suffix="+">30+</span></p>
+              <p class="text-white/55 text-label-sm mt-0.5">GMC lodging units</p>
             </div>
             <div class="lp-stat rounded-xl px-4 py-4">
-              <p class="text-2xl font-bold text-white"><span data-count="5">5</span></p>
-              <p class="text-white/55 text-label-sm mt-0.5">Buildings</p>
+              <p class="text-2xl font-bold text-white"><span data-count="15" data-suffix="+">15+</span></p>
+              <p class="text-white/55 text-label-sm mt-0.5">Campus venues</p>
             </div>
+          </div>
+
+          <div class="lp-hero-mobile-visual mt-8 lg:hidden rounded-2xl overflow-hidden border border-white/20 shadow-xl max-h-48">
+            <img
+              src="https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1200&q=80"
+              alt="APTS campus"
+              width="1200"
+              height="480"
+              loading="eager"
+              class="w-full h-full object-cover"
+            />
           </div>
         </div>
 
@@ -145,7 +152,7 @@
           </div>
           <div class="absolute -bottom-4 right-8 bg-white/95 backdrop-blur rounded-2xl px-5 py-4 shadow-2xl border border-white/50 max-w-[220px]">
             <p class="text-label-sm text-primary font-bold uppercase tracking-wider mb-1">Now booking</p>
-            <p class="text-body-sm text-on-surface-variant">Guest rooms, venues & group stays for FY26</p>
+            <p class="text-body-sm text-on-surface-variant">FY2026 rates · Lodging &amp; venue bookings</p>
           </div>
         </div>
 
@@ -163,19 +170,19 @@
     <div class="max-w-[1280px] mx-auto lp-page-gutter sm:px-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-on-surface-variant">
       <div class="lp-trust-item flex items-center gap-2 text-label-md">
         <span class="material-symbols-outlined text-primary text-[20px]">verified_user</span>
-        Secure role-based access
+        Secure sign-in &amp; roles
       </div>
       <div class="lp-trust-item flex items-center gap-2 text-label-md">
         <span class="material-symbols-outlined text-primary text-[20px]">event_available</span>
-        Real-time availability
+        Live room &amp; venue availability
       </div>
       <div class="lp-trust-item flex items-center gap-2 text-label-md">
         <span class="material-symbols-outlined text-primary text-[20px]">groups</span>
-        Group booking support
+        Group &amp; ministry stays
       </div>
       <div class="lp-trust-item flex items-center gap-2 text-label-md">
-        <span class="material-symbols-outlined text-primary text-[20px]">payments</span>
-        GCash, cash & bank transfer
+        <span class="material-symbols-outlined text-primary text-[20px]">receipt_long</span>
+        Invoices &amp; email receipts
       </div>
     </div>
   </section>
@@ -186,8 +193,12 @@
       <div class="lp-section-head mb-14 max-w-2xl">
         <p class="lp-section-label text-label-sm text-primary uppercase mb-3">What's available</p>
         <h2 class="text-3xl lg:text-headline-lg font-bold text-on-surface mb-4 tracking-tight">Our premier facilities</h2>
-        <p class="text-body-lg text-on-surface-variant">Every bookable space on the APTS campus — from overnight stays to function rooms and outdoor venues.</p>
+        <p class="text-body-lg text-on-surface-variant">Lodging at the Global Missions Center plus campus venues — bookable after you sign in.</p>
       </div>
+
+      <p id="lp-facilities-empty" class="hidden text-center text-body-md text-on-surface-variant py-12 mb-6 rounded-2xl border border-dashed border-outline-variant/50 bg-surface-container-lowest" role="status">
+        No facilities match your search. Try &ldquo;chapel&rdquo;, &ldquo;GMC&rdquo;, or &ldquo;basketball&rdquo;.
+      </p>
 
       <div class="lp-facilities-grid grid grid-cols-1 md:grid-cols-12 gap-5">
 
@@ -196,52 +207,52 @@
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
             <span class="inline-block w-fit px-3 py-1 bg-white/15 text-white text-label-sm rounded-full mb-3 backdrop-blur-sm">Global Missions Center</span>
             <h3 class="text-white text-2xl font-bold mb-2">Guest Houses</h3>
-            <p class="text-white/75 text-body-sm mb-4 max-w-md">Superior rooms, standard apartments, deluxe units, and dorm spaces for individuals and groups.</p>
+            <p class="text-white/75 text-body-sm mb-4 max-w-md">Superior, standard, deluxe, and dorm units at GMC — for individuals, families, and ministry groups.</p>
             <span class="inline-flex items-center gap-1 text-white font-label-md group-hover:gap-3 transition-all">
               View rooms <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
             </span>
           </div>
         </a>
 
-        <a href="/login.html" class="lp-facility-card md:col-span-5 md:min-h-[22rem] group block" data-facility-name="Conference Classrooms Russ Turney meeting">
+        <a href="/login.html" class="lp-facility-card md:col-span-5 md:min-h-[22rem] group block" data-facility-name="Conference Classrooms Russ Turney A-101 A-504 meeting">
           <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80" alt="Conference room" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
-            <span class="inline-block w-fit px-3 py-1 bg-white/15 text-white text-label-sm rounded-full mb-3 backdrop-blur-sm">Up to 100 guests</span>
-            <h3 class="text-white text-2xl font-bold mb-2">Conference & Classrooms</h3>
-            <p class="text-white/75 text-body-sm mb-4">Russ Turney Center, multi-purpose rooms, and private conference spaces.</p>
+            <span class="inline-block w-fit px-3 py-1 bg-white/15 text-white text-label-sm rounded-full mb-3 backdrop-blur-sm">Russ Turney Center</span>
+            <h3 class="text-white text-2xl font-bold mb-2">Conference &amp; Classrooms</h3>
+            <p class="text-white/75 text-body-sm mb-4">A-101 and A-504&ndash;A-507 — hourly and half-day blocks for classes, meetings, and events.</p>
             <span class="inline-flex items-center gap-1 text-white font-label-md group-hover:gap-3 transition-all">
               Check availability <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
             </span>
           </div>
         </a>
 
-        <a href="/login.html" class="lp-facility-card md:col-span-4 group block" data-facility-name="Chapel Garden GMC Osgood wedding">
+        <a href="/login.html" class="lp-facility-card md:col-span-4 group block" data-facility-name="Chapel Burdine Commons Osgood Garden GMC wedding">
           <img src="https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1200&q=80" alt="Chapel interior" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
-            <h3 class="text-white text-xl font-bold mb-2">Chapel & Garden</h3>
-            <p class="text-white/75 text-body-sm mb-3">GMC Chapel and Osgood Garden for services, weddings, and outdoor events.</p>
+            <h3 class="text-white text-xl font-bold mb-2">Chapel, Burdine &amp; Garden</h3>
+            <p class="text-white/75 text-body-sm mb-3">GMC Chapel, Burdine Commons, and Osgood Garden for worship, receptions, and outdoor gatherings.</p>
             <span class="inline-flex items-center gap-1 text-white font-label-md group-hover:gap-3 transition-all">
               See rates <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
             </span>
           </div>
         </a>
 
-        <a href="/login.html" class="lp-facility-card md:col-span-4 group block" data-facility-name="Prayer Mountain retreat ministry">
+        <a href="/login.html" class="lp-facility-card md:col-span-4 group block" data-facility-name="Prayer Mountain Prayer Tower retreat ministry">
           <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80" alt="Mountain landscape" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
-            <h3 class="text-white text-xl font-bold mb-2">Prayer Mountain</h3>
-            <p class="text-white/75 text-body-sm mb-3">Retreat spaces for ministry gatherings with flexible hourly booking.</p>
+            <h3 class="text-white text-xl font-bold mb-2">Prayer Mountain &amp; Tower</h3>
+            <p class="text-white/75 text-body-sm mb-3">Retreat and prayer spaces on campus — flexible hourly booking for ministry teams.</p>
             <span class="inline-flex items-center gap-1 text-white font-label-md group-hover:gap-3 transition-all">
               Book now <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
             </span>
           </div>
         </a>
 
-        <a href="/login.html" class="lp-facility-card md:col-span-4 group block" data-facility-name="Sports Rec basketball playground">
+        <a href="/login.html" class="lp-facility-card md:col-span-4 group block" data-facility-name="Sports Rec basketball playground recreation center">
           <img src="https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80" alt="Basketball court" loading="lazy"/>
           <div class="lp-facility-body absolute inset-0 flex flex-col justify-end p-8">
-            <h3 class="text-white text-xl font-bold mb-2">Sports & Rec</h3>
-            <p class="text-white/75 text-body-sm mb-3">Basketball court, playground, and Rec Center — bookable by 4-hour block.</p>
+            <h3 class="text-white text-xl font-bold mb-2">Sports &amp; Recreation</h3>
+            <p class="text-white/75 text-body-sm mb-3">Basketball court, playground, and Rec Center — reserved in 4-hour blocks.</p>
             <span class="inline-flex items-center gap-1 text-white font-label-md group-hover:gap-3 transition-all">
               Reserve <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
             </span>
@@ -258,37 +269,44 @@
       <div class="lp-section-head mb-14 max-w-2xl">
         <p class="lp-section-label text-label-sm text-primary uppercase mb-3">Simple process</p>
         <h2 class="text-3xl lg:text-headline-lg font-bold text-on-surface mb-4">How to make a booking</h2>
-        <p class="text-body-lg text-on-surface-variant">Three steps from login to confirmed reservation.</p>
+        <p class="text-body-lg text-on-surface-variant">From sign-in to payment — housing staff review every request before it&rsquo;s confirmed.</p>
       </div>
 
-      <div class="lp-steps grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="lp-steps grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <div class="lp-step-card bg-white rounded-2xl border border-outline-variant/30 p-8 shadow-sm">
           <div class="flex items-center gap-4 mb-6">
             <div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold shrink-0">1</div>
-            <div class="h-px flex-1 bg-outline-variant/40 hidden md:block"></div>
           </div>
           <span class="material-symbols-outlined text-primary text-[36px] mb-4 block">login</span>
-          <h3 class="text-headline-sm font-bold text-on-surface mb-2">Log in to your account</h3>
-          <p class="text-body-sm text-on-surface-variant leading-relaxed">Use your APTS credentials. Faculty, staff, students, and missionaries each have their own portal.</p>
+          <h3 class="text-headline-sm font-bold text-on-surface mb-2">Sign in</h3>
+          <p class="text-body-sm text-on-surface-variant leading-relaxed">Use your APTS account, or guest access issued by Housing for approved visitors.</p>
         </div>
 
         <div class="lp-step-card bg-white rounded-2xl border border-outline-variant/30 p-8 shadow-sm">
           <div class="flex items-center gap-4 mb-6">
             <div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold shrink-0">2</div>
-            <div class="h-px flex-1 bg-outline-variant/40 hidden md:block"></div>
           </div>
           <span class="material-symbols-outlined text-primary text-[36px] mb-4 block">calendar_month</span>
-          <h3 class="text-headline-sm font-bold text-on-surface mb-2">Pick a space and date</h3>
-          <p class="text-body-sm text-on-surface-variant leading-relaxed">Browse rooms by building and type, check live availability, and submit single or group requests.</p>
+          <h3 class="text-headline-sm font-bold text-on-surface mb-2">Choose dates &amp; space</h3>
+          <p class="text-body-sm text-on-surface-variant leading-relaxed">Browse GMC rooms or campus venues, check live availability, and submit single or group requests.</p>
         </div>
 
         <div class="lp-step-card bg-white rounded-2xl border border-outline-variant/30 p-8 shadow-sm">
           <div class="flex items-center gap-4 mb-6">
             <div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold shrink-0">3</div>
           </div>
-          <span class="material-symbols-outlined text-primary text-[36px] mb-4 block">mark_email_read</span>
-          <h3 class="text-headline-sm font-bold text-on-surface mb-2">Get your confirmation</h3>
-          <p class="text-body-sm text-on-surface-variant leading-relaxed">Facilities staff review your request. Track status in your dashboard and receive email once approved.</p>
+          <span class="material-symbols-outlined text-primary text-[36px] mb-4 block">fact_check</span>
+          <h3 class="text-headline-sm font-bold text-on-surface mb-2">Staff review</h3>
+          <p class="text-body-sm text-on-surface-variant leading-relaxed">Facilities and housing teams approve lodging and venue requests. Track status in your dashboard.</p>
+        </div>
+
+        <div class="lp-step-card bg-white rounded-2xl border border-outline-variant/30 p-8 shadow-sm">
+          <div class="flex items-center gap-4 mb-6">
+            <div class="w-11 h-11 rounded-full bg-primary flex items-center justify-center text-white font-bold shrink-0">4</div>
+          </div>
+          <span class="material-symbols-outlined text-primary text-[36px] mb-4 block">receipt_long</span>
+          <h3 class="text-headline-sm font-bold text-on-surface mb-2">Pay &amp; confirm</h3>
+          <p class="text-body-sm text-on-surface-variant leading-relaxed">Once approved, complete payment (GCash, cash, or bank transfer) and receive your invoice by email.</p>
         </div>
       </div>
     </div>
@@ -299,7 +317,7 @@
     <div class="max-w-[1280px] mx-auto lp-page-gutter sm:px-6 flex flex-col lg:flex-row items-center justify-between gap-8 text-center lg:text-left">
       <div>
         <h2 class="text-2xl lg:text-3xl font-bold mb-3">Ready to reserve your space?</h2>
-        <p class="text-white/75 text-body-md max-w-xl">Join the APTS community using AptSpace for faster bookings and real-time campus availability.</p>
+        <p class="text-white/75 text-body-md max-w-xl">Sign in to request GMC lodging or a campus venue — availability updates in real time.</p>
       </div>
       <a href="/login.html" class="lp-magnetic inline-flex items-center gap-2 px-10 py-4 bg-white text-primary rounded-xl font-bold text-label-md shadow-xl hover:bg-white/95 transition-colors shrink-0">
         Get started now
@@ -315,26 +333,31 @@
         <p class="lp-section-label text-label-sm text-primary uppercase mb-3">Who uses AptSpace</p>
         <h2 class="text-3xl lg:text-headline-lg font-bold text-on-surface">Built for the whole APTS community</h2>
       </div>
-      <div class="lp-audience grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="lp-audience grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
         <div class="lp-audience-card rounded-2xl border border-outline-variant/30 p-7 bg-surface-container-lowest">
           <span class="material-symbols-outlined text-primary text-[32px] mb-4 block">school</span>
-          <h4 class="font-bold text-on-surface text-headline-sm mb-2">Faculty</h4>
-          <p class="text-body-sm text-on-surface-variant leading-relaxed">Reserve classrooms and accommodation for visiting scholars and ministry partners.</p>
+          <h4 class="font-bold text-on-surface text-headline-sm mb-2">Faculty &amp; Staff</h4>
+          <p class="text-body-sm text-on-surface-variant leading-relaxed">Reserve classrooms, conference rooms, and GMC lodging for scholars and ministry partners.</p>
         </div>
         <div class="lp-audience-card rounded-2xl border border-outline-variant/30 p-7 bg-surface-container-lowest">
           <span class="material-symbols-outlined text-primary text-[32px] mb-4 block">person</span>
           <h4 class="font-bold text-on-surface text-headline-sm mb-2">Students</h4>
-          <p class="text-body-sm text-on-surface-variant leading-relaxed">Book study spaces, dorm rooms, and sports facilities for academic and personal use.</p>
+          <p class="text-body-sm text-on-surface-variant leading-relaxed">Book dorm rooms, study spaces, and recreation facilities for campus life.</p>
         </div>
         <div class="lp-audience-card rounded-2xl border border-outline-variant/30 p-7 bg-surface-container-lowest">
           <span class="material-symbols-outlined text-primary text-[32px] mb-4 block">volunteer_activism</span>
           <h4 class="font-bold text-on-surface text-headline-sm mb-2">Missionaries</h4>
-          <p class="text-body-sm text-on-surface-variant leading-relaxed">Arrange lodging and function spaces for mission teams visiting campus.</p>
+          <p class="text-body-sm text-on-surface-variant leading-relaxed">Arrange group lodging and function spaces for teams visiting APTS.</p>
         </div>
         <div class="lp-audience-card rounded-2xl border border-outline-variant/30 p-7 bg-surface-container-lowest">
+          <span class="material-symbols-outlined text-primary text-[32px] mb-4 block">badge</span>
+          <h4 class="font-bold text-on-surface text-headline-sm mb-2">Approved guests</h4>
+          <p class="text-body-sm text-on-surface-variant leading-relaxed">External visitors with guest credentials from Housing can book assigned lodging and venues.</p>
+        </div>
+        <div class="lp-audience-card rounded-2xl border border-outline-variant/30 p-7 bg-surface-container-lowest sm:col-span-2 lg:col-span-1">
           <span class="material-symbols-outlined text-primary text-[32px] mb-4 block">manage_accounts</span>
-          <h4 class="font-bold text-on-surface text-headline-sm mb-2">Staff & Admin</h4>
-          <p class="text-body-sm text-on-surface-variant leading-relaxed">Approve requests, track payments, and oversee availability across all buildings.</p>
+          <h4 class="font-bold text-on-surface text-headline-sm mb-2">Housing &amp; Admin</h4>
+          <p class="text-body-sm text-on-surface-variant leading-relaxed">Approve requests, record payments, and manage availability across GMC and campus buildings.</p>
         </div>
       </div>
     </div>
@@ -355,7 +378,7 @@
           </div>
           <div>
             <p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-0.5">Email</p>
-            <p class="text-body-md font-semibold text-on-surface">facilities@apts.edu.ph</p>
+            <a href="mailto:facilities@apts.edu.ph" class="text-body-md font-semibold text-on-surface hover:text-primary transition-colors">facilities@apts.edu.ph</a>
           </div>
         </div>
         <div class="lp-contact-card flex items-center gap-4 bg-white rounded-2xl border border-outline-variant/30 px-6 py-6 shadow-sm">
@@ -364,7 +387,8 @@
           </div>
           <div>
             <p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-0.5">Campus</p>
-            <p class="text-body-md font-semibold text-on-surface">Baguio City, Philippines</p>
+            <p class="text-body-md font-semibold text-on-surface">17 Falkland St, Baguio City</p>
+            <p class="text-body-sm text-on-surface-variant mt-0.5">Philippines</p>
           </div>
         </div>
       </div>
@@ -383,29 +407,29 @@
         </span>
         <span class="text-headline-sm font-bold text-primary">AptSpace</span>
       </div>
-      <p class="text-body-sm text-on-surface-variant mb-6 leading-relaxed">Centralized facility management for the Asia Pacific Theological Seminary campus.</p>
+      <p class="text-body-sm text-on-surface-variant mb-6 leading-relaxed">Official housing and facilities booking portal for Asia Pacific Theological Seminary.</p>
     </div>
     <div>
-      <h6 class="text-label-md font-bold text-on-surface mb-5 uppercase tracking-wider">Resources</h6>
+      <h6 class="text-label-md font-bold text-on-surface mb-5 uppercase tracking-wider">Explore</h6>
       <ul class="space-y-3">
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Campus Map</a></li>
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Booking Guidelines</a></li>
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Guest Services</a></li>
+        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#facilities">Bookable facilities</a></li>
+        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#how-it-works">How booking works</a></li>
+        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="/login.html">Sign in</a></li>
       </ul>
     </div>
     <div>
       <h6 class="text-label-md font-bold text-on-surface mb-5 uppercase tracking-wider">Support</h6>
       <ul class="space-y-3">
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#contact">Contact Support</a></li>
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">IT Helpdesk</a></li>
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">FAQ</a></li>
+        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#contact">Contact facilities</a></li>
+        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="mailto:facilities@apts.edu.ph">facilities@apts.edu.ph</a></li>
+        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="/login.html">Account &amp; login help</a></li>
       </ul>
     </div>
     <div>
-      <h6 class="text-label-md font-bold text-on-surface mb-5 uppercase tracking-wider">Legal</h6>
+      <h6 class="text-label-md font-bold text-on-surface mb-5 uppercase tracking-wider">Campus</h6>
       <ul class="space-y-3">
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Privacy Policy</a></li>
-        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="#">Terms of Service</a></li>
+        <li><a class="text-body-sm text-on-surface-variant hover:text-primary transition-colors" href="https://apts.edu.ph" target="_blank" rel="noopener noreferrer">APTS website</a></li>
+        <li><span class="text-body-sm text-on-surface-variant">17 Falkland St, Baguio City</span></li>
       </ul>
     </div>
   </div>
@@ -423,7 +447,7 @@
     Browse
   </a>
   <a href="/login.html" class="inline-flex items-center gap-2 px-5 py-3 bg-primary text-white rounded-xl font-bold text-label-md shadow-md">
-    Log In
+    Sign in
     <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
   </a>
 </div>
@@ -431,10 +455,8 @@
 <script type="module">
   import { redirectIfLoggedIn } from '/assets/js/services/auth.js';
   import { initLandingPage } from '/assets/js/layout/landing.js';
-  import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
 
   redirectIfLoggedIn();
-  await initSplashIdle({ portal: 'guest' });
   initLandingPage();
 </script>
 

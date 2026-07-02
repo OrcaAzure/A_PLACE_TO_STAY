@@ -46,7 +46,7 @@ function revealStatic() {
     el.style.opacity = '1';
   });
   if (window.gsap) {
-    window.gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-sub, .lp-hero-cta > *, .lp-stat, .lp-hero-visual, .lp-hero-float, .lp-scroll-hint', {
+    window.gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-sub, .lp-hero-cta > *, .lp-stat, .lp-hero-visual, .lp-hero-mobile-visual, .lp-hero-float, .lp-scroll-hint', {
       clearProps: 'all',
     });
   }
@@ -66,6 +66,12 @@ export function initMobileMenu() {
 
   toggle.addEventListener('click', () => setOpen(menu.classList.contains('hidden')));
 
+  document.addEventListener('click', (e) => {
+    if (menu.classList.contains('hidden')) return;
+    if (menu.contains(e.target) || toggle.contains(e.target)) return;
+    setOpen(false);
+  });
+
   menu.querySelectorAll('a, button[data-action="logout"]').forEach((link) => {
     link.addEventListener('click', () => setOpen(false));
   });
@@ -84,15 +90,22 @@ function initLandingSearch() {
   if (!inputs.length) return;
 
   const cards = () => document.querySelectorAll('.lp-facility-card');
+  const emptyEl = document.getElementById('lp-facilities-empty');
+  const gridEl = document.querySelector('.lp-facilities-grid');
 
   const applyFilter = (query) => {
     const q = query.trim().toLowerCase();
+    let visible = 0;
     cards().forEach((card) => {
       const hay = `${card.dataset.facilityName || ''} ${card.textContent}`.toLowerCase();
       const match = !q || hay.includes(q);
       card.classList.toggle('hidden', !match);
-      card.style.opacity = match ? '1' : '0.35';
+      card.style.removeProperty('opacity');
+      if (match) visible += 1;
     });
+    const noResults = Boolean(q) && visible === 0;
+    emptyEl?.classList.toggle('hidden', !noResults);
+    gridEl?.classList.toggle('hidden', noResults);
   };
 
   const syncAndFilter = (value, source) => {
@@ -198,6 +211,7 @@ export async function initLandingPage() {
     .from('.lp-hero-sub', { y: 24, autoAlpha: 0, duration: 0.55 }, '-=0.35')
     .from('.lp-hero-cta > *', { y: 20, autoAlpha: 0, stagger: 0.1, duration: 0.5 }, '-=0.25')
     .from('.lp-stat', { y: 28, autoAlpha: 0, stagger: 0.08, duration: 0.55 }, '-=0.2')
+    .from('.lp-hero-mobile-visual', { y: 20, autoAlpha: 0, duration: 0.55 }, '-=0.35')
     .from('.lp-hero-visual', {
       autoAlpha: 0,
       clipPath: 'inset(100% 0% 0% 0%)',
@@ -226,11 +240,12 @@ export async function initLandingPage() {
 
   gsap.from('.lp-trust-item', {
     y: 12,
-    autoAlpha: 0,
+    opacity: 0,
     stagger: 0.08,
     duration: 0.55,
     ease: 'power2.out',
-    scrollTrigger: { trigger: '.lp-trust', start: 'top 88%' },
+    immediateRender: false,
+    scrollTrigger: { trigger: '.lp-trust', start: 'top 96%' },
   });
 
   gsap.utils.toArray('.lp-section-head').forEach((head) => {

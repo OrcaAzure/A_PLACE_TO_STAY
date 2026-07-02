@@ -164,7 +164,19 @@
 }
 
 .lp-trust-item {
-  /* animated in via GSAP; visible by default if JS fails */
+  opacity: 1;
+}
+
+.lp-hero-mobile-visual {
+  position: relative;
+}
+
+.lp-hero-mobile-visual::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(26, 54, 93, 0.45) 0%, transparent 55%);
+  pointer-events: none;
 }
 
 .lp-section-label {
