@@ -9,6 +9,67 @@ function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+const HERO_TYPE_PHRASES = [
+  'GMC rooms',
+  'conference halls',
+  'chapel & gardens',
+  'recreation spaces',
+  'group ministry stays',
+];
+
+function initHeroTypewriter() {
+  const el = document.getElementById('lp-hero-typed');
+  const cursor = document.querySelector('.lp-hero-type-cursor');
+  if (!el) return () => {};
+
+  if (prefersReducedMotion()) {
+    el.textContent = 'GMC rooms, conference halls, chapel, recreation spaces, and group stays';
+    cursor?.classList.add('hidden');
+    return () => {};
+  }
+
+  let phraseIndex = 0;
+  let charIndex = 0;
+  let deleting = false;
+  let timerId = 0;
+
+  const schedule = (fn, ms) => {
+    timerId = window.setTimeout(fn, ms);
+  };
+
+  const tick = () => {
+    const current = HERO_TYPE_PHRASES[phraseIndex];
+
+    if (!deleting) {
+      charIndex += 1;
+      el.textContent = current.slice(0, charIndex);
+      if (charIndex >= current.length) {
+        schedule(() => {
+          deleting = true;
+          tick();
+        }, 2400);
+        return;
+      }
+      schedule(tick, 42 + Math.random() * 40);
+      return;
+    }
+
+    charIndex -= 1;
+    el.textContent = current.slice(0, charIndex);
+    if (charIndex <= 0) {
+      deleting = false;
+      phraseIndex = (phraseIndex + 1) % HERO_TYPE_PHRASES.length;
+      schedule(tick, 520);
+      return;
+    }
+    schedule(tick, 26);
+  };
+
+  schedule(tick, 1100);
+
+  return () => window.clearTimeout(timerId);
+}
+
 function loadScript(src) {
   return new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${src}"]`)) {
@@ -46,7 +107,7 @@ function revealStatic() {
     el.style.opacity = '1';
   });
   if (window.gsap) {
-    window.gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-sub, .lp-hero-cta > *, .lp-stat, .lp-hero-visual, .lp-hero-mobile-visual, .lp-hero-float, .lp-scroll-hint', {
+    window.gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-rule, .lp-hero-sub, .lp-hero-cta > *, .lp-hero-tags > *, .lp-stat, .lp-hero-visual, .lp-hero-mobile-visual, .lp-hero-float, .lp-hero-booking-card, .lp-scroll-hint', {
       clearProps: 'all',
     });
   }
@@ -130,9 +191,60 @@ function initLandingSearch() {
 
 export function initNavScroll(nav) {
   if (!nav) return;
-  const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 24);
+  const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 12);
   onScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
+}
+
+function initNavSpy() {
+  const sectionIds = ['hero', 'facilities', 'how-it-works', 'contact'];
+  const links = document.querySelectorAll('[data-nav-section]');
+  const scroller = document.querySelector('.lp-section-scroller');
+  if (!links.length) return;
+
+  const setActive = (id) => {
+    if (!sectionIds.includes(id)) return;
+    links.forEach((link) => {
+      link.classList.toggle('is-active', link.dataset.navSection === id);
+    });
+    scroller?.classList.toggle('is-on-light', id !== 'hero');
+  };
+
+  const resolveSection = () => {
+    const marker = window.scrollY + window.innerHeight * 0.38;
+    let current = sectionIds[0];
+
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el && el.offsetTop <= marker) current = id;
+    });
+
+    if (window.scrollY < 48) current = 'hero';
+    setActive(current);
+  };
+
+  let ticking = false;
+  const onScroll = () => {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(() => {
+      resolveSection();
+      ticking = false;
+    });
+  };
+
+  resolveSection();
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+
+  document.querySelectorAll('a[href^="#"]').forEach((link) => {
+    link.addEventListener('click', () => {
+      const id = link.getAttribute('href')?.slice(1);
+      if (id && sectionIds.includes(id)) {
+        window.setTimeout(() => setActive(id), 80);
+      }
+    });
+  });
 }
 
 function initSmoothAnchors() {
@@ -140,6 +252,11 @@ function initSmoothAnchors() {
     link.addEventListener('click', (e) => {
       const id = link.getAttribute('href');
       if (!id || id === '#') return;
+      if (id === '#hero') {
+        e.preventDefault();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
       const target = document.querySelector(id);
       if (!target) return;
       e.preventDefault();
@@ -169,8 +286,10 @@ function animateCounters(gsap) {
 export async function initLandingPage() {
   initSmoothAnchors();
   initNavScroll(document.querySelector('.lp-nav'));
+  initNavSpy();
   initMobileMenu();
   initLandingSearch();
+  initHeroTypewriter();
 
   document.querySelectorAll('.lp-facility-card img').forEach((img) => {
     img.addEventListener('error', () => {
@@ -208,8 +327,10 @@ export async function initLandingPage() {
     .from('.lp-nav-inner', { y: -16, duration: 0.45 })
     .from('.lp-hero-badge', { y: 20, autoAlpha: 0, duration: 0.5 }, '-=0.2')
     .from('.lp-hero-line', { y: 48, autoAlpha: 0, stagger: 0.12, duration: 0.75 }, '-=0.15')
+    .from('.lp-hero-rule', { scaleX: 0, transformOrigin: 'left center', duration: 0.45, ease: 'power2.out' }, '-=0.45')
     .from('.lp-hero-sub', { y: 24, autoAlpha: 0, duration: 0.55 }, '-=0.35')
     .from('.lp-hero-cta > *', { y: 20, autoAlpha: 0, stagger: 0.1, duration: 0.5 }, '-=0.25')
+    .from('.lp-hero-tags > *', { y: 14, autoAlpha: 0, stagger: 0.07, duration: 0.4 }, '-=0.3')
     .from('.lp-stat', { y: 28, autoAlpha: 0, stagger: 0.08, duration: 0.55 }, '-=0.2')
     .from('.lp-hero-mobile-visual', { y: 20, autoAlpha: 0, duration: 0.55 }, '-=0.35')
     .from('.lp-hero-visual', {
@@ -220,6 +341,7 @@ export async function initLandingPage() {
       ease: 'power4.out',
     }, '-=0.85')
     .from('.lp-hero-float', { scale: 0.8, autoAlpha: 0, stagger: 0.15, duration: 0.6, ease: 'back.out(1.4)' }, '-=0.5')
+    .from('.lp-hero-booking-card', { y: 20, autoAlpha: 0, duration: 0.55, ease: 'power2.out' }, '-=0.35')
     .from('.lp-scroll-hint', { y: -8, autoAlpha: 0, duration: 0.4 }, '-=0.2');
 
   animateCounters(gsap);
