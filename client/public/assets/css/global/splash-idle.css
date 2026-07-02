@@ -215,6 +215,22 @@
   100% { transform: translateX(320%); opacity: 0.5; }
 }
 
+/* ── Landing idle welcome (guest screensaver scene) ──────────────── */
+
+.apt-landing-idle {
+  z-index: var(--apt-splash-idle-z);
+}
+
+.apt-landing-idle .apt-idle--guest__message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
 /* ── Admin splash (secure boot) ───────────────────────────────────── */
 
 .apt-splash--admin {

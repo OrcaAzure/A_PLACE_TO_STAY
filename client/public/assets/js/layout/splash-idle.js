@@ -269,7 +269,7 @@ function buildAdminSplash() {
   return overlay;
 }
 
-function buildGuestIdle({ useLottie = true } = {}) {
+function guestIdleSceneInnerMarkup({ useLottie = true, showHint = true } = {}) {
   const slides = GUEST_FACILITY_IMAGES.map((url, i) =>
     `<div class="apt-idle--guest__slide${i === 0 ? ' is-active' : ''}" style="background-image:url('${url}')"></div>`,
   ).join('');
@@ -282,6 +282,23 @@ function buildGuestIdle({ useLottie = true } = {}) {
     ? guestIdleLottieMarkup()
     : guestCloudCatMarkup({ compact: true });
 
+  const hint = showHint
+    ? '<p class="apt-idle--guest__hint">Touch anywhere to return</p>'
+    : '';
+
+  return `
+    <div class="apt-idle--guest__slides">${slides}</div>
+    <div class="apt-idle--guest__vignette" aria-hidden="true"></div>
+    <div class="apt-idle--guest__cards">${cards}</div>
+    <div class="apt-idle--guest__message">
+      ${mascot}
+      <h2>Welcome to AptSpace – Tap to explore.</h2>
+      ${hint}
+    </div>
+    <div class="apt-idle--guest__kiosk-zone" data-apt-kiosk-corner aria-hidden="true"></div>`;
+}
+
+function buildGuestIdle({ useLottie = true } = {}) {
   const overlay = document.createElement('div');
   overlay.id = 'apt-idle';
   overlay.className = 'apt-overlay apt-idle apt-idle--guest is-hidden';
@@ -289,16 +306,7 @@ function buildGuestIdle({ useLottie = true } = {}) {
   overlay.setAttribute('aria-hidden', 'true');
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-label', 'AptSpace screensaver');
-  overlay.innerHTML = `
-    <div class="apt-idle--guest__slides">${slides}</div>
-    <div class="apt-idle--guest__vignette" aria-hidden="true"></div>
-    <div class="apt-idle--guest__cards">${cards}</div>
-    <div class="apt-idle--guest__message">
-      ${mascot}
-      <h2>Welcome to AptSpace – Tap to explore.</h2>
-      <p class="apt-idle--guest__hint">Touch anywhere to return</p>
-    </div>
-    <div class="apt-idle--guest__kiosk-zone" data-apt-kiosk-corner aria-hidden="true"></div>`;
+  overlay.innerHTML = guestIdleSceneInnerMarkup({ useLottie, showHint: true });
   return overlay;
 }
 
@@ -330,6 +338,10 @@ function dismissSplash(overlay) {
 /** Dismiss the initial splash overlay if it is still visible. */
 export function dismissAptSplash() {
   dismissSplash(document.getElementById('apt-splash'));
+}
+
+function delay(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
 function showIdle(overlay) {
