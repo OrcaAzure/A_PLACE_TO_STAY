@@ -187,11 +187,13 @@ export function venueCapacityLabel(space) {
 /** Map DB facility category → guest browse tab(s). */
 const VENUE_BROWSE_BY_CATEGORY = {
   GMC: 'conference-classrooms',
+  'GMC Conference Rooms': 'conference-classrooms',
   'Burdine Commons': 'conference-classrooms',
   'GMC Chapel': 'chapel-garden',
   Garden: 'chapel-garden',
   'Prayer Mountain': 'prayer-mountain',
   'Prayer Tower': 'prayer-mountain',
+  Recreation: 'sports-rec',
   'Basketball Court': 'sports-rec',
   'Childrens Playground': 'sports-rec',
   'Recreational Center': 'sports-rec',
@@ -215,7 +217,12 @@ export function venueBrowseCategoryIds(space) {
   if (CHAPEL_GARDEN_ITEM.test(itemLower) || dbCategory === 'Garden' || dbCategory === 'GMC Chapel') {
     ids.add('chapel-garden');
   }
-  if (CONFERENCE_ITEM.test(itemLower) || dbCategory === 'GMC') {
+  if (
+    CONFERENCE_ITEM.test(itemLower)
+    || dbCategory === 'GMC'
+    || dbCategory === 'GMC Conference Rooms'
+    || /^A-\d{3}$/i.test(item)
+  ) {
     ids.add('conference-classrooms');
   }
   if (/prayer mountain|prayer tower|retreat|baptism/i.test(`${dbCategory} ${item}`)) {

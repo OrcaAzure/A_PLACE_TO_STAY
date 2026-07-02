@@ -894,6 +894,9 @@
         spaces.push({
           category: group.category,
           item: item.item,
+          label: item.label,
+          name: item.name,
+          facilityId: item.facility_id,
           regularRate: regular?.rate ?? null,
           peakRate: peak?.rate ?? null,
         });
@@ -919,7 +922,7 @@
         </div>
         <div class="p-5 flex flex-col flex-1">
           <p class="text-label-sm text-primary font-medium mb-1">${escapeHtml(space.category)}</p>
-          <h3 class="font-headline-sm text-on-surface mb-1">${escapeHtml(space.item)}</h3>
+          <h3 class="font-headline-sm text-on-surface mb-1">${escapeHtml(space.label || space.name || space.item)}</h3>
           <p class="text-body-sm text-on-surface-variant mb-3">${venueRateLabel(space)}</p>
           ${!readOnly ? `<button type="button"
             class="book-venue-btn mt-auto w-full border border-primary text-primary rounded-lg py-2 text-label-sm hover:bg-primary hover:text-white transition-colors"
@@ -999,7 +1002,8 @@
   function openVenueModal(category, item) {
     if (catEl) catEl.value = category;
     if (itemEl) itemEl.value = item;
-    if (titleEl) titleEl.textContent = `Book — ${item}`;
+    const space = allVenueSpaces.find((s) => s.category === category && s.item === item);
+    if (titleEl) titleEl.textContent = `Book — ${space?.label || space?.name || item}`;
     const browseVenue = readVenueFields();
     const dateEl = document.getElementById('vbm-date');
     if (dateEl) {
