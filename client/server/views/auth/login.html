@@ -10,6 +10,33 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <style>
+    .password-field__input::-ms-reveal,
+    .password-field__input::-ms-clear {
+      display: none;
+    }
+
+    .password-field__input::-webkit-textfield-decoration-container {
+      display: none;
+    }
+
+    .password-field__toggle {
+      position: relative;
+      width: 2.75rem;
+    }
+
+    .password-field__icon {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .password-field__icon.hidden {
+      display: none;
+    }
+  </style>
 </head>
 <body class="bg-background min-h-screen flex items-center justify-center p-4">
   <main class="w-full max-w-md bg-white border border-outline-variant rounded-xl shadow-sm p-8">
@@ -25,12 +52,13 @@
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="password">Password</label>
         <div class="relative">
-          <input type="password" id="password" placeholder="Password"
-            class="w-full border border-outline-variant rounded-lg px-3 py-2.5 pr-10 text-body-sm" required />
+          <input type="password" id="password" placeholder="Password" autocomplete="current-password"
+            class="password-field__input w-full border border-outline-variant rounded-lg px-3 py-2.5 pr-10 text-body-sm" required />
           <button type="button" id="togglePassword"
-            class="absolute inset-y-0 right-0 flex items-center px-3 text-on-surface-variant hover:text-primary transition-colors"
+            class="password-field__toggle absolute inset-y-0 right-0 flex items-center px-3 text-on-surface-variant hover:text-primary transition-colors"
             aria-label="Show password" aria-pressed="false">
-            <span class="material-symbols-outlined text-[20px]" id="togglePasswordIcon" aria-hidden="true">visibility</span>
+            <span class="material-symbols-outlined text-[20px] password-field__icon password-field__icon--show" aria-hidden="true">visibility</span>
+            <span class="material-symbols-outlined text-[20px] password-field__icon password-field__icon--hide hidden" aria-hidden="true">visibility_off</span>
           </button>
         </div>
       </div>
@@ -64,15 +92,17 @@
 
     const passwordInput = document.getElementById('password');
     const togglePasswordBtn = document.getElementById('togglePassword');
-    const togglePasswordIcon = document.getElementById('togglePasswordIcon');
+    const iconShow = togglePasswordBtn?.querySelector('.password-field__icon--show');
+    const iconHide = togglePasswordBtn?.querySelector('.password-field__icon--hide');
 
-    if (passwordInput && togglePasswordBtn && togglePasswordIcon) {
+    if (passwordInput && togglePasswordBtn && iconShow && iconHide) {
       togglePasswordBtn.addEventListener('click', () => {
-        const isHidden = passwordInput.type === 'password';
-        passwordInput.type = isHidden ? 'text' : 'password';
-        togglePasswordIcon.textContent = isHidden ? 'visibility_off' : 'visibility';
-        togglePasswordBtn.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
-        togglePasswordBtn.setAttribute('aria-pressed', String(isHidden));
+        const willShow = passwordInput.type === 'password';
+        passwordInput.type = willShow ? 'text' : 'password';
+        iconShow.classList.toggle('hidden', willShow);
+        iconHide.classList.toggle('hidden', !willShow);
+        togglePasswordBtn.setAttribute('aria-label', willShow ? 'Hide password' : 'Show password');
+        togglePasswordBtn.setAttribute('aria-pressed', String(willShow));
       });
     }
 
