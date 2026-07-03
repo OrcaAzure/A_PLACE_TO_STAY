@@ -17,13 +17,24 @@ const HERO_TYPE_PHRASES = [
   'group ministry stays',
 ];
 
+function initHeroImageFallbacks() {
+  const fallback = 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=900&q=80';
+  document.querySelectorAll('.lp-hero-visual img, .lp-hero-float img, .lp-hero-mobile-visual img').forEach((img) => {
+    img.addEventListener('error', () => {
+      if (img.dataset.fallbackApplied) return;
+      img.dataset.fallbackApplied = '1';
+      img.src = fallback;
+    }, { once: true });
+  });
+}
+
 function initHeroTypewriter() {
   const el = document.getElementById('lp-hero-typed');
   const cursor = document.querySelector('.lp-hero-type-cursor');
   if (!el) return () => {};
 
   if (prefersReducedMotion()) {
-    el.textContent = 'GMC rooms, conference halls, chapel, recreation spaces, and group stays';
+    el.textContent = 'GMC rooms, conference halls, chapel & gardens, recreation spaces, and group ministry stays.';
     cursor?.classList.add('hidden');
     return () => {};
   }
@@ -42,8 +53,9 @@ function initHeroTypewriter() {
 
     if (!deleting) {
       charIndex += 1;
-      el.textContent = current.slice(0, charIndex);
-      if (charIndex >= current.length) {
+      const complete = charIndex >= current.length;
+      el.textContent = `${current.slice(0, charIndex)}${complete ? '.' : ''}`;
+      if (complete) {
         schedule(() => {
           deleting = true;
           tick();
@@ -102,8 +114,6 @@ function revealStatic() {
     el.style.opacity = '1';
     el.style.transform = 'none';
   });
-  document.querySelector('.lp-nav')?.style.removeProperty('visibility');
-  document.querySelector('.lp-nav')?.style.removeProperty('opacity');
   document.querySelectorAll('.lp-login-btn').forEach((el) => {
     el.style.visibility = 'visible';
     el.style.opacity = '1';
@@ -196,7 +206,26 @@ function initLandingSearch() {
 
 export function initNavScroll(nav) {
   if (!nav) return;
-  const onScroll = () => nav.classList.toggle('is-scrolled', window.scrollY > 12);
+
+  const SCROLL_REVEAL = 56;
+  let navRevealed = false;
+
+  const revealNav = () => {
+    if (navRevealed) return;
+    navRevealed = true;
+    document.body.classList.add('lp-nav-revealed');
+    nav.classList.add('lp-nav-is-visible');
+    nav.classList.remove('lp-nav-at-hero');
+  };
+
+  const onScroll = () => {
+    nav.classList.toggle('is-scrolled', window.scrollY > 12);
+    if (!navRevealed && window.scrollY > SCROLL_REVEAL) revealNav();
+  };
+
+  if (window.location.hash && window.location.hash !== '#hero') revealNav();
+  else if (window.scrollY > SCROLL_REVEAL) revealNav();
+
   onScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
 }
@@ -380,7 +409,6 @@ function setCountersStatic() {
 
 /** Lighter hero reveal after preloader/welcome — visuals + copy, not a full replay. */
 function prepareHeroHandoff(gsap) {
-  gsap.set('.lp-nav-inner', { y: -10, autoAlpha: 0 });
   gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-sub, .lp-hero-cta > *, .lp-hero-tags > *, .lp-stat', {
     autoAlpha: 0,
     y: 18,
@@ -402,13 +430,12 @@ function playHeroHandoff(gsap) {
   const tl = gsap.timeline({
     defaults: { ease: 'power2.out' },
     onComplete: () => {
-      gsap.set('.lp-login-btn, .lp-nav, .lp-nav-actions, .lp-hero-bg', { clearProps: 'visibility,opacity,transform,scale,clipPath' });
+      gsap.set('.lp-login-btn, .lp-nav-actions, .lp-hero-bg', { clearProps: 'visibility,opacity,transform,scale,clipPath' });
       gsap.set('.lp-hero-rule', { clearProps: 'transform' });
     },
   });
 
-  tl.to('.lp-nav-inner', { y: 0, autoAlpha: 1, duration: 0.42 })
-    .to('.lp-hero-bg', { scale: 1, duration: 1.05, ease: 'power1.out' }, 0)
+  tl.to('.lp-hero-bg', { scale: 1, duration: 1.05, ease: 'power1.out' }, 0)
     .to('.lp-hero-badge', { autoAlpha: 1, y: 0, duration: 0.48 }, '-=0.82')
     .to('.lp-hero-line', { autoAlpha: 1, y: 0, stagger: 0.07, duration: 0.52 }, '-=0.38')
     .to('.lp-hero-rule', { scaleX: 1, duration: 0.38, ease: 'power2.out' }, '-=0.42')
@@ -469,6 +496,7 @@ export async function initLandingPage(options = {}) {
   initMobileMenu();
   initLandingSearch();
   initHeroTypewriter();
+  initHeroImageFallbacks();
 
   document.querySelectorAll('.lp-facility-card img').forEach((img) => {
     img.addEventListener('error', () => {
@@ -515,18 +543,17 @@ export async function initLandingPage(options = {}) {
       return playHeroHandoff(gsap);
     };
   } else {
-    /* Hero — never hide the nav (Safari loses Log In if autoAlpha sticks on header) */
+    /* Hero — nav stays hidden until the user scrolls */
     const heroTl = gsap.timeline({
       defaults: { ease: 'power3.out' },
       onComplete: () => {
         if (revealTimer) window.clearTimeout(revealTimer);
-        gsap.set('.lp-login-btn, .lp-nav, .lp-nav-actions', { clearProps: 'visibility,opacity,transform' });
+        gsap.set('.lp-login-btn, .lp-nav-actions', { clearProps: 'visibility,opacity,transform' });
       },
     });
 
     heroTl
-      .from('.lp-nav-inner', { y: -16, duration: 0.45 })
-      .from('.lp-hero-badge', { y: 20, autoAlpha: 0, duration: 0.5 }, '-=0.2')
+      .from('.lp-hero-badge', { y: 20, autoAlpha: 0, duration: 0.5 })
       .from('.lp-hero-line', { y: 48, autoAlpha: 0, stagger: 0.12, duration: 0.75 }, '-=0.15')
       .from('.lp-hero-rule', { scaleX: 0, transformOrigin: 'left center', duration: 0.45, ease: 'power2.out' }, '-=0.45')
       .from('.lp-hero-sub', { y: 24, autoAlpha: 0, duration: 0.55 }, '-=0.35')
@@ -593,15 +620,6 @@ export async function initLandingPage(options = {}) {
     scrollTrigger: { trigger: '.lp-facilities-grid', start: 'top 82%' },
   });
 
-  document.querySelectorAll('.lp-facility-card').forEach((card) => {
-    card.addEventListener('mouseenter', () => {
-      gsap.to(card, { y: -6, duration: 0.35, ease: 'power2.out' });
-    });
-    card.addEventListener('mouseleave', () => {
-      gsap.to(card, { y: 0, duration: 0.45, ease: 'power2.out' });
-    });
-  });
-
   gsap.from('.lp-step-card', {
     y: 40,
     autoAlpha: 0,
@@ -655,12 +673,13 @@ export async function initLandingPage(options = {}) {
   });
 
   gsap.from('.lp-contact-card', {
-    x: (i) => (i % 2 === 0 ? -24 : 24),
+    y: 24,
     autoAlpha: 0,
-    stagger: 0.12,
-    duration: 0.65,
+    stagger: 0.1,
+    duration: 0.6,
     ease: 'power2.out',
-    scrollTrigger: { trigger: '.lp-contact', start: 'top 85%' },
+    clearProps: 'transform,opacity,visibility',
+    scrollTrigger: { trigger: '.lp-contact-cards', start: 'top 88%' },
   });
 
   document.querySelectorAll('.lp-magnetic').forEach((btn) => {
