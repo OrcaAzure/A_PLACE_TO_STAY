@@ -96,6 +96,8 @@ async function loadGsapWithScrollTrigger() {
 
 /** Ensure all content is visible if GSAP fails or is skipped */
 function revealStatic() {
+  if (!document.body.classList.contains('lp-ready')) return;
+
   document.querySelectorAll('.lp-trust-item').forEach((el) => {
     el.style.opacity = '1';
     el.style.transform = 'none';

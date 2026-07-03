@@ -73,8 +73,21 @@
   min-width: 5.5rem;
   position: relative;
   z-index: 2;
+}
+
+/* Keep Sign in visible after GSAP hero intro (Safari quirk) — only when intro is done */
+body.lp-ready:not(.lp-preloader-active):not(.lp-page-hidden) .lp-login-btn {
   visibility: visible !important;
   opacity: 1 !important;
+}
+
+/* Belt-and-suspenders: hide all landing sign-in CTAs until intro completes */
+body:not(.lp-ready) #lp-page .lp-login-btn,
+body:not(.lp-ready) #lp-page .lp-mobile-signin,
+body:not(.lp-ready) #lp-page .lp-mobile-cta a[href*="login"] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .lp-menu-btn {

@@ -7,6 +7,7 @@ import { BOOKING_REFRESH_MS } from '/assets/js/config/booking-refresh.js';
 
 const SPLASH_DURATION_MS = 1500;
 const IDLE_TIMEOUT_MS = 300_000;
+const IDLE_PREVIEW_PARAM = 'previewIdle';
 const KIOSK_CORNER_CLICKS = 3;
 const KIOSK_LONG_PRESS_MS = 900;
 const KIOSK_PIN = '2468';
@@ -326,6 +327,11 @@ function buildAdminIdle() {
   return overlay;
 }
 
+function wantsIdlePreview() {
+  const params = new URLSearchParams(window.location.search);
+  return params.has(IDLE_PREVIEW_PARAM) || params.get('idle') === 'preview';
+}
+
 function dismissSplash(overlay) {
   if (!overlay || overlay.classList.contains('is-hidden')) return;
   overlay.classList.add('is-hidden');
@@ -338,6 +344,44 @@ function dismissSplash(overlay) {
 /** Dismiss the initial splash overlay if it is still visible. */
 export function dismissAptSplash() {
   dismissSplash(document.getElementById('apt-splash'));
+}
+
+/**
+ * Show the guest/admin idle screensaver immediately (for demos and QA).
+ * @param {{ portal?: 'admin'|'guest' }} [options]
+ * @returns {Promise<HTMLElement | null>}
+ */
+export async function showAptIdlePreview({ portal = 'guest' } = {}) {
+  const isGuest = portal !== 'admin';
+  ensureStylesheet();
+
+  let guestUseLottie = false;
+  if (isGuest) {
+    guestUseLottie = await Promise.race([
+      ensureDotLottiePlayer().then(() => true).catch(() => false),
+      new Promise((resolve) => { window.setTimeout(() => resolve(false), 2000); }),
+    ]);
+  }
+
+  let idle = document.getElementById('apt-idle');
+  if (!idle) {
+    idle = isGuest ? buildGuestIdle({ useLottie: guestUseLottie }) : buildAdminIdle();
+    document.body.appendChild(idle);
+    ensureKioskModal();
+    if (!idle.dataset.activityBound) {
+      bindIdleActivity(idle, { isGuest });
+      idle.dataset.activityBound = '1';
+    }
+  }
+
+  dismissAptSplash();
+  showIdle(idle);
+  return idle;
+}
+
+/** @returns {boolean} */
+export function isIdlePreviewRequested() {
+  return wantsIdlePreview();
 }
 
 function delay(ms) {
@@ -600,6 +644,11 @@ export async function initSplashIdle({
   } else if (!showSplash) {
     document.body.classList.remove('is-splash-active');
     document.querySelector('.admin-shell')?.classList.remove('is-splash-active');
+  }
+
+  if (wantsIdlePreview() && idle) {
+    if (splash) dismissSplash(splash);
+    window.setTimeout(() => showIdle(idle), 0);
   }
 
   return { splash, idle };
