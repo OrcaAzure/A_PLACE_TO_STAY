@@ -31,12 +31,15 @@ function initGuestUserMenu() {
 }
 
 export async function initGuestPortalChrome() {
-  initNavScroll(document.querySelector('.guest-top-nav'));
   initGuestUserMenu();
 
-  if (document.getElementById('page-content')?.classList.contains('guest-landing')) {
-    await initLandingPage();
+  const isLanding = document.getElementById('page-content')?.classList.contains('guest-landing');
+
+  if (isLanding) {
+    const startHero = await initLandingPage({ skipHeroEntrance: true });
+    if (typeof startHero === 'function') startHero();
   } else {
+    initNavScroll(document.querySelector('.guest-top-nav'));
     initMobileMenu();
   }
 }

@@ -16,7 +16,26 @@ body.guest-shell {
   min-width: 0;
 }
 
-/* ── Landing home (exact index.html layout) ── */
+/* ── Guest nav on app pages (always visible, no hero hide) ── */
+.guest-top-nav.lp-nav-is-visible {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(203, 213, 224, 0.45);
+  box-shadow: 0 4px 24px rgba(26, 54, 93, 0.07);
+}
+
+.guest-shell .guest-main.lp-main {
+  padding-top: 0;
+}
+
+.guest-shell #page-content.guest-landing {
+  padding-top: 0;
+}
+
+/* App pages need offset for fixed nav */
+.guest-shell #page-content.guest-app-page {
+  padding-top: calc(4.25rem + env(safe-area-inset-top, 0px));
+}
+
 .guest-shell #page-content.guest-landing {
   flex: 1 1 auto;
   width: 100%;

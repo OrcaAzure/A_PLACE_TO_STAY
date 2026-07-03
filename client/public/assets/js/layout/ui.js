@@ -56,7 +56,7 @@ export const GUEST_NEW_RESERVATION_FOOTER = `
   </div>`;
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v13';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v14';
 const COMPONENT_FETCH_MS = 10000;
 const BOOT_LOADER_ID = 'apt-boot-loader';
 const SHELL_BOOT_TIMEOUT_MS = 8000;
@@ -388,17 +388,64 @@ function renderGuestPortalNavLinks(activePage) {
 
 function renderGuestMobileNavLinks(activePage) {
   const items = [
-    { id: 'dashboard', label: 'Home', href: '/guest/dashboard.html' },
-    { id: 'facilities', label: 'Browse', href: '/guest/facilities.html' },
-    { id: 'reservations', label: 'My Stays', href: '/guest/reservations.html' },
-    { id: 'settings', label: 'Account', href: '/guest/settings.html' },
+    { id: 'dashboard', label: 'Home', href: '/guest/dashboard.html', icon: 'home' },
+    { id: 'facilities', label: 'Browse', href: '/guest/facilities.html', icon: 'explore' },
+    { id: 'reservations', label: 'My Stays', href: '/guest/reservations.html', icon: 'event_available' },
+    { id: 'settings', label: 'Account', href: '/guest/settings.html', icon: 'person' },
   ];
   return items.map((item) => {
-    const base = 'lp-mobile-link';
+    const base = 'lp-mobile-link flex items-center gap-2';
     const cls = activePage === item.id ? `${base} text-primary font-semibold` : base;
-    return `<a class="${cls}" href="${item.href}" aria-current="${activePage === item.id ? 'page' : 'false'}">${item.label}</a>`;
+    return `<a class="${cls}" href="${item.href}" aria-current="${activePage === item.id ? 'page' : 'false'}"><span class="material-symbols-outlined text-[20px] text-primary/80">${item.icon}</span>${item.label}</a>`;
   }).join('');
 }
+
+const GUEST_LANDING_SEARCH_DESKTOP = `
+        <label class="lp-nav-search group flex items-center gap-2 bg-surface-container-low/80 px-3.5 py-2 rounded-full border border-outline-variant/40 min-w-0 w-[12.5rem] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 transition-all">
+          <span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0 group-focus-within:text-primary transition-colors">search</span>
+          <input id="landing-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0 placeholder:text-on-surface-variant/70" placeholder="Search…" type="search" aria-label="Search facilities"/>
+        </label>`;
+
+const GUEST_LANDING_SEARCH_MOBILE = `
+      <div class="pt-3 mt-2 border-t border-outline-variant/30">
+        <label class="text-label-sm text-on-surface-variant block mb-2 px-1" for="landing-search-mobile">Search facilities</label>
+        <div class="lp-nav-search flex items-center gap-2 bg-surface-container-low px-3 py-2.5 rounded-xl border border-outline-variant/40">
+          <span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">search</span>
+          <input id="landing-search-mobile" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0" placeholder="Chapel, GMC, basketball…" type="search"/>
+        </div>
+      </div>`;
+
+const GUEST_SECTION_SCROLLER = `
+<nav class="lp-section-scroller hidden xl:block" aria-label="Page sections">
+  <div class="lp-section-scroller-rail">
+    <ol class="lp-section-scroller-list">
+      <li>
+        <a href="#hero" class="lp-section-scroller-item" data-nav-section="hero">
+          <span class="lp-section-scroller-label">Home</span>
+          <span class="lp-section-scroller-dot" aria-hidden="true"></span>
+        </a>
+      </li>
+      <li>
+        <a href="#facilities" class="lp-section-scroller-item" data-nav-section="facilities">
+          <span class="lp-section-scroller-label">Facilities</span>
+          <span class="lp-section-scroller-dot" aria-hidden="true"></span>
+        </a>
+      </li>
+      <li>
+        <a href="#how-it-works" class="lp-section-scroller-item" data-nav-section="how-it-works">
+          <span class="lp-section-scroller-label">How it works</span>
+          <span class="lp-section-scroller-dot" aria-hidden="true"></span>
+        </a>
+      </li>
+      <li>
+        <a href="#contact" class="lp-section-scroller-item" data-nav-section="contact">
+          <span class="lp-section-scroller-label">Contact</span>
+          <span class="lp-section-scroller-dot" aria-hidden="true"></span>
+        </a>
+      </li>
+    </ol>
+  </div>
+</nav>`;
 
 function buildGuestShell({
   templates,
@@ -420,6 +467,9 @@ function buildGuestShell({
   const nav = templates.guestNav
     .replace(/\{\{BRAND_HREF\}\}/g, homeHref)
     .replace(/\{\{HOME_HREF\}\}/g, homeHref)
+    .replace(/\{\{NAV_MODIFIER_CLASSES\}\}/g, landingHome ? 'lp-nav-at-hero' : 'lp-nav-is-visible')
+    .replace(/\{\{LANDING_SEARCH_DESKTOP\}\}/g, landingHome ? GUEST_LANDING_SEARCH_DESKTOP : '')
+    .replace(/\{\{LANDING_SEARCH_MOBILE\}\}/g, landingHome ? GUEST_LANDING_SEARCH_MOBILE : '')
     .replace(/\{\{PORTAL_NAV_LINKS\}\}/g, renderGuestPortalNavLinks(activePage))
     .replace(/\{\{MOBILE_NAV_LINKS\}\}/g, renderGuestMobileNavLinks(activePage))
     .replace(/\{\{USER_NAME\}\}/g, userName)
@@ -430,6 +480,7 @@ function buildGuestShell({
 
   return `
     ${nav}
+    ${landingHome ? GUEST_SECTION_SCROLLER : ''}
     <main class="guest-main lp-main">
       <div id="page-content" class="${pageClass}">${content}</div>
     </main>
@@ -621,7 +672,7 @@ export async function initAppLayout(config = {}) {
       document.body.appendChild(preservedNodes);
     }
     document.body.className = isGuest
-      ? 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen'
+      ? `guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen${landingHome ? ' lp-ready' : ''}`
       : `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
 
     bindLayoutEvents({ isGuest });

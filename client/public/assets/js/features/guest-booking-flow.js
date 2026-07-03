@@ -264,11 +264,11 @@ export function guestAccessNoticeHtml(isInternal = isInternalGuest()) {
 export function applyGuestLandingAccess(root = document, isInternal = isInternalGuest()) {
   const guestHouseCard = root.querySelector('[data-browse-category="guest-houses"]');
   if (guestHouseCard && !isInternal) {
-    const tag = guestHouseCard.querySelector('.lp-facility-body span.inline-block');
+    const tag = guestHouseCard.querySelector('.lp-facility-tag');
     const title = guestHouseCard.querySelector('.lp-facility-body h3');
     if (tag) tag.textContent = 'Global Missions Center';
     if (title) title.textContent = 'Global Missions Center Guest Rooms';
-    const desc = guestHouseCard.querySelector('.lp-facility-body p.mb-4, .lp-facility-body p.mb-3');
+    const desc = guestHouseCard.querySelector('.lp-facility-body p.mb-5, .lp-facility-body p.mb-4, .lp-facility-body p.mb-3');
     if (desc) {
       desc.textContent = 'Overnight rooms in Global Missions Center for visiting partners — plus conference and event spaces below.';
     }

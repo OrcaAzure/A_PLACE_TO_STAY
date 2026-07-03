@@ -142,9 +142,22 @@ CREATE TABLE IF NOT EXISTS users (
                  'Missionary',
                  'External Guest'
                ) NOT NULL DEFAULT 'Faculty',
-    status     ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    status              ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+    session_id          VARCHAR(64) NULL,
+    session_expires_at  TIMESTAMP NULL,
+    created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- ============================================
+-- LOGIN ATTEMPTS (per-account lockout)
+-- ============================================
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+    email         VARCHAR(150) PRIMARY KEY,
+    attempt_count INT NOT NULL DEFAULT 0,
+    locked_until  TIMESTAMP NULL,
+    updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- ============================================
