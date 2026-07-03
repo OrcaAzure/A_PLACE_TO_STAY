@@ -16,11 +16,32 @@ body.guest-shell {
   min-width: 0;
 }
 
-/* ── Guest nav on app pages (always visible, no hero hide) ── */
+/* ── Guest nav — solid bar (inherits .lp-nav tokens from landing.css) ── */
 .guest-top-nav.lp-nav-is-visible {
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--lp-nav-bg, #ffffff);
+  border-color: var(--lp-nav-border, rgba(203, 213, 224, 0.45));
+  box-shadow: var(--lp-nav-shadow, 0 1px 0 rgba(26, 54, 93, 0.04));
+}
+
+.guest-top-nav.lp-nav-is-visible.is-scrolled {
+  background: var(--lp-nav-bg-scrolled, #ffffff);
+  border-color: var(--lp-nav-border-scrolled, rgba(203, 213, 224, 0.5));
+  box-shadow: var(--lp-nav-shadow-scrolled, 0 4px 24px rgba(26, 54, 93, 0.08));
+}
+
+.guest-top-nav .guest-user-menu button {
+  background: #ffffff;
   border-color: rgba(203, 213, 224, 0.45);
-  box-shadow: 0 4px 24px rgba(26, 54, 93, 0.07);
+}
+
+.guest-top-nav.is-scrolled .guest-user-menu button {
+  background: #f8f9fb;
+  border-color: rgba(203, 213, 224, 0.5);
+}
+
+.guest-user-dropdown {
+  background: #ffffff !important;
+  border-color: rgba(203, 213, 224, 0.45) !important;
 }
 
 .guest-shell .guest-main.lp-main {
@@ -31,9 +52,9 @@ body.guest-shell {
   padding-top: 0;
 }
 
-/* App pages need offset for fixed nav */
+/* App pages — nav overlays on hover, no reserved header gap */
 .guest-shell #page-content.guest-app-page {
-  padding-top: calc(4.25rem + env(safe-area-inset-top, 0px));
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
 }
 
 .guest-shell #page-content.guest-landing {

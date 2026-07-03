@@ -16,7 +16,12 @@ function initGuestUserMenu() {
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
-    setOpen(menu.classList.contains('hidden'));
+    const opening = menu.classList.contains('hidden');
+    setOpen(opening);
+    if (opening) {
+      document.querySelector('.lp-nav')?.classList.add('lp-nav-is-visible');
+      document.body.classList.add('lp-nav-revealed');
+    }
   });
 
   document.addEventListener('click', (e) => {

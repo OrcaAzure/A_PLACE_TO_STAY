@@ -138,6 +138,10 @@ export function initMobileMenu() {
     menu.setAttribute('aria-hidden', open ? 'false' : 'true');
     toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     toggle.querySelector('.material-symbols-outlined').textContent = open ? 'close' : 'menu';
+    if (open) {
+      document.querySelector('.lp-nav')?.classList.add('lp-nav-is-visible');
+      document.body.classList.add('lp-nav-revealed');
+    }
   };
 
   toggle.addEventListener('click', () => setOpen(menu.classList.contains('hidden')));
@@ -207,25 +211,79 @@ function initLandingSearch() {
 export function initNavScroll(nav) {
   if (!nav) return;
 
-  const SCROLL_REVEAL = 56;
-  let navRevealed = false;
+  const HOT_ZONE_PX = 56;
+  const HIDE_DELAY_MS = 380;
 
-  const revealNav = () => {
-    if (navRevealed) return;
-    navRevealed = true;
-    document.body.classList.add('lp-nav-revealed');
-    nav.classList.add('lp-nav-is-visible');
-    nav.classList.remove('lp-nav-at-hero');
+  let hideTimer = 0;
+  let hotzone = document.querySelector('.lp-nav-hotzone');
+
+  if (!hotzone) {
+    hotzone = document.createElement('div');
+    hotzone.className = 'lp-nav-hotzone';
+    hotzone.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(hotzone);
+  }
+
+  const menusOpen = () => {
+    const mobile = document.getElementById('lp-mobile-menu');
+    const dropdown = document.getElementById('guest-user-dropdown');
+    return Boolean(
+      (mobile && !mobile.classList.contains('hidden'))
+      || (dropdown && !dropdown.classList.contains('hidden'))
+    );
+  };
+
+  const setVisible = (visible) => {
+    nav.classList.toggle('lp-nav-is-visible', visible);
+    document.body.classList.toggle('lp-nav-revealed', visible);
+  };
+
+  const showNav = () => {
+    window.clearTimeout(hideTimer);
+    setVisible(true);
+  };
+
+  const scheduleHide = () => {
+    window.clearTimeout(hideTimer);
+    hideTimer = window.setTimeout(() => {
+      if (menusOpen() || nav.matches(':hover') || hotzone.matches(':hover')) return;
+      setVisible(false);
+    }, HIDE_DELAY_MS);
   };
 
   const onScroll = () => {
     nav.classList.toggle('is-scrolled', window.scrollY > 12);
-    if (!navRevealed && window.scrollY > SCROLL_REVEAL) revealNav();
   };
 
-  if (window.location.hash && window.location.hash !== '#hero') revealNav();
-  else if (window.scrollY > SCROLL_REVEAL) revealNav();
+  const pointerNearTop = (clientY) => clientY <= HOT_ZONE_PX;
 
+  if (prefersReducedMotion()) {
+    setVisible(true);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return;
+  }
+
+  hotzone.addEventListener('mouseenter', showNav);
+  hotzone.addEventListener('touchstart', showNav, { passive: true });
+  nav.addEventListener('mouseenter', showNav);
+  nav.addEventListener('mouseleave', scheduleHide);
+  nav.addEventListener('focusin', showNav);
+  nav.addEventListener('focusout', (e) => {
+    if (!nav.contains(e.relatedTarget)) scheduleHide();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (pointerNearTop(e.clientY)) showNav();
+    else if (!nav.contains(e.target) && !hotzone.contains(e.target)) scheduleHide();
+  }, { passive: true });
+
+  document.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    if (touch && pointerNearTop(touch.clientY)) showNav();
+  }, { passive: true });
+
+  setVisible(false);
   onScroll();
   window.addEventListener('scroll', onScroll, { passive: true });
 }

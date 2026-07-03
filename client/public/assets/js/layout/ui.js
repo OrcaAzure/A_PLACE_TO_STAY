@@ -467,7 +467,7 @@ function buildGuestShell({
   const nav = templates.guestNav
     .replace(/\{\{BRAND_HREF\}\}/g, homeHref)
     .replace(/\{\{HOME_HREF\}\}/g, homeHref)
-    .replace(/\{\{NAV_MODIFIER_CLASSES\}\}/g, landingHome ? 'lp-nav-at-hero' : 'lp-nav-is-visible')
+    .replace(/\{\{NAV_MODIFIER_CLASSES\}\}/g, 'lp-nav-at-hero')
     .replace(/\{\{LANDING_SEARCH_DESKTOP\}\}/g, landingHome ? GUEST_LANDING_SEARCH_DESKTOP : '')
     .replace(/\{\{LANDING_SEARCH_MOBILE\}\}/g, landingHome ? GUEST_LANDING_SEARCH_MOBILE : '')
     .replace(/\{\{PORTAL_NAV_LINKS\}\}/g, renderGuestPortalNavLinks(activePage))
