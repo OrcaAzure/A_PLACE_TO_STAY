@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon src/server.js",
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "test": "node --import ./test/helpers/bootstrap.mjs --test --test-concurrency=1 \"test/**/*.test.js\"",
+    "test:unit": "node --import ./test/helpers/bootstrap.mjs --test test/unit/**/*.test.js",
+    "test:integration": "node --import ./test/helpers/bootstrap.mjs --test --test-concurrency=1 test/integration/**/*.test.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -19,6 +22,7 @@
     "nodemailer": "^9.0.1"
   },
   "devDependencies": {
-    "nodemon": "^3.1.7"
+    "nodemon": "^3.1.7",
+    "supertest": "^7.1.1"
   }
 }

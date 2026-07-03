@@ -118,9 +118,19 @@ Bookings auto-calculate price, season, and check room availability.
 | Guest portal | ~80% | Reservations & facilities live; settings profile now saves |
 | Backend API | ~75% | Core flows done; rates/seasons admin UI not built |
 | Auth & email | ~90% | Login, reset, guest-access emails (needs valid SMTP) |
-| Dev tooling | ~75% | Setup script, health check; no automated tests yet |
+| Dev tooling | ~85% | Setup script, health check, automated API tests (`npm test`) |
 
-**Still in progress:** payment recording UI (mark-as-paid added), notification prefs, landing page polish, automated tests.
+**Still in progress:** payment recording UI (mark-as-paid added), notification prefs, landing page polish.
+
+## Automated tests
+
+```bash
+npm run install:server   # once — installs supertest
+npm test                 # unit + integration (integration needs MySQL + .env)
+npm run test:unit        # middleware permission guards only (no database)
+```
+
+Integration tests use `client/server/.env` and seeded users (`admin@aptspace.com`, `maria.santos@apts.edu.ph` / `password`). They are skipped automatically when MySQL is unavailable.
 
 ## Production deployment
 
@@ -230,6 +240,6 @@ See `deploy/apache-proxy.example.conf` for a starter Apache config to hand to IT
 - Put nginx/Cloudflare in front with HTTPS and WAF
 - Use a secrets manager or host env vars (not committed `.env`)
 - Rotate `JWT_SECRET` only with a forced re-login plan
-- Add automated tests for auth and booking permission checks
+- Add more automated tests for booking create/update flows and guest-access workflow
 - Consider httpOnly cookie sessions instead of `localStorage` JWT (larger change)
 - Tighten CSP once Tailwind is built locally (remove CDN `unsafe-eval`)
