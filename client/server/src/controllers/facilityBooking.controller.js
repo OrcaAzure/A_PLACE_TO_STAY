@@ -115,8 +115,7 @@ export const createFacilityBooking = async (req, res) => {
     const { row: rateRow } = identity;
     const catalogFacilityId = identity.facility_id;
 
-    const packageLabel = rateRow?.package_name || identity.item;
-    const durationError = validateVenueDuration(startTime, endTime, packageLabel);
+    const durationError = validateVenueDuration(rateRow, startTime, endTime);
     if (durationError) {
       return res.status(400).json({ message: durationError });
     }
@@ -139,12 +138,7 @@ export const createFacilityBooking = async (req, res) => {
     }
 
     const season = normalizeFacilityBookingSeason(rateRow.season);
-    const total_amount = computeVenueTotal(
-      rateRow.rate,
-      startTime,
-      endTime,
-      rateRow?.package_name || identity.item
-    );
+    const total_amount = computeVenueTotal(rateRow, startTime, endTime);
 
     const bookingStatus = isAdmin ? (status || 'Approved') : 'Pending';
 
@@ -285,10 +279,9 @@ export const checkVenueSlotAvailability = async (req, res) => {
     });
 
     const { row: rateRow } = identity;
-    const packageLabel = rateRow?.package_name || identity.item;
-    const durationError = validateVenueDuration(startTime, endTime, packageLabel);
-    const estimatedTotal = computeVenueTotal(rateRow.rate, startTime, endTime, packageLabel);
-    const rateMeta = venueRateMeta(packageLabel, rateRow.rate);
+    const durationError = validateVenueDuration(rateRow, startTime, endTime);
+    const estimatedTotal = computeVenueTotal(rateRow, startTime, endTime);
+    const rateMeta = venueRateMeta(rateRow);
     const hours = bookingDurationHours(startTime, endTime);
 
     res.status(200).json({
@@ -300,6 +293,8 @@ export const checkVenueSlotAvailability = async (req, res) => {
       duration_hours: hours,
       capacity_min: rateRow.capacity_min,
       capacity_max: rateRow.capacity_max,
+      inclusions: rateRow.inclusions,
+      policies: rateRow.policies,
       label: rateRow.label,
       ...rateMeta,
       message: durationError
@@ -387,6 +382,7 @@ export const getVenueScheduleOverview = async (req, res) => {
         season: resolved.season,
         calendar_season: resolved.calendar_season,
         rate: resolved.rate,
+        min_hours: resolved.min_hours,
         bookings: bookings.map((b) => ({
           ...b,
           conflicts_slot: slotValid ? bookingOverlapsSlot(b, checkStart, checkEnd) : false,

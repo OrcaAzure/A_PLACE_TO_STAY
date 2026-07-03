@@ -2,6 +2,7 @@ import { initManageRequestsModal, isManageRequestsModalOpen, closeManageRequests
 import { initManageReservationsModal, isManageReservationsModalOpen, closeManageReservationsModal } from '/assets/js/features/manage-reservations.js';
 import { initManageVenueBookingsModal, isManageVenueBookingsModalOpen, closeManageVenueBookingsModal } from '/assets/js/features/manage-venue-bookings.js';
 import { initManageFacilitiesModal, isManageFacilitiesModalOpen, closeManageFacilitiesModal } from '/assets/js/features/manage-facilities.js';
+import { initManageVenuesModal, isManageVenuesModalOpen, closeManageVenuesModal } from '/assets/js/features/manage-venues.js';
 import { initReservationWizard, isReservationWizardOpen, closeReservationWizard } from '/assets/js/features/reservation-wizard.js';
 import { initGroupWizard, isGroupWizardOpen, closeGroupWizard } from '/assets/js/features/group-reservation-wizard.js';
 import { initVenueBookingWizard, isVenueBookingWizardOpen, closeVenueBookingWizard } from '/assets/js/features/venue-booking-wizard.js';
@@ -166,7 +167,7 @@ function writeTemplateCache(templates) {
 
 async function loadAdminTemplates() {
   const cached = readTemplateCache();
-  if (cached?.sidebar && cached?.facilityCatalog && cached?.guestAccessModals) return cached;
+  if (cached?.sidebar && cached?.facilityCatalog && cached?.guestAccessModals && cached?.manageVenues) return cached;
 
   if (!templatesPromise) {
     templatesPromise = Promise.all([
@@ -177,6 +178,7 @@ async function loadAdminTemplates() {
       loadComponent('/components/manage-requests-modal.html'),
       loadComponent('/components/manage-reservations-modal.html'),
       loadComponent('/components/manage-facilities-modal.html'),
+      loadComponent('/components/manage-venues-modal.html'),
       loadComponent('/components/reservation-wizard-modal.html'),
       loadComponent('/components/group-wizard-modal.html'),
       loadComponent('/components/venue-booking-wizard-modal.html'),
@@ -184,7 +186,7 @@ async function loadAdminTemplates() {
       loadComponent('/components/notifications.html'),
       loadComponent('/components/facility-catalog-modal.html'),
       loadComponent('/components/guest-access-modals.html'),
-    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, reservationWizard, groupWizard, venueWizard, manageVenueBookings, notifications, facilityCatalog, guestAccessModals]) => {
+    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, manageVenues, reservationWizard, groupWizard, venueWizard, manageVenueBookings, notifications, facilityCatalog, guestAccessModals]) => {
       const bundle = {
         sidebar,
         header,
@@ -193,6 +195,7 @@ async function loadAdminTemplates() {
         manageRequests,
         manageReservations,
         manageFacilities,
+        manageVenues,
         reservationWizard,
         groupWizard,
         venueWizard,
@@ -293,6 +296,7 @@ function buildAdminShell({
     ${templates.manageRequests || ''}
     ${templates.manageReservations || ''}
     ${templates.manageFacilities || ''}
+    ${templates.manageVenues || ''}
     ${templates.reservationWizard || ''}
     ${templates.groupWizard || ''}
     ${templates.venueWizard || ''}
@@ -686,6 +690,7 @@ export async function initAppLayout(config = {}) {
       initManageReservationsModal();
       initManageVenueBookingsModal();
       initManageFacilitiesModal();
+      initManageVenuesModal();
       initReservationWizard();
       initGroupWizard();
       initVenueBookingWizard();

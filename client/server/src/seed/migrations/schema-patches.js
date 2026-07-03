@@ -13,6 +13,7 @@ import {
 import {
   runFacilitiesCatalogMigration,
   runGmcAblockMigration,
+  runVenueFieldsMigration,
 } from './facilities.js';
 
 export async function runSchemaPatches() {
@@ -370,6 +371,12 @@ export async function runSchemaPatches() {
     await runFacilitiesCatalogMigration();
   } catch (err) {
     console.warn('[schema] facilities catalog migration skipped:', err.message);
+  }
+
+  try {
+    await runVenueFieldsMigration();
+  } catch (err) {
+    console.warn('[schema] venue fields migration skipped:', err.message);
   }
 
   try {

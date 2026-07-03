@@ -17,6 +17,12 @@ import {
   resolveVenueFacilityRowByFacilityId,
   venueRateMeta,
 } from '../services/facility.service.js';
+import {
+  listAdminVenues,
+  saveAdminVenue,
+  deleteAdminVenue,
+  deleteAdminVenueFunction,
+} from '../services/venueAdmin.service.js';
 import { resolveLodgingSeasonForDate } from '../services/season.service.js';
 import { bustCatalogAndFacilities } from '../utils/cache.js';
 
@@ -84,7 +90,6 @@ export const getVenueRateQuote = async (req, res) => {
       return res.status(404).json({ message: 'Venue space not found' });
     }
 
-    const packageLabel = row.package_name || row.item;
     res.status(200).json({
       rate_id: row.rate_id,
       facility_id: row.facility_id,
@@ -99,10 +104,56 @@ export const getVenueRateQuote = async (req, res) => {
       calendar_season: row.calendar_season,
       capacity_min: row.capacity_min,
       capacity_max: row.capacity_max,
-      ...venueRateMeta(packageLabel, row.rate),
+      inclusions: row.inclusions,
+      policies: row.policies,
+      ...venueRateMeta(row),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+/** Admin "Manage venues": grouped venues, each with its uses and prices. */
+export const getAdminVenues = async (req, res) => {
+  try {
+    const venues = await listAdminVenues();
+    res.status(200).json({ venues });
+  } catch (error) {
+    res.status(error.status || 500).json({ message: error.message });
+  }
+};
+
+/** Create or update a venue and its uses in one payload. */
+export const saveVenue = async (req, res) => {
+  try {
+    const result = await saveAdminVenue(req.body);
+    const venues = await listAdminVenues();
+    res.status(200).json({ ...result, venues });
+  } catch (error) {
+    res.status(error.status || 500).json({ message: error.message });
+  }
+};
+
+/** Delete an entire venue (all of its uses). */
+export const removeVenue = async (req, res) => {
+  try {
+    const ids = req.body?.function_ids || req.body?.facility_ids || [];
+    const result = await deleteAdminVenue(ids);
+    const venues = await listAdminVenues();
+    res.status(200).json({ ...result, venues });
+  } catch (error) {
+    res.status(error.status || 500).json({ message: error.message });
+  }
+};
+
+/** Delete a single use of a venue. */
+export const removeVenueFunction = async (req, res) => {
+  try {
+    const result = await deleteAdminVenueFunction(req.params.id);
+    const venues = await listAdminVenues();
+    res.status(200).json({ ...result, venues });
+  } catch (error) {
+    res.status(error.status || 500).json({ message: error.message });
   }
 };
 

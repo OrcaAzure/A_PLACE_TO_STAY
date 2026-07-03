@@ -260,6 +260,31 @@ export async function getFacilitiesOverview() {
   return apiRequest('/facilities/overview');
 }
 
+export async function getAdminVenues() {
+  const data = await apiRequest('/facilities/admin/venues');
+  return data.venues || [];
+}
+
+export async function saveAdminVenue(payload) {
+  return apiRequest('/facilities/admin/venues', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteAdminVenue(functionIds) {
+  return apiRequest('/facilities/admin/venues', {
+    method: 'DELETE',
+    body: JSON.stringify({ function_ids: functionIds }),
+  });
+}
+
+export async function deleteAdminVenueFunction(facilityId) {
+  return apiRequest(`/facilities/admin/venues/functions/${facilityId}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function createFacilityRate(payload) {
   return apiRequest('/facilities', {
     method: 'POST',

@@ -8,6 +8,10 @@ import {
   createFacility,
   updateFacility,
   deleteFacility,
+  getAdminVenues,
+  saveVenue,
+  removeVenue,
+  removeVenueFunction,
 } from '../controllers/facility.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/role.middleware.js';
@@ -24,6 +28,13 @@ router.get(
   getVenueRateQuote
 );
 router.get('/list', requireAuth, cacheResponse('facilities:list'), getAllFacilities);
+
+// Admin venue management (grouped venues with uses, capacity, hours, inclusions).
+router.get('/admin/venues', requireAuth, adminOnly, getAdminVenues);
+router.post('/admin/venues', requireAuth, adminOnly, saveVenue);
+router.delete('/admin/venues', requireAuth, adminOnly, removeVenue);
+router.delete('/admin/venues/functions/:id', requireAuth, adminOnly, removeVenueFunction);
+
 router.get('/', requireAuth, cacheResponse('facilities:venues'), getVenueFacilities);
 router.post('/', requireAuth, adminOnly, createFacility);
 router.get('/:id', requireAuth, cacheResponse((req) => `facilities:id:${req.params.id}`), getFacilityById);

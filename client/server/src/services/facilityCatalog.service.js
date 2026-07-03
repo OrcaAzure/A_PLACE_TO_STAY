@@ -62,6 +62,10 @@ export async function fetchFacilitiesWithRates() {
        f.facility_group,
        f.capacity_min,
        f.capacity_max,
+       f.min_hours,
+       f.hourly_rate,
+       f.inclusions,
+       f.policies,
        rf.id AS rate_id,
        rf.season,
        rf.rate
@@ -86,6 +90,10 @@ export async function fetchFacilitiesWithRates() {
         label: formatFacilityLabel(row),
         capacity_min: row.capacity_min,
         capacity_max: row.capacity_max,
+        min_hours: row.min_hours,
+        hourly_rate: row.hourly_rate != null ? Number(row.hourly_rate) : null,
+        inclusions: row.inclusions,
+        policies: row.policies,
         rates: [],
         category: row.facility_group || 'Facility',
         item: row.room_code || row.package_name || row.name,
@@ -107,6 +115,11 @@ export function groupFacilitiesForOverview(facilities) {
   const byGroup = new Map();
 
   for (const facility of facilities) {
+    // A use with no Regular price isn't bookable yet — keep it out of guest and
+    // booking-wizard listings until an admin prices it under "Venue prices".
+    const hasRegular = (facility.rates || []).some((r) => r.season === 'Regular' && Number(r.rate) > 0);
+    if (!hasRegular) continue;
+
     const groupKey = facility.facility_group || 'Facilities';
     if (!byGroup.has(groupKey)) {
       byGroup.set(groupKey, {
@@ -126,6 +139,10 @@ export function groupFacilitiesForOverview(facilities) {
       item: facility.item,
       capacity_min: facility.capacity_min,
       capacity_max: facility.capacity_max,
+      min_hours: facility.min_hours,
+      hourly_rate: facility.hourly_rate,
+      inclusions: facility.inclusions,
+      policies: facility.policies,
       rates: facility.rates,
     });
   }

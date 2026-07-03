@@ -292,13 +292,6 @@
   gap: 0.35rem;
 }
 
-.fac-venue-card__category {
-  margin: 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #1a365d;
-}
-
 .fac-venue-card__name {
   margin: 0;
   font-size: 1.0625rem;
@@ -369,20 +362,6 @@
 
 .fac-venue-card__schedule .venue-slot-list {
   margin-top: 0.65rem;
-}
-
-.fac-venue-card__free-note {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  margin-top: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #065f46;
-}
-
-.fac-venue-card__free-note .material-symbols-outlined {
-  font-size: 1.125rem;
 }
 
 .fac-venue-card__links {

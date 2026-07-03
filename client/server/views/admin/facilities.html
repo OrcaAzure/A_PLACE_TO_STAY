@@ -28,7 +28,8 @@
     <nav class="res-hub-tabs" aria-label="Facilities sections">
       <button type="button" data-fac-tab="rooms" class="res-hub-tab is-active">Rooms</button>
       <button type="button" data-fac-tab="room-prices" class="res-hub-tab">Room prices</button>
-      <button type="button" data-fac-tab="venue-spaces" class="res-hub-tab">Venue spaces</button>
+      <button type="button" data-fac-tab="venue-spaces" class="res-hub-tab">Venues</button>
+      <button type="button" data-fac-tab="venue-prices" class="res-hub-tab">Venue prices</button>
       <button type="button" data-fac-tab="meals" class="res-hub-tab">Meal prices</button>
       <button type="button" data-fac-tab="extras" class="res-hub-tab">Extra fees</button>
     </nav>
@@ -46,6 +47,10 @@
             <input id="rooms-board-search" type="search" class="res-input" placeholder="Search by room number or type…" autocomplete="off" enterkeyhint="search" />
           </div>
           <div class="res-hub-toolbar__actions">
+            <button type="button" id="rooms-date-plan-open" class="res-btn">
+              <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+              Select dates
+            </button>
             <button type="button" data-open-manage-facilities class="res-btn res-btn--primary">
               <span class="material-symbols-outlined" aria-hidden="true">tune</span>
               Manage rooms
@@ -64,16 +69,6 @@
               </div>
             </div>
           </div>
-        </div>
-        <div id="rooms-plan-prompt" class="rooms-plan-prompt">
-          <div class="rooms-plan-prompt__body">
-            <span class="rooms-plan-prompt__icon material-symbols-outlined" aria-hidden="true">date_range</span>
-            <p class="rooms-plan-prompt__label">Filter rooms by check-in and check-out to see what's open or already reserved.</p>
-          </div>
-          <button type="button" id="rooms-date-plan-open" class="rooms-plan-prompt__btn">
-            <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
-            Select dates
-          </button>
         </div>
         <div id="rooms-date-plan" class="rooms-date-plan hidden" role="region" aria-label="Filter rooms by date range">
           <div class="rooms-date-plan__head">
@@ -139,35 +134,21 @@
       </div>
 
       <section class="res-hub-panel">
-        <p id="venue-board-hint" class="admin-panel-hint admin-panel-hint--in-panel">Search or filter spaces below. To approve or create bookings, go to <a href="reservations.html" class="text-primary font-semibold hover:underline">Reservations</a>.</p>
         <div class="res-hub-toolbar">
           <div class="res-hub-toolbar__search">
             <span class="material-symbols-outlined" aria-hidden="true">search</span>
             <input id="venue-board-search" type="search" class="res-input" placeholder="Search by space name or category…" autocomplete="off" enterkeyhint="search" />
           </div>
           <div class="res-hub-toolbar__actions">
-            <div class="fac-filter-wrap">
-              <button type="button" id="venue-filter-toggle" class="fac-filter-btn" aria-expanded="false" aria-controls="venue-filter-panel" aria-haspopup="true">
-                <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
-                <span id="venue-filter-label">Filters</span>
-              </button>
-              <div id="venue-filter-panel" class="fac-filter-panel hidden" role="menu" aria-label="Filter venue spaces">
-                <p class="fac-filter-panel__title">Show</p>
-                <button type="button" class="fac-filter-option is-active" data-venue-show="all" role="menuitem">All spaces</button>
-                <button type="button" class="fac-filter-option" data-venue-show="open" role="menuitem">Free for slot</button>
-              </div>
-            </div>
+            <button type="button" id="venue-schedule-open" class="res-btn">
+              <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
+              Select date &amp; time
+            </button>
+            <button type="button" data-open-manage-venues class="res-btn res-btn--primary">
+              <span class="material-symbols-outlined" aria-hidden="true">tune</span>
+              Manage venues
+            </button>
           </div>
-        </div>
-        <div id="venue-plan-prompt" class="rooms-plan-prompt">
-          <div class="rooms-plan-prompt__body">
-            <span class="rooms-plan-prompt__icon material-symbols-outlined" aria-hidden="true">schedule</span>
-            <p class="rooms-plan-prompt__label">Filter by date and time to see what's booked or free for a slot.</p>
-          </div>
-          <button type="button" id="venue-schedule-open" class="rooms-plan-prompt__btn">
-            <span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>
-            Select date &amp; time
-          </button>
         </div>
         <div id="venue-date-plan" class="rooms-date-plan hidden" role="region" aria-label="Filter venue spaces by date and time">
           <div class="rooms-date-plan__head">
@@ -206,6 +187,28 @@
         </div>
       </section>
 
+    </div>
+
+    <div id="fac-panel-venue-prices" class="fac-panel hidden">
+      <section class="res-hub-panel res-hub-panel--flush">
+        <div class="res-hub-toolbar res-hub-toolbar--actions-only">
+          <div class="res-hub-toolbar__actions">
+            <button type="button" data-venue-rates-edit-toggle class="res-btn" aria-pressed="false">
+              <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+              Edit uses &amp; prices
+            </button>
+          </div>
+        </div>
+        <div class="admin-notice admin-notice--inline hidden" data-venue-rates-hint role="note">
+          <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
+          <div class="admin-notice__body">
+            <p>Editing mode — each venue lists its booking uses. Rename a use, type a <strong>Regular</strong> price (and optional <strong>Peak</strong>), add or remove uses, then tap <strong>Save</strong> on that venue. A use with no price stays hidden from guests. Set up the space itself (capacity, hours, inclusions) under <strong>Venues → Manage venues</strong>.</p>
+          </div>
+        </div>
+        <div id="venue-rates-grid-mount" class="fac-catalog-grid fac-catalog-grid--room-rates">
+          <p class="fac-catalog-grid__empty">Loading venue prices…</p>
+        </div>
+      </section>
     </div>
 
     <div id="fac-panel-meals" class="fac-panel hidden">
@@ -276,6 +279,7 @@
       setCatalogToolbarTab,
     } from '/assets/js/features/admin-facility-catalog.js';
     import { bootstrapRoomRates } from '/assets/js/features/admin-room-rates.js';
+    import { bootstrapVenueRates } from '/assets/js/features/admin-venue-rates.js';
 
     if (!requireAuth()) throw new Error('Not authenticated');
 
@@ -309,6 +313,7 @@
       document.getElementById('fac-panel-rooms')?.classList.toggle('hidden', tab !== 'rooms');
       document.getElementById('fac-panel-room-prices')?.classList.toggle('hidden', tab !== 'room-prices');
       document.getElementById('fac-panel-venue-spaces')?.classList.toggle('hidden', tab !== 'venue-spaces');
+      document.getElementById('fac-panel-venue-prices')?.classList.toggle('hidden', tab !== 'venue-prices');
       document.getElementById('fac-panel-meals')?.classList.toggle('hidden', tab !== 'meals');
       document.getElementById('fac-panel-extras')?.classList.toggle('hidden', tab !== 'extras');
       if (activeFacTab === 'venue-spaces') {
@@ -324,7 +329,7 @@
     function applyFacDeepLinks() {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
-      if (tab && ['rooms', 'room-prices', 'venue-spaces', 'meals', 'extras'].includes(tab)) {
+      if (tab && ['rooms', 'room-prices', 'venue-spaces', 'venue-prices', 'meals', 'extras'].includes(tab)) {
         switchFacTab(tab);
       }
       const date = params.get('date');
@@ -349,6 +354,7 @@
       await bootstrapRoomsBoard();
       await bootstrapVenueScheduleBoard();
       await bootstrapRoomRates();
+      await bootstrapVenueRates();
 
       document.querySelectorAll('[data-fac-tab]').forEach((btn) => {
         btn.addEventListener('click', () => switchFacTab(btn.getAttribute('data-fac-tab')));

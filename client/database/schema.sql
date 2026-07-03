@@ -90,6 +90,15 @@ CREATE TABLE IF NOT EXISTS facilities (
     facility_group  VARCHAR(50)  DEFAULT NULL,
     capacity_min    INT          DEFAULT NULL,
     capacity_max    INT          DEFAULT NULL,
+    -- Minimum booking length in hours (e.g. 4 for GMC Chapel / Burdine Commons).
+    -- NULL or 1 means the venue is billed purely by the hour.
+    min_hours       INT          DEFAULT NULL,
+    -- Price charged for each hour beyond the minimum block. NULL falls back to
+    -- (base rate / min_hours). Ignored for purely hourly venues.
+    hourly_rate     DECIMAL(10,2) DEFAULT NULL,
+    -- Free-text notes shown to guests (what the price includes, house policies).
+    inclusions      TEXT         DEFAULT NULL,
+    policies        TEXT         DEFAULT NULL,
 
     UNIQUE KEY uq_facility_room (room_code),
 
@@ -692,30 +701,31 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 -- Event spaces — not lodging rooms
 -- ============================================
 
-INSERT INTO facilities (name, room_code, description, package_name, facility_group, capacity_min, capacity_max) VALUES
-    ('GMC Chapel', NULL, NULL, 'Church',  'GMC Chapel', NULL, NULL),
-    ('GMC Chapel', NULL, NULL, 'Wedding', 'GMC Chapel', NULL, NULL),
-    ('Burdine Commons', NULL, NULL, 'Meeting and other functions', 'Burdine Commons', NULL, NULL),
-    ('Burdine Commons', NULL, NULL, 'Wedding and reception', 'Burdine Commons', NULL, NULL),
-    ('Osgood Garden', NULL, 'Outdoor garden venue.', NULL, 'Garden', 1, 150),
-    ('Prayer Mountain', NULL, NULL, 'Retreat use', 'Prayer Mountain', NULL, NULL),
-    ('Prayer Tower', NULL, NULL, 'Function', 'Prayer Tower', NULL, NULL),
-    ('Prayer Tower', NULL, NULL, 'Baptism', 'Prayer Tower', NULL, NULL),
-    ('Basketball Court', NULL, NULL, 'Sporting event', 'Recreation', NULL, NULL),
-    ('Childrens Playground', NULL, NULL, 'Playground use', 'Recreation', NULL, NULL),
-    ('Recreational Center', NULL, NULL, 'Recreation use', 'Recreation', NULL, NULL),
-    ('Russ Turney Educational Center', 'A-101', 'Large educational and meeting hall on the A-block.', NULL, 'GMC Conference Rooms', 1, 100),
-    ('Classroom Multi-Purpose Room', 'A-504', 'Multi-purpose classroom space.', NULL, 'GMC Conference Rooms', 1, 30),
-    ('Classroom Multi-Purpose Room', 'A-505', 'Multi-purpose classroom space.', NULL, 'GMC Conference Rooms', 1, 30),
-    ('Conference Room', 'A-506', 'Conference room on the A-block.', NULL, 'GMC Conference Rooms', 1, 15),
-    ('Conference Room', 'A-507', 'Conference room on the A-block (formerly A-105).', NULL, 'GMC Conference Rooms', 1, 15)
+INSERT INTO facilities (name, room_code, description, package_name, facility_group, capacity_min, capacity_max, min_hours) VALUES
+    ('GMC Chapel', NULL, NULL, 'Church',  'GMC Chapel', NULL, NULL, 4),
+    ('GMC Chapel', NULL, NULL, 'Wedding', 'GMC Chapel', NULL, NULL, 4),
+    ('Burdine Commons', NULL, NULL, 'Meeting and other functions', 'Burdine Commons', NULL, NULL, 4),
+    ('Burdine Commons', NULL, NULL, 'Wedding and reception', 'Burdine Commons', NULL, NULL, 4),
+    ('Osgood Garden', NULL, 'Outdoor garden venue.', NULL, 'Garden', 1, 150, NULL),
+    ('Prayer Mountain', NULL, NULL, 'Retreat use', 'Prayer Mountain', NULL, NULL, NULL),
+    ('Prayer Tower', NULL, NULL, 'Function', 'Prayer Tower', NULL, NULL, NULL),
+    ('Prayer Tower', NULL, NULL, 'Baptism', 'Prayer Tower', NULL, NULL, NULL),
+    ('Basketball Court', NULL, NULL, 'Sporting event', 'Recreation', NULL, NULL, NULL),
+    ('Childrens Playground', NULL, NULL, 'Playground use', 'Recreation', NULL, NULL, NULL),
+    ('Recreational Center', NULL, NULL, 'Recreation use', 'Recreation', NULL, NULL, NULL),
+    ('Russ Turney Educational Center', 'A-101', 'Large educational and meeting hall on the A-block.', NULL, 'GMC Conference Rooms', 1, 100, NULL),
+    ('Classroom Multi-Purpose Room', 'A-504', 'Multi-purpose classroom space.', NULL, 'GMC Conference Rooms', 1, 30, NULL),
+    ('Classroom Multi-Purpose Room', 'A-505', 'Multi-purpose classroom space.', NULL, 'GMC Conference Rooms', 1, 30, NULL),
+    ('Conference Room', 'A-506', 'Conference room on the A-block.', NULL, 'GMC Conference Rooms', 1, 15, NULL),
+    ('Conference Room', 'A-507', 'Conference room on the A-block (formerly A-105).', NULL, 'GMC Conference Rooms', 1, 15, NULL)
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     description = VALUES(description),
     package_name = VALUES(package_name),
     facility_group = VALUES(facility_group),
     capacity_min = VALUES(capacity_min),
-    capacity_max = VALUES(capacity_max);
+    capacity_max = VALUES(capacity_max),
+    min_hours = VALUES(min_hours);
 
 INSERT INTO rates_facilities (facility_id, season, rate)
 SELECT f.id, s.season, s.rate

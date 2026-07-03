@@ -520,6 +520,66 @@
   color: #1a202c;
 }
 
+/* ── Manage venues (details only) ── */
+
+.mv-form textarea {
+  min-height: auto;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.mv-section {
+  margin-top: 1.25rem;
+}
+
+.mv-section:first-of-type {
+  margin-top: 1rem;
+}
+
+.mv-section + .mv-section {
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #edf2f7;
+}
+
+.mv-section-title {
+  margin: 0 0 0.875rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+}
+
+.mv-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  margin: 1rem 0 0;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.625rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e40af;
+}
+
+.mv-note p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.mv-note .material-symbols-outlined {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.mv-note--warn {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
 /* ── Facility catalog (venues / meals / extras) ── */
 
 .catalog-edit-btn {

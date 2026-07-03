@@ -42,6 +42,10 @@ function enrichRateRow(rateRow, facility, calendarSeason) {
     facility_group: facility?.facility_group ?? null,
     capacity_min: facility?.capacity_min ?? null,
     capacity_max: facility?.capacity_max ?? null,
+    min_hours: facility?.min_hours ?? null,
+    hourly_rate: facility?.hourly_rate != null ? Number(facility.hourly_rate) : null,
+    inclusions: facility?.inclusions ?? null,
+    policies: facility?.policies ?? null,
     label,
     calendar_season: calendarSeason,
     category: facility?.facility_group || 'Facility',
@@ -209,16 +213,44 @@ export function bookingDurationHours(startTime, endTime) {
   return ((eh * 60 + em) - (sh * 60 + sm)) / 60;
 }
 
-export function computeVenueTotal(rate, startTime, endTime, itemName) {
+/**
+ * Minimum booking hours for a venue. Uses the admin-configured `min_hours`
+ * column, falling back to a value parsed from the package/item name so
+ * pre-migration data keeps working. Returns null for purely hourly venues.
+ */
+export function resolveMinHours(facility) {
+  const configured = Number(facility?.min_hours);
+  if (Number.isFinite(configured) && configured > 1) return configured;
+  if (Number.isFinite(configured) && configured === 1) return null;
+  return parsePackageHours(facility?.package_name || facility?.item) || null;
+}
+
+/** Per-hour price for time beyond the minimum block. */
+export function resolveExtraHourRate(facility, baseRate, minHours) {
+  const configured = Number(facility?.hourly_rate);
+  if (Number.isFinite(configured) && configured > 0) return configured;
+  if (minHours) return Number(baseRate) / minHours;
+  return Number(baseRate);
+}
+
+/**
+ * Total venue price.
+ * - Minimum-block venues (min_hours set): base rate covers the minimum block,
+ *   each extra hour is charged at the overflow rate.
+ * - Hourly venues: base rate × hours (at least one hour).
+ */
+export function computeVenueTotal(facility, startTime, endTime) {
+  const rate = Number(facility?.rate);
   const hours = bookingDurationHours(startTime, endTime);
-  const packageHours = parsePackageHours(itemName);
-  const r = Number(rate);
-  if (packageHours) {
-    if (hours <= packageHours) return Math.round(r * 100) / 100;
-    const perHour = r / packageHours;
-    return Math.round(perHour * hours * 100) / 100;
+  const minHours = resolveMinHours(facility);
+  const round = (n) => Math.round(n * 100) / 100;
+
+  if (minHours) {
+    if (hours <= minHours) return round(rate);
+    const perHour = resolveExtraHourRate(facility, rate, minHours);
+    return round(rate + perHour * (hours - minHours));
   }
-  return Math.round(r * Math.max(hours, 1) * 100) / 100;
+  return round(rate * Math.max(hours, 1));
 }
 
 export function validateVenueCapacity(facilityRow, guestCount) {
@@ -237,28 +269,34 @@ export function validateVenueCapacity(facilityRow, guestCount) {
   return null;
 }
 
-export function validateVenueDuration(startTime, endTime, itemName) {
+export function validateVenueDuration(facility, startTime, endTime) {
   const hours = bookingDurationHours(startTime, endTime);
   if (hours <= 0) return 'End time must be after start time.';
-  const packageHours = parsePackageHours(itemName);
-  if (packageHours && hours < packageHours) {
-    return `This venue is booked in ${packageHours}-hour blocks. Please select at least ${packageHours} hours.`;
+  const minHours = resolveMinHours(facility);
+  if (minHours && hours < minHours) {
+    return `This venue has a ${minHours}-hour minimum booking. Please select at least ${minHours} hours.`;
   }
   return null;
 }
 
-export function venueRateMeta(itemName, rate) {
-  const packageHours = parsePackageHours(itemName);
+export function venueRateMeta(facility) {
+  const rate = Number(facility?.rate);
+  const minHours = resolveMinHours(facility);
   const fmt = (n) => Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
-  if (packageHours) {
+  if (minHours) {
+    const perHour = resolveExtraHourRate(facility, rate, minHours);
     return {
-      package_hours: packageHours,
-      rate_type: 'package',
-      rate_label: `${packageHours}-hr package · ₱${fmt(rate)}`,
+      min_hours: minHours,
+      package_hours: minHours,
+      hourly_rate: perHour,
+      rate_type: 'minimum',
+      rate_label: `${minHours}-hr minimum · ₱${fmt(rate)} (+₱${fmt(perHour)}/extra hr)`,
     };
   }
   return {
+    min_hours: null,
     package_hours: null,
+    hourly_rate: rate,
     rate_type: 'hourly',
     rate_label: `₱${fmt(rate)} / hour`,
   };

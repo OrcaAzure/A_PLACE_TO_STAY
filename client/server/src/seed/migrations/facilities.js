@@ -115,6 +115,42 @@ async function migrateAirconToExtraServices() {
   );
 }
 
+/**
+ * Add admin-configurable venue fields (minimum booking hours, per-hour overflow
+ * rate, guest-facing inclusions and policies text) to the facilities catalog.
+ * Also seeds the 4-hour minimum for GMC Chapel and Burdine Commons.
+ */
+async function runVenueFieldsMigration() {
+  if (!(await tableExists('facilities'))) return;
+
+  const additions = [
+    ['min_hours', 'ALTER TABLE facilities ADD COLUMN min_hours INT DEFAULT NULL AFTER capacity_max'],
+    ['hourly_rate', 'ALTER TABLE facilities ADD COLUMN hourly_rate DECIMAL(10,2) DEFAULT NULL AFTER min_hours'],
+    ['inclusions', 'ALTER TABLE facilities ADD COLUMN inclusions TEXT DEFAULT NULL AFTER hourly_rate'],
+    ['policies', 'ALTER TABLE facilities ADD COLUMN policies TEXT DEFAULT NULL AFTER inclusions'],
+  ];
+
+  let added = false;
+  for (const [column, sql] of additions) {
+    if (!(await columnExists('facilities', column))) {
+      await pool.execute(sql);
+      added = true;
+    }
+  }
+
+  if (added) {
+    // Seed the known 4-hour minimum venues only when they have no value yet,
+    // so admin edits are never overwritten on later restarts.
+    await pool.execute(
+      `UPDATE facilities
+       SET min_hours = 4
+       WHERE min_hours IS NULL
+         AND facility_group IN ('GMC Chapel', 'Burdine Commons')`
+    );
+    console.log('[schema] facilities venue fields (min_hours, hourly_rate, inclusions, policies) ready');
+  }
+}
+
 async function ensureRatesFacilitiesTable() {
   await pool.execute(
     `CREATE TABLE IF NOT EXISTS rates_facilities (
@@ -318,4 +354,5 @@ export {
   ensureRatesFacilitiesTable,
   runFacilitiesCatalogMigration,
   runGmcAblockMigration,
+  runVenueFieldsMigration,
 };

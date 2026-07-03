@@ -11,16 +11,10 @@ const state = {
   startTime: '09:00',
   endTime: '12:00',
   data: null,
-  showOpenOnly: false,
   search: '',
   schedulePanelOpen: false,
   scheduleLoading: false,
   scheduleError: '',
-};
-
-const VENUE_SHOW_LABELS = {
-  all: 'All spaces',
-  open: 'Free for slot',
 };
 
 let venueBoardInitialized = false;
@@ -101,7 +95,9 @@ function renderStats(summary) {
 
 function formatRateLine(f) {
   const label = f.calendar_season || f.season || 'Regular';
-  return `${label} · ₱${Number(f.rate).toLocaleString('en-PH')}/hr`;
+  const price = `₱${Number(f.rate).toLocaleString('en-PH')}`;
+  const unit = f.min_hours ? ` · ${f.min_hours}-hr min` : '/hr';
+  return `${label} · ${price}${unit}`;
 }
 
 function spaceBadge(f) {
@@ -154,15 +150,14 @@ function renderFacilityCard(f) {
     ? (f.is_free_for_slot ? ' is-free' : ' is-busy')
     : (f.is_free ? ' is-free' : ' is-busy');
 
+  // Only surface the day's schedule when there are bookings — the status pill
+  // already communicates the free case, so a separate "free" note is redundant.
   const scheduleBlock = visibleBookings.length
     ? `<details class="fac-venue-card__schedule">
         <summary>${visibleBookings.length} booking${visibleBookings.length === 1 ? '' : 's'} this day</summary>
         <ul class="venue-slot-list">${bookingsHtml}</ul>
       </details>`
-    : `<p class="fac-venue-card__free-note">
-        <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
-        ${hasSlotCheck() ? 'Free for your time slot' : 'No bookings this day'}
-      </p>`;
+    : '';
 
   return `
     <article class="fac-venue-card${rowClass}${f.has_pending ? ' has-pending' : ''}">
@@ -170,14 +165,13 @@ function renderFacilityCard(f) {
         <span class="material-symbols-outlined" aria-hidden="true">corporate_fare</span>
       </div>
       <div class="fac-venue-card__body">
-        <p class="fac-venue-card__category">${escapeHtml(f.category || '')}</p>
         <h4 class="fac-venue-card__name">${escapeHtml(f.label || f.item)}</h4>
         <p class="fac-venue-card__rate">${escapeHtml(formatRateLine(f))}</p>
         <span class="fac-venue-card__status ${badge.cls === 'venue-space-row__badge--free' ? 'fac-venue-card__status--free' : 'fac-venue-card__status--booked'}">${badge.text}</span>
         ${scheduleBlock}
         <div class="fac-venue-card__links">
           <a href="reservations.html?tab=venues" class="fac-room-card__link">Manage bookings</a>
-          <a href="calendar.html?date=${encodeURIComponent(state.date || state.data?.date || dateOnly())}&amp;q=${encodeURIComponent(f.label || f.item || '')}" class="fac-room-card__link">View on calendar</a>
+          <a href="calendar.html?date=${encodeURIComponent(state.date || state.data?.date || dateOnly())}&amp;q=${encodeURIComponent(f.name || f.label || f.item || '')}" class="fac-room-card__link">View on calendar</a>
         </div>
       </div>
     </article>`;
@@ -190,17 +184,9 @@ function matchesSearch(f) {
   return hay.includes(q);
 }
 
-function matchesOpenFilter(f) {
-  if (!state.showOpenOnly) return true;
-  if (hasSlotCheck()) return f.is_free_for_slot;
-  return f.is_free;
-}
-
 function filterFacilities(facilities) {
-  let list = facilities;
-  if (state.showOpenOnly) list = list.filter((f) => matchesOpenFilter(f));
-  if (state.search.trim()) list = list.filter((f) => matchesSearch(f));
-  return list;
+  if (!state.search.trim()) return facilities;
+  return facilities.filter((f) => matchesSearch(f));
 }
 
 function countVisibleSpaces() {
@@ -285,12 +271,11 @@ function updateBoardChrome(visibleCount) {
     return;
   }
 
-  const openNote = state.showOpenOnly ? ' · free for slot only' : '';
   const searchNote = state.search.trim() ? ` · matching “${state.search.trim()}”` : '';
   const slotNote = hasSlotCheck()
     ? ` · ${formatTimeRange(data.check_start, data.check_end)}`
     : '';
-  summaryEl.textContent = `${visibleCount} space${visibleCount === 1 ? '' : 's'} · ${formatDisplayDate(data.date)}${slotNote}${openNote}${searchNote}`;
+  summaryEl.textContent = `${visibleCount} space${visibleCount === 1 ? '' : 's'} · ${formatDisplayDate(data.date)}${slotNote}${searchNote}`;
 }
 
 function openSchedulePanel() {
@@ -356,44 +341,12 @@ function renderSchedule() {
       <div class="rooms-board-empty">
         <span class="material-symbols-outlined" aria-hidden="true">search_off</span>
         <p class="rooms-board-empty__title">No spaces match</p>
-        <p class="rooms-board-empty__text">Try another date or time, turn off “Free for slot”, or clear your search.</p>
+        <p class="rooms-board-empty__text">Try another date or time, or clear your search.</p>
       </div>`;
     return;
   }
 
   mount.innerHTML = `<div class="fac-board-sections">${sections.join('')}</div>`;
-}
-
-function setVenueFilterPanelOpen(open) {
-  const panel = document.getElementById('venue-filter-panel');
-  const toggle = document.getElementById('venue-filter-toggle');
-  if (!panel) return;
-  panel.classList.toggle('hidden', !open);
-  toggle?.setAttribute('aria-expanded', open ? 'true' : 'false');
-}
-
-function updateVenueFilterUi() {
-  const label = document.getElementById('venue-filter-label');
-  const toggle = document.getElementById('venue-filter-toggle');
-  const mode = state.showOpenOnly ? 'open' : 'all';
-  const active = state.showOpenOnly;
-
-  if (label) {
-    label.textContent = active ? VENUE_SHOW_LABELS.open : 'Filters';
-  }
-
-  toggle?.classList.toggle('fac-filter-btn--active', active);
-
-  document.querySelectorAll('[data-venue-show]').forEach((btn) => {
-    const on = btn.getAttribute('data-venue-show') === mode;
-    btn.classList.toggle('is-active', on);
-  });
-}
-
-function setShowFilter(mode) {
-  state.showOpenOnly = mode === 'open';
-  updateVenueFilterUi();
-  renderSchedule();
 }
 
 async function loadSchedule(date, { background = false } = {}) {
@@ -505,34 +458,11 @@ export function initVenueScheduleBoard() {
     }
   });
 
-  document.querySelectorAll('[data-venue-show]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      setShowFilter(btn.getAttribute('data-venue-show') || 'all');
-      setVenueFilterPanelOpen(false);
-    });
-  });
-
-  document.getElementById('venue-filter-toggle')?.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const panel = document.getElementById('venue-filter-panel');
-    setVenueFilterPanelOpen(panel?.classList.contains('hidden'));
-  });
-
-  document.addEventListener('click', (e) => {
-    if (!document.getElementById('fac-panel-venue-spaces') || document.getElementById('fac-panel-venue-spaces')?.classList.contains('hidden')) return;
-    if (e.target.closest('.fac-filter-wrap')) return;
-    setVenueFilterPanelOpen(false);
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') setVenueFilterPanelOpen(false);
-  });
-
   onBookingUpdated = () => {
     if (state.date) loadSchedule(state.date);
   };
   window.addEventListener('booking:updated', onBookingUpdated);
-  updateVenueFilterUi();
+  window.addEventListener('venues:changed', onBookingUpdated);
 }
 
 export function teardownVenueScheduleBoard() {
@@ -540,6 +470,7 @@ export function teardownVenueScheduleBoard() {
   stopBookingPoll = null;
   if (onBookingUpdated) {
     window.removeEventListener('booking:updated', onBookingUpdated);
+    window.removeEventListener('venues:changed', onBookingUpdated);
     onBookingUpdated = null;
   }
   venueBoardInitialized = false;

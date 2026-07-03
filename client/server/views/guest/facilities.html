@@ -163,8 +163,13 @@
 
     <input type="hidden" id="vbm-category" />
     <input type="hidden" id="vbm-item" />
+    <input type="hidden" id="vbm-facility-id" />
 
     <div class="space-y-3">
+      <div id="vbm-use-wrap" class="hidden">
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-use">Use / function</label>
+        <select id="vbm-use" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm bg-white"></select>
+      </div>
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-date">Event Date</label>
         <input type="date" id="vbm-date" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
@@ -189,6 +194,7 @@
         <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-notes">Notes (optional)</label>
         <textarea id="vbm-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Purpose, special requirements…"></textarea>
       </div>
+      <div id="vbm-info" class="hidden space-y-2 rounded-lg bg-surface-container-low/60 border border-outline-variant/60 p-3"></div>
     </div>
 
     <div id="vbm-feedback" class="hidden text-body-sm rounded-lg px-3 py-2"></div>
@@ -907,67 +913,108 @@
     return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  function flattenVenueSpaces(grouped) {
-    const spaces = [];
+  // Collapse rows that share a physical space (same category + name + code)
+  // into one venue with multiple "uses" so guests see a single card with a
+  // use dropdown (e.g. GMC Chapel → Church / Wedding).
+  function buildVenueGroups(grouped) {
+    const byKey = new Map();
     for (const group of grouped || []) {
       for (const item of group.items || []) {
         const regular = item.rates?.find((r) => r.season === 'Regular');
         const peak = item.rates?.find((r) => r.season === 'Peak');
-        spaces.push({
-          category: group.category,
-          item: item.item,
-          label: item.label,
-          name: item.name,
+        const key = `${group.category}\x1f${item.name || ''}\x1f${item.room_code || ''}`;
+        if (!byKey.has(key)) {
+          byKey.set(key, {
+            key,
+            category: group.category,
+            name: item.name,
+            room_code: item.room_code,
+            capacity_min: item.capacity_min ?? null,
+            capacity_max: item.capacity_max ?? null,
+            min_hours: item.min_hours ?? null,
+            hourly_rate: item.hourly_rate ?? null,
+            inclusions: item.inclusions || '',
+            policies: item.policies || '',
+            uses: [],
+          });
+        }
+        byKey.get(key).uses.push({
           facilityId: item.facility_id,
+          functionName: item.package_name || '',
+          item: item.item,
+          label: item.label || item.name || item.item,
           regularRate: regular?.rate ?? null,
           peakRate: peak?.rate ?? null,
         });
       }
     }
-    return spaces;
+    return [...byKey.values()];
   }
 
-  function venueRateLabel(space) {
-    const fmt = (n) => `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 2 })} / hr`;
-    if (space.regularRate != null && space.peakRate != null && space.peakRate !== space.regularRate) {
-      return `${fmt(space.regularRate)} · Peak dates may differ`;
-    }
-    const rate = space.regularRate ?? space.peakRate;
-    return rate != null ? fmt(rate) : '—';
+  function venueRateSummary(venue) {
+    const rates = venue.uses.map((u) => u.regularRate).filter((r) => r != null);
+    if (!rates.length) return '—';
+    const min = Math.min(...rates);
+    const many = venue.uses.length > 1;
+    const base = `₱${Number(min).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+    if (venue.min_hours) return `${many ? 'From ' : ''}${base} · ${venue.min_hours}-hr minimum`;
+    return `${many ? 'From ' : ''}${base} / hr`;
   }
 
-  function venueCard(space) {
+  function venueCapacityText(venue) {
+    const min = venue.capacity_min;
+    const max = venue.capacity_max;
+    if (min != null && max != null) return `${min}–${max} guests`;
+    if (max != null) return `Up to ${max} guests`;
+    if (min != null) return `From ${min} guests`;
+    return '';
+  }
+
+  function venueCard(venue) {
+    const cap = venueCapacityText(venue);
+    const usesNote = venue.uses.length > 1
+      ? `<p class="text-label-sm text-on-surface-variant mb-2"><span class="material-symbols-outlined text-[15px] align-middle">tune</span> ${venue.uses.length} uses available</p>`
+      : '';
+    const inclusionsNote = venue.inclusions
+      ? `<p class="text-body-sm text-on-surface-variant mb-2 line-clamp-2"><span class="font-medium text-on-surface">Includes:</span> ${escapeHtml(venue.inclusions)}</p>`
+      : '';
     return `
       <div class="flex flex-col bg-white rounded-2xl overflow-hidden border border-outline-variant hover:border-primary/40 hover:shadow-xl transition-all duration-300 reveal">
         <div class="h-24 bg-gradient-to-br from-secondary/15 to-secondary/5 flex items-center justify-center">
           <span class="material-symbols-outlined text-[40px] text-secondary/70">corporate_fare</span>
         </div>
         <div class="p-5 flex flex-col flex-1">
-          <p class="text-label-sm text-primary font-medium mb-1">${escapeHtml(space.category)}</p>
-          <h3 class="font-headline-sm text-on-surface mb-1">${escapeHtml(space.label || space.name || space.item)}</h3>
-          <p class="text-body-sm text-on-surface-variant mb-3">${venueRateLabel(space)}</p>
+          <p class="text-label-sm text-primary font-medium mb-1">${escapeHtml(venue.category)}</p>
+          <h3 class="font-headline-sm text-on-surface mb-1">${escapeHtml(venue.name)}${venue.room_code ? ` <span class="text-on-surface-variant font-normal">(${escapeHtml(venue.room_code)})</span>` : ''}</h3>
+          <p class="text-body-sm text-on-surface-variant mb-1">${venueRateSummary(venue)}</p>
+          ${cap ? `<p class="text-label-sm text-on-surface-variant mb-2"><span class="material-symbols-outlined text-[15px] align-middle">group</span> ${escapeHtml(cap)}</p>` : ''}
+          ${usesNote}
+          ${inclusionsNote}
           ${!readOnly ? `<button type="button"
             class="book-venue-btn mt-auto w-full border border-primary text-primary rounded-lg py-2 text-label-sm hover:bg-primary hover:text-white transition-colors"
-            data-venue-category="${escapeHtml(space.category)}"
-            data-venue-item="${escapeHtml(space.item)}">
+            data-venue-key="${escapeHtml(venue.key)}">
             Book this venue
           </button>` : `<div class="mt-auto w-full py-2 text-center bg-surface-container-low text-outline border border-outline-variant/50 rounded-lg text-label-sm">View only</div>`}
         </div>
       </div>`;
   }
 
-  let allVenueSpaces = [];
+  let allVenues = [];
+
+  function venueGroupMatchesCategory(venue, cat) {
+    return venue.uses.some((u) => venueMatchesBrowseCategory({ category: venue.category, item: u.item }, cat));
+  }
 
   function renderVenues() {
     const mount = document.getElementById('venues-mount');
     if (!mount) return;
-    const spaces = allVenueSpaces.filter((s) => venueMatchesBrowseCategory(s, selectedCategory));
-    if (!spaces.length) {
+    const venuesToShow = allVenues.filter((v) => venueGroupMatchesCategory(v, selectedCategory));
+    if (!venuesToShow.length) {
       mount.innerHTML = '<p class="text-body-sm text-on-surface-variant">No venues available for this category.</p>';
       return;
     }
     const groups = {};
-    spaces.forEach((s) => { (groups[s.category] = groups[s.category] || []).push(s); });
+    venuesToShow.forEach((v) => { (groups[v.category] = groups[v.category] || []).push(v); });
     mount.innerHTML = Object.keys(groups).sort().map(cat => `
       <div class="space-y-5">
         <div class="flex items-center gap-4">
@@ -984,8 +1031,8 @@
     const mount = document.getElementById('venues-mount');
     try {
       const grouped = await getVenueFacilities();
-      allVenueSpaces = flattenVenueSpaces(grouped);
-      if (!allVenueSpaces.length) {
+      allVenues = buildVenueGroups(grouped);
+      if (!allVenues.length) {
         mount.innerHTML = '<p class="text-body-sm text-on-surface-variant">No venues available.</p>';
         return;
       }
@@ -1004,28 +1051,81 @@
   const submitBtn= document.getElementById('vbm-submit-btn');
   const rateHint = document.getElementById('vbm-rate-hint');
 
+  const useEl = document.getElementById('vbm-use');
+  const useWrap = document.getElementById('vbm-use-wrap');
+  const facilityIdEl = document.getElementById('vbm-facility-id');
+  const infoEl = document.getElementById('vbm-info');
+  const capacityHint = document.getElementById('vbm-capacity-hint');
+  let currentVenue = null;
+
+  function selectedFacilityId() {
+    return facilityIdEl?.value || useEl?.value || '';
+  }
+
+  function renderVenueInfo(venue) {
+    if (!infoEl) return;
+    const parts = [];
+    const cap = venueCapacityText(venue);
+    if (cap) parts.push(`<p class="text-body-sm text-on-surface-variant"><span class="material-symbols-outlined text-[15px] align-middle">group</span> ${escapeHtml(cap)}</p>`);
+    if (venue.min_hours) parts.push(`<p class="text-body-sm text-on-surface-variant"><span class="material-symbols-outlined text-[15px] align-middle">schedule</span> ${venue.min_hours}-hour minimum booking</p>`);
+    if (venue.inclusions) parts.push(`<div><p class="text-label-sm font-medium text-on-surface mb-0.5">What's included</p><p class="text-body-sm text-on-surface-variant whitespace-pre-line">${escapeHtml(venue.inclusions)}</p></div>`);
+    if (venue.policies) parts.push(`<div><p class="text-label-sm font-medium text-on-surface mb-0.5">Policies</p><p class="text-body-sm text-on-surface-variant whitespace-pre-line">${escapeHtml(venue.policies)}</p></div>`);
+    if (!parts.length) { infoEl.classList.add('hidden'); infoEl.innerHTML = ''; return; }
+    infoEl.innerHTML = parts.join('');
+    infoEl.classList.remove('hidden');
+  }
+
+  function applySelectedUse() {
+    if (!currentVenue) return;
+    const use = currentVenue.uses.find((u) => String(u.facilityId) === String(useEl?.value))
+      || currentVenue.uses[0];
+    if (!use) return;
+    if (facilityIdEl) facilityIdEl.value = use.facilityId;
+    if (catEl) catEl.value = currentVenue.category;
+    if (itemEl) itemEl.value = use.item;
+    if (capacityHint) {
+      const cap = venueCapacityText(currentVenue);
+      capacityHint.textContent = cap ? `This space holds ${cap}.` : '';
+      capacityHint.classList.toggle('hidden', !cap);
+    }
+    updateVenueRateHint();
+    checkVenueSlot();
+  }
+
   async function updateVenueRateHint() {
     if (!rateHint) return;
-    const category = catEl?.value;
-    const item = itemEl?.value;
+    const facilityId = selectedFacilityId();
     const date = document.getElementById('vbm-date')?.value;
-    if (!category || !item || !date) {
+    if (!facilityId || !date) {
       rateHint.textContent = 'Rate depends on the event date (Regular or Peak).';
       return;
     }
     try {
-      const quote = await getVenueRateQuote(category, item, date);
-      rateHint.textContent = `${quote.calendar_season || quote.season} rate: ₱${Number(quote.rate).toLocaleString('en-PH')} / hr`;
+      const quote = await getVenueRateQuote({ facility_id: facilityId, date });
+      const season = quote.calendar_season || quote.season;
+      rateHint.textContent = quote.rate_label
+        ? `${season} rate: ${quote.rate_label}`
+        : `${season} rate: ₱${Number(quote.rate).toLocaleString('en-PH')} / hr`;
     } catch {
       rateHint.textContent = '';
     }
   }
 
-  function openVenueModal(category, item) {
-    if (catEl) catEl.value = category;
-    if (itemEl) itemEl.value = item;
-    const space = allVenueSpaces.find((s) => s.category === category && s.item === item);
-    if (titleEl) titleEl.textContent = `Book — ${space?.label || space?.name || item}`;
+  function openVenueModal(venueKey) {
+    const venue = allVenues.find((v) => v.key === venueKey);
+    if (!venue) return;
+    currentVenue = venue;
+
+    if (useEl) {
+      useEl.innerHTML = venue.uses
+        .map((u) => `<option value="${escapeHtml(u.facilityId)}">${escapeHtml(u.functionName || 'Standard booking')}</option>`)
+        .join('');
+      useEl.value = venue.uses[0]?.facilityId ?? '';
+    }
+    useWrap?.classList.toggle('hidden', venue.uses.length <= 1);
+
+    if (titleEl) titleEl.textContent = `Book — ${venue.name}${venue.room_code ? ` (${venue.room_code})` : ''}`;
+
     const browseVenue = readVenueFields();
     const dateEl = document.getElementById('vbm-date');
     if (dateEl) {
@@ -1042,7 +1142,8 @@
         ? 'Pick start and end times — we check slot availability before you submit.'
         : 'Pick a date and time — we check slot availability before you submit.';
     }
-    updateVenueRateHint();
+    renderVenueInfo(venue);
+    applySelectedUse();
     modal?.classList.remove('hidden');
   }
 
@@ -1063,6 +1164,7 @@
   document.getElementById('vbm-date')?.addEventListener('change', () => { updateVenueRateHint(); checkVenueSlot(); });
   document.getElementById('vbm-start')?.addEventListener('change', checkVenueSlot);
   document.getElementById('vbm-end')?.addEventListener('change', checkVenueSlot);
+  useEl?.addEventListener('change', applySelectedUse);
 
   let venueSlotTimer;
   async function checkVenueSlot() {
@@ -1070,12 +1172,11 @@
     venueSlotTimer = setTimeout(async () => {
       const slotEl = document.getElementById('vbm-slot-status');
       if (!slotEl) return;
-      const category = catEl?.value;
-      const item = itemEl?.value;
+      const facilityId = selectedFacilityId();
       const eventDate = document.getElementById('vbm-date')?.value;
       const startTime = document.getElementById('vbm-start')?.value;
       const endTime = document.getElementById('vbm-end')?.value;
-      if (!category || !item || !eventDate || !startTime || !endTime) {
+      if (!facilityId || !eventDate || !startTime || !endTime) {
         slotEl.classList.add('hidden');
         submitBtn.disabled = false;
         return;
@@ -1088,7 +1189,7 @@
         return;
       }
       try {
-        const result = await checkVenueSlotAvailability({ category, item, event_date: eventDate, start_time: startTime, end_time: endTime });
+        const result = await checkVenueSlotAvailability({ facility_id: facilityId, event_date: eventDate, start_time: startTime, end_time: endTime });
         slotEl.textContent = result.available
           ? `${result.message}${result.estimated_total != null ? ` Estimated: ₱${Number(result.estimated_total).toLocaleString('en-PH', { minimumFractionDigits: 2 })}.` : ''}`
           : result.message;
@@ -1106,7 +1207,7 @@
 
   document.addEventListener('click', (e) => {
     const btn = e.target.closest('.book-venue-btn');
-    if (btn) openVenueModal(btn.dataset.venueCategory, btn.dataset.venueItem);
+    if (btn) openVenueModal(btn.dataset.venueKey);
   });
 
   submitBtn?.addEventListener('click', async () => {
@@ -1119,14 +1220,14 @@
       feedback.classList.remove('hidden');
     };
 
-    const category = document.getElementById('vbm-category')?.value;
-    const item = document.getElementById('vbm-item')?.value;
+    const facilityId = selectedFacilityId();
     const eventDate  = document.getElementById('vbm-date')?.value;
     const startTime  = document.getElementById('vbm-start')?.value;
     const endTime    = document.getElementById('vbm-end')?.value;
     const guestCount = Number(document.getElementById('vbm-guests')?.value || 1);
     const notes      = document.getElementById('vbm-notes')?.value.trim();
 
+    if (!facilityId) return showMsg('Please choose a venue use.', true);
     if (!eventDate) return showMsg('Please select an event date.', true);
     if (!startTime || !endTime) return showMsg('Please set start and end times.', true);
     if (endTime <= startTime) return showMsg('End time must be after start time.', true);
@@ -1134,7 +1235,7 @@
     submitBtn.disabled = true;
     submitBtn.textContent = 'Checking availability…';
     try {
-      const slot = await checkVenueSlotAvailability({ category, item, event_date: eventDate, start_time: startTime, end_time: endTime });
+      const slot = await checkVenueSlotAvailability({ facility_id: facilityId, event_date: eventDate, start_time: startTime, end_time: endTime });
       if (!slot.available) {
         showMsg(slot.message || 'This time slot is not available.', true);
         submitBtn.disabled = false;
@@ -1151,7 +1252,7 @@
     submitBtn.textContent = 'Submitting…';
 
     try {
-      await createFacilityBooking({ category, item, event_date: eventDate,
+      await createFacilityBooking({ facility_id: facilityId, event_date: eventDate,
         start_time: startTime, end_time: endTime, guest_count: guestCount, notes });
       showMsg('Venue request submitted! You will be notified once it is approved.', false);
       submitBtn.textContent = 'Submitted';

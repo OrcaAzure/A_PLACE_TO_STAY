@@ -87,7 +87,10 @@ function rateHintHtml() {
     return '<p id="vbw-rate-hint" class="text-sm text-slate-500 mt-1">Checking rate for this date…</p>';
   }
   const label = state.rateQuote.calendar_season || state.rateQuote.season;
-  return `<p id="vbw-rate-hint" class="text-sm text-slate-600 mt-1"><strong>${escapeHtml(label)}</strong> rate: ${formatMoney(state.rateQuote.rate)}/hr</p>`;
+  const rateText = state.rateQuote.rate_label
+    ? escapeHtml(state.rateQuote.rate_label)
+    : `${formatMoney(state.rateQuote.rate)}/hr`;
+  return `<p id="vbw-rate-hint" class="text-sm text-slate-600 mt-1"><strong>${escapeHtml(label)}</strong> rate: ${rateText}</p>`;
 }
 
 function renderSteps() {
