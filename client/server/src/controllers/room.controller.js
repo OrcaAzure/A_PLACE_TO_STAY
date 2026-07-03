@@ -176,20 +176,71 @@ export const getRoomById = async (req, res) => {
   }
 };
 
+const ALLOWED_STATUSES = ['Available', 'Occupied', 'Dirty', 'Maintenance'];
+
+/** Validate & normalize a room payload. Returns { error } or { values }. */
+function normalizeRoomInput(body, existing = null) {
+  const roomType = body.room_type != null ? String(body.room_type).trim() : existing?.room_type;
+  const roomNumber = body.room_number != null ? String(body.room_number).trim() : existing?.room_number;
+  const buildingId = body.building_id != null ? Number(body.building_id) : existing?.building_id;
+
+  const capMin = body.capacity_min != null ? Number(body.capacity_min) : existing?.capacity_min;
+  const capMax = body.capacity_max != null ? Number(body.capacity_max) : existing?.capacity_max;
+  const occupancy = body.occupancy != null ? Number(body.occupancy) : (existing?.occupancy ?? 0);
+  const status = body.status != null ? String(body.status).trim() : (existing?.status || 'Available');
+
+  if (!buildingId) return { error: 'Please choose a building.' };
+  if (!roomNumber) return { error: 'Please enter a room name or number.' };
+  if (!roomType) return { error: 'Please choose a room type.' };
+  if (roomType.length > 100) return { error: 'Room type name is too long (max 100 characters).' };
+
+  if (!Number.isInteger(capMin) || capMin < 1) return { error: 'Minimum capacity must be a whole number of at least 1.' };
+  if (!Number.isInteger(capMax) || capMax < 1) return { error: 'Maximum capacity must be a whole number of at least 1.' };
+  if (capMin > capMax) return { error: 'Minimum capacity cannot be greater than the maximum.' };
+  if (!Number.isInteger(occupancy) || occupancy < 0) return { error: 'Occupancy must be zero or a positive whole number.' };
+  if (occupancy > capMax) return { error: `There are ${occupancy} guests checked in — set the maximum capacity to at least ${occupancy}.` };
+  if (status && !ALLOWED_STATUSES.includes(status)) return { error: 'Invalid room status.' };
+
+  const hasBedCount = Object.prototype.hasOwnProperty.call(body, 'bed_count')
+    || Object.prototype.hasOwnProperty.call(body, 'bedroom_count');
+  const rawBedCount = hasBedCount ? (body.bed_count ?? body.bedroom_count) : existing?.bed_count;
+
+  // A shared dorm has no bedrooms; every other type may record how many it has.
+  let bedCount = null;
+  if (roomType !== 'Dorm' && rawBedCount != null && String(rawBedCount).trim() !== '') {
+    const n = Number(rawBedCount);
+    if (!Number.isInteger(n) || n < 1) {
+      return { error: 'Bedrooms must be a whole number of at least 1.' };
+    }
+    bedCount = n;
+  }
+
+  return {
+    values: {
+      building_id: buildingId,
+      room_number: roomNumber,
+      room_type: roomType,
+      bed_count: bedCount,
+      capacity_min: capMin,
+      capacity_max: capMax,
+      occupancy,
+      status: status || 'Available',
+    },
+  };
+}
+
 export const createRoom = async (req, res) => {
   try {
-    const { building_id, room_number, room_type, bed_count, bedroom_count, capacity_min, capacity_max, occupancy, status } = req.body;
-    if (isEmpty(building_id) || isEmpty(room_number) || isEmpty(room_type) || isEmpty(capacity_min) || isEmpty(capacity_max)) {
-      return res.status(400).json({ message: 'building_id, room_number, room_type, capacity_min, and capacity_max are required' });
+    if (isEmpty(req.body.capacity_min) || isEmpty(req.body.capacity_max)) {
+      return res.status(400).json({ message: 'Both minimum and maximum capacity are required.' });
     }
-    const rawBedCount = bed_count ?? bedroom_count;
-    const bedCount = room_type === 'Deluxe Apartment' && rawBedCount != null
-      ? Number(rawBedCount)
-      : null;
+    const { error, values } = normalizeRoomInput(req.body);
+    if (error) return res.status(400).json({ message: error });
+
     const [result] = await pool.query(
       `INSERT INTO rooms (building_id, room_number, room_type, bed_count, capacity_min, capacity_max, occupancy, status)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [building_id, room_number, room_type, bedCount, capacity_min, capacity_max, occupancy || 0, status || 'Available']
+      [values.building_id, values.room_number, values.room_type, values.bed_count, values.capacity_min, values.capacity_max, values.occupancy, values.status]
     );
     const [newRoom] = await pool.query(
       `SELECT rooms.*, buildings.name AS building_name
@@ -200,6 +251,9 @@ export const createRoom = async (req, res) => {
     );
     res.status(201).json({ message: 'Room created', room: new Room(newRoom[0]) });
   } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: 'A room with that number already exists in this building.' });
+    }
     res.status(500).json({ message: error.message });
   }
 };
@@ -209,25 +263,21 @@ export const updateRoom = async (req, res) => {
     const [existing] = await pool.query('SELECT * FROM rooms WHERE id = ? LIMIT 1', [req.params.id]);
     if (existing.length === 0) return res.status(404).json({ message: 'Room not found' });
 
-    const { building_id, room_number, room_type, bed_count, bedroom_count, capacity_min, capacity_max, occupancy, status } = req.body;
-    const hasBedCount = Object.prototype.hasOwnProperty.call(req.body, 'bed_count')
-      || Object.prototype.hasOwnProperty.call(req.body, 'bedroom_count');
-    const rawBedCount = hasBedCount ? (bed_count ?? bedroom_count) : existing[0].bed_count;
-    const bedCount = hasBedCount
-      ? (rawBedCount != null ? Number(rawBedCount) : null)
-      : existing[0].bed_count;
+    const { error, values } = normalizeRoomInput(req.body, existing[0]);
+    if (error) return res.status(400).json({ message: error });
+
     await pool.query(
       `UPDATE rooms SET
-        building_id  = COALESCE(?, building_id),
-        room_number  = COALESCE(?, room_number),
-        room_type    = COALESCE(?, room_type),
-        bed_count = ?,
-        capacity_min = COALESCE(?, capacity_min),
-        capacity_max = COALESCE(?, capacity_max),
-        occupancy    = COALESCE(?, occupancy),
-        status       = COALESCE(?, status)
+        building_id  = ?,
+        room_number  = ?,
+        room_type    = ?,
+        bed_count    = ?,
+        capacity_min = ?,
+        capacity_max = ?,
+        occupancy    = ?,
+        status       = ?
       WHERE id = ?`,
-      [building_id, room_number, room_type, bedCount, capacity_min, capacity_max, occupancy, status, req.params.id]
+      [values.building_id, values.room_number, values.room_type, values.bed_count, values.capacity_min, values.capacity_max, values.occupancy, values.status, req.params.id]
     );
     const [updated] = await pool.query(
       `SELECT rooms.*, buildings.name AS building_name
@@ -238,6 +288,9 @@ export const updateRoom = async (req, res) => {
     );
     res.status(200).json({ message: 'Room updated', room: new Room(updated[0]) });
   } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ message: 'A room with that number already exists in this building.' });
+    }
     res.status(500).json({ message: error.message });
   }
 };

@@ -314,6 +314,18 @@ export async function deleteExtraServiceRate(id) {
   return apiRequest(`/catalog/extra-services/${id}`, { method: 'DELETE' });
 }
 
+export async function getRoomRatesCatalog() {
+  const data = await apiRequest('/catalog/room-rates');
+  return data.room_rates || [];
+}
+
+export async function saveRoomRates(payload) {
+  return apiRequest('/catalog/room-rates', {
+    method: 'PUT',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getBuildings() {
   const data = await apiRequest('/rooms/buildings/list');
   return data.buildings || [];

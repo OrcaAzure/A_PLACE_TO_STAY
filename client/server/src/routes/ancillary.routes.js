@@ -8,6 +8,8 @@ import {
   createExtraService,
   updateExtraService,
   deleteExtraService,
+  getRoomRatesCatalog,
+  saveRoomRates,
 } from '../controllers/ancillary.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { requireRole } from '../middleware/role.middleware.js';
@@ -25,5 +27,8 @@ router.get('/extra-services', requireAuth, cacheResponse('catalog:extra-services
 router.post('/extra-services', requireAuth, adminOnly, createExtraService);
 router.patch('/extra-services/:id', requireAuth, adminOnly, updateExtraService);
 router.delete('/extra-services/:id', requireAuth, adminOnly, deleteExtraService);
+
+router.get('/room-rates', requireAuth, cacheResponse('catalog:room-rates'), getRoomRatesCatalog);
+router.put('/room-rates', requireAuth, adminOnly, saveRoomRates);
 
 export default router;

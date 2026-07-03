@@ -941,6 +941,61 @@ export function closeModal() {
   updateBodyScrollLock();
 }
 
+/**
+ * Shared "Are you sure?" dialog (matches the Settings / Guest access style).
+ * Returns a Promise<boolean>. `message` is treated as HTML — escape any dynamic text.
+ * Set `elevate` when opening on top of another modal (e.g. Manage rooms).
+ */
+export function confirmModal({
+  title = 'Confirm',
+  message = 'Are you sure?',
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  danger = false,
+  elevate = false,
+} = {}) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('modal-overlay');
+    const modal = document.getElementById('app-modal');
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      if (elevate) {
+        overlay?.style.removeProperty('z-index');
+        modal?.style.removeProperty('z-index');
+      }
+      closeModal();
+      resolve(value);
+    };
+
+    const confirmBtn = danger
+      ? `<button type="button" class="px-5 py-2.5 min-h-[2.75rem] rounded-lg font-semibold text-sm text-white" style="background:#dc2626" data-action="confirm">${confirmLabel}</button>`
+      : `<button type="button" class="btn-primary px-5 py-2.5 min-h-[2.75rem]" data-action="confirm">${confirmLabel}</button>`;
+
+    const body = `
+      <p class="text-[0.9375rem] text-on-surface-variant leading-relaxed m-0">${message}</p>
+      <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-outline-variant">
+        <button type="button" class="px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant font-semibold text-sm hover:bg-surface-variant/30 transition-colors min-h-[2.75rem]" data-action="cancel">${cancelLabel}</button>
+        ${confirmBtn}
+      </div>`;
+
+    // Defer one frame so the click that opened this dialog can't hit the overlay.
+    requestAnimationFrame(() => {
+      if (elevate) {
+        if (overlay) overlay.style.zIndex = '95';
+        if (modal) modal.style.zIndex = '100';
+      }
+      openModal(title, body);
+      const bodyEl = document.getElementById('modalBody');
+      bodyEl?.querySelector('[data-action="cancel"]')?.addEventListener('click', () => finish(false), { once: true });
+      bodyEl?.querySelector('[data-action="confirm"]')?.addEventListener('click', () => finish(true), { once: true });
+      document.getElementById('modal-close')?.addEventListener('click', () => finish(false), { once: true });
+      document.getElementById('modal-overlay')?.addEventListener('click', () => finish(false), { once: true });
+    });
+  });
+}
+
 export function switchDrawerTab(tabId) {
   if (drawerTabGroup) {
     drawerTabGroup.switchTo(tabId);

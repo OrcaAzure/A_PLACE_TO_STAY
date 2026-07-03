@@ -25,12 +25,10 @@ CREATE TABLE IF NOT EXISTS rooms (
     id            INT AUTO_INCREMENT PRIMARY KEY,
     building_id   INT NOT NULL,
     room_number   VARCHAR(50) NOT NULL,
-    room_type     ENUM(
-                    'Dorm',
-                    'Superior Guest Room',
-                    'Standard Apartment',
-                    'Deluxe Apartment'
-                  ) NOT NULL,
+    -- Free-form so admins can add new room categories at any time.
+    -- Built-in types (Dorm, Superior Guest Room, Standard Apartment, Deluxe Apartment)
+    -- map to seasonal pricing tiers in rates_rooms; custom types are managed by admins.
+    room_type     VARCHAR(100) NOT NULL,
     bed_count     TINYINT      DEFAULT NULL,
     capacity_min  INT NOT NULL DEFAULT 1,
     capacity_max  INT NOT NULL DEFAULT 1,
@@ -61,13 +59,9 @@ CREATE TABLE IF NOT EXISTS rooms (
 
 CREATE TABLE IF NOT EXISTS rates_rooms (
     id        INT AUTO_INCREMENT PRIMARY KEY,
-    room_type ENUM(
-                'Dorm',
-                'Superior Guest Room',
-                'Standard Apartment',
-                'Deluxe 2 BR',
-                'Deluxe 3 BR'
-              ) NOT NULL,
+    -- Free-form pricing tier so admins can price custom room types.
+    -- Built-in tiers: Superior Guest Room, Standard Apartment, Deluxe 2 BR, Deluxe 3 BR.
+    room_type VARCHAR(100) NOT NULL,
     item      ENUM(
                 'Single/Double Occupancy',
                 'Daily Maximum'

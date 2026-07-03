@@ -4,12 +4,16 @@ import {
   EXTRA_SERVICE_CATEGORIES,
   EXTRA_SERVICE_SEASONS,
   MEAL_TYPES,
+  ACCOMMODATION_EXTRAS_CATEGORY,
+  PER_PERSON_NIGHT_ITEM,
 } from '../constants/ancillary.js';
+import { ROOM_RATE_ITEMS, ROOM_RATE_SEASONS } from '../constants/rooms.js';
 import {
   fetchExtraServiceRows,
   fetchMealRateRows,
   groupMealRows,
   groupServiceRows,
+  getRoomRateGroups,
 } from '../services/ancillary.service.js';
 import { bustCatalogAndFacilities } from '../utils/cache.js';
 
@@ -26,6 +30,86 @@ export const getExtraServicesCatalog = async (req, res) => {
   try {
     const rows = await fetchExtraServiceRows();
     res.status(200).json({ services: groupServiceRows(rows) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const getRoomRatesCatalog = async (req, res) => {
+  try {
+    res.status(200).json({ room_rates: await getRoomRateGroups() });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/** Bulk save the season x item price matrix for one room tier. */
+export const saveRoomRates = async (req, res) => {
+  try {
+    const roomType = String(req.body.room_type || '').trim();
+    const rates = Array.isArray(req.body.rates) ? req.body.rates : [];
+
+    if (!roomType) return res.status(400).json({ message: 'A room type is required.' });
+    if (roomType.length > 100) return res.status(400).json({ message: 'Room type name is too long.' });
+
+    // Dorm is priced per-person-per-night in rates_extra_services (Accommodation Extras),
+    // not in rates_rooms. Route its save there so both editors stay in sync.
+    const isDorm = roomType === 'Dorm';
+    const allowedItems = isDorm ? [PER_PERSON_NIGHT_ITEM] : ROOM_RATE_ITEMS;
+
+    const normalized = [];
+    for (const entry of rates) {
+      const item = String(entry.item || '').trim();
+      const season = String(entry.season || '').trim();
+      if (!allowedItems.includes(item)) {
+        return res.status(400).json({ message: `Invalid rate type: ${item || '(blank)'}` });
+      }
+      if (!ROOM_RATE_SEASONS.includes(season)) {
+        return res.status(400).json({ message: `Invalid season: ${season || '(blank)'}` });
+      }
+      const hasRate = entry.rate != null && String(entry.rate).trim() !== '';
+      const rate = Number(entry.rate);
+      if (hasRate && (!Number.isFinite(rate) || rate <= 0)) {
+        return res.status(400).json({ message: 'Prices must be greater than 0.' });
+      }
+      normalized.push({ item, season, rate: hasRate ? rate : null });
+    }
+
+    for (const { item, season, rate } of normalized) {
+      if (isDorm) {
+        if (rate != null) {
+          await pool.query(
+            `INSERT INTO rates_extra_services (category, item, season, rate)
+             VALUES (?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE rate = VALUES(rate)`,
+            [ACCOMMODATION_EXTRAS_CATEGORY, item, season, rate]
+          );
+        } else {
+          await pool.query(
+            'DELETE FROM rates_extra_services WHERE category = ? AND item = ? AND season = ?',
+            [ACCOMMODATION_EXTRAS_CATEGORY, item, season]
+          );
+        }
+        continue;
+      }
+
+      if (rate != null) {
+        await pool.query(
+          `INSERT INTO rates_rooms (room_type, item, season, rate)
+           VALUES (?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE rate = VALUES(rate)`,
+          [roomType, item, season, rate]
+        );
+      } else {
+        await pool.query(
+          'DELETE FROM rates_rooms WHERE room_type = ? AND item = ? AND season = ?',
+          [roomType, item, season]
+        );
+      }
+    }
+
+    bustCatalogAndFacilities();
+    res.status(200).json({ message: 'Room prices saved', room_rates: await getRoomRateGroups() });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

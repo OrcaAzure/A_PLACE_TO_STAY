@@ -304,14 +304,7 @@ function groupPaginatedRooms(entries) {
 }
 
 function updateBoardChrome(visibleCount, totalInView) {
-  const hint = document.getElementById('rooms-board-hint');
   const countEl = document.getElementById('rooms-board-result-count');
-
-  if (hint) {
-    hint.textContent = isDateViewActive()
-      ? 'Filtered by booking dates. Each card’s badge still shows today’s housekeeping status.'
-      : 'Tap a stat to filter, or tap a room to update its status.';
-  }
 
   if (countEl) {
     if (state.availabilityLoading) {

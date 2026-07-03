@@ -1,6 +1,38 @@
 /** GMC deluxe units with three bedrooms (FY26 inventory). */
 export const DELUXE_3_BEDROOM_ROOM_NUMBERS = new Set(['201', '304']);
 
+/** Room nightly-rate matrix dimensions (rates_rooms). */
+export const ROOM_RATE_ITEMS = ['Single/Double Occupancy', 'Daily Maximum'];
+export const ROOM_RATE_SEASONS = ['Regular', 'Peak', 'Super Peak'];
+
+/** Built-in priceable tiers. Dorm is intentionally excluded (priced via Accommodation Extras). */
+export const ROOM_RATE_BASE_TIERS = [
+  'Superior Guest Room',
+  'Standard Apartment',
+  'Deluxe 2 BR',
+  'Deluxe 3 BR',
+];
+
+/** Inventory room types that are NOT priced through rates_rooms directly. */
+export const NON_RATE_ROOM_TYPES = ['Dorm'];
+
+/** Inventory room types whose pricing is derived (Deluxe splits into 2 BR / 3 BR tiers). */
+export const DERIVED_RATE_ROOM_TYPES = ['Deluxe Apartment'];
+
+export const ROOM_RATE_TIER_ICONS = {
+  'Superior Guest Room': 'king_bed',
+  'Standard Apartment': 'apartment',
+  'Deluxe 2 BR': 'holiday_village',
+  'Deluxe 3 BR': 'holiday_village',
+};
+
+/** Friendly label for a pricing tier. */
+export function roomRateTierLabel(tier) {
+  if (tier === 'Deluxe 2 BR') return 'Deluxe Apartment (2 BR)';
+  if (tier === 'Deluxe 3 BR') return 'Deluxe Apartment (3 BR)';
+  return tier;
+}
+
 /** @deprecated alias */
 export const DELUXE_3_BED_ROOM_NUMBERS = DELUXE_3_BEDROOM_ROOM_NUMBERS;
 

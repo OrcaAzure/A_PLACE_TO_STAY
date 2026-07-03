@@ -404,23 +404,13 @@ export async function runSchemaPatches() {
 
   try {
     await pool.execute(`DELETE FROM rates_rooms WHERE room_type = 'Uncategorized'`);
-    const lodgingEnum = `ENUM(
-      'Dorm',
-      'Superior Guest Room',
-      'Standard Apartment',
-      'Deluxe Apartment'
-    )`;
-    const rateEnum = `ENUM(
-      'Dorm',
-      'Superior Guest Room',
-      'Standard Apartment',
-      'Deluxe 2 BR',
-      'Deluxe 3 BR'
-    )`;
-    await pool.execute(`ALTER TABLE rooms MODIFY room_type ${lodgingEnum} NOT NULL`);
-    await pool.execute(`ALTER TABLE rates_rooms MODIFY room_type ${rateEnum} NOT NULL`);
+    // rooms.room_type and rates_rooms.room_type are free-form so admins can add
+    // new room categories and set their prices at any time. Built-in tiers still
+    // work by matching the same string (Superior Guest Room, Deluxe 2 BR, etc.).
+    await pool.execute(`ALTER TABLE rooms MODIFY room_type VARCHAR(100) NOT NULL`);
+    await pool.execute(`ALTER TABLE rates_rooms MODIFY room_type VARCHAR(100) NOT NULL`);
   } catch (err) {
-    console.warn('[schema] remove Uncategorized room type skipped:', err.message);
+    console.warn('[schema] room type column migration skipped:', err.message);
   }
 
   if (await tableExists('payments')) {
