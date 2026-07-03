@@ -67,7 +67,7 @@ function playLottie(player) {
 }
 
 function buildWelcomeOverlay(useLottie) {
-  const lottie = useLottie
+  const mascotMedia = useLottie
     ? `<dotlottie-player
         class="lp-welcome__lottie"
         src="${IDLE_LOTTIE_SRC}"
@@ -86,8 +86,17 @@ function buildWelcomeOverlay(useLottie) {
   el.setAttribute('aria-label', 'Welcome to AptSpace');
   el.innerHTML = `
     <div class="lp-welcome__inner">
-      <div class="lp-welcome__mascot" role="img" aria-label="AptSpace">${lottie}</div>
-      <h1 class="lp-welcome__title">Welcome to AptSpace</h1>
+      <div class="lp-welcome__mascot" role="img" aria-label="AptSpace">
+        <span class="lp-welcome__glow" aria-hidden="true"></span>
+        <div class="lp-welcome__mascot-media">${mascotMedia}</div>
+      </div>
+      <h1 class="lp-welcome__title">
+        <span class="lp-welcome__title-line">Welcome to</span>
+        <span class="lp-welcome__title-brand">
+          AptSpace
+          <span class="lp-welcome__underline" aria-hidden="true"></span>
+        </span>
+      </h1>
     </div>`;
   return el;
 }
@@ -123,16 +132,15 @@ export async function runLandingWelcome() {
   loadDotLottie().then((ok) => {
     if (!welcome.isConnected) return;
     if (!ok) {
-      const mascot = welcome.querySelector('.lp-welcome__mascot');
-      if (mascot) {
-        mascot.innerHTML = '<span class="lp-welcome__mark material-symbols-outlined" aria-hidden="true">apartment</span>';
+      const media = welcome.querySelector('.lp-welcome__mascot-media');
+      if (media) {
+        media.innerHTML = '<span class="lp-welcome__mark material-symbols-outlined" aria-hidden="true">apartment</span>';
       }
       return;
     }
-    const existing = welcome.querySelector('dotlottie-player');
-    if (!existing) {
-      welcome.querySelector('.lp-welcome__mascot')?.insertAdjacentHTML('afterbegin', `
-        <dotlottie-player class="lp-welcome__lottie" src="${IDLE_LOTTIE_SRC}" autoplay loop mode="normal" background="transparent"></dotlottie-player>`);
+    const media = welcome.querySelector('.lp-welcome__mascot-media');
+    if (media && !media.querySelector('dotlottie-player')) {
+      media.innerHTML = `<dotlottie-player class="lp-welcome__lottie" src="${IDLE_LOTTIE_SRC}" autoplay loop mode="normal" background="transparent"></dotlottie-player>`;
     }
     playLottie(welcome.querySelector('dotlottie-player'));
   });

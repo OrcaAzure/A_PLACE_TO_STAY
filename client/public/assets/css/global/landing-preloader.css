@@ -23,20 +23,38 @@ body.lp-page-hidden > #lp-welcome {
 /* ── Welcome screen (after preloader) ─────────────────────────────── */
 
 .lp-welcome {
+  --lp-welcome-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --lp-welcome-ease: cubic-bezier(0.22, 1, 0.36, 1);
   position: fixed;
   inset: 0;
   z-index: 99990;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(155deg, #2c5282 0%, #1a365d 52%, #152a4a 100%);
+  overflow: hidden;
+  background: #152a4a;
   opacity: 1;
   transition: opacity 0.36s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: none;
 }
 
-.lp-welcome.is-entering {
-  opacity: 0;
+.lp-welcome::before {
+  content: '';
+  position: absolute;
+  inset: -40%;
+  z-index: 0;
+  background: linear-gradient(
+    155deg,
+    #152a4a 0%,
+    #123f6f 22%,
+    #1a365d 44%,
+    #2c5282 66%,
+    #123f6f 88%,
+    #152a4a 100%
+  );
+  background-size: 320% 320%;
+  animation: lp-welcome-bg-shift 9s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .lp-welcome.is-exiting {
@@ -44,6 +62,8 @@ body.lp-page-hidden > #lp-welcome {
 }
 
 .lp-welcome__inner {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -52,34 +72,43 @@ body.lp-page-hidden > #lp-welcome {
   text-align: center;
 }
 
-.lp-welcome__mascot,
-.lp-welcome__title {
-  opacity: 0;
-  transform: translateY(12px);
-  transition:
-    opacity 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.lp-welcome:not(.is-entering) .lp-welcome__mascot {
-  opacity: 1;
-  transform: translateY(0);
-  transition-delay: 0.05s;
-}
-
-.lp-welcome:not(.is-entering) .lp-welcome__title {
-  opacity: 1;
-  transform: translateY(0);
-  transition-delay: 0.14s;
-}
-
 .lp-welcome__mascot {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   width: min(9rem, 38vw);
   height: min(9rem, 24vh);
   filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.25));
+}
+
+.lp-welcome__mascot-media {
+  opacity: 0;
+  transform: scale(0.6);
+  filter: blur(8px);
+  will-change: transform, opacity, filter;
+}
+
+.lp-welcome:not(.is-entering) .lp-welcome__mascot-media {
+  animation: lp-welcome-icon-enter 500ms var(--lp-welcome-spring) forwards;
+}
+
+.lp-welcome__glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72%;
+  height: 72%;
+  border-radius: 50%;
+  border: 2px solid rgba(109, 100, 229, 0.55);
+  box-shadow: 0 0 24px rgba(100, 89, 255, 0.35);
+  transform: translate(-50%, -50%) scale(0.7);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.lp-welcome:not(.is-entering) .lp-welcome__glow {
+  animation: lp-welcome-icon-glow 480ms ease-out 500ms forwards;
 }
 
 .lp-welcome__lottie {
@@ -100,9 +129,112 @@ body.lp-page-hidden > #lp-welcome {
   font-family: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
   font-size: clamp(1.625rem, 4.5vw, 2.25rem);
   font-weight: 700;
-  letter-spacing: -0.02em;
   color: #f8fafc;
-  line-height: 1.15;
+  line-height: 1.2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.lp-welcome__title-line {
+  display: block;
+  font-size: 0.68em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: rgba(248, 250, 252, 0.9);
+  opacity: 0;
+  transform: translateY(12px);
+}
+
+.lp-welcome:not(.is-entering) .lp-welcome__title-line {
+  animation: lp-welcome-text-rise 400ms var(--lp-welcome-ease) 300ms forwards;
+}
+
+.lp-welcome__title-brand {
+  display: block;
+  position: relative;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  opacity: 0;
+  transform: translateY(12px);
+  background: linear-gradient(135deg, #f8fafc 15%, #6d64e5 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.lp-welcome:not(.is-entering) .lp-welcome__title-brand {
+  animation: lp-welcome-brand-reveal 500ms var(--lp-welcome-ease) 450ms forwards;
+}
+
+.lp-welcome__underline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.15em;
+  height: 2px;
+  background: #6459ff;
+  border-radius: 1px;
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.lp-welcome:not(.is-entering) .lp-welcome__underline {
+  animation: lp-welcome-underline-draw 350ms cubic-bezier(0.4, 0, 0.2, 1) 950ms forwards;
+}
+
+@keyframes lp-welcome-bg-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes lp-welcome-icon-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+@keyframes lp-welcome-icon-glow {
+  0% {
+    opacity: 0.7;
+    transform: translate(-50%, -50%) scale(0.75);
+    border-color: rgba(109, 100, 229, 0.6);
+    box-shadow: 0 0 20px rgba(100, 89, 255, 0.4);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.85);
+    border-color: rgba(100, 89, 255, 0);
+    box-shadow: 0 0 0 24px rgba(100, 89, 255, 0);
+  }
+}
+
+@keyframes lp-welcome-text-rise {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes lp-welcome-brand-reveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    letter-spacing: -0.02em;
+  }
+}
+
+@keyframes lp-welcome-underline-draw {
+  to { transform: scaleX(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -110,11 +242,34 @@ body.lp-page-hidden > #lp-welcome {
     transition-duration: 0.12s;
   }
 
-  .lp-welcome__mascot,
-  .lp-welcome__title {
+  .lp-welcome::before {
+    animation: none;
+    background-size: 100% 100%;
+    background-position: 50% 50%;
+  }
+
+  .lp-welcome__mascot-media {
     opacity: 1;
     transform: none;
-    transition: none;
+    filter: none;
+    animation: none !important;
+  }
+
+  .lp-welcome__glow {
+    display: none;
+  }
+
+  .lp-welcome__title-line,
+  .lp-welcome__title-brand {
+    opacity: 1;
+    transform: none;
+    letter-spacing: -0.02em;
+    animation: none !important;
+  }
+
+  .lp-welcome__underline {
+    transform: scaleX(1);
+    animation: none !important;
   }
 }
 
