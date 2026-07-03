@@ -618,10 +618,10 @@ ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(cap
 
 -- Superior Guest Rooms (sgr) — FY26 sheet: "Superior Guest Room"
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '410', 'Superior Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '410', 'Superior Guest Room', 1, 2),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '411', 'Superior Guest Room', 1, 4),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '412', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '413', 'Superior Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '413', 'Superior Guest Room', 1, 3),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '414', 'Superior Guest Room', 1, 4),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '415', 'Superior Guest Room', 1, 4),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '416', 'Superior Guest Room', 1, 4)

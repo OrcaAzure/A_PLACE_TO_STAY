@@ -261,6 +261,12 @@ const DORM_CAPACITY_BY_ROOM = {
   '310': { min: 1, max: 4 },
 };
 
+/** GMC Superior Guest Room max pax — FY26 lodging sheet (rooms not listed keep prior defaults). */
+const SUPERIOR_GUEST_ROOM_CAPACITY_BY_ROOM = {
+  '410': { min: 1, max: 2 },
+  '413': { min: 1, max: 3 },
+};
+
 async function upsertDeluxeRoomRates() {
   for (const [item, season, rate] of DELUXE_2BR_RATES) {
     await pool.execute(
@@ -409,6 +415,24 @@ async function runDormCapacityMigration() {
   }
 
   console.log('[schema] GMC dorm capacities updated (FY26 sheet)');
+}
+
+async function runSuperiorGuestRoomCapacityMigration() {
+  const [[gmc]] = await pool.execute(
+    `SELECT id FROM buildings WHERE name = 'Global Missions Center' LIMIT 1`
+  );
+  if (!gmc?.id) return;
+
+  for (const [roomNumber, caps] of Object.entries(SUPERIOR_GUEST_ROOM_CAPACITY_BY_ROOM)) {
+    await pool.execute(
+      `UPDATE rooms
+       SET capacity_min = ?, capacity_max = ?
+       WHERE building_id = ? AND room_number = ? AND room_type = 'Superior Guest Room'`,
+      [caps.min, caps.max, gmc.id, roomNumber]
+    );
+  }
+
+  console.log('[schema] GMC Superior Guest Room capacities updated (FY26 sheet)');
 }
 
 async function runSeasonSettingsMigration() {
@@ -1159,6 +1183,12 @@ export async function runSchemaPatches() {
     await runDormCapacityMigration();
   } catch (err) {
     console.warn('[schema] dorm capacity migration skipped:', err.message);
+  }
+
+  try {
+    await runSuperiorGuestRoomCapacityMigration();
+  } catch (err) {
+    console.warn('[schema] superior guest room capacity migration skipped:', err.message);
   }
 
   try {
