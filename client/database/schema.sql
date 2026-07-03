@@ -627,21 +627,21 @@ INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_m
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '416', 'Superior Guest Room', 1, 4)
 ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
--- Dormitories (dorm)
+-- Dormitories (dorm) — capacity_max = max pax per FY26 lodging sheet
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '103', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '202', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '204', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '206', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '207', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '208', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '103', 'Dorm', 1, 2),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '202', 'Dorm', 1, 40),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '204', 'Dorm', 1, 16),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '206', 'Dorm', 1, 14),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '207', 'Dorm', 1, 14),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '208', 'Dorm', 1, 14),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '209', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '305', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '306', 'Dorm', 5, 10),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '305', 'Dorm', 1, 20),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '306', 'Dorm', 1, 16),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '307', 'Dorm', 5, 10),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '308', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '309', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '310', 'Dorm', 5, 10)
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '309', 'Dorm', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '310', 'Dorm', 1, 4)
 ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
 -- A-501 is the only A-block lodging room (Deluxe Apartment). Conference/classroom spaces

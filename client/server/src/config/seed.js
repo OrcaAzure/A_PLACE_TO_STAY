@@ -247,6 +247,20 @@ const DELUXE_3BR_RATES = [
 const DELUXE_3BR_ROOMS = ['201', '304'];
 const DELUXE_2BR_ROOMS = ['A-501', '301', '401', '402', '403'];
 
+/** GMC dorm max pax — FY26 lodging sheet (rooms not listed keep prior defaults). */
+const DORM_CAPACITY_BY_ROOM = {
+  '103': { min: 1, max: 2 },
+  '202': { min: 1, max: 40 },
+  '204': { min: 1, max: 16 },
+  '206': { min: 1, max: 14 },
+  '207': { min: 1, max: 14 },
+  '208': { min: 1, max: 14 },
+  '305': { min: 1, max: 20 },
+  '306': { min: 1, max: 16 },
+  '309': { min: 1, max: 4 },
+  '310': { min: 1, max: 4 },
+};
+
 async function upsertDeluxeRoomRates() {
   for (const [item, season, rate] of DELUXE_2BR_RATES) {
     await pool.execute(
@@ -377,6 +391,24 @@ async function runDeluxeRoomTypeMigration() {
   }
 
   console.log('[schema] Superior Guest Room + Deluxe Apartment catalog updated (FY26 sheet)');
+}
+
+async function runDormCapacityMigration() {
+  const [[gmc]] = await pool.execute(
+    `SELECT id FROM buildings WHERE name = 'Global Missions Center' LIMIT 1`
+  );
+  if (!gmc?.id) return;
+
+  for (const [roomNumber, caps] of Object.entries(DORM_CAPACITY_BY_ROOM)) {
+    await pool.execute(
+      `UPDATE rooms
+       SET capacity_min = ?, capacity_max = ?
+       WHERE building_id = ? AND room_number = ? AND room_type = 'Dorm'`,
+      [caps.min, caps.max, gmc.id, roomNumber]
+    );
+  }
+
+  console.log('[schema] GMC dorm capacities updated (FY26 sheet)');
 }
 
 async function runSeasonSettingsMigration() {
@@ -1121,6 +1153,12 @@ export async function runSchemaPatches() {
     await runDeluxeRoomTypeMigration();
   } catch (err) {
     console.warn('[schema] deluxe room type migration skipped:', err.message);
+  }
+
+  try {
+    await runDormCapacityMigration();
+  } catch (err) {
+    console.warn('[schema] dorm capacity migration skipped:', err.message);
   }
 
   try {
