@@ -3,6 +3,7 @@
  */
 
 import { isInternalGuest } from '/assets/js/services/auth.js';
+import { isRoomListVisible } from '/assets/js/features/reservation-shared.js';
 
 export { isInternalGuest };
 
@@ -100,6 +101,10 @@ export function isDbStatusBookable(status) {
 
 export function isAvailabilityBookable(status) {
   return String(status || '').trim() === 'available';
+}
+
+export function isAvailabilityVisible(status) {
+  return isRoomListVisible(status);
 }
 
 export function readBrowseQuery() {

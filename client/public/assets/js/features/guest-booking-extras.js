@@ -61,7 +61,12 @@ function buildFeeGroups(services = []) {
   const laundryItems = [];
 
   for (const group of services || []) {
-    const items = (group.items || []).map((item) => ({
+    const items = (group.items || [])
+      .filter((item) => !(
+        group.category === 'Accommodation Extras'
+        && (item.item === 'Extra Bed or Extra Person' || item.item === 'Per person per Night')
+      ))
+      .map((item) => ({
       name: item.item,
       amount: Number(item.rate),
       category: group.category,

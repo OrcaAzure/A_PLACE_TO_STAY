@@ -17,9 +17,9 @@ export async function fetchMealRateRows() {
 
 export async function fetchExtraServiceRows() {
   const [rows] = await pool.query(
-    `SELECT id, category, item, rate
+    `SELECT id, category, item, season, rate
      FROM rates_extra_services
-     ORDER BY category ASC, item ASC`
+     ORDER BY category ASC, item ASC, FIELD(season, 'Regular', 'Peak', 'Super Peak', 'N/A')`
   );
   return rows;
 }
@@ -56,7 +56,7 @@ export function groupServiceRows(rows) {
     byCategory.get(row.category).items.push({
       id: row.id,
       item: row.item,
-      season: 'N/A',
+      season: row.season || 'N/A',
       rate: Number(row.rate),
     });
   }

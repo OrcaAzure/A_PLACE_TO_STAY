@@ -38,7 +38,7 @@ const ROOM_TYPE_OPTIONS = [
   {
     value: 'Deluxe Apartment',
     label: 'Deluxe Apartment',
-    subtitle: '2 or 3 beds — set below',
+    subtitle: '2 or 3 bedrooms — set below',
     icon: 'holiday_village',
     capacity: { min: 1, max: 6 },
   },
@@ -133,8 +133,8 @@ function getTypeOption(value) {
 function getTypeLabel(value, room) {
   if (room?.room_type === 'Deluxe Apartment' || value === 'Deluxe Apartment') {
     const r = room || { room_type: value, bed_count: null, room_number: '' };
-    const beds = r.bed_count ?? (['201', '304'].includes(String(r.room_number)) ? 3 : 2);
-    return beds >= 3 ? 'Deluxe Apartment (3 beds)' : 'Deluxe Apartment';
+    const bedrooms = r.bed_count ?? (['201', '304'].includes(String(r.room_number)) ? 3 : 2);
+    return bedrooms >= 3 ? 'Deluxe Apartment (3 BR)' : 'Deluxe Apartment (2 BR)';
   }
   return getTypeOption(value)?.label || value || 'Room';
 }
@@ -180,7 +180,7 @@ function emptyForm() {
     building_id: '',
     room_number: '',
     room_type: first.value,
-    bed_count: 2,
+    bed_count: 2, // bedrooms for deluxe pricing tier
     capacity_min: first.capacity.min,
     capacity_max: first.capacity.max,
     occupancy: 0,
@@ -370,18 +370,18 @@ function renderCapacityStepper() {
 
 function renderBedField() {
   if (state.form.room_type !== 'Deluxe Apartment') return '';
-  const beds = state.form.bed_count ?? 2;
+  const bedrooms = state.form.bed_count ?? 2;
   return `
     <div class="admin-crud-field span-full">
       <label class="mf-field-label">Beds</label>
       <div class="mf-type-grid mf-type-grid--compact">
         ${[2, 3].map((n) => `
-          <button type="button" class="mf-type-card${beds === n ? ' is-selected' : ''}" data-bed-count="${n}">
-            <span class="mf-type-label">${n} beds</span>
+          <button type="button" class="mf-type-card${bedrooms === n ? ' is-selected' : ''}" data-bed-count="${n}">
+            <span class="mf-type-label">${n} BR</span>
             <span class="mf-type-sub">${n === 3 ? 'Rooms 201 & 304' : 'Most deluxe units'}</span>
           </button>`).join('')}
       </div>
-      <input type="hidden" id="mf-bed-count" name="bed_count" value="${beds}" />
+      <input type="hidden" id="mf-bed-count" name="bed_count" value="${bedrooms}" />
     </div>`;
 }
 

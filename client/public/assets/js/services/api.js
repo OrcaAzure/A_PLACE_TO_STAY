@@ -491,8 +491,8 @@ export function normalizeRoom(room) {
   const bedCount = room.bed_count != null ? Number(room.bed_count) : null;
   let roomTypeLabel = room.room_type_label;
   if (!roomTypeLabel && room.room_type === 'Deluxe Apartment') {
-    const beds = bedCount ?? (['201', '304'].includes(String(room.room_number)) ? 3 : 2);
-    roomTypeLabel = beds >= 3 ? 'Deluxe Apartment (3 beds)' : 'Deluxe Apartment';
+    const bedrooms = bedCount ?? (['201', '304'].includes(String(room.room_number)) ? 3 : 2);
+    roomTypeLabel = bedrooms >= 3 ? 'Deluxe Apartment (3 BR)' : 'Deluxe Apartment (2 BR)';
   }
   return {
     id: room.id,

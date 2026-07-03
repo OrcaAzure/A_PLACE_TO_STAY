@@ -8,6 +8,7 @@ import {
   runDormCapacityMigration,
   runSuperiorGuestRoomCapacityMigration,
   runSeasonSettingsMigration,
+  runLodgingExtrasMigration,
 } from './rooms.js';
 import {
   runFacilitiesCatalogMigration,
@@ -317,8 +318,9 @@ export async function runSchemaPatches() {
          id       INT AUTO_INCREMENT PRIMARY KEY,
          category VARCHAR(50)  NOT NULL,
          item     VARCHAR(100) NOT NULL,
+         season   ENUM('Regular', 'Peak', 'Super Peak', 'N/A') NOT NULL DEFAULT 'N/A',
          rate     DECIMAL(10,2) NOT NULL,
-         UNIQUE KEY uq_extra_service (category, item),
+         UNIQUE KEY uq_extra_service (category, item, season),
          CONSTRAINT chk_extra_service_rate CHECK (rate > 0),
          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -334,8 +336,8 @@ export async function runSchemaPatches() {
       );
 
       await pool.execute(
-        `INSERT INTO rates_extra_services (category, item, rate)
-         SELECT category, item, rate FROM facilities
+        `INSERT INTO rates_extra_services (category, item, season, rate)
+         SELECT category, item, 'N/A', rate FROM facilities
          WHERE category IN ('Laundry', 'Laundry-Iron', 'Corkage Fee', 'Maid Service', 'Accommodation Extras')
          ON DUPLICATE KEY UPDATE rate = VALUES(rate)`
       );
@@ -392,6 +394,12 @@ export async function runSchemaPatches() {
     await runSeasonSettingsMigration();
   } catch (err) {
     console.warn('[schema] season settings migration skipped:', err.message);
+  }
+
+  try {
+    await runLodgingExtrasMigration();
+  } catch (err) {
+    console.warn('[schema] lodging extras migration skipped:', err.message);
   }
 
   try {

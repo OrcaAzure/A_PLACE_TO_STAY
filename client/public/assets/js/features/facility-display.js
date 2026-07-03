@@ -29,6 +29,7 @@ const AVAIL_BADGES = {
   dirty: { label: 'Being cleaned', badge: 'fac-badge--dirty' },
   maintenance: { label: 'Out of order', badge: 'fac-badge--blocked' },
   too_small: { label: 'Too small', badge: 'fac-badge--blocked' },
+  dorm_min_guests: { label: 'Min 5 pax', badge: 'fac-badge--blocked' },
 };
 
 /** @type {Record<string, { label: string, badge: string }>} */

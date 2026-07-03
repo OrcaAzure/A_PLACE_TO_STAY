@@ -10,6 +10,8 @@ import {
   emptyWizardState, mealsFromBooking, calcGrandTotal, calcMealsSubtotal, calcFeesSubtotal, availLabel, debounce,
   loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
   recommendRooms, recommendationReason, servicesToQuickFees, filterRoomsList,
+  DORM_MIN_GUEST_COUNT, dormPriceLabel, effectiveCapacityMin,
+  isRoomListVisible, isRoomBookable, dormMinGuestsNotice,
 } from '/assets/js/features/reservation-shared.js';
 
 let initialized = false;
@@ -70,18 +72,24 @@ function renderStep2() {
     </div>
     <label class="res-label">Number of guests</label>
     <input id="wiz-guests" class="res-input res-input--short" type="number" min="1" max="20" value="${state.guestCount}" />
-    <p class="res-hint">Room options on the next step will update based on this number.</p>
+    <p class="res-hint">Room options on the next step will update based on this number. Dorm bookings require at least ${DORM_MIN_GUEST_COUNT} guests (per-person pricing).</p>
     ${banner}`;
 }
 
 function renderRoomRow(room, { recommended = false } = {}) {
-  const ok = room.availability_status === 'available';
+  const bookable = isRoomBookable(room.availability_status);
+  const visible = isRoomListVisible(room.availability_status);
   const sel = String(room.id) === String(state.roomId);
   const av = availLabel(room.availability_status);
   const topPick = recommended && room.recommendation_rank === 1;
+  const capMin = room.dorm_booking_minimum || room.capacity_min || effectiveCapacityMin(room);
+  const capLabel = room.room_type === 'Dorm'
+    ? `Min ${room.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} pax to book · up to ${room.capacity_max} guests`
+    : `Fits ${room.capacity_min}–${room.capacity_max}`;
+  const priceDetail = dormPriceLabel(room, state.guestCount, room.nights);
   return `
-    <button type="button" class="res-room-row${sel ? ' is-selected' : ''}${ok ? '' : ' is-disabled'}${recommended ? ' is-recommended' : ''}"
-      data-room-id="${room.id}" ${ok ? '' : 'disabled tabindex="-1"'}>
+    <button type="button" class="res-room-row${sel ? ' is-selected' : ''}${bookable ? '' : visible ? ' is-dorm-min' : ' is-disabled'}${recommended ? ' is-recommended' : ''}"
+      data-room-id="${room.id}" ${visible ? '' : 'disabled tabindex="-1"'}>
       <div class="res-room-row-main">
         <div class="res-room-row-id">
           <span class="material-symbols-outlined res-room-icon">meeting_room</span>
@@ -93,18 +101,21 @@ function renderRoomRow(room, { recommended = false } = {}) {
           </div>
         </div>
         <span class="res-pill ${av.cls}">${av.text}</span>
-        <span class="res-room-row-cap">Fits ${room.capacity_min}–${room.capacity_max}</span>
-        ${ok && room.estimated_total != null ? `<span class="res-room-row-price">${formatMoney(room.estimated_total)}</span>` : ''}
+        <span class="res-room-row-cap">${capLabel}</span>
+        ${bookable && room.estimated_total != null ? `<span class="res-room-row-price">${formatMoney(room.estimated_total)}</span>` : ''}
+        ${!bookable && visible && room.estimated_total != null ? `<span class="res-room-row-price res-room-row-price--hint">${formatMoney(room.estimated_total)}</span>` : ''}
       </div>
+      ${priceDetail ? `<p class="res-hint res-room-row-pricing">${escapeHtml(priceDetail)}</p>` : ''}
+      ${room.availability_status === 'dorm_min_guests' ? `<p class="res-room-warn">Minimum ${room.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} guests required to book this dorm.</p>` : ''}
       ${recommended ? `<p class="res-rec-reason">${escapeHtml(recommendationReason(room, state.guestCount))}</p>` : ''}
-      ${!ok && room.availability_status === 'booked' ? '<p class="res-room-warn">Already booked on these dates.</p>' : ''}
+      ${!bookable && room.availability_status === 'booked' ? '<p class="res-room-warn">Already booked on these dates.</p>' : ''}
     </button>`;
 }
 
 function getFilteredAvailableRooms() {
   return filterRoomsList(state.availableRooms, {
     search: state.roomSearch,
-    status: 'available',
+    includeStatuses: ['available', 'dorm_min_guests'],
   });
 }
 
@@ -226,7 +237,7 @@ function renderStep5() {
     ${modifyBlock}
     <div class="res-review"><h4>Guest</h4><p>${escapeHtml(state.guestName)} · ${escapeHtml(state.contactPhone || '—')} · ${escapeHtml(state.email || '—')}</p></div>
     <div class="res-review"><h4>Stay</h4><p>${formatDateLong(state.checkIn)} to ${formatDateLong(state.checkOut)} · ${state.guestCount} guest(s)</p></div>
-    <div class="res-review"><h4>Room</h4><p>${r ? `Room ${escapeHtml(r.room_number)} · ${escapeHtml(r.room_type_label || r.room_type)} — ${formatMoney(state.roomTotal)}` : '—'}</p></div>
+    <div class="res-review"><h4>Room</h4><p>${r ? `Room ${escapeHtml(r.room_number)} · ${escapeHtml(r.room_type_label || r.room_type)} — ${formatMoney(state.roomTotal)}${dormPriceLabel(r, state.guestCount, r.nights) ? `<br><span class="res-hint">${escapeHtml(dormPriceLabel(r, state.guestCount, r.nights))}</span>` : ''}` : '—'}</p></div>
     ${mealLines ? `<div class="res-review"><h4>Meals</h4><p>${mealLines}</p></div>` : ''}
     ${state.fees.length ? `<div class="res-review"><h4>Extra fees</h4><p>${state.fees.map((f) => `${escapeHtml(f.fee_name)}: ${formatMoney(f.amount)}`).join('<br>')}</p></div>` : ''}
     <label class="res-label">Notes (optional)</label>
@@ -352,9 +363,20 @@ function bindEvents() {
 
   $('reservation-wizard-body')?.querySelectorAll('[data-room-id]').forEach((btn) => {
     btn.addEventListener('click', () => {
+      const room = state.availableRooms.find((r) => String(r.id) === String(btn.getAttribute('data-room-id'))) || null;
+      if (!room) return;
+      if (!isRoomBookable(room.availability_status)) {
+        state.roomId = '';
+        state.selectedRoom = null;
+        state.roomTotal = 0;
+        state.error = dormMinGuestsNotice(state.guestCount)
+          || 'This room cannot be booked for the current guest count.';
+        renderBody();
+        return;
+      }
       state.roomId = btn.getAttribute('data-room-id');
-      state.selectedRoom = state.availableRooms.find((r) => String(r.id) === String(state.roomId)) || null;
-      state.roomTotal = state.selectedRoom?.estimated_total || 0;
+      state.selectedRoom = room;
+      state.roomTotal = room.estimated_total || 0;
       state.error = null;
       renderBody();
     });
@@ -399,6 +421,10 @@ function validate() {
     if (state.checkOut <= state.checkIn) { state.error = 'Check-out must be after check-in.'; return false; }
   }
   if (state.step === 3 && !state.roomId) { state.error = 'Please select an available room.'; return false; }
+  if (state.step === 3 && state.selectedRoom?.room_type === 'Dorm' && state.guestCount < DORM_MIN_GUEST_COUNT) {
+    state.error = dormMinGuestsNotice(state.guestCount);
+    return false;
+  }
   if (state.step === 5 && state.modifyRequest && !state.guestMessage?.trim()) {
     state.error = 'Please enter a message explaining the change for the guest.';
     return false;

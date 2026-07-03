@@ -24,7 +24,8 @@ const EXTRA_CATEGORIES = [
   'Accommodation Extras',
 ];
 
-const SEASONS = ['Regular', 'Peak', 'N/A'];
+const SEASONS = ['Regular', 'Peak', 'Super Peak', 'N/A'];
+const SEASONAL_EXTRA_CATEGORIES = new Set(['Accommodation Extras']);
 
 const TAB_PANEL = { venues: 'venue-prices-panel', meals: 'fac-panel-meals', extras: 'fac-panel-extras' };
 
@@ -119,6 +120,13 @@ function renderModalForm() {
 
   if (kind === 'extra') {
     const cat = row?.category || EXTRA_CATEGORIES[0];
+    const seasonal = SEASONAL_EXTRA_CATEGORIES.has(cat);
+    const seasonOptions = seasonal
+      ? SEASONS.filter((s) => s !== 'N/A')
+      : ['N/A'];
+    const selectedSeason = row?.season && seasonOptions.includes(row.season)
+      ? row.season
+      : seasonOptions[0];
     fields.innerHTML = `
       <label class="catalog-label">Service type</label>
       <select id="cat-category" class="catalog-input">
@@ -126,7 +134,11 @@ function renderModalForm() {
       </select>
       <label class="catalog-label">Item name</label>
       <input id="cat-item" class="catalog-input" type="text" value="${escapeHtml(row?.item || '')}" placeholder="e.g. Extra Mattress" />
-      <input type="hidden" id="cat-season" value="N/A" />
+      ${seasonal ? `
+      <label class="catalog-label">Season</label>
+      <select id="cat-season" class="catalog-input">
+        ${seasonOptions.map((s) => `<option value="${s}"${selectedSeason === s ? ' selected' : ''}>${s}</option>`).join('')}
+      </select>` : '<input type="hidden" id="cat-season" value="N/A" />'}
       <label class="catalog-label">Price (₱)</label>
       <input id="cat-rate" class="catalog-input" type="number" min="1" step="1" value="${row?.rate ?? ''}" placeholder="e.g. 500" />
     `;
@@ -368,7 +380,10 @@ export function renderExtrasCatalog(services) {
   mount.innerHTML = services.map((group) => {
     const itemsHtml = group.items.map((item) => `
       <li class="catalog-price-row">
-        <p class="catalog-price-row__label">${escapeHtml(item.item)}</p>
+        <div class="min-w-0">
+          <p class="catalog-price-row__label">${escapeHtml(item.item)}</p>
+          ${item.season && item.season !== 'N/A' ? `<p class="text-xs text-slate-500 mt-0.5">${escapeHtml(item.season)}</p>` : ''}
+        </div>
         <div class="catalog-price-row__meta">
           <p class="catalog-price-row__price">${peso(item.rate)}</p>
           ${editBtn('extra', item.id)}

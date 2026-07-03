@@ -96,8 +96,8 @@ async function migrateAirconToExtraServices() {
     );
     if (airconRows.length) {
       await pool.execute(
-        `INSERT INTO rates_extra_services (category, item, rate)
-         VALUES ('GMC Chapel', 'Aircon', ?)
+        `INSERT INTO rates_extra_services (category, item, season, rate)
+         VALUES ('GMC Chapel', 'Aircon', 'N/A', ?)
          ON DUPLICATE KEY UPDATE rate = VALUES(rate)`,
         [airconRows[0].rate]
       );
@@ -106,8 +106,8 @@ async function migrateAirconToExtraServices() {
   }
 
   await pool.execute(
-    `INSERT INTO rates_extra_services (category, item, rate)
-     VALUES ('GMC Chapel', 'Aircon', 275.00)
+    `INSERT INTO rates_extra_services (category, item, season, rate)
+     VALUES ('GMC Chapel', 'Aircon', 'N/A', 275.00)
      ON DUPLICATE KEY UPDATE rate = VALUES(rate)`
   );
   await pool.execute(

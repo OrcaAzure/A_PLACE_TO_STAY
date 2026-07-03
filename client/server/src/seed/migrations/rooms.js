@@ -1,15 +1,20 @@
 import { pool } from '../../config/db.js';
+import { tableExists } from '../helpers.js';
+import {
+  ACCOMMODATION_EXTRAS_CATEGORY,
+  DEFAULT_ACCOMMODATION_SEASONAL_RATES,
+  LODGING_EXTRA_ITEM,
+  PER_PERSON_NIGHT_ITEM,
+} from '../../constants/ancillary.js';
 
 const DELUXE_2BR_RATES = [
   ['Single/Double Occupancy', 'Regular', 3000], ['Single/Double Occupancy', 'Peak', 3275], ['Single/Double Occupancy', 'Super Peak', 3650],
   ['Daily Maximum', 'Regular', 3750], ['Daily Maximum', 'Peak', 4150], ['Daily Maximum', 'Super Peak', 4500],
-  ['Extra Bed or Extra Person', 'Regular', 450], ['Extra Bed or Extra Person', 'Peak', 500], ['Extra Bed or Extra Person', 'Super Peak', 550],
 ];
 
 const DELUXE_3BR_RATES = [
   ['Single/Double Occupancy', 'Regular', 3600], ['Single/Double Occupancy', 'Peak', 3650], ['Single/Double Occupancy', 'Super Peak', 4450],
   ['Daily Maximum', 'Regular', 4350], ['Daily Maximum', 'Peak', 4750], ['Daily Maximum', 'Super Peak', 5200],
-  ['Extra Bed or Extra Person', 'Regular', 450], ['Extra Bed or Extra Person', 'Peak', 500], ['Extra Bed or Extra Person', 'Super Peak', 550],
 ];
 
 const DELUXE_3BR_ROOMS = ['201', '304'];
@@ -18,13 +23,13 @@ const DELUXE_2BR_ROOMS = ['A-501', '301', '401', '402', '403'];
 /** GMC dorm max pax — FY26 lodging sheet (rooms not listed keep prior defaults). */
 const DORM_CAPACITY_BY_ROOM = {
   '103': { min: 1, max: 2 },
-  '202': { min: 1, max: 40 },
-  '204': { min: 1, max: 16 },
-  '206': { min: 1, max: 14 },
-  '207': { min: 1, max: 14 },
-  '208': { min: 1, max: 14 },
-  '305': { min: 1, max: 20 },
-  '306': { min: 1, max: 16 },
+  '202': { min: 5, max: 40 },
+  '204': { min: 5, max: 16 },
+  '206': { min: 5, max: 14 },
+  '207': { min: 5, max: 14 },
+  '208': { min: 5, max: 14 },
+  '305': { min: 5, max: 20 },
+  '306': { min: 5, max: 16 },
   '309': { min: 1, max: 4 },
   '310': { min: 1, max: 4 },
 };
@@ -182,6 +187,12 @@ async function runDormCapacityMigration() {
     );
   }
 
+  await pool.execute(
+    `UPDATE rooms
+     SET capacity_min = GREATEST(capacity_min, 5)
+     WHERE room_type = 'Dorm' AND capacity_max >= 5`
+  );
+
   console.log('[schema] GMC dorm capacities updated (FY26 sheet)');
 }
 
@@ -230,10 +241,95 @@ async function runSeasonSettingsMigration() {
   }
 }
 
+async function runLodgingExtrasMigration() {
+  try {
+    await pool.execute(
+      `ALTER TABLE rates_extra_services
+       ADD COLUMN season ENUM('Regular', 'Peak', 'Super Peak', 'N/A') NOT NULL DEFAULT 'N/A' AFTER item`
+    );
+  } catch {
+    /* column may already exist */
+  }
+
+  try {
+    await pool.execute(`ALTER TABLE rates_extra_services DROP INDEX uq_extra_service`);
+  } catch {
+    /* index may already be updated */
+  }
+
+  try {
+    await pool.execute(
+      `ALTER TABLE rates_extra_services
+       ADD UNIQUE KEY uq_extra_service (category, item, season)`
+    );
+  } catch {
+    /* unique key may already exist */
+  }
+
+  const seasonalItems = [
+    { item: LODGING_EXTRA_ITEM, legacyRoomType: null },
+    { item: PER_PERSON_NIGHT_ITEM, legacyRoomType: 'Dorm' },
+  ];
+
+  for (const { item, legacyRoomType } of seasonalItems) {
+    for (const [season, defaultRate] of Object.entries(DEFAULT_ACCOMMODATION_SEASONAL_RATES)) {
+      let rate = defaultRate;
+
+      if (item === LODGING_EXTRA_ITEM && await tableExists('rates_lodging_extras')) {
+        const [lodgingRows] = await pool.execute(
+          `SELECT rate FROM rates_lodging_extras WHERE item = ? AND season = ? LIMIT 1`,
+          [item, season]
+        );
+        if (lodgingRows[0]?.rate != null) rate = lodgingRows[0].rate;
+      }
+
+      if (rate === defaultRate) {
+        const params = legacyRoomType
+          ? [legacyRoomType, item, season]
+          : [item, season];
+        const sql = legacyRoomType
+          ? `SELECT rate FROM rates_rooms WHERE room_type = ? AND item = ? AND season = ? LIMIT 1`
+          : `SELECT rate FROM rates_rooms WHERE item = ? AND season = ? LIMIT 1`;
+        const [legacyRows] = await pool.execute(sql, params);
+        if (legacyRows[0]?.rate != null) rate = legacyRows[0].rate;
+      }
+
+      await pool.execute(
+        `INSERT INTO rates_extra_services (category, item, season, rate)
+         VALUES (?, ?, ?, ?)
+         ON DUPLICATE KEY UPDATE rate = VALUES(rate)`,
+        [ACCOMMODATION_EXTRAS_CATEGORY, item, season, rate]
+      );
+    }
+
+    await pool.execute(`DELETE FROM rates_rooms WHERE item = ?`, [item]);
+  }
+
+  try {
+    await pool.execute(
+      `ALTER TABLE rates_rooms MODIFY item ENUM(
+         'Single/Double Occupancy',
+         'Daily Maximum'
+       ) NOT NULL`
+    );
+  } catch (err) {
+    console.warn('[schema] rates_rooms item enum update skipped:', err.message);
+  }
+
+  try {
+    await pool.execute('DROP TABLE IF EXISTS rates_lodging_extras');
+  } catch {
+    /* table may not exist */
+  }
+
+  console.log('[schema] dorm and lodging extra rates moved to rates_extra_services');
+}
+
 export {
   upsertDeluxeRoomRates,
   runDeluxeRoomTypeMigration,
   runDormCapacityMigration,
   runSuperiorGuestRoomCapacityMigration,
   runSeasonSettingsMigration,
+  runLodgingExtrasMigration,
 };

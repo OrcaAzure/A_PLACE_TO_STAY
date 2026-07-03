@@ -69,10 +69,8 @@ CREATE TABLE IF NOT EXISTS rates_rooms (
                 'Deluxe 3 BR'
               ) NOT NULL,
     item      ENUM(
-                'Per person per Night',
                 'Single/Double Occupancy',
-                'Daily Maximum',
-                'Extra Bed or Extra Person'
+                'Daily Maximum'
               ) NOT NULL,
     season    ENUM('Regular', 'Peak', 'Super Peak') NOT NULL,
     rate      DECIMAL(10,2) NOT NULL,
@@ -361,9 +359,10 @@ CREATE TABLE IF NOT EXISTS rates_extra_services (
     id       INT AUTO_INCREMENT PRIMARY KEY,
     category VARCHAR(50)  NOT NULL,
     item     VARCHAR(100) NOT NULL,
+    season   ENUM('Regular', 'Peak', 'Super Peak', 'N/A') NOT NULL DEFAULT 'N/A',
     rate     DECIMAL(10,2) NOT NULL,
 
-    UNIQUE KEY uq_extra_service (category, item),
+    UNIQUE KEY uq_extra_service (category, item, season),
     CONSTRAINT chk_extra_service_rate CHECK (rate > 0),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -596,7 +595,7 @@ ON DUPLICATE KEY UPDATE name = name;
 -- SEED DATA: LODGING — Global Missions Center
 -- ============================================
 
--- Deluxe apartments — bed_count distinguishes 2-bed vs 3-bed pricing (201 & 304 have 3 beds)
+-- Deluxe apartments — bed_count = number of bedrooms (2 BR vs 3 BR pricing)
 INSERT INTO rooms (building_id, room_number, room_type, bed_count, capacity_min, capacity_max) VALUES
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), 'A-501', 'Deluxe Apartment', 2, 1, 4),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '201',   'Deluxe Apartment', 3, 1, 6),
@@ -627,17 +626,17 @@ INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_m
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '416', 'Superior Guest Room', 1, 4)
 ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
--- Dormitories (dorm) — capacity_max = max pax per FY26 lodging sheet
+-- Dormitories (dorm) — capacity_max = max pax per FY26 lodging sheet; min 5 where pricelist requires
 INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_max) VALUES
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '103', 'Dorm', 1, 2),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '202', 'Dorm', 1, 40),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '204', 'Dorm', 1, 16),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '206', 'Dorm', 1, 14),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '207', 'Dorm', 1, 14),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '208', 'Dorm', 1, 14),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '202', 'Dorm', 5, 40),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '204', 'Dorm', 5, 16),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '206', 'Dorm', 5, 14),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '207', 'Dorm', 5, 14),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '208', 'Dorm', 5, 14),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '209', 'Dorm', 5, 10),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '305', 'Dorm', 1, 20),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '306', 'Dorm', 1, 16),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '305', 'Dorm', 5, 20),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '306', 'Dorm', 5, 16),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '307', 'Dorm', 5, 10),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '308', 'Dorm', 5, 10),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '309', 'Dorm', 1, 4),
@@ -652,10 +651,6 @@ ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(cap
 -- ============================================
 
 INSERT INTO rates_rooms (room_type, item, season, rate) VALUES
-    ('Dorm', 'Per person per Night', 'Regular',    450.00),
-    ('Dorm', 'Per person per Night', 'Peak',       500.00),
-    ('Dorm', 'Per person per Night', 'Super Peak', 550.00),
-
     ('Superior Guest Room', 'Single/Double Occupancy', 'Regular',    2250.00),
     ('Superior Guest Room', 'Single/Double Occupancy', 'Peak',       2500.00),
     ('Superior Guest Room', 'Single/Double Occupancy', 'Super Peak', 2750.00),
@@ -669,9 +664,6 @@ INSERT INTO rates_rooms (room_type, item, season, rate) VALUES
     ('Standard Apartment', 'Daily Maximum',             'Regular',    3050.00),
     ('Standard Apartment', 'Daily Maximum',             'Peak',       3350.00),
     ('Standard Apartment', 'Daily Maximum',             'Super Peak', 3700.00),
-    ('Standard Apartment', 'Extra Bed or Extra Person', 'Regular',     450.00),
-    ('Standard Apartment', 'Extra Bed or Extra Person', 'Peak',        500.00),
-    ('Standard Apartment', 'Extra Bed or Extra Person', 'Super Peak',  550.00),
 
     ('Deluxe 2 BR', 'Single/Double Occupancy',   'Regular',    3000.00),
     ('Deluxe 2 BR', 'Single/Double Occupancy',   'Peak',       3275.00),
@@ -679,19 +671,13 @@ INSERT INTO rates_rooms (room_type, item, season, rate) VALUES
     ('Deluxe 2 BR', 'Daily Maximum',             'Regular',    3750.00),
     ('Deluxe 2 BR', 'Daily Maximum',             'Peak',       4150.00),
     ('Deluxe 2 BR', 'Daily Maximum',             'Super Peak', 4500.00),
-    ('Deluxe 2 BR', 'Extra Bed or Extra Person', 'Regular',     450.00),
-    ('Deluxe 2 BR', 'Extra Bed or Extra Person', 'Peak',        500.00),
-    ('Deluxe 2 BR', 'Extra Bed or Extra Person', 'Super Peak',  550.00),
 
     ('Deluxe 3 BR', 'Single/Double Occupancy',   'Regular',    3600.00),
     ('Deluxe 3 BR', 'Single/Double Occupancy',   'Peak',       3650.00),
     ('Deluxe 3 BR', 'Single/Double Occupancy',   'Super Peak', 4450.00),
     ('Deluxe 3 BR', 'Daily Maximum',             'Regular',    4350.00),
     ('Deluxe 3 BR', 'Daily Maximum',             'Peak',       4750.00),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Super Peak', 5200.00),
-    ('Deluxe 3 BR', 'Extra Bed or Extra Person', 'Regular',     450.00),
-    ('Deluxe 3 BR', 'Extra Bed or Extra Person', 'Peak',        500.00),
-    ('Deluxe 3 BR', 'Extra Bed or Extra Person', 'Super Peak',  550.00)
+    ('Deluxe 3 BR', 'Daily Maximum',             'Super Peak', 5200.00)
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
@@ -780,20 +766,27 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 -- SEED DATA: EXTRA SERVICE RATES (FY26)
 -- ============================================
 
-INSERT INTO rates_extra_services (category, item, rate) VALUES
-    ('Laundry', 'Wash Spin and Dry per load 5kg', 200.00),
-    ('Laundry', 'Bleach additional per load',      50.00),
-    ('Laundry', 'Spin Only Washer per load 5kg',   75.00),
+INSERT INTO rates_extra_services (category, item, season, rate) VALUES
+    ('Laundry', 'Wash Spin and Dry per load 5kg', 'N/A', 200.00),
+    ('Laundry', 'Bleach additional per load', 'N/A',      50.00),
+    ('Laundry', 'Spin Only Washer per load 5kg', 'N/A',   75.00),
 
-    ('Laundry-Iron', 'Short Sleeved Shirts Blouses',                    25.00),
-    ('Laundry-Iron', 'Long Sleeved Shirts Blouses Light Slacks Skirts', 30.00),
-    ('Laundry-Iron', 'Heavy Slacks Pants Skirts',                       35.00),
-    ('Laundry-Iron', 'Dresses',                                         45.00),
+    ('Laundry-Iron', 'Short Sleeved Shirts Blouses', 'N/A',                    25.00),
+    ('Laundry-Iron', 'Long Sleeved Shirts Blouses Light Slacks Skirts', 'N/A', 30.00),
+    ('Laundry-Iron', 'Heavy Slacks Pants Skirts', 'N/A',                       35.00),
+    ('Laundry-Iron', 'Dresses', 'N/A',                                         45.00),
 
-    ('Corkage Fee',  'Per person',  65.00),
-    ('Maid Service', 'Per person', 200.00),
+    ('Corkage Fee',  'Per person', 'N/A',  65.00),
+    ('Maid Service', 'Per person', 'N/A', 200.00),
 
-    ('GMC Chapel', 'Aircon', 275.00)
+    ('Accommodation Extras', 'Per person per Night', 'Regular',    450.00),
+    ('Accommodation Extras', 'Per person per Night', 'Peak',       500.00),
+    ('Accommodation Extras', 'Per person per Night', 'Super Peak', 550.00),
+    ('Accommodation Extras', 'Extra Bed or Extra Person', 'Regular',    450.00),
+    ('Accommodation Extras', 'Extra Bed or Extra Person', 'Peak',       500.00),
+    ('Accommodation Extras', 'Extra Bed or Extra Person', 'Super Peak', 550.00),
+
+    ('GMC Chapel', 'Aircon', 'N/A', 275.00)
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================

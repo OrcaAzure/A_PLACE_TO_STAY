@@ -6,12 +6,13 @@ import { sendBookingConfirmationEmail, sendBookingModifiedEmail } from './email.
 import { validateReservationDates } from './fiscalYear.service.js';
 import { DEFAULT_MEAL_RATES } from '../constants/ancillary.js';
 import { getMealRatesMap } from './ancillary.service.js';
-import { resolveRateRoomType, formatRoomTypeLabel } from '../constants/rooms.js';
+import { resolveRateRoomType, formatRoomTypeLabel, DORM_MIN_GUEST_COUNT } from '../constants/rooms.js';
 import {
   resolveLodgingSeasonForDate,
   addDaysISO,
   resolveStaySeasons,
 } from './season.service.js';
+import { getAccommodationExtraRate, LODGING_EXTRA_ITEM, PER_PERSON_NIGHT_ITEM } from './lodgingExtras.service.js';
 
 const ACTIVE_STATUSES = ['Pending', 'Approved'];
 
@@ -81,27 +82,33 @@ export async function calculateTotalAmount({
   guestCount,
   nights,
 }) {
+  if (occupancyItem === PER_PERSON_NIGHT_ITEM) {
+    const rate = await getAccommodationExtraRate(season, PER_PERSON_NIGHT_ITEM);
+    if (rate == null) return null;
+    return Math.round(rate * guestCount * nights * 100) / 100;
+  }
+
+  if (occupancyItem === LODGING_EXTRA_ITEM) {
+    const extraRate = await getAccommodationExtraRate(season, LODGING_EXTRA_ITEM);
+    if (extraRate == null) return null;
+    return Math.round(extraRate * guestCount * nights * 100) / 100;
+  }
+
   const rate = await getRate(roomType, occupancyItem, season);
   if (rate == null) return null;
 
   let total = 0;
 
   switch (occupancyItem) {
-    case 'Per person per Night':
-      total = rate * guestCount * nights;
-      break;
     case 'Single/Double Occupancy':
       total = rate * nights;
       if (roomType !== 'Dorm' && guestCount > 2) {
-        const extraRate = await getRate(roomType, 'Extra Bed or Extra Person', season);
+        const extraRate = await getAccommodationExtraRate(season, LODGING_EXTRA_ITEM);
         if (extraRate != null) total += extraRate * (guestCount - 2) * nights;
       }
       break;
     case 'Daily Maximum':
       total = rate * nights;
-      break;
-    case 'Extra Bed or Extra Person':
-      total = rate * guestCount * nights;
       break;
     default:
       total = rate * nights;
@@ -135,9 +142,24 @@ export async function hasOverlappingBooking(roomId, checkIn, checkOut, excludeBo
   return rows.length > 0;
 }
 
+export function physicalCapacityMin(room) {
+  return Number(room?.capacity_min) || 1;
+}
+
+export function effectiveCapacityMin(room) {
+  if (room?.room_type === 'Dorm') {
+    return Math.max(physicalCapacityMin(room), DORM_MIN_GUEST_COUNT);
+  }
+  return physicalCapacityMin(room);
+}
+
 export function validateGuestCapacity(room, guestCount) {
-  if (guestCount < room.capacity_min) {
-    return `Minimum ${room.capacity_min} guest(s) required for this room`;
+  const minGuests = effectiveCapacityMin(room);
+  if (guestCount < minGuests) {
+    if (room?.room_type === 'Dorm' && minGuests === DORM_MIN_GUEST_COUNT) {
+      return `Minimum ${DORM_MIN_GUEST_COUNT} guest(s) required for dorm bookings`;
+    }
+    return `Minimum ${minGuests} guest(s) required for this room`;
   }
   if (guestCount > room.capacity_max) {
     return `Maximum ${room.capacity_max} guest(s) allowed for this room`;
@@ -363,24 +385,31 @@ export async function getAvailableRooms({
   const results = [];
 
   for (const room of rooms) {
-    const fitsCapacity = groupPicker
-      ? count <= room.capacity_max
-      : count >= room.capacity_min && count <= room.capacity_max;
+    const physicalMin = physicalCapacityMin(room);
+    const meetsDormMinimum = room.room_type !== 'Dorm' || count >= DORM_MIN_GUEST_COUNT;
     let availabilityStatus = 'available';
 
     if (room.status === 'Maintenance') availabilityStatus = 'maintenance';
-    else if (room.status === 'Occupied') availabilityStatus = 'occupied';
-    else if (room.status === 'Dirty') availabilityStatus = 'dirty';
-    else if (!groupPicker && !fitsCapacity) availabilityStatus = 'too_small';
-    else if (groupPicker && count > room.capacity_max) availabilityStatus = 'too_small';
     else if (await hasOverlappingBooking(room.id, checkIn, checkOut, excludeBookingId, excludeGroupId)) {
       availabilityStatus = 'booked';
-    }
+    } else if (room.status === 'Dirty') availabilityStatus = 'dirty';
+    else if (!groupPicker && count > room.capacity_max) availabilityStatus = 'too_small';
+    else if (!groupPicker && room.room_type === 'Dorm' && room.capacity_max < DORM_MIN_GUEST_COUNT) {
+      availabilityStatus = 'too_small';
+    } else if (!groupPicker && room.room_type === 'Dorm' && !meetsDormMinimum) {
+      availabilityStatus = 'dorm_min_guests';
+    } else if (!groupPicker && room.room_type !== 'Dorm' && count < physicalMin) {
+      availabilityStatus = 'too_small';
+    } else if (groupPicker && count > room.capacity_max) availabilityStatus = 'too_small';
 
     const occupancyItem = defaultOccupancyItem(room.room_type);
     let pricePerNight = null;
     let estimatedTotal = null;
-    const pricingGuests = groupPicker ? Math.max(room.capacity_min, Math.min(count, room.capacity_max)) : count;
+    const pricingGuests = (() => {
+      if (groupPicker) return Math.max(physicalMin, Math.min(count, room.capacity_max));
+      if (room.room_type === 'Dorm') return Math.max(count, DORM_MIN_GUEST_COUNT);
+      return count;
+    })();
 
     if (availabilityStatus !== 'maintenance' && availabilityStatus !== 'booked'
       && availabilityStatus !== 'occupied' && availabilityStatus !== 'dirty') {
@@ -404,11 +433,16 @@ export async function getAvailableRooms({
       room_type: room.room_type,
       room_type_label: formatRoomTypeLabel(room),
       bed_count: room.bed_count ?? null,
-      capacity_min: room.capacity_min,
+      capacity_min: physicalMin,
       capacity_max: room.capacity_max,
+      dorm_booking_minimum: room.room_type === 'Dorm' ? DORM_MIN_GUEST_COUNT : null,
       status: room.status,
       availability_status: availabilityStatus,
-      fits_capacity: fitsCapacity,
+      fits_capacity: (room.room_type === 'Dorm'
+        ? count <= room.capacity_max
+        : count >= physicalMin && count <= room.capacity_max) && meetsDormMinimum,
+      meets_dorm_minimum: meetsDormMinimum,
+      per_person_pricing: room.room_type === 'Dorm',
       price_per_night: pricePerNight,
       estimated_total: estimatedTotal,
       nights,

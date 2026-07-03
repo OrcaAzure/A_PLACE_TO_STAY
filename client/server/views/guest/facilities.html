@@ -220,6 +220,7 @@
   import {
     buildBookReservationUrl,
     isAvailabilityBookable,
+    isAvailabilityVisible,
     priceNoticeHtml,
     readBrowseQuery,
     isInternalGuest,
@@ -483,6 +484,7 @@
       const a = availabilityForRoom(room.id);
       const map = {
         available: { label: 'Available', cls: 'bg-emerald-500 text-white', bookable: true },
+        dorm_min_guests: { label: 'Min 5 pax', cls: 'bg-amber-500 text-white', bookable: false },
         booked: { label: 'Booked', cls: 'bg-slate-600 text-white', bookable: false },
         occupied: { label: 'Occupied', cls: 'bg-slate-600 text-white', bookable: false },
         too_small: { label: 'Too Small', cls: 'bg-amber-500 text-white', bookable: false },
@@ -599,7 +601,7 @@
     if (allRooms.length) return allRooms;
     if (!availability) return [];
     return [...availability.values()]
-      .filter((a) => isAvailabilityBookable(a.availability_status))
+      .filter((a) => isAvailabilityVisible(a.availability_status))
       .map(roomFromAvailability)
       .filter((r) => roomAllowedForGuest(r, isInternal) && !isBlocked(r.building));
   }
@@ -618,13 +620,13 @@
     if (!isRoomBrowseUnlocked() || !availability) return [];
     if (!categoryShowsRooms(selectedCategory)) return [];
 
-    const bookable = [...availability.values()]
-      .filter((a) => isAvailabilityBookable(a.availability_status))
+    const visible = [...availability.values()]
+      .filter((a) => isAvailabilityVisible(a.availability_status))
       .filter((a) => !isBlocked(a.building_name))
       .map(roomFromAvailability)
       .filter((r) => roomAllowedForGuest(r, isInternal));
 
-    return applyFiltersToList(bookable);
+    return applyFiltersToList(visible);
   }
 
   function priceFor(room) {
@@ -658,6 +660,7 @@
   }
 
   function roomCard(room) {
+    const avail = availabilityForRoom(room.id);
     const st = statusInfo(room);
     const price = priceFor(room);
     const icon = TYPE_ICON[room.roomType] || 'meeting_room';
@@ -665,6 +668,9 @@
     const priceLine = price && price.perNight != null
       ? `<p class="text-body-sm text-on-surface-variant mb-4">${peso(price.perNight)} / night · ${price.nights} night(s)</p>`
       : '<div class="mb-4"></div>';
+    const dormNotice = avail?.availability_status === 'dorm_min_guests'
+      ? `<p class="text-body-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">Minimum ${avail?.dorm_booking_minimum || 5} guests required to book this dorm.</p>`
+      : '';
     let reserveBtn;
     if (readOnly) {
       reserveBtn = `<div class="mt-auto w-full py-3 text-center bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">visibility</span>View only</div>`;
@@ -701,6 +707,7 @@
             </div>
           </div>
           <p class="text-body-sm text-on-surface-variant mb-1">${room.roomType}</p>
+          ${dormNotice}
           ${priceLine}
           ${reserveBtn}
         </div>
@@ -783,8 +790,13 @@
       const data = await getRoomAvailability({ check_in: checkIn, check_out: checkOut, guest_count: guests });
       availability = new Map((data.rooms || []).map((r) => [String(r.id), r]));
       lastSearchedStay = readStaySnapshot();
-      const avail = (data.rooms || []).filter(
-        (r) => r.availability_status === 'available'
+      const availCount = (data.rooms || []).filter(
+        (r) => isAvailabilityVisible(r.availability_status)
+          && !isBlocked(r.building_name)
+          && roomAllowedForGuest({ building: r.building_name }, isInternal),
+      ).length;
+      const bookCount = (data.rooms || []).filter(
+        (r) => isAvailabilityBookable(r.availability_status)
           && !isBlocked(r.building_name)
           && roomAllowedForGuest({ building: r.building_name }, isInternal),
       ).length;
@@ -793,11 +805,13 @@
       render();
       if (!background) {
         persistStayCriteria();
-        setStayStatus(`${avail} room${avail === 1 ? '' : 's'} available`, avail > 0 ? 'success' : 'warn');
+        setStayStatus(`${bookCount} room${bookCount === 1 ? '' : 's'} ready to book`, bookCount > 0 ? 'success' : 'warn');
         setAvailabilityFeedback(
-          avail > 0
-            ? `Showing ${avail} bookable room${avail === 1 ? '' : 's'} for ${fmtStayDate(checkIn)} → ${fmtStayDate(checkOut)}.`
-            : 'No rooms are open for these dates. Try different dates or fewer guests.',
+          availCount > 0
+            ? (bookCount > 0
+              ? `Showing ${availCount} room${availCount === 1 ? '' : 's'} for ${fmtStayDate(checkIn)} → ${fmtStayDate(checkOut)} (${bookCount} ready to book).`
+              : `Showing ${availCount} dorm${availCount === 1 ? '' : 's'} — increase guests to at least 5 to book.`)
+            : 'No rooms are open for these dates. Try different dates or guest count.',
         );
         document.getElementById('rooms-mount')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }

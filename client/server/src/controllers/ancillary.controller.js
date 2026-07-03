@@ -2,6 +2,7 @@ import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
 import {
   EXTRA_SERVICE_CATEGORIES,
+  EXTRA_SERVICE_SEASONS,
   MEAL_TYPES,
 } from '../constants/ancillary.js';
 import {
@@ -120,6 +121,7 @@ export const createExtraService = async (req, res) => {
   try {
     const category = (req.body.category || '').trim();
     const item = (req.body.item || '').trim();
+    const season = (req.body.season || 'N/A').trim();
     const rate = Number(req.body.rate);
 
     if (isEmpty(category) || isEmpty(item) || !rate || rate <= 0) {
@@ -128,10 +130,13 @@ export const createExtraService = async (req, res) => {
     if (!EXTRA_SERVICE_CATEGORIES.includes(category)) {
       return res.status(400).json({ message: 'Invalid service category' });
     }
+    if (!EXTRA_SERVICE_SEASONS.includes(season)) {
+      return res.status(400).json({ message: 'Invalid season' });
+    }
 
     const [result] = await pool.query(
-      'INSERT INTO rates_extra_services (category, item, rate) VALUES (?, ?, ?)',
-      [category, item, rate]
+      'INSERT INTO rates_extra_services (category, item, season, rate) VALUES (?, ?, ?, ?)',
+      [category, item, season, rate]
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_extra_services WHERE id = ?', [result.insertId]);
@@ -152,10 +157,13 @@ export const updateExtraService = async (req, res) => {
       return res.status(404).json({ message: 'Extra service not found' });
     }
 
-    const { category, item, rate } = req.body;
+    const { category, item, season, rate } = req.body;
 
     if (!isEmpty(category) && !EXTRA_SERVICE_CATEGORIES.includes(category)) {
       return res.status(400).json({ message: 'Invalid service category' });
+    }
+    if (!isEmpty(season) && !EXTRA_SERVICE_SEASONS.includes(String(season).trim())) {
+      return res.status(400).json({ message: 'Invalid season' });
     }
     if (!isEmpty(rate) && Number(rate) <= 0) {
       return res.status(400).json({ message: 'rate must be greater than 0' });
@@ -165,9 +173,10 @@ export const updateExtraService = async (req, res) => {
       `UPDATE rates_extra_services SET
         category = COALESCE(?, category),
         item = COALESCE(?, item),
+        season = COALESCE(?, season),
         rate = COALESCE(?, rate)
        WHERE id = ?`,
-      [category || null, item || null, rate ?? null, req.params.id]
+      [category || null, item || null, season || null, rate ?? null, req.params.id]
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_extra_services WHERE id = ?', [req.params.id]);

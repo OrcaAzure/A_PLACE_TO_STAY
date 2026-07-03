@@ -364,6 +364,7 @@
           <div>
             <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-guests">Guests</label>
             <input type="number" id="booking-guests" min="1" value="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+            <p class="text-[12px] text-on-surface-variant mt-1">Dorm bookings require at least 5 guests and are priced per person per night.</p>
           </div>
 
           <button type="button" id="find-rooms-btn" class="w-full py-3 bg-surface-container-high text-on-surface rounded-lg font-label-md font-bold border border-outline-variant hover:bg-surface-container transition-all active:scale-[0.98] flex items-center justify-center gap-2">
@@ -469,6 +470,7 @@
   import {
     loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
     canGuestCancelRoomBooking, canGuestCancelVenueBooking, lifecyclePhaseForBooking, venuePhaseLabel, normStatus,
+    DORM_MIN_GUEST_COUNT, dormPriceLabel, isRoomBookable, isRoomListVisible, dormMinGuestsNotice,
   } from '/assets/js/features/reservation-shared.js';
   import { parseBookQuery, priceNoticeHtml, hasCompleteBookIntent } from '/assets/js/features/guest-booking-flow.js';
   import { createGuestBookingExtras } from '/assets/js/features/guest-booking-extras.js';
@@ -938,6 +940,19 @@
   }
 
   function selectRoom(room) {
+    const errorEl = document.getElementById('booking-form-error');
+    if (room && !isRoomBookable(room.availability_status)) {
+      selectedRoom = null;
+      roomInput.value = '';
+      submitBtn.disabled = true;
+      errorEl.textContent = dormMinGuestsNotice(Number(document.getElementById('booking-guests').value) || 1)
+        || 'This room cannot be booked for the current guest count.';
+      errorEl.classList.remove('hidden');
+      document.getElementById('booking-summary')?.classList.add('hidden');
+      bookingExtras.reset();
+      return;
+    }
+    errorEl.classList.add('hidden');
     selectedRoom = room;
     roomInput.value = room?.id ?? '';
     submitBtn.disabled = !room;
@@ -1043,26 +1058,36 @@
     wrap.classList.remove('hidden');
 
     const bookable = availableRooms
-      .filter((r) => r.availability_status === 'available' && !isBlockedBuilding(r.building_name));
+      .filter((r) => isRoomListVisible(r.availability_status) && !isBlockedBuilding(r.building_name));
 
-    countEl.textContent = `${bookable.length} available`;
+    countEl.textContent = `${bookable.length} shown`;
 
     if (!bookable.length) {
       list.innerHTML = '<p class="text-body-sm text-on-surface-variant py-4 text-center">No rooms available for these dates. Try different dates or guest count.</p>';
       return;
     }
 
-    list.innerHTML = bookable.map((r) => `
-      <button type="button" class="room-option w-full text-left p-3 rounded-xl border border-outline-variant hover:border-primary/50 bg-white flex items-center justify-between gap-3 ${String(r.id) === String(preferredRoomId) ? 'selected' : ''}" data-room-id="${r.id}">
+    list.innerHTML = bookable.map((r) => {
+      const guests = Number(document.getElementById('booking-guests').value) || 1;
+      const perPerson = dormPriceLabel(r, guests, r.nights);
+      const dormMin = r.availability_status === 'dorm_min_guests';
+      const capLabel = r.room_type === 'Dorm'
+        ? `Min ${r.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} pax to book · up to ${r.capacity_max} guests`
+        : `${r.capacity_min}–${r.capacity_max} guests`;
+      return `
+      <button type="button" class="room-option w-full text-left p-3 rounded-xl border ${dormMin ? 'border-amber-300 bg-amber-50/40' : 'border-outline-variant hover:border-primary/50 bg-white'} flex items-center justify-between gap-3 ${String(r.id) === String(preferredRoomId) ? 'selected' : ''}" data-room-id="${r.id}">
         <div>
           <p class="font-label-md font-bold text-body-sm">${r.building_name} ${r.room_number}</p>
-          <p class="text-[11px] text-on-surface-variant">${r.room_type} · max ${r.capacity_max} guests</p>
+          <p class="text-[11px] text-on-surface-variant">${r.room_type_label || r.room_type} · ${capLabel}</p>
+          ${perPerson ? `<p class="text-[11px] text-on-surface-variant mt-0.5">${perPerson}</p>` : ''}
+          ${dormMin ? `<p class="text-[11px] text-amber-800 mt-1 font-medium">Minimum ${r.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} guests required to book.</p>` : ''}
         </div>
         <div class="text-right shrink-0">
           <p class="font-bold text-primary text-body-sm">${r.estimated_total != null ? peso(r.estimated_total) : '—'}</p>
           <p class="text-[10px] text-on-surface-variant uppercase">${r.nights} night(s)</p>
         </div>
-      </button>`).join('');
+      </button>`;
+    }).join('');
 
     list.querySelectorAll('.room-option').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -1165,6 +1190,12 @@
     if (!roomInput.value) return;
     const errorEl = document.getElementById('booking-form-error');
     errorEl.classList.add('hidden');
+    const guestCount = Number(document.getElementById('booking-guests').value) || 1;
+    if (selectedRoom?.room_type === 'Dorm' && guestCount < DORM_MIN_GUEST_COUNT) {
+      errorEl.textContent = dormMinGuestsNotice(guestCount);
+      errorEl.classList.remove('hidden');
+      return;
+    }
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
     const bookedRoom = selectedRoom;

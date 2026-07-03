@@ -2,6 +2,52 @@
 
 export const MEAL_TYPE_LIST = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
+/** FY26 pricelist — dorm bookings require at least this many guests. */
+export const DORM_MIN_GUEST_COUNT = 5;
+
+export function effectiveCapacityMin(room) {
+  if (room?.room_type === 'Dorm') {
+    return Math.max(Number(room.capacity_min) || 1, DORM_MIN_GUEST_COUNT);
+  }
+  return Number(room?.capacity_min) || 1;
+}
+
+export function dormPricingGuestCount(room, guestCount) {
+  const count = Math.max(1, Number(guestCount) || 1);
+  if (room?.room_type !== 'Dorm' && !room?.per_person_pricing) return count;
+  return Math.max(count, room?.dorm_booking_minimum || DORM_MIN_GUEST_COUNT);
+}
+
+export function isRoomListVisible(status) {
+  const s = String(status || '').trim();
+  return s === 'available' || s === 'dorm_min_guests';
+}
+
+export function isRoomBookable(status) {
+  return status === 'available';
+}
+
+export function dormMinGuestsNotice(guestCount) {
+  const count = Number(guestCount) || 1;
+  if (count >= DORM_MIN_GUEST_COUNT) return null;
+  return `Dorm bookings require at least ${DORM_MIN_GUEST_COUNT} guests. Increase the guest count to book.`;
+}
+
+export function dormPriceLabel(room, guestCount, nights) {
+  if (room?.room_type !== 'Dorm' && !room?.per_person_pricing) return null;
+  const requested = Number(guestCount) || 1;
+  const guests = dormPricingGuestCount(room, requested);
+  const n = Number(nights) || 1;
+  const total = Number(room.estimated_total);
+  if (!total || !guests || !n) return null;
+  const perPerson = Math.round((total / guests / n) * 100) / 100;
+  const base = `${formatMoney(perPerson)}/person/night × ${guests} guest${guests === 1 ? '' : 's'}`;
+  if (requested < (room?.dorm_booking_minimum || DORM_MIN_GUEST_COUNT)) {
+    return `${base} (minimum ${room?.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} pax)`;
+  }
+  return base;
+}
+
 export const WIZARD_STEPS = [
   { id: 1, label: 'Guest Info', short: 'Who is staying?' },
   { id: 2, label: 'Dates & Guests', short: 'When and how many?' },
@@ -289,10 +335,11 @@ export function emptyWizardState() {
   };
 }
 
-export function filterRoomsList(rooms, { search = '', status = 'available' } = {}) {
+export function filterRoomsList(rooms, { search = '', status = null, includeStatuses = null } = {}) {
   const q = String(search || '').trim().toLowerCase();
+  const allowed = includeStatuses || (status ? (Array.isArray(status) ? status : [status]) : null);
   return (rooms || []).filter((room) => {
-    if (status && room.availability_status !== status) return false;
+    if (allowed?.length && !allowed.includes(room.availability_status)) return false;
     if (!q) return true;
     const hay = [room.room_number, room.room_type, String(room.id)].join(' ').toLowerCase();
     return hay.includes(q);
@@ -373,9 +420,12 @@ export function calcGroupGrandTotal(state) {
 export function availLabel(status) {
   const map = {
     available: { text: 'Available', cls: 'res-pill--approved' },
+    dorm_min_guests: { text: 'Min 5 pax', cls: 'res-pill--pending' },
     booked: { text: 'Already Booked', cls: 'res-pill--rejected' },
     too_small: { text: 'Too Small', cls: 'res-pill--pending' },
     maintenance: { text: 'Maintenance', cls: 'res-pill--cancelled' },
+    occupied: { text: 'Occupied', cls: 'res-pill--cancelled' },
+    dirty: { text: 'Preparing', cls: 'res-pill--pending' },
   };
   return map[status] || map.booked;
 }
