@@ -1,6 +1,6 @@
 /**
  * Simple landing welcome after the greeting preloader.
- * Preloader → "Welcome to AptSpace" + Sign in → landing page.
+ * Preloader → "Welcome to AptSpace" → landing page.
  */
 
 const IDLE_LOTTIE_SRC = '/assets/animations/idle-magnifier-animation.lottie';
@@ -88,10 +88,6 @@ function buildWelcomeOverlay(useLottie) {
     <div class="lp-welcome__inner">
       <div class="lp-welcome__mascot" role="img" aria-label="AptSpace">${lottie}</div>
       <h1 class="lp-welcome__title">Welcome to AptSpace</h1>
-      <a href="/login.html" class="lp-welcome__signin">
-        Sign in
-        <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
-      </a>
     </div>`;
   return el;
 }
