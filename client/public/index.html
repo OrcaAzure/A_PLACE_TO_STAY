@@ -264,10 +264,6 @@
   <section class="lp-trust bg-surface-container-low border-b border-outline-variant/20 py-6">
     <div class="max-w-[1280px] mx-auto lp-page-gutter sm:px-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 text-on-surface-variant">
       <div class="lp-trust-item flex items-center gap-2 text-label-md">
-        <span class="material-symbols-outlined text-primary text-[20px]">verified_user</span>
-        Secure sign-in &amp; roles
-      </div>
-      <div class="lp-trust-item flex items-center gap-2 text-label-md">
         <span class="material-symbols-outlined text-primary text-[20px]">event_available</span>
         Live room &amp; venue availability
       </div>
@@ -276,8 +272,12 @@
         Group &amp; ministry stays
       </div>
       <div class="lp-trust-item flex items-center gap-2 text-label-md">
-        <span class="material-symbols-outlined text-primary text-[20px]">receipt_long</span>
-        Invoices &amp; email receipts
+        <span class="material-symbols-outlined text-primary text-[20px]">apartment</span>
+        GMC lodging &amp; campus venues
+      </div>
+      <div class="lp-trust-item flex items-center gap-2 text-label-md">
+        <span class="material-symbols-outlined text-primary text-[20px]">mark_email_read</span>
+        Email updates when approved
       </div>
     </div>
   </section>
@@ -420,19 +420,6 @@
     </div>
   </section>
 
-  <!-- SCROLL TEXT -->
-  <section class="lp-scroll-text-band lp-scroll-text-band--dark" aria-label="Call to explore">
-    <div class="lp-scroll-text-stage">
-      <div class="lp-scroll-text-pin">
-        <p class="lp-scroll-text-hint" aria-hidden="true">Scroll</p>
-        <p class="lp-scroll-text-display">
-          <span class="lp-scroll-text-line block" data-scroll-line>One portal</span>
-          <span class="lp-scroll-text-line lp-scroll-text-accent block" data-scroll-line>for all of campus</span>
-        </p>
-      </div>
-    </div>
-  </section>
-
   <!-- CTA BAND -->
   <section class="lp-cta-band py-16 lg:py-20 text-white">
     <div class="max-w-[1280px] mx-auto lp-page-gutter sm:px-6 flex flex-col lg:flex-row items-center justify-between gap-8 text-center lg:text-left">
@@ -454,16 +441,11 @@
         <p class="lp-section-label text-label-sm text-primary uppercase mb-3">Who uses AptSpace</p>
         <h2 class="text-3xl lg:text-headline-lg font-bold text-on-surface">Built for the whole APTS community</h2>
       </div>
-      <div class="lp-audience grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+      <div class="lp-audience grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-5">
         <div class="lp-audience-card rounded-2xl border border-outline-variant/30 p-7 bg-surface-container-lowest">
           <span class="material-symbols-outlined text-primary text-[32px] mb-4 block">school</span>
           <h4 class="font-bold text-on-surface text-headline-sm mb-2">Faculty &amp; Staff</h4>
           <p class="text-body-sm text-on-surface-variant leading-relaxed">Reserve classrooms, conference rooms, and GMC lodging for scholars and ministry partners.</p>
-        </div>
-        <div class="lp-audience-card rounded-2xl border border-outline-variant/30 p-7 bg-surface-container-lowest">
-          <span class="material-symbols-outlined text-primary text-[32px] mb-4 block">person</span>
-          <h4 class="font-bold text-on-surface text-headline-sm mb-2">Students</h4>
-          <p class="text-body-sm text-on-surface-variant leading-relaxed">Book dorm rooms, study spaces, and recreation facilities for campus life.</p>
         </div>
         <div class="lp-audience-card rounded-2xl border border-outline-variant/30 p-7 bg-surface-container-lowest">
           <span class="material-symbols-outlined text-primary text-[32px] mb-4 block">volunteer_activism</span>
@@ -475,11 +457,44 @@
           <h4 class="font-bold text-on-surface text-headline-sm mb-2">Approved guests</h4>
           <p class="text-body-sm text-on-surface-variant leading-relaxed">External visitors with guest credentials from Housing can book assigned lodging and venues.</p>
         </div>
-        <div class="lp-audience-card rounded-2xl border border-outline-variant/30 p-7 bg-surface-container-lowest sm:col-span-2 lg:col-span-1">
+        <div class="lp-audience-card rounded-2xl border border-outline-variant/30 p-7 bg-surface-container-lowest">
           <span class="material-symbols-outlined text-primary text-[32px] mb-4 block">manage_accounts</span>
           <h4 class="font-bold text-on-surface text-headline-sm mb-2">Housing &amp; Admin</h4>
           <p class="text-body-sm text-on-surface-variant leading-relaxed">Approve requests, record payments, and manage availability across GMC and campus buildings.</p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEAM -->
+  <section id="team" class="lp-team py-24 lg:py-28" aria-labelledby="lp-team-heading">
+    <div class="max-w-[1280px] mx-auto lp-page-gutter sm:px-6">
+      <div class="lp-section-head lp-team-head text-center max-w-2xl mx-auto mb-14">
+        <p class="lp-section-label text-label-sm text-white/60 uppercase mb-3 tracking-widest">Built at APTS</p>
+        <h2 id="lp-team-heading" class="text-3xl lg:text-headline-lg font-bold text-white mb-4">Meet the team</h2>
+        <p class="text-body-lg text-white/70">Four developers who designed and built the AptSpace booking system.</p>
+      </div>
+      <div class="lp-team-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <article class="lp-team-card rounded-2xl p-6 text-center">
+          <div class="lp-team-avatar mx-auto mb-4" aria-hidden="true">1</div>
+          <h3 class="font-bold text-white text-headline-sm mb-1">Team member</h3>
+          <p class="text-body-sm text-white/65">Development</p>
+        </article>
+        <article class="lp-team-card rounded-2xl p-6 text-center">
+          <div class="lp-team-avatar mx-auto mb-4" aria-hidden="true">2</div>
+          <h3 class="font-bold text-white text-headline-sm mb-1">Team member</h3>
+          <p class="text-body-sm text-white/65">Design &amp; UX</p>
+        </article>
+        <article class="lp-team-card rounded-2xl p-6 text-center">
+          <div class="lp-team-avatar mx-auto mb-4" aria-hidden="true">3</div>
+          <h3 class="font-bold text-white text-headline-sm mb-1">Team member</h3>
+          <p class="text-body-sm text-white/65">Backend &amp; database</p>
+        </article>
+        <article class="lp-team-card rounded-2xl p-6 text-center">
+          <div class="lp-team-avatar mx-auto mb-4" aria-hidden="true">4</div>
+          <h3 class="font-bold text-white text-headline-sm mb-1">Team member</h3>
+          <p class="text-body-sm text-white/65">Project coordination</p>
+        </article>
       </div>
     </div>
   </section>
@@ -508,7 +523,7 @@
           </div>
           <div>
             <p class="text-label-sm text-on-surface-variant uppercase tracking-wider mb-0.5">Campus</p>
-            <p class="text-body-md font-semibold text-on-surface">17 Falkland St, Baguio City</p>
+            <p class="text-body-md font-semibold text-on-surface">444 Ambuklao, Baguio City</p>
             <p class="text-body-sm text-on-surface-variant mt-0.5">Philippines</p>
           </div>
         </div>
@@ -519,31 +534,13 @@
 </main>
 
 <!-- FOOTER -->
-<footer class="bg-white border-t border-outline-variant/30 py-10">
+<footer class="bg-white border-t border-outline-variant/30 py-8">
   <div class="max-w-[1280px] mx-auto lp-page-gutter sm:px-6">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6 pb-8 border-b border-outline-variant/20">
-      <div class="flex items-start gap-3 min-w-0">
-        <span class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-white text-[18px]">apartment</span>
-        </span>
-        <div class="min-w-0">
-          <p class="text-headline-sm font-bold text-primary">AptSpace</p>
-          <p class="text-body-sm text-on-surface-variant mt-1 leading-relaxed max-w-md">Housing and facilities booking for Asia Pacific Theological Seminary.</p>
-        </div>
-      </div>
-      <div class="flex flex-wrap items-center gap-x-5 gap-y-2 text-body-sm shrink-0">
-        <a class="text-on-surface-variant hover:text-primary transition-colors" href="mailto:facilities@apts.edu.ph">facilities@apts.edu.ph</a>
-        <span class="hidden sm:inline text-outline-variant/60" aria-hidden="true">·</span>
-        <a class="font-semibold text-primary hover:text-primary-container transition-colors" href="/login.html">Sign in</a>
-        <span class="hidden sm:inline text-outline-variant/60" aria-hidden="true">·</span>
-        <a class="text-on-surface-variant hover:text-primary transition-colors" href="https://apts.edu.ph" target="_blank" rel="noopener noreferrer">apts.edu.ph</a>
-      </div>
-    </div>
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-6 text-label-sm text-on-surface-variant">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-label-sm text-on-surface-variant">
       <p>© 2026 Asia Pacific Theological Seminary. All rights reserved.</p>
       <p class="flex items-center gap-1.5">
         <span class="material-symbols-outlined text-[14px]">location_on</span>
-        17 Falkland St, Baguio City, Philippines
+        444 Ambuklao, Baguio City, Philippines
       </p>
     </div>
   </div>

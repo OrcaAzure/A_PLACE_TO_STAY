@@ -31,6 +31,14 @@ function waitForIdleDismiss(idle) {
   });
 }
 
+async function revealLandingPage(startHeroHandoff) {
+  document.body.classList.remove('lp-page-hidden');
+  if (typeof startHeroHandoff !== 'function') return;
+
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  startHeroHandoff();
+}
+
 async function boot() {
   const params = new URLSearchParams(window.location.search);
   const previewIdle = params.has('previewIdle') || params.get('idle') === 'preview';
@@ -44,16 +52,18 @@ async function boot() {
     const idle = await showAptIdlePreview({ portal: 'guest' });
     await waitForIdleDismiss(idle);
 
-    document.body.classList.remove('lp-preloader-active', 'lp-page-hidden');
+    document.body.classList.remove('lp-preloader-active');
     document.body.classList.add('lp-ready');
 
     try {
       const { initLandingPage } = await import('/assets/js/layout/landing.js');
       const { redirectIfLoggedIn } = await import('/assets/js/services/auth.js');
       redirectIfLoggedIn().catch(() => {});
-      await initLandingPage();
+      const startHeroHandoff = await initLandingPage({ skipHeroEntrance: true });
+      await revealLandingPage(startHeroHandoff);
     } catch (err) {
       console.error('[landing] page init failed:', err);
+      document.body.classList.remove('lp-page-hidden');
     }
     return;
   }
@@ -95,22 +105,20 @@ async function boot() {
 
   window.clearTimeout(failsafe);
 
-  document.body.classList.remove('lp-preloader-active', 'lp-page-hidden');
+  document.body.classList.remove('lp-preloader-active');
   document.getElementById('lp-welcome')?.remove();
   document.getElementById('lp-preloader')?.remove();
-
-  await new Promise((resolve) => {
-    requestAnimationFrame(() => requestAnimationFrame(resolve));
-  });
   document.body.classList.add('lp-ready');
 
   try {
     const { initLandingPage } = await import('/assets/js/layout/landing.js');
     const { redirectIfLoggedIn } = await import('/assets/js/services/auth.js');
     redirectIfLoggedIn().catch(() => {});
-    await initLandingPage();
+    const startHeroHandoff = await initLandingPage({ skipHeroEntrance: !reduced });
+    await revealLandingPage(startHeroHandoff);
   } catch (err) {
     console.error('[landing] page init failed:', err);
+    document.body.classList.remove('lp-page-hidden');
   }
 }
 

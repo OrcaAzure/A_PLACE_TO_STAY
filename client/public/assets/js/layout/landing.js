@@ -368,7 +368,101 @@ function animateCounters(gsap) {
   });
 }
 
-export async function initLandingPage() {
+function setCountersStatic() {
+  document.querySelectorAll('[data-count]').forEach((el) => {
+    const raw = el.dataset.count;
+    if (raw === 'live') return;
+    const target = Number(raw);
+    if (Number.isNaN(target)) return;
+    el.textContent = `${target}${el.dataset.suffix || ''}`;
+  });
+}
+
+/** Lighter hero reveal after preloader/welcome — visuals + copy, not a full replay. */
+function prepareHeroHandoff(gsap) {
+  gsap.set('.lp-nav-inner', { y: -10, autoAlpha: 0 });
+  gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-sub, .lp-hero-cta > *, .lp-hero-tags > *, .lp-stat', {
+    autoAlpha: 0,
+    y: 18,
+  });
+  gsap.set('.lp-hero-rule', { scaleX: 0, transformOrigin: 'left center' });
+  gsap.set('.lp-hero-visual', {
+    autoAlpha: 0,
+    scale: 1.06,
+    clipPath: 'inset(14% 0% 0% 0%)',
+  });
+  gsap.set('.lp-hero-float', { autoAlpha: 0, scale: 0.9, y: 14 });
+  gsap.set('.lp-hero-booking-card', { autoAlpha: 0, y: 18 });
+  gsap.set('.lp-hero-mobile-visual', { autoAlpha: 0, y: 16 });
+  gsap.set('.lp-scroll-hint', { autoAlpha: 0, y: -6 });
+  gsap.set('.lp-hero-bg', { scale: 1.05, transformOrigin: 'center center' });
+}
+
+function playHeroHandoff(gsap) {
+  const tl = gsap.timeline({
+    defaults: { ease: 'power2.out' },
+    onComplete: () => {
+      gsap.set('.lp-login-btn, .lp-nav, .lp-nav-actions, .lp-hero-bg', { clearProps: 'visibility,opacity,transform,scale,clipPath' });
+      gsap.set('.lp-hero-rule', { clearProps: 'transform' });
+    },
+  });
+
+  tl.to('.lp-nav-inner', { y: 0, autoAlpha: 1, duration: 0.42 })
+    .to('.lp-hero-bg', { scale: 1, duration: 1.05, ease: 'power1.out' }, 0)
+    .to('.lp-hero-badge', { autoAlpha: 1, y: 0, duration: 0.48 }, '-=0.82')
+    .to('.lp-hero-line', { autoAlpha: 1, y: 0, stagger: 0.07, duration: 0.52 }, '-=0.38')
+    .to('.lp-hero-rule', { scaleX: 1, duration: 0.38, ease: 'power2.out' }, '-=0.42')
+    .to('.lp-hero-sub', { autoAlpha: 1, y: 0, duration: 0.42 }, '-=0.3')
+    .to('.lp-hero-cta > *', { autoAlpha: 1, y: 0, stagger: 0.06, duration: 0.38 }, '-=0.28')
+    .to('.lp-hero-tags > *', { autoAlpha: 1, y: 0, stagger: 0.05, duration: 0.34 }, '-=0.24')
+    .to('.lp-stat', { autoAlpha: 1, y: 0, stagger: 0.06, duration: 0.4 }, '-=0.22')
+    .to('.lp-hero-visual', {
+      autoAlpha: 1,
+      scale: 1,
+      clipPath: 'inset(0% 0% 0% 0%)',
+      duration: 0.9,
+      ease: 'power3.out',
+    }, '-=0.72')
+    .to('.lp-hero-float', {
+      autoAlpha: 1,
+      scale: 1,
+      y: 0,
+      stagger: 0.11,
+      duration: 0.52,
+      ease: 'back.out(1.15)',
+    }, '-=0.58')
+    .to('.lp-hero-booking-card', { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power2.out' }, '-=0.42')
+    .to('.lp-hero-mobile-visual', { autoAlpha: 1, y: 0, duration: 0.45 }, '-=0.55')
+    .to('.lp-scroll-hint', { autoAlpha: 0.45, y: 0, duration: 0.32 }, '-=0.25');
+
+  return tl;
+}
+
+function animateCountersHandoff(gsap) {
+  document.querySelectorAll('[data-count]').forEach((el) => {
+    const raw = el.dataset.count;
+    if (raw === 'live') return;
+    const target = Number(raw);
+    if (Number.isNaN(target)) return;
+    const suffix = el.dataset.suffix || '';
+    const obj = { val: 0 };
+    gsap.to(obj, {
+      val: target,
+      duration: 1.1,
+      delay: 0.35,
+      ease: 'power2.out',
+      onUpdate: () => { el.textContent = `${Math.round(obj.val)}${suffix}`; },
+    });
+  });
+}
+
+let landingPageInitialized = false;
+
+export async function initLandingPage(options = {}) {
+  if (landingPageInitialized) return;
+  landingPageInitialized = true;
+
+  const { skipHeroEntrance = false } = options;
   initSmoothAnchors();
   initNavScroll(document.querySelector('.lp-nav'));
   initNavSpy();
@@ -388,12 +482,15 @@ export async function initLandingPage() {
       applyScrollCharProgress([...display.querySelectorAll('.lp-scroll-char')], 1);
     });
     document.querySelectorAll('.lp-scroll-text-hint').forEach((h) => { h.style.display = 'none'; });
+    setCountersStatic();
     revealStatic();
     return;
   }
 
-  // Safety net — never leave hero/nav invisible if GSAP stalls or CDN is blocked.
-  window.setTimeout(revealStatic, 4500);
+  let revealTimer = null;
+  if (!skipHeroEntrance) {
+    revealTimer = window.setTimeout(revealStatic, 4500);
+  }
 
   let gsap;
   try {
@@ -409,36 +506,47 @@ export async function initLandingPage() {
 
   const ST = window.ScrollTrigger;
 
-  /* Hero — never hide the nav (Safari loses Log In if autoAlpha sticks on header) */
-  const heroTl = gsap.timeline({
-    defaults: { ease: 'power3.out' },
-    onComplete: () => {
-      gsap.set('.lp-login-btn, .lp-nav, .lp-nav-actions', { clearProps: 'visibility,opacity,transform' });
-    },
-  });
+  let startHeroHandoff = null;
 
-  heroTl
-    .from('.lp-nav-inner', { y: -16, duration: 0.45 })
-    .from('.lp-hero-badge', { y: 20, autoAlpha: 0, duration: 0.5 }, '-=0.2')
-    .from('.lp-hero-line', { y: 48, autoAlpha: 0, stagger: 0.12, duration: 0.75 }, '-=0.15')
-    .from('.lp-hero-rule', { scaleX: 0, transformOrigin: 'left center', duration: 0.45, ease: 'power2.out' }, '-=0.45')
-    .from('.lp-hero-sub', { y: 24, autoAlpha: 0, duration: 0.55 }, '-=0.35')
-    .from('.lp-hero-cta > *', { y: 20, autoAlpha: 0, stagger: 0.1, duration: 0.5 }, '-=0.25')
-    .from('.lp-hero-tags > *', { y: 14, autoAlpha: 0, stagger: 0.07, duration: 0.4 }, '-=0.3')
-    .from('.lp-stat', { y: 28, autoAlpha: 0, stagger: 0.08, duration: 0.55 }, '-=0.2')
-    .from('.lp-hero-mobile-visual', { y: 20, autoAlpha: 0, duration: 0.55 }, '-=0.35')
-    .from('.lp-hero-visual', {
-      autoAlpha: 0,
-      clipPath: 'inset(100% 0% 0% 0%)',
-      scale: 1.08,
-      duration: 1.1,
-      ease: 'power4.out',
-    }, '-=0.85')
-    .from('.lp-hero-float', { scale: 0.8, autoAlpha: 0, stagger: 0.15, duration: 0.6, ease: 'back.out(1.4)' }, '-=0.5')
-    .from('.lp-hero-booking-card', { y: 20, autoAlpha: 0, duration: 0.55, ease: 'power2.out' }, '-=0.35')
-    .from('.lp-scroll-hint', { y: -8, autoAlpha: 0, duration: 0.4 }, '-=0.2');
+  if (skipHeroEntrance) {
+    prepareHeroHandoff(gsap);
+    startHeroHandoff = () => {
+      animateCountersHandoff(gsap);
+      return playHeroHandoff(gsap);
+    };
+  } else {
+    /* Hero — never hide the nav (Safari loses Log In if autoAlpha sticks on header) */
+    const heroTl = gsap.timeline({
+      defaults: { ease: 'power3.out' },
+      onComplete: () => {
+        if (revealTimer) window.clearTimeout(revealTimer);
+        gsap.set('.lp-login-btn, .lp-nav, .lp-nav-actions', { clearProps: 'visibility,opacity,transform' });
+      },
+    });
 
-  animateCounters(gsap);
+    heroTl
+      .from('.lp-nav-inner', { y: -16, duration: 0.45 })
+      .from('.lp-hero-badge', { y: 20, autoAlpha: 0, duration: 0.5 }, '-=0.2')
+      .from('.lp-hero-line', { y: 48, autoAlpha: 0, stagger: 0.12, duration: 0.75 }, '-=0.15')
+      .from('.lp-hero-rule', { scaleX: 0, transformOrigin: 'left center', duration: 0.45, ease: 'power2.out' }, '-=0.45')
+      .from('.lp-hero-sub', { y: 24, autoAlpha: 0, duration: 0.55 }, '-=0.35')
+      .from('.lp-hero-cta > *', { y: 20, autoAlpha: 0, stagger: 0.1, duration: 0.5 }, '-=0.25')
+      .from('.lp-hero-tags > *', { y: 14, autoAlpha: 0, stagger: 0.07, duration: 0.4 }, '-=0.3')
+      .from('.lp-stat', { y: 28, autoAlpha: 0, stagger: 0.08, duration: 0.55 }, '-=0.2')
+      .from('.lp-hero-mobile-visual', { y: 20, autoAlpha: 0, duration: 0.55 }, '-=0.35')
+      .from('.lp-hero-visual', {
+        autoAlpha: 0,
+        clipPath: 'inset(100% 0% 0% 0%)',
+        scale: 1.08,
+        duration: 1.1,
+        ease: 'power4.out',
+      }, '-=0.85')
+      .from('.lp-hero-float', { scale: 0.8, autoAlpha: 0, stagger: 0.15, duration: 0.6, ease: 'back.out(1.4)' }, '-=0.5')
+      .from('.lp-hero-booking-card', { y: 20, autoAlpha: 0, duration: 0.55, ease: 'power2.out' }, '-=0.35')
+      .from('.lp-scroll-hint', { y: -8, autoAlpha: 0, duration: 0.4 }, '-=0.2');
+
+    animateCounters(gsap);
+  }
 
   const heroBg = document.querySelector('.lp-hero-bg');
   if (heroBg && ST) {
@@ -520,6 +628,24 @@ export async function initLandingPage() {
     scrollTrigger: { trigger: '.lp-audience', start: 'top 85%' },
   });
 
+  gsap.from('.lp-team-head > *', {
+    y: 28,
+    autoAlpha: 0,
+    stagger: 0.1,
+    duration: 0.65,
+    ease: 'power3.out',
+    scrollTrigger: { trigger: '.lp-team', start: 'top 85%' },
+  });
+
+  gsap.from('.lp-team-card', {
+    y: 36,
+    autoAlpha: 0,
+    stagger: 0.1,
+    duration: 0.6,
+    ease: 'power2.out',
+    scrollTrigger: { trigger: '.lp-team-grid', start: 'top 86%' },
+  });
+
   gsap.from('.lp-cta-band', {
     y: 40,
     autoAlpha: 0,
@@ -552,4 +678,6 @@ export async function initLandingPage() {
   initScrollTextBands(gsap, ST);
 
   ST?.refresh();
+
+  return startHeroHandoff;
 }
