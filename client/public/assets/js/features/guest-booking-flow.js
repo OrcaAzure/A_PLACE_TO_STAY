@@ -17,7 +17,7 @@ export const BROWSE_CATEGORIES = [
     externalLabel: 'Global Missions Center Guest Rooms',
     description: 'Overnight stays',
     externalDescription: 'Global Missions Center only',
-    image: 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1200&q=80',
+    image: '/images/RoomsPreview.jpg',
     showsRooms: true,
   },
   {
@@ -38,14 +38,14 @@ export const BROWSE_CATEGORIES = [
     id: 'prayer-mountain',
     label: 'Prayer Mountain',
     description: 'Retreat spaces',
-    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80',
+    image: '/images/PrayerMountainPreview.jpg',
     showsRooms: false,
   },
   {
     id: 'sports-rec',
     label: 'Sports & Rec',
     description: 'Courts and recreation',
-    image: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=80',
+    image: '/images/RecEntrancePreview.jpg',
     showsRooms: false,
   },
 ];

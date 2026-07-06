@@ -327,12 +327,6 @@
         <div id="booking-price-notice"></div>
 
         <div id="booking-confirm-panel" class="hidden space-y-4">
-          <div id="booking-selected-room" class="rounded-2xl border border-outline-variant p-4 bg-surface-container-low/40">
-            <div class="flex items-center gap-3 text-on-surface-variant text-body-sm">
-              <span class="material-symbols-outlined animate-spin">progress_activity</span>
-              Loading room details…
-            </div>
-          </div>
           <dl class="grid grid-cols-3 gap-3 rounded-xl bg-surface-container-low border border-outline-variant/60 p-4 text-center">
             <div>
               <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Check-in</dt>
@@ -382,6 +376,10 @@
             </div>
             <div id="room-results" class="space-y-2 max-h-64 overflow-y-auto nice-scroll pr-1"></div>
           </div>
+        </div>
+
+        <div id="booking-selected-room-wrap" class="hidden">
+          <div id="booking-selected-room" class="rounded-2xl border border-outline-variant p-4 bg-surface-container-low/40"></div>
         </div>
 
         <input type="hidden" id="booking-room" />
@@ -527,6 +525,7 @@
   import { initGuestSupportCompose } from '/assets/js/features/guest-support-compose.js';
   import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
   import { openGuestModifyWizard, confirmGuestCancelReservation, cancelRoomReservation, cancelVenueReservation } from '/assets/js/features/booking-actions.js';
+  import { roomPreviewImage } from '/assets/js/features/facility-display.js';
 
   requireAuth();
   await initAppLayout({
@@ -940,11 +939,15 @@
 
     summary.classList.remove('hidden');
 
-    if (bookingMode === 'confirm') {
+    const previewWrap = document.getElementById('booking-selected-room-wrap');
+    if (selectedRoom) {
       const extrasNote = bookingExtras.hasExtras()
         ? `<p class="text-body-sm text-on-surface-variant mt-3 pt-3 border-t border-outline-variant/60">Includes ${peso(mealsTotal + feesTotal)} in meals & extras · <strong class="text-primary">${peso(grand)}</strong> estimated total</p>`
         : '';
-      renderSelectedRoomCard(selectedRoom, extrasNote);
+      renderSelectedRoomCard(selectedRoom, bookingMode === 'confirm' ? extrasNote : '');
+      previewWrap?.classList.remove('hidden');
+    } else {
+      previewWrap?.classList.add('hidden');
     }
   }
 
@@ -961,6 +964,9 @@
     submitBtn.disabled = true;
     document.getElementById('room-results-wrap').classList.add('hidden');
     document.getElementById('booking-summary').classList.add('hidden');
+    document.getElementById('booking-selected-room-wrap')?.classList.add('hidden');
+    const previewMount = document.getElementById('booking-selected-room');
+    if (previewMount) previewMount.innerHTML = '';
     bookingExtras.reset();
   }
 
@@ -997,16 +1003,25 @@
       mount.innerHTML = '<p class="text-body-sm text-error">This room is no longer available for the selected dates.</p>';
       return;
     }
+    const img = roomPreviewImage({
+      roomNumber: room.room_number ?? room.roomNumber,
+      roomType: room.room_type_label || room.room_type || room.roomType,
+    });
     mount.innerHTML = `
-      <div class="flex items-start justify-between gap-4">
-        <div>
-          <p class="text-label-sm text-primary font-semibold mb-0.5">${room.building_name}</p>
-          <h4 class="font-headline-sm text-headline-sm text-on-surface">Room ${room.room_number}</h4>
-          <p class="text-body-sm text-on-surface-variant mt-1">${room.room_type} · up to ${room.capacity_max} guests</p>
+      <div class="flex flex-col sm:flex-row gap-4">
+        <div class="shrink-0 w-full sm:w-36 h-28 rounded-xl overflow-hidden bg-surface-container border border-outline-variant/60">
+          <img src="${img}" alt="Room ${room.room_number} preview" class="w-full h-full object-cover" loading="lazy" />
         </div>
-        <div class="text-right shrink-0">
-          <p class="font-bold text-primary text-headline-sm">${room.estimated_total != null ? peso(room.estimated_total) : '—'}</p>
-          <p class="text-[11px] text-on-surface-variant uppercase">${room.nights} night(s) · room only</p>
+        <div class="flex flex-1 items-start justify-between gap-4 min-w-0">
+          <div>
+            <p class="text-label-sm text-primary font-semibold mb-0.5">${room.building_name}</p>
+            <h4 class="font-headline-sm text-headline-sm text-on-surface">Room ${room.room_number}</h4>
+            <p class="text-body-sm text-on-surface-variant mt-1">${room.room_type} · up to ${room.capacity_max} guests</p>
+          </div>
+          <div class="text-right shrink-0">
+            <p class="font-bold text-primary text-headline-sm">${room.estimated_total != null ? peso(room.estimated_total) : '—'}</p>
+            <p class="text-[11px] text-on-surface-variant uppercase">${room.nights} night(s) · room only</p>
+          </div>
         </div>
       </div>${extrasNote}`;
   }
@@ -1097,6 +1112,17 @@
     openModal(modal);
     submitBtn.disabled = true;
 
+    const previewWrap = document.getElementById('booking-selected-room-wrap');
+    const previewMount = document.getElementById('booking-selected-room');
+    previewWrap?.classList.remove('hidden');
+    if (previewMount) {
+      previewMount.innerHTML = `
+        <div class="flex items-center gap-3 text-on-surface-variant text-body-sm">
+          <span class="material-symbols-outlined animate-spin">progress_activity</span>
+          Loading room details…
+        </div>`;
+    }
+
     const errorEl = document.getElementById('booking-form-error');
     try {
       const data = await getRoomAvailability({
@@ -1147,9 +1173,16 @@
       const capLabel = r.room_type === 'Dorm'
         ? `Min ${r.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} pax to book · up to ${r.capacity_max} guests`
         : `${r.capacity_min}–${r.capacity_max} guests`;
+      const img = roomPreviewImage({
+        roomNumber: r.room_number ?? r.roomNumber,
+        roomType: r.room_type_label || r.room_type,
+      });
       return `
-      <button type="button" class="room-option w-full text-left p-3 rounded-xl border ${dormMin ? 'border-amber-300 bg-amber-50/40' : 'border-outline-variant hover:border-primary/50 bg-white'} flex items-center justify-between gap-3 ${String(r.id) === String(preferredRoomId) ? 'selected' : ''}" data-room-id="${r.id}">
-        <div>
+      <button type="button" class="room-option w-full text-left p-3 rounded-xl border ${dormMin ? 'border-amber-300 bg-amber-50/40' : 'border-outline-variant hover:border-primary/50 bg-white'} flex items-center gap-3 ${String(r.id) === String(preferredRoomId) ? 'selected' : ''}" data-room-id="${r.id}">
+        <div class="shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-surface-container border border-outline-variant/60">
+          <img src="${img}" alt="Room ${r.room_number} preview" class="w-full h-full object-cover" loading="lazy" />
+        </div>
+        <div class="flex-1 min-w-0">
           <p class="font-label-md font-bold text-body-sm">${r.building_name} ${r.room_number}</p>
           <p class="text-[11px] text-on-surface-variant">${r.room_type_label || r.room_type} · ${capLabel}</p>
           ${perPerson ? `<p class="text-[11px] text-on-surface-variant mt-0.5">${perPerson}</p>` : ''}

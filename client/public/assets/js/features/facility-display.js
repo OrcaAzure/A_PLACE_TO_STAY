@@ -18,6 +18,12 @@ export const ROOM_TYPE_IMAGE = {
   'Deluxe 3 BR': 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80',
 };
 
+/** Room-specific photos override type placeholders when available. */
+export const ROOM_NUMBER_IMAGE = {
+  '413': '/images/413Preview.jpg',
+  '416': '/images/416Preview.jpg',
+};
+
 const DEFAULT_ROOM_IMAGE =
   'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=1200&q=80';
 
@@ -46,6 +52,16 @@ export function roomTypeIcon(roomType) {
 
 export function roomTypeImage(roomType) {
   return ROOM_TYPE_IMAGE[roomType] || DEFAULT_ROOM_IMAGE;
+}
+
+function normalizeRoomNumber(value) {
+  return String(value ?? '').trim().replace(/^room\s+/i, '');
+}
+
+export function roomPreviewImage({ roomNumber, room_number, roomType, room_type } = {}) {
+  const num = normalizeRoomNumber(roomNumber ?? room_number);
+  if (num && ROOM_NUMBER_IMAGE[num]) return ROOM_NUMBER_IMAGE[num];
+  return roomTypeImage(roomType ?? room_type);
 }
 
 export function availabilityBadge(status) {

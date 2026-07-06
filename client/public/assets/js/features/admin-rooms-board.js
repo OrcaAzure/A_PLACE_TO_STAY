@@ -5,7 +5,7 @@
 import { getRoomsOverview, getRoomAvailability } from '/assets/js/services/api.js';
 import {
   liveStatusBadge,
-  roomTypeImage,
+  roomPreviewImage,
   availabilityBadge,
 } from '/assets/js/features/facility-display.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
@@ -234,7 +234,10 @@ function roomCardTypeLabel(room) {
 
 function renderRoomCard(room) {
   const roomType = roomCardTypeLabel(room);
-  const img = roomTypeImage(room.room_type_label || room.room_type || roomType);
+  const img = roomPreviewImage({
+    roomNumber: room.room_number,
+    roomType: room.room_type_label || room.room_type || roomType,
+  });
   const badge = liveStatusBadge(room.status);
 
   const capMin = room.capacity_min ?? 1;
