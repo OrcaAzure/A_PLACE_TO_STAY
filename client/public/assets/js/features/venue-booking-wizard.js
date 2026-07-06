@@ -41,7 +41,7 @@ function emptyState() {
     item: '',
     eventDate: '',
     startTime: '09:00',
-    endTime: '12:00',
+    endTime: '13:00',
     guestCount: 1,
     notes: '',
     guestMessage: '',
@@ -102,6 +102,12 @@ function normalizeTime(value) {
   const raw = String(value).trim();
   if (/^\d{1,2}:\d{2}:\d{2}$/.test(raw)) return raw.slice(0, 5);
   return raw.slice(0, 5);
+}
+
+function addHoursToTime(time, hours) {
+  const [h, m] = normalizeTime(time || '09:00').split(':').map(Number);
+  const next = h + Math.max(1, Number(hours) || 1);
+  return `${String(Math.min(23, next)).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 function rateHintHtml() {
@@ -438,6 +444,22 @@ async function confirmSave() {
 
   try {
     const catalogId = state.facilityId || state.eventVenueId;
+    if (catalogId) {
+      const slot = await checkVenueSlotAvailability({
+        facility_id: catalogId,
+        event_date: state.eventDate,
+        start_time: state.startTime,
+        end_time: state.endTime,
+        exclude_booking_id: state.bookingId || state.fromRequestId || undefined,
+      });
+      if (!slot.available) {
+        showError(slot.message || 'This time slot is not available.');
+        state.saving = false;
+        renderBody();
+        return;
+      }
+    }
+
     const noteText = state.notes || '';
     const modLine = state.modifyRequest && state.guestMessage?.trim()
       ? `[Modified by admin] ${state.guestMessage.trim()}`
@@ -515,7 +537,7 @@ export async function openVenueBookingWizard(detail = {}) {
     item: detail.item || '',
     eventDate: detail.eventDate || '',
     startTime: normalizeTime(detail.startTime || '09:00'),
-    endTime: normalizeTime(detail.endTime || '12:00'),
+    endTime: normalizeTime(detail.endTime || addHoursToTime(detail.startTime || '09:00', 4)),
     guestCount: detail.guestCount || 1,
   };
 

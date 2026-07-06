@@ -1140,6 +1140,14 @@
       dateEl.min = todayStr;
       dateEl.value = browseVenue.eventDate || '';
     }
+    const startEl = document.getElementById('vbm-start');
+    const endEl = document.getElementById('vbm-end');
+    const minHours = Math.max(1, Number(venue.min_hours) || 4);
+    if (startEl && !startEl.value) startEl.value = '09:00';
+    if (endEl && !endEl.value) {
+      const [h] = (startEl?.value || '09:00').split(':').map(Number);
+      endEl.value = `${String(Math.min(23, h + minHours)).padStart(2, '0')}:00`;
+    }
     const vbmGuests = document.getElementById('vbm-guests');
     if (vbmGuests) vbmGuests.value = browseVenue.guests || '1';
     feedback?.classList.add('hidden');

@@ -328,7 +328,7 @@ export async function ensureInvoiceForBooking(bookingId, { autoEmail = false } =
       );
     }
     if (autoEmail && existing.status === 'Pending' && !existing.invoice_sent_at) {
-      await tryAutoSendInvoiceEmail(existing.id);
+      void tryAutoSendInvoiceEmail(existing.id);
     }
     return existing.id;
   }
@@ -341,7 +341,7 @@ export async function ensureInvoiceForBooking(bookingId, { autoEmail = false } =
   );
   const paymentId = result.insertId;
   if (autoEmail) {
-    await tryAutoSendInvoiceEmail(paymentId);
+    void tryAutoSendInvoiceEmail(paymentId);
   }
   return paymentId;
 }
@@ -366,7 +366,7 @@ export async function ensureInvoiceForFacilityBooking(facilityBookingId, { autoE
       );
     }
     if (autoEmail && existing.status === 'Pending' && !existing.invoice_sent_at) {
-      await tryAutoSendInvoiceEmail(existing.id);
+      void tryAutoSendInvoiceEmail(existing.id);
     }
     return existing.id;
   }
@@ -379,7 +379,7 @@ export async function ensureInvoiceForFacilityBooking(facilityBookingId, { autoE
   );
   const paymentId = result.insertId;
   if (autoEmail) {
-    await tryAutoSendInvoiceEmail(paymentId);
+    void tryAutoSendInvoiceEmail(paymentId);
   }
   return paymentId;
 }
