@@ -39,7 +39,10 @@ const groupSelect = `
 
 function notifyGuestGroupSelfModified({ previous, current, wasApproved, message }) {
   void sendGuestGroupSelfModifyEmail(
-    { full_name: current.contact_name, email: current.contact_email },
+    {
+      full_name: current.contact_name,
+      email: current.contact_email || current.requester_email,
+    },
     current,
     {
       wasApproved,
@@ -364,6 +367,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
     const nextCheckOut = check_out || group.check_out;
     const nextGuests = total_guests != null ? Math.max(1, Number(total_guests)) : group.total_guests;
     const nextStatus = 'Pending';
+    const effectiveContactEmail = contact_email ?? group.contact_email ?? group.requester_email ?? null;
 
     await validateReservationDates(nextCheckIn, nextCheckOut, { bypassAdvanceLimit: false });
 
@@ -389,7 +393,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
         notes = ?
        WHERE id = ?`,
       [
-        group_name, contact_name, contact_phone, contact_email,
+        group_name, contact_name, contact_phone, effectiveContactEmail,
         nextCheckIn, nextCheckOut, nextGuests, rooms_requested,
         nextStatus, combinedNotes, groupId,
       ]

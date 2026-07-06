@@ -116,6 +116,21 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+/** Resolve a guest inbox from user/booking/group fields (first non-empty wins). */
+export function resolveGuestRecipientEmail({ user, booking, group } = {}) {
+  for (const value of [
+    user?.email,
+    user?.guest_email,
+    booking?.guest_email,
+    group?.contact_email,
+    group?.requester_email,
+  ]) {
+    const trimmed = String(value || '').trim();
+    if (trimmed) return trimmed;
+  }
+  return null;
+}
+
 export function getSupportEmail() {
   const configured = String(SUPPORT_EMAIL || '').trim();
   if (configured) return configured;
@@ -125,10 +140,17 @@ export function getSupportEmail() {
 }
 
 async function sendMail({ to, subject, html, text, replyTo }) {
+  const recipient = String(to || '').trim();
+  if (!recipient) {
+    lastEmailError = 'No recipient email address';
+    console.warn(`[email] Skipped — no recipient for subject: ${subject}`);
+    return false;
+  }
+
   try {
     const info = await transporter.sendMail({
       from: fromAddress(),
-      to,
+      to: recipient,
       subject,
       html,
       text,
@@ -136,7 +158,7 @@ async function sendMail({ to, subject, html, text, replyTo }) {
     });
     lastEmailError = null;
     if (isEmailDevMode()) {
-      console.info(`[email dev] To: ${to}`);
+      console.info(`[email dev] To: ${recipient}`);
       console.info(`[email dev] Subject: ${subject}`);
       if (info?.message) {
         try {
@@ -243,7 +265,7 @@ export async function sendGuestRoomSelfModifyEmail(user, booking, {
       </ul>` : '';
 
   return sendMail({
-    to: user.email || user.guest_email || booking.guest_email,
+    to: resolveGuestRecipientEmail({ user, booking }),
     subject: wasApproved
       ? 'Modification Request Received — AptSpace'
       : 'Your Reservation Was Updated — AptSpace',
@@ -283,7 +305,7 @@ export async function sendGuestGroupSelfModifyEmail(user, group, {
       <p><strong>Previous request:</strong> ${escapeHtml(previousCheckIn || '—')} to ${escapeHtml(previousCheckOut || '—')} · ${escapeHtml(previousRoomsRequested ?? '—')} room(s) requested</p>` : '';
 
   return sendMail({
-    to: user.email || group.contact_email,
+    to: resolveGuestRecipientEmail({ user, group }),
     subject: wasApproved
       ? 'Group Modification Request Received — AptSpace'
       : 'Your Group Reservation Was Updated — AptSpace',
@@ -335,7 +357,7 @@ export async function sendGuestVenueSelfModifyEmail(user, booking, {
       </ul>` : '';
 
   return sendMail({
-    to: user.email || user.guest_email || booking.guest_email,
+    to: resolveGuestRecipientEmail({ user, booking }),
     subject: wasApproved
       ? 'Venue Modification Request Received — AptSpace'
       : 'Your Venue Booking Was Updated — AptSpace',
@@ -518,7 +540,7 @@ export async function sendVenueModifiedEmail(user, booking, {
       </ul>`;
 
   return sendMail({
-    to: user.email || user.guest_email || booking.guest_email,
+    to: resolveGuestRecipientEmail({ user, booking }),
     subject: 'Your Venue Booking Was Updated — AptSpace',
     html: `
       <h2>Venue Booking Updated</h2>
@@ -580,7 +602,7 @@ export async function sendGroupConfirmationEmail(user, group) {
     .join(', ') || 'Assigned at check-in';
 
   return sendMail({
-    to: user.email || group.contact_email,
+    to: resolveGuestRecipientEmail({ user, group }),
     subject: 'Group Reservation Confirmed — AptSpace',
     html: `
       <h2>Group Reservation Confirmed</h2>
@@ -604,7 +626,7 @@ export async function sendGroupModifiedEmail(user, group, { message, previousChe
     .join(', ') || 'To be assigned';
 
   return sendMail({
-    to: user.email || group.contact_email,
+    to: resolveGuestRecipientEmail({ user, group }),
     subject: 'Your Group Reservation Was Updated — AptSpace',
     html: `
       <h2>Group Reservation Updated</h2>
