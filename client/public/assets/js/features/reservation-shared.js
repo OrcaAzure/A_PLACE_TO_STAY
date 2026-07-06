@@ -258,6 +258,10 @@ export function canAdminCancelVenueBooking(booking, now = new Date()) {
   ) === 'upcoming';
 }
 
+export function canAdminModifyVenueBooking(booking, now = new Date()) {
+  return canAdminCancelVenueBooking(booking, now);
+}
+
 export function venuePhaseLabel(phase) {
   if (phase === 'active') return 'In progress';
   if (phase === 'past') return 'Completed';

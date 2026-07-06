@@ -4,12 +4,14 @@
 import { openModal, closeModal, syncTimelineScroll, scrollTimelineToToday } from '/assets/js/layout/ui.js';
 import { getRooms, getBookings, getFacilityBookings, normalizeRoom, normalizeBooking, normalizeManageRequest, normalizeFacilityBooking } from '/assets/js/services/api.js';
 import {
-  approveRequest, rejectRequest, openModifyRequestWizard, notifyBookingUpdated,
+  approveRequest, rejectRequest, openModifyRequestWizard, openModifyVenueWizard, openAdminEditVenueWizard,
+  notifyBookingUpdated,
 } from '/assets/js/features/booking-actions.js';
 import { updateFacilityBooking } from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDate, formatDateLong, formatMoney, normStatus, stayNights,
   toLocalDateString, lifecyclePhaseForBooking, lifecycleEventClass, venuePhaseLabel,
+  canAdminModifyVenueBooking,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
@@ -760,6 +762,7 @@ export const openBookingDrawer = openBookingModal;
 function renderVenueDetailBody(raw, { busy = false, error = '' } = {}) {
   const b = normalizeFacilityBooking(raw);
   const pending = normStatus(b.status) === 'pending';
+  const canModify = canAdminModifyVenueBooking(b);
   const rows = [
     renderDetailRow('Status', statusLabel(b.status)),
     renderDetailRow('Venue', `${b.venueCategory} — ${b.venueName}`),
@@ -774,9 +777,13 @@ function renderVenueDetailBody(raw, { busy = false, error = '' } = {}) {
   const actions = pending ? `
     <div class="tl-detail-actions">
       <button type="button" class="res-btn res-btn--approve res-btn--wide" data-vd-approve ${busy ? 'disabled' : ''}>Approve</button>
+      <button type="button" class="res-btn res-btn--modify res-btn--wide" data-vd-modify ${busy ? 'disabled' : ''}>Modify</button>
       <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vd-decline ${busy ? 'disabled' : ''}>Decline</button>
+    </div>` : (canModify ? `
+    <div class="tl-detail-actions">
+      <button type="button" class="res-btn res-btn--primary res-btn--wide" data-vd-edit ${busy ? 'disabled' : ''}>Edit booking</button>
     </div>` : `
-    <p class="tl-detail-done">This venue booking is ${escapeHtml(statusLabel(b.status).toLowerCase())}.</p>`;
+    <p class="tl-detail-done">This venue booking is ${escapeHtml(statusLabel(b.status).toLowerCase())}.</p>`);
 
   return `
     <div class="tl-detail">
@@ -807,6 +814,14 @@ export function openVenueBookingModal(rawBooking, { onRefresh } = {}) {
     } catch (err) {
       if (body) body.innerHTML = renderVenueDetailBody(rawBooking, { error: err.message || 'Could not approve.' });
     }
+  });
+  body?.querySelector('[data-vd-modify]')?.addEventListener('click', () => {
+    closeModal();
+    openModifyVenueWizard(b, { modifyRequest: true });
+  });
+  body?.querySelector('[data-vd-edit]')?.addEventListener('click', () => {
+    closeModal();
+    openAdminEditVenueWizard(b);
   });
   body?.querySelector('[data-vd-decline]')?.addEventListener('click', async () => {
     if (!window.confirm('Decline this venue booking?')) return;

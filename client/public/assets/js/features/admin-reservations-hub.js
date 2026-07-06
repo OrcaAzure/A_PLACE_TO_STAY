@@ -8,13 +8,14 @@ import {
   normalizeManageRequest, normalizeManageGroupRequest, normalizeFacilityBooking,
 } from '/assets/js/services/api.js';
 import {
-  approveRequest, rejectRequest, openModifyRequestWizard, requestKey, parseRequestKey,
+  approveRequest, rejectRequest, openModifyRequestWizard, openModifyVenueWizard, openAdminEditVenueWizard,
+  requestKey, parseRequestKey,
   notifyBookingUpdated,
 } from '/assets/js/features/booking-actions.js';
 import {
   escapeHtml, formatDateLong, formatMoney, formatSubmittedAt, statusBadge, debounce,
   normStatus, stayNights, getReservationCategory, lifecyclePhaseForBooking, lifecyclePhaseBadge,
-  canAdminCancelVenueBooking,
+  canAdminCancelVenueBooking, canAdminModifyVenueBooking,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
@@ -492,6 +493,7 @@ function renderPendingRequestCard(r) {
 function renderVenueCard(item, { pendingActions = false } = {}) {
   const pending = normStatus(item.status) === 'pending';
   const canCancel = canAdminCancelVenueBooking(item);
+  const canModify = canAdminModifyVenueBooking(item);
   const lifecycleBadge = lifecyclePhaseBadge(lifecyclePhaseForBooking(item));
   const calLink = `calendar.html?date=${encodeURIComponent(item.eventDate)}&q=${encodeURIComponent(item.venueName || '')}`;
   const cardKey = `ven-${item.id}`;
@@ -522,8 +524,15 @@ function renderVenueCard(item, { pendingActions = false } = {}) {
           <button type="button" class="res-btn res-btn--approve res-btn--wide" data-vb-approve="${item.id}">
             <span class="material-symbols-outlined">check</span> Approve
           </button>
+          <button type="button" class="res-btn res-btn--modify res-btn--wide" data-vb-modify="${item.id}">
+            <span class="material-symbols-outlined">edit</span> Modify
+          </button>
           <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vb-decline="${item.id}">
             <span class="material-symbols-outlined">close</span> Decline
+          </button>` : ''}
+        ${!pendingActions && canModify ? `
+          <button type="button" class="res-btn res-btn--primary res-btn--wide" data-vb-edit="${item.id}">
+            <span class="material-symbols-outlined">edit</span> Edit
           </button>` : ''}
         ${!pendingActions && canCancel ? `
           <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vb-cancel="${item.id}">
@@ -798,6 +807,18 @@ async function deleteStay(key) {
   await loadAll();
 }
 
+function modifyVenuePending(id) {
+  const item = state.venueBookings.find((v) => String(v.id) === String(id));
+  if (!item) return;
+  openModifyVenueWizard(item, { modifyRequest: true });
+}
+
+function editVenue(id) {
+  const item = state.venueBookings.find((v) => String(v.id) === String(id));
+  if (!item) return;
+  openAdminEditVenueWizard(item);
+}
+
 async function setVenueStatus(id, status) {
   try {
     await updateFacilityBooking(id, { status });
@@ -905,6 +926,10 @@ function bindEvents() {
     if (del) { deleteStay(del.getAttribute('data-del-res')); return; }
     const vbApprove = e.target.closest('[data-vb-approve]');
     if (vbApprove) { setVenueStatus(Number(vbApprove.dataset.vbApprove), 'Approved'); return; }
+    const vbModify = e.target.closest('[data-vb-modify]');
+    if (vbModify) { modifyVenuePending(Number(vbModify.dataset.vbModify)); return; }
+    const vbEdit = e.target.closest('[data-vb-edit]');
+    if (vbEdit) { editVenue(Number(vbEdit.dataset.vbEdit)); return; }
     const vbDecline = e.target.closest('[data-vb-decline]');
     if (vbDecline) {
       if (!window.confirm('Decline this venue booking request?')) return;

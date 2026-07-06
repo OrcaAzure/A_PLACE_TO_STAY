@@ -5,9 +5,10 @@ import {
 } from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDateLong, formatMoney, debounce, normStatus, statusBadge,
-  canAdminCancelVenueBooking, lifecyclePhaseForBooking, lifecyclePhaseBadge,
+  canAdminCancelVenueBooking, canAdminModifyVenueBooking, lifecyclePhaseForBooking, lifecyclePhaseBadge,
 } from '/assets/js/features/reservation-shared.js';
 import { closeVenueBookingWizard, openVenueBookingWizard } from '/assets/js/features/venue-booking-wizard.js';
+import { openAdminEditVenueWizard, openModifyVenueWizard } from '/assets/js/features/booking-actions.js';
 
 let initialized = false;
 let isOpen = false;
@@ -62,6 +63,7 @@ function renderList() {
   mount.innerHTML = filtered.map((item) => {
     const pending = normStatus(item.status) === 'pending';
     const canCancel = canAdminCancelVenueBooking(item);
+    const canModify = canAdminModifyVenueBooking(item);
     const lifecycleBadge = lifecyclePhaseBadge(lifecyclePhaseForBooking(item));
     return `<article class="res-list-card" role="listitem">
       <div class="res-list-card-top">
@@ -89,8 +91,15 @@ function renderList() {
           <button type="button" class="res-btn res-btn--primary res-btn--wide" data-vb-approve="${item.id}">
             <span class="material-symbols-outlined">check</span> Approve
           </button>
+          <button type="button" class="res-btn res-btn--modify res-btn--wide" data-vb-modify="${item.id}">
+            <span class="material-symbols-outlined">edit</span> Modify
+          </button>
           <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vb-decline="${item.id}">
             <span class="material-symbols-outlined">close</span> Decline
+          </button>` : ''}
+        ${!pending && canModify ? `
+          <button type="button" class="res-btn res-btn--primary res-btn--wide" data-vb-edit="${item.id}">
+            <span class="material-symbols-outlined">edit</span> Edit
           </button>` : ''}
         ${canCancel ? `
           <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vb-cancel="${item.id}">
@@ -169,6 +178,24 @@ function onClick(e) {
   }
   const approve = e.target.closest('[data-vb-approve]');
   if (approve) { setStatus(Number(approve.dataset.vbApprove), 'Approved'); return; }
+  const modify = e.target.closest('[data-vb-modify]');
+  if (modify) {
+    const item = list.find((x) => String(x.id) === String(modify.dataset.vbModify));
+    if (item) {
+      closeManageVenueBookingsModal();
+      openModifyVenueWizard(item, { modifyRequest: true });
+    }
+    return;
+  }
+  const edit = e.target.closest('[data-vb-edit]');
+  if (edit) {
+    const item = list.find((x) => String(x.id) === String(edit.dataset.vbEdit));
+    if (item) {
+      closeManageVenueBookingsModal();
+      openAdminEditVenueWizard(item);
+    }
+    return;
+  }
   const decline = e.target.closest('[data-vb-decline]');
   if (decline) {
     if (!window.confirm('Decline this venue booking request?')) return;

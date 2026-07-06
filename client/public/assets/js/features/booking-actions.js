@@ -156,6 +156,32 @@ export function openGuestModifyWizard(booking) {
   }
 }
 
+export function openModifyVenueWizard(booking, { modifyRequest = false } = {}) {
+  window.dispatchEvent(new CustomEvent('venue-booking-wizard:open', {
+    detail: {
+      mode: modifyRequest ? 'create' : 'edit',
+      bookingId: modifyRequest ? null : booking.id,
+      fromRequestId: modifyRequest ? booking.id : null,
+      modifyRequest,
+      prefill: {
+        userId: booking.userId,
+        guestName: booking.guestName,
+        email: booking.guestEmail,
+        facilityId: booking.facilityId,
+        eventDate: booking.eventDate,
+        startTime: booking.startTime,
+        endTime: booking.endTime,
+        guestCount: booking.guestCount,
+        notes: booking.notes,
+      },
+    },
+  }));
+}
+
+export function openAdminEditVenueWizard(booking) {
+  openModifyVenueWizard(booking, { modifyRequest: false });
+}
+
 export function notifyBookingUpdated() {
   window.dispatchEvent(new CustomEvent('booking:updated'));
 }

@@ -3,7 +3,8 @@
  */
 
 import {
-  createFacilityBooking, getFacilitiesOverview, getUsers, getVenueRateQuote,
+  createFacilityBooking, getFacilitiesOverview, getFacilityBookingById, getUsers,
+  getVenueRateQuote, updateFacilityBooking, checkVenueSlotAvailability,
 } from '/assets/js/services/api.js';
 import { escapeHtml, formatDateLong, formatMoney } from '/assets/js/features/reservation-shared.js';
 import { refreshVenueScheduleBoard } from '/assets/js/features/admin-venue-board.js';
@@ -24,7 +25,12 @@ function $(id) { return document.getElementById(id); }
 
 function emptyState() {
   return {
+    mode: 'create',
     step: 1,
+    bookingId: null,
+    fromRequestId: null,
+    modifyRequest: false,
+    originalStatus: 'Approved',
     userId: '',
     guestName: '',
     email: '',
@@ -38,9 +44,27 @@ function emptyState() {
     endTime: '12:00',
     guestCount: 1,
     notes: '',
+    guestMessage: '',
     rateQuote: null,
     saving: false,
   };
+}
+
+function isEditing() {
+  return state.mode === 'edit' || state.fromRequestId || state.modifyRequest;
+}
+
+function wizardTitle() {
+  if (state.modifyRequest) return 'Modify & Approve Request';
+  if (state.mode === 'edit') return 'Edit Venue Booking';
+  return 'Book a venue';
+}
+
+function confirmLabel() {
+  if (state.saving) return 'Saving…';
+  if (state.modifyRequest) return 'Save & approve';
+  if (state.mode === 'edit') return 'Save changes';
+  return 'Confirm booking';
 }
 
 function buildVenueSpaces(catalog) {
@@ -65,7 +89,8 @@ function buildVenueSpaces(catalog) {
 
 function findSpaceByFacilityId(facilityId) {
   if (!facilityId) return null;
-  return venues.find((v) => v.rates?.some((r) => String(r.id) === String(facilityId))) || null;
+  return venues.find((v) => String(v.facilityId) === String(facilityId)
+    || v.rates?.some((r) => String(r.id) === String(facilityId))) || null;
 }
 
 function selectedVenue() {
@@ -162,8 +187,26 @@ function renderStep3() {
   const rateLine = state.rateQuote
     ? `${state.rateQuote.calendar_season || state.rateQuote.season} rate · ${formatMoney(state.rateQuote.rate)}/hr`
     : '';
+  const estimatedTotal = state.rateQuote?.estimated_total != null
+    ? formatMoney(state.rateQuote.estimated_total)
+    : null;
+  const modifyBlock = state.modifyRequest ? `
+    <div class="res-banner res-banner--warn">
+      You are approving this request with changes. The guest will receive an email explaining what changed.
+    </div>
+    <label class="res-label" for="vbw-guest-message">Message to guest (required)</label>
+    <textarea id="vbw-guest-message" class="res-input" rows="3" placeholder="e.g. We moved your event to the larger chapel to accommodate your guest count.">${escapeHtml(state.guestMessage)}</textarea>
+  ` : (state.fromRequestId ? `
+    <div class="res-banner res-banner--ok">The guest will receive a confirmation email when you save.</div>
+  ` : '');
+
   return `
-    <p class="res-lead">Review everything before saving. The booking will be confirmed immediately.</p>
+    <p class="res-lead">${state.modifyRequest
+    ? 'Review the updated details before approving.'
+    : state.mode === 'edit'
+      ? 'Review your changes before saving.'
+      : 'Review everything before saving. The booking will be confirmed immediately.'}</p>
+    ${modifyBlock}
     <div class="res-review">
       <h4>Guest</h4>
       <p><strong>${escapeHtml(state.guestName || '—')}</strong>${state.email ? `<br>${escapeHtml(state.email)}` : ''}</p>
@@ -176,6 +219,7 @@ function renderStep3() {
       <h4>Schedule</h4>
       <p>${state.eventDate ? formatDateLong(state.eventDate) : '—'}<br>
       ${escapeHtml(state.startTime)} – ${escapeHtml(state.endTime)} · ${state.guestCount} guest${state.guestCount === 1 ? '' : 's'}</p>
+      ${estimatedTotal ? `<p class="res-hint">Estimated total: ${estimatedTotal}</p>` : ''}
     </div>
     ${state.notes ? `<div class="res-review"><h4>Notes</h4><p>${escapeHtml(state.notes)}</p></div>` : ''}`;
 }
@@ -221,6 +265,9 @@ function readForm() {
 
   const notesEl = $('vbw-notes');
   if (notesEl) state.notes = notesEl.value.trim();
+
+  const msgEl = $('vbw-guest-message');
+  if (msgEl) state.guestMessage = msgEl.value.trim();
 }
 
 async function refreshRateQuote() {
@@ -236,6 +283,16 @@ async function refreshRateQuote() {
     state.rateQuote = catalogId
       ? await getVenueRateQuote({ facility_id: catalogId, date: state.eventDate })
       : await getVenueRateQuote(state.category, state.item, state.eventDate);
+    if (state.startTime && state.endTime && state.endTime > state.startTime && catalogId) {
+      const slot = await checkVenueSlotAvailability({
+        facility_id: catalogId,
+        event_date: state.eventDate,
+        start_time: state.startTime,
+        end_time: state.endTime,
+        exclude_booking_id: state.bookingId || state.fromRequestId || undefined,
+      });
+      state.rateQuote = { ...state.rateQuote, estimated_total: slot.estimated_total };
+    }
     if (hint) {
       const label = state.rateQuote.calendar_season || state.rateQuote.season;
       hint.innerHTML = `<strong>${escapeHtml(label)}</strong> rate: ${formatMoney(state.rateQuote.rate)}/hr`;
@@ -260,14 +317,14 @@ function bindStep1() {
 }
 
 function bindStep2() {
-  $('vbw-space')?.addEventListener('change', async () => {
+  const onScheduleChange = async () => {
     readForm();
     await refreshRateQuote();
-  });
-  $('vbw-date')?.addEventListener('change', async () => {
-    readForm();
-    await refreshRateQuote();
-  });
+  };
+  $('vbw-space')?.addEventListener('change', onScheduleChange);
+  $('vbw-date')?.addEventListener('change', onScheduleChange);
+  $('vbw-start')?.addEventListener('change', onScheduleChange);
+  $('vbw-end')?.addEventListener('change', onScheduleChange);
 }
 
 function showError(msg) {
@@ -286,11 +343,16 @@ function renderBody() {
   else if (state.step === 2) mount.innerHTML = renderStep2();
   else mount.innerHTML = renderStep3();
 
-  $('venue-wizard-title').textContent = 'Book a venue';
+  $('venue-wizard-title').textContent = wizardTitle();
   $('venue-wizard-subtitle').textContent = STEPS[state.step - 1]?.short || '';
   $('venue-wizard-back').classList.toggle('hidden', state.step <= 1);
   $('venue-wizard-next').classList.toggle('hidden', state.step >= 3 || (state.step === 2 && !venues.length));
   $('venue-wizard-confirm').classList.toggle('hidden', state.step < 3);
+  const confirmBtn = $('venue-wizard-confirm');
+  if (confirmBtn) {
+    confirmBtn.disabled = state.saving;
+    confirmBtn.textContent = confirmLabel();
+  }
   showError('');
 
   if (state.step === 1) bindStep1();
@@ -318,14 +380,19 @@ function validateStep2() {
 function validateAll() {
   const e1 = validateStep1();
   if (e1) return e1;
-  return validateStep2();
+  const e2 = validateStep2();
+  if (e2) return e2;
+  if (state.modifyRequest && !state.guestMessage?.trim()) {
+    return 'Please enter a message explaining the change for the guest.';
+  }
+  return '';
 }
 
 function validateCurrentStep() {
   readForm();
   if (state.step === 1) return validateStep1();
   if (state.step === 2) return validateStep2();
-  return validateAll();
+  return '';
 }
 
 function goNext() {
@@ -342,20 +409,42 @@ function goBack() {
   renderBody();
 }
 
+function applySpaceFromFacilityId(facilityId) {
+  if (!facilityId) return;
+  const id = String(facilityId);
+  const match = venues.find((v) => String(v.facilityId) === id || String(v.eventVenueId) === id)
+    || findSpaceByFacilityId(id);
+  if (match) {
+    state.spaceKey = match.spaceKey;
+    state.facilityId = match.facilityId || match.eventVenueId || id;
+    state.eventVenueId = state.facilityId;
+    state.category = match.category;
+    state.item = match.item;
+  } else {
+    state.spaceKey = id;
+    state.facilityId = id;
+    state.eventVenueId = id;
+  }
+}
+
 async function confirmSave() {
   readForm();
   const err = validateAll();
   if (err) { showError(err); return; }
 
   state.saving = true;
-  const confirmBtn = $('venue-wizard-confirm');
-  confirmBtn.disabled = true;
-  confirmBtn.textContent = 'Saving…';
+  renderBody();
   showError('');
 
   try {
     const catalogId = state.facilityId || state.eventVenueId;
-    const result = await createFacilityBooking({
+    const noteText = state.notes || '';
+    const modLine = state.modifyRequest && state.guestMessage?.trim()
+      ? `[Modified by admin] ${state.guestMessage.trim()}`
+      : '';
+    const combinedNotes = [noteText, modLine].filter(Boolean).join('\n') || null;
+
+    const payload = {
       facility_id: catalogId ? Number(catalogId) : undefined,
       category: state.category,
       item: state.item,
@@ -363,12 +452,24 @@ async function confirmSave() {
       start_time: state.startTime,
       end_time: state.endTime,
       guest_count: state.guestCount,
-      notes: state.notes || null,
+      notes: combinedNotes,
       user_id: state.userId ? Number(state.userId) : null,
       guest_name: state.guestName,
       email: state.email || null,
-      status: 'Approved',
-    });
+      status: state.modifyRequest ? 'Approved' : (state.originalStatus || 'Approved'),
+      modification_message: state.modifyRequest ? state.guestMessage?.trim() : undefined,
+      notify_guest: Boolean(state.modifyRequest),
+      notify_modification: Boolean(state.modifyRequest),
+    };
+
+    let result;
+    const targetId = state.bookingId || state.fromRequestId;
+    if (isEditing() && targetId) {
+      result = await updateFacilityBooking(targetId, payload);
+    } else {
+      payload.status = 'Approved';
+      result = await createFacilityBooking(payload);
+    }
 
     window.dispatchEvent(new CustomEvent('booking:updated', { detail: { venueBooking: result?.booking } }));
     refreshVenueScheduleBoard().catch(() => {});
@@ -377,10 +478,7 @@ async function confirmSave() {
     showError(e.message || 'Could not save venue booking.');
   } finally {
     state.saving = false;
-    if (confirmBtn) {
-      confirmBtn.disabled = false;
-      confirmBtn.textContent = 'Confirm booking';
-    }
+    renderBody();
   }
 }
 
@@ -408,6 +506,10 @@ export async function openVenueBookingWizard(detail = {}) {
   isOpen = true;
   state = {
     ...emptyState(),
+    mode: detail.mode || 'create',
+    bookingId: detail.bookingId || null,
+    fromRequestId: detail.fromRequestId || null,
+    modifyRequest: Boolean(detail.modifyRequest),
     spaceKey: detail.spaceKey || '',
     category: detail.category || '',
     item: detail.item || '',
@@ -417,27 +519,51 @@ export async function openVenueBookingWizard(detail = {}) {
     guestCount: detail.guestCount || 1,
   };
 
+  if (detail.prefill) {
+    const p = detail.prefill;
+    state.userId = p.userId || state.userId;
+    state.guestName = p.guestName || state.guestName;
+    state.email = p.email || state.email;
+    state.eventDate = p.eventDate || state.eventDate;
+    state.startTime = normalizeTime(p.startTime || state.startTime);
+    state.endTime = normalizeTime(p.endTime || state.endTime);
+    state.guestCount = p.guestCount || state.guestCount;
+    state.notes = p.notes || state.notes;
+    if (p.facilityId) applySpaceFromFacilityId(p.facilityId);
+  }
+
   show();
   $('venue-wizard-body').innerHTML = '<p class="res-lead">Loading venue list…</p>';
 
   try {
-    const [userRows, catalog] = await Promise.all([
+    const loaders = [
       getUsers().catch(() => []),
       getFacilitiesOverview(),
-    ]);
-    users = userRows || [];
+    ];
+    if (state.bookingId) loaders.push(getFacilityBookingById(state.bookingId));
+    else if (state.fromRequestId) loaders.push(getFacilityBookingById(state.fromRequestId));
+
+    const results = await Promise.all(loaders);
+    users = results[0] || [];
+    const catalog = results[1];
     venues = buildVenueSpaces(catalog);
 
-    if (detail.facility_id || detail.facilityId || detail.event_venue_id || detail.eventVenueId) {
-      const id = String(detail.facility_id || detail.facilityId || detail.event_venue_id || detail.eventVenueId);
-      state.spaceKey = id;
-      state.facilityId = id;
-      state.eventVenueId = id;
-      const match = venues.find((v) => String(v.eventVenueId) === id);
-      if (match) {
-        state.category = match.category;
-        state.item = match.item;
-      }
+    const booking = results[2];
+    if (booking) {
+      state.bookingId = booking.id;
+      state.fromRequestId = state.fromRequestId || booking.id;
+      state.userId = booking.user_id || '';
+      state.guestName = booking.guest_name || '';
+      state.email = booking.guest_email || '';
+      state.eventDate = String(booking.event_date).slice(0, 10);
+      state.startTime = normalizeTime(booking.start_time);
+      state.endTime = normalizeTime(booking.end_time);
+      state.guestCount = booking.guest_count || 1;
+      state.notes = booking.notes || '';
+      state.originalStatus = booking.status || 'Approved';
+      applySpaceFromFacilityId(booking.facility_id);
+    } else if (detail.facility_id || detail.facilityId || detail.event_venue_id || detail.eventVenueId) {
+      applySpaceFromFacilityId(detail.facility_id || detail.facilityId || detail.event_venue_id || detail.eventVenueId);
     } else if (detail.category && detail.item) {
       const match = venues.find((v) => v.category === detail.category && v.item === detail.item);
       state.spaceKey = match?.spaceKey || `${detail.category}\x1f${detail.item}`;
@@ -445,14 +571,6 @@ export async function openVenueBookingWizard(detail = {}) {
       state.eventVenueId = state.facilityId;
       state.category = detail.category;
       state.item = detail.item;
-    } else if (detail.facilityId) {
-      const match = findSpaceByFacilityId(detail.facilityId);
-      if (match) {
-        state.spaceKey = match.spaceKey;
-        state.eventVenueId = match.eventVenueId || '';
-        state.category = match.category;
-        state.item = match.item;
-      }
     }
 
     if (!state.spaceKey && venues.length === 1) {

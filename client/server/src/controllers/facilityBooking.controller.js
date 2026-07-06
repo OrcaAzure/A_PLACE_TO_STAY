@@ -21,7 +21,7 @@ import {
   bookingDurationHours,
 } from '../services/facility.service.js';
 import { fetchFacilitiesWithRates, FACILITY_GROUP_ICONS } from '../services/facilityCatalog.service.js';
-import { sendGuestVenueSelfModifyEmail } from '../services/email.service.js';
+import { sendGuestVenueSelfModifyEmail, sendVenueModifiedEmail } from '../services/email.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -165,10 +165,13 @@ export const createFacilityBooking = async (req, res) => {
 export const updateFacilityBooking = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
-    const [existing] = await pool.query('SELECT * FROM bookings_facilities WHERE id = ? LIMIT 1', [req.params.id]);
+    const [existing] = await pool.query(`${bookingSelect} WHERE fb.id = ? LIMIT 1`, [req.params.id]);
     if (!existing.length) return res.status(404).json({ message: 'Booking not found' });
 
     const prev = existing[0];
+    const prevVenueLabel = [prev.facility_category, prev.facility_name || prev.facility_room_code]
+      .filter(Boolean)
+      .join(' — ');
 
     if (!ADMIN_ROLES.includes(role)) {
       if (existing[0].user_id !== userId) {
@@ -283,13 +286,143 @@ export const updateFacilityBooking = async (req, res) => {
         booking: guestRows[0],
       });
     } else {
-      const { status, notes } = req.body;
+      const {
+        status, notes, event_date, start_time, end_time, guest_count, facility_id,
+        user_id, guest_name, email, notify_guest, notify_modification, modification_message,
+      } = req.body;
+
+      const hasScheduleChange = event_date != null || start_time != null || end_time != null
+        || guest_count != null || facility_id != null;
+      const hasGuestChange = user_id != null || guest_name != null || email != null;
+
+      if (status === 'Cancelled' && !hasScheduleChange && !hasGuestChange) {
+        const cancelError = assertCanCancelVenueBooking({
+          status: prev.status,
+          event_date: prev.event_date,
+          start_time: prev.start_time,
+          end_time: prev.end_time,
+          isAdmin: true,
+        });
+        if (cancelError) return res.status(400).json({ message: cancelError });
+        await pool.query('UPDATE bookings_facilities SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
+        const [cancelRows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
+        return res.status(200).json({ message: 'Booking cancelled', booking: cancelRows[0] });
+      }
+
+      if (hasScheduleChange || hasGuestChange) {
+        const modifyError = assertCanModifyVenueBooking({
+          status: prev.status,
+          event_date: prev.event_date,
+          start_time: prev.start_time,
+          end_time: prev.end_time,
+          isAdmin: true,
+        });
+        if (modifyError) return res.status(400).json({ message: modifyError });
+
+        const nextDate = event_date ?? prev.event_date;
+        const nextStart = normalizeTime(start_time ?? prev.start_time);
+        const nextEnd = normalizeTime(end_time ?? prev.end_time);
+        const nextGuests = guest_count != null ? Math.max(1, Number(guest_count)) : prev.guest_count;
+        const nextFacilityId = facility_id ?? prev.facility_id;
+
+        if (nextDate < new Date().toISOString().slice(0, 10)) {
+          return res.status(400).json({ message: 'Event date cannot be in the past.' });
+        }
+
+        const rateRow = await resolveVenueFacilityRowByFacilityId(nextFacilityId, nextDate);
+        if (!rateRow) {
+          return res.status(404).json({ message: 'Venue space not found' });
+        }
+
+        const durationError = validateVenueDuration(rateRow, nextStart, nextEnd);
+        if (durationError) return res.status(400).json({ message: durationError });
+
+        const capacityError = validateVenueCapacity(rateRow, nextGuests);
+        if (capacityError) return res.status(400).json({ message: capacityError });
+
+        const overlap = await findVenueBookingOverlap({
+          facility_id: nextFacilityId,
+          eventDate: nextDate,
+          startTime: nextStart,
+          endTime: nextEnd,
+          excludeBookingId: req.params.id,
+        });
+        if (overlap) {
+          return res.status(409).json({ message: 'This venue is already booked for the selected time slot.' });
+        }
+
+        const season = normalizeFacilityBookingSeason(rateRow.season);
+        const total_amount = computeVenueTotal(rateRow, nextStart, nextEnd);
+        const nextStatus = status ?? prev.status;
+
+        let resolvedUserId = prev.user_id;
+        if (hasGuestChange) {
+          resolvedUserId = await resolveGuestUser({
+            userId: user_id || prev.user_id,
+            guestName: guest_name,
+            email,
+          });
+        }
+
+        const modNote = modification_message?.trim()
+          ? `[Modified by admin] ${modification_message.trim()}`
+          : '';
+        const clientNotes = notes != null ? notes : prev.notes;
+        const combinedNotes = modNote
+          ? [clientNotes, modNote].filter((n) => n != null && String(n).trim()).join('\n')
+          : clientNotes;
+
+        await pool.query(
+          `UPDATE bookings_facilities SET
+             user_id = ?,
+             facility_id = ?,
+             event_date = ?,
+             start_time = ?,
+             end_time = ?,
+             guest_count = ?,
+             season = ?,
+             total_amount = ?,
+             status = ?,
+             notes = ?
+           WHERE id = ?`,
+          [resolvedUserId, nextFacilityId, nextDate, nextStart, nextEnd, nextGuests,
+            season, total_amount, nextStatus, combinedNotes, req.params.id]
+        );
+
+        const [rows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
+
+        const becameApproved = nextStatus === 'Approved' && prev.status !== 'Approved';
+        if (becameApproved) {
+          await ensureInvoiceForFacilityBooking(req.params.id, { autoEmail: true });
+        } else if (nextStatus === 'Approved' && total_amount !== Number(prev.total_amount)) {
+          await ensureInvoiceForFacilityBooking(req.params.id);
+        }
+
+        if (notify_guest) {
+          void sendVenueModifiedEmail(
+            { full_name: rows[0].guest_name, email: rows[0].guest_email },
+            rows[0],
+            {
+              message: modification_message,
+              notifyModification: Boolean(notify_modification),
+              previousEventDate: prev.event_date,
+              previousStartTime: prev.start_time,
+              previousEndTime: prev.end_time,
+              previousGuestCount: prev.guest_count,
+              previousVenue: prevVenueLabel,
+            }
+          );
+        }
+
+        return res.status(200).json({ message: 'Booking updated', booking: rows[0] });
+      }
+
       if (status === 'Cancelled') {
         const cancelError = assertCanCancelVenueBooking({
-          status: existing[0].status,
-          event_date: existing[0].event_date,
-          start_time: existing[0].start_time,
-          end_time: existing[0].end_time,
+          status: prev.status,
+          event_date: prev.event_date,
+          start_time: prev.start_time,
+          end_time: prev.end_time,
           isAdmin: true,
         });
         if (cancelError) return res.status(400).json({ message: cancelError });
@@ -341,7 +474,8 @@ function formatTime(t) {
 
 export const checkVenueSlotAvailability = async (req, res) => {
   try {
-    const { facility_id, event_venue_id, room_code, category, item, event_date, start_time, end_time } = req.query;
+    const { facility_id, event_venue_id, room_code, category, item, event_date, start_time, end_time,
+      exclude_booking_id } = req.query;
     const catalogId = facility_id || event_venue_id;
     if (!event_date || !start_time || !end_time) {
       return res.status(400).json({ message: 'event_date, start_time, and end_time are required' });
@@ -370,6 +504,7 @@ export const checkVenueSlotAvailability = async (req, res) => {
       eventDate: event_date,
       startTime,
       endTime,
+      excludeBookingId: exclude_booking_id || undefined,
     });
 
     const { row: rateRow } = identity;

@@ -223,6 +223,7 @@ export async function getRoomById(id) {
 
 export async function checkVenueSlotAvailability({
   category, item, facility_id, event_venue_id, room_code, event_date, start_time, end_time,
+  exclude_booking_id,
 }) {
   const params = new URLSearchParams({ event_date, start_time, end_time });
   const catalogId = facility_id || event_venue_id;
@@ -230,6 +231,7 @@ export async function checkVenueSlotAvailability({
   if (room_code) params.set('room_code', room_code);
   if (category) params.set('category', category);
   if (item) params.set('item', item);
+  if (exclude_booking_id) params.set('exclude_booking_id', String(exclude_booking_id));
   return apiRequest(`/facility-bookings/check-slot?${params}`);
 }
 
@@ -636,6 +638,11 @@ export async function getVenueScheduleOverview(date, { startTime, endTime } = {}
 export async function getFacilityBookings() {
   const data = await apiRequest('/facility-bookings');
   return data.bookings || [];
+}
+
+export async function getFacilityBookingById(id) {
+  const data = await apiRequest(`/facility-bookings/${id}`);
+  return data.booking;
 }
 
 export async function createFacilityBooking(payload) {

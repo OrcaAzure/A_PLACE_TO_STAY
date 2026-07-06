@@ -485,6 +485,61 @@ export async function sendVenueInvoiceEmail(user, payment) {
   });
 }
 
+export async function sendVenueModifiedEmail(user, booking, {
+  message,
+  notifyModification,
+  previousEventDate,
+  previousStartTime,
+  previousEndTime,
+  previousGuestCount,
+  previousVenue,
+}) {
+  const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
+  const venue = [booking.facility_category, booking.facility_name || booking.facility_room_code]
+    .filter(Boolean)
+    .join(' — ');
+  const eventDate = formatEventDate(booking.event_date);
+  const start = formatTime12(booking.start_time);
+  const end = formatTime12(booking.end_time);
+  const timeRange = start && end ? `${start} – ${end}` : '—';
+  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
+  const prevStart = formatTime12(previousStartTime);
+  const prevEnd = formatTime12(previousEndTime);
+  const messageBlock = notifyModification && message
+    ? `<blockquote style="margin:1rem 0;padding:0.75rem 1rem;background:#f8fafc;border-left:4px solid #1A365D;">${escapeHtml(message)}</blockquote>`
+    : '';
+  const previousBlock = `
+      <p><strong>Previous booking:</strong></p>
+      <ul>
+        ${previousVenue ? `<li><strong>Venue:</strong> ${escapeHtml(previousVenue)}</li>` : ''}
+        <li><strong>Date:</strong> ${escapeHtml(formatEventDate(previousEventDate))}</li>
+        <li><strong>Time:</strong> ${escapeHtml(prevStart && prevEnd ? `${prevStart} – ${prevEnd}` : '—')}</li>
+        <li><strong>Guests:</strong> ${escapeHtml(previousGuestCount ?? '—')}</li>
+      </ul>`;
+
+  return sendMail({
+    to: user.email || user.guest_email || booking.guest_email,
+    subject: 'Your Venue Booking Was Updated — AptSpace',
+    html: `
+      <h2>Venue Booking Updated</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Your venue booking was reviewed and updated by our team.</p>
+      ${messageBlock}
+      ${previousBlock}
+      <p><strong>Confirmed booking:</strong></p>
+      <ul>
+        <li><strong>Venue:</strong> ${escapeHtml(venue)}</li>
+        <li><strong>Event date:</strong> ${escapeHtml(eventDate)}</li>
+        <li><strong>Time:</strong> ${escapeHtml(timeRange)}</li>
+        <li><strong>Guests:</strong> ${escapeHtml(booking.guest_count || 1)}</li>
+        <li><strong>Estimated total:</strong> ${price}</li>
+        <li><strong>Status:</strong> ${escapeHtml(booking.status || 'Approved')}</li>
+      </ul>
+      <p>Log in to AptSpace to view your booking details.</p>
+    `,
+  });
+}
+
 export async function sendBookingModifiedEmail(user, booking, { message, previousRoom, previousCheckIn, previousCheckOut }) {
   const name = user.full_name || user.guest_name || 'Guest';
   const room = booking.building_name
