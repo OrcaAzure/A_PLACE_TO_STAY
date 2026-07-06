@@ -4,6 +4,7 @@
 
 const GSAP_URL = 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js';
 const ST_URL   = 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js';
+const SCROLLTO_URL = 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollToPlugin.min.js';
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -100,8 +101,9 @@ function loadScript(src) {
 async function loadGsapWithScrollTrigger() {
   await loadScript(GSAP_URL);
   await loadScript(ST_URL);
-  if (window.gsap?.registerPlugin && window.ScrollTrigger) {
-    window.gsap.registerPlugin(window.ScrollTrigger);
+  await loadScript(SCROLLTO_URL);
+  if (window.gsap?.registerPlugin) {
+    window.gsap.registerPlugin(window.ScrollTrigger, window.ScrollToPlugin);
   }
   return window.gsap;
 }
@@ -357,84 +359,335 @@ function initSmoothAnchors() {
   });
 }
 
+function splitScrollTextLine(line) {
+  if (line.dataset.split === '1') return [];
+
+  const chars = [];
+  const text = line.textContent;
+  line.textContent = '';
+  [...text].forEach((char) => {
+    const span = document.createElement('span');
+    const isSpace = char === ' ' || char === '\u00A0';
+    span.className = `lp-scroll-char${isSpace ? ' lp-scroll-char--space' : ''}`;
+    span.textContent = isSpace ? '\u00A0' : char;
+    if (isSpace) span.setAttribute('aria-hidden', 'true');
+    line.appendChild(span);
+    chars.push(span);
+  });
+
+  const centerIndex = Math.floor(chars.length / 2);
+  chars.forEach((span, index) => {
+    span.dataset.distance = String(index - centerIndex);
+  });
+
+  line.dataset.split = '1';
+  return chars;
+}
+
 function splitScrollTextLines(container) {
   if (container.dataset.split === '1') return;
 
-  const allChars = [];
   container.querySelectorAll('[data-scroll-line]').forEach((line) => {
-    const text = line.textContent;
-    line.textContent = '';
-    [...text].forEach((char) => {
-      const span = document.createElement('span');
-      const isSpace = char === ' ' || char === '\u00A0';
-      span.className = `lp-scroll-char${isSpace ? ' lp-scroll-char--space' : ''}`;
-      span.textContent = isSpace ? '\u00A0' : char;
-      if (isSpace) span.setAttribute('aria-hidden', 'true');
-      line.appendChild(span);
-      allChars.push(span);
-    });
-  });
-
-  const centerIndex = Math.floor(allChars.length / 2);
-  allChars.forEach((span, index) => {
-    span.dataset.distance = String(index - centerIndex);
+    splitScrollTextLine(line);
   });
 
   container.dataset.split = '1';
 }
 
+function smoothStep(t) {
+  const p = Math.min(Math.max(t, 0), 1);
+  return p * p * (3 - 2 * p);
+}
+
+function easeOutCubic(t) {
+  const p = Math.min(Math.max(t, 0), 1);
+  return 1 - (1 - p) ** 3;
+}
+
 function applyScrollCharProgress(chars, progress) {
-  const p = Math.min(Math.max(progress, 0), 1);
+  const p = easeOutCubic(Math.min(Math.max(progress, 0), 1));
+  const spread = (1 - p) * 0.14;
+
   chars.forEach((charEl) => {
     const distance = Number(charEl.dataset.distance) || 0;
-    const spread = 1 - p;
-    const x = distance * 55 * spread;
-    const rotateX = distance * 45 * spread;
-    charEl.style.transform = `translate3d(${x}px, 0, 0) rotateX(${rotateX}deg)`;
+    const x = distance * 10 * spread;
+    const opacity = 0.5 + p * 0.5;
+
+    charEl.style.opacity = String(opacity);
+    charEl.style.transform = x ? `translate3d(${x}px, 0, 0)` : 'none';
   });
 }
 
-function initScrollTextBands(gsap, ScrollTrigger) {
-  const stages = document.querySelectorAll('.lp-scroll-text-stage');
-  if (!stages.length || !ScrollTrigger) return;
+function initScrollShowcase(gsap, ScrollTrigger) {
+  const section = document.querySelector('.lp-scroll-section');
+  const pin = section?.querySelector('.lp-scroll-pin');
+  if (!section || !pin) return;
 
-  const instances = [];
+  const hint = pin.querySelector('.lp-scroll-text-hint');
+  const phrases = [...pin.querySelectorAll('.lp-scroll-phrase')];
+  const bgImages = [...pin.querySelectorAll('.lp-scroll-bg-img')];
+  const rails = section.querySelectorAll('.lp-scroll-rail');
+  const count = phrases.length;
+  if (!count) return;
 
-  stages.forEach((stage) => {
-    const display = stage.querySelector('.lp-scroll-text-display');
-    const hint = stage.querySelector('.lp-scroll-text-hint');
-    if (!display) return;
+  const phraseData = phrases.map((phraseEl) => {
+    const line = phraseEl.querySelector('[data-scroll-line]');
+    const chars = line ? splitScrollTextLine(line) : [];
+    return { el: phraseEl, chars };
+  });
 
-    splitScrollTextLines(display);
-    const chars = [...display.querySelectorAll('.lp-scroll-char')];
-    if (!chars.length) return;
+  function setBackgroundBlend(floatIndex) {
+    const activeIndex = Math.min(Math.floor(floatIndex), count - 1);
+    const nextIndex = Math.min(activeIndex + 1, count - 1);
+    const blend = smoothStep(floatIndex - activeIndex);
 
-    if (prefersReducedMotion()) {
-      applyScrollCharProgress(chars, 1);
-      if (hint) hint.style.display = 'none';
+    bgImages.forEach((img, i) => {
+      let opacity = 0;
+      let scale = 1.06;
+
+      if (count === 1) {
+        opacity = 1;
+        scale = 1;
+      } else if (i === activeIndex) {
+        opacity = nextIndex === activeIndex ? 1 : 1 - blend;
+        scale = 1.05 - blend * 0.025;
+      } else if (i === nextIndex && nextIndex !== activeIndex) {
+        opacity = blend;
+        scale = 1.025 + blend * 0.025;
+      }
+
+      img.style.opacity = String(opacity);
+      img.style.transform = `scale(${scale})`;
+      img.classList.toggle('is-active', opacity > 0.5);
+    });
+  }
+
+  function phraseState(index, progress) {
+    const floatIndex = progress * Math.max(count - 1, 1);
+    const dist = Math.abs(floatIndex - index);
+    if (dist > 0.42) return { assemble: 0, opacity: 0 };
+    const t = 1 - dist / 0.42;
+    const opacity = t * t * t;
+    return { assemble: opacity, opacity };
+  }
+
+  function update(progress) {
+    const p = Math.min(Math.max(progress, 0), 1);
+
+    phraseData.forEach((phrase, i) => {
+      const state = phraseState(i, p);
+      applyScrollCharProgress(phrase.chars, state.assemble);
+      const lift = (1 - state.opacity) * 36;
+      phrase.el.style.opacity = String(state.opacity);
+      phrase.el.style.transform = `translate(-50%, calc(-50% + ${lift}px)) scale(${0.94 + state.opacity * 0.06})`;
+    });
+
+    setBackgroundBlend(p * Math.max(count - 1, 1));
+
+    if (hint) hint.style.opacity = p < 0.05 ? '1' : '0';
+    rails.forEach((rail) => {
+      rail.style.opacity = String(0.35 + Math.min(p * 1.2, 1) * 0.55);
+    });
+  }
+
+  if (prefersReducedMotion() || !ScrollTrigger) {
+    phraseData.forEach((phrase, i) => {
+      applyScrollCharProgress(phrase.chars, i === 0 ? 1 : 0);
+      phrase.el.style.opacity = i === 0 ? '1' : '0';
+    });
+    setBackgroundBlend(0);
+    if (hint) hint.style.display = 'none';
+    return;
+  }
+
+  const SNAP_DURATION = 0.78;
+  const SNAP_EASE = 'expo.inOut';
+  let currentIndex = 0;
+  let isAnimating = false;
+  let wheelLocked = false;
+  let slideTween = null;
+  let settleTween = null;
+  const slideProxy = { p: 0 };
+
+  function setSnapActive(active) {
+    document.body.classList.toggle('lp-scroll-snap-active', active);
+  }
+
+  const st = ScrollTrigger.create({
+    trigger: section,
+    start: 'top top',
+    end: () => `+=${Math.round(window.innerHeight * Math.max(count - 1, 1))}`,
+    pin,
+    pinSpacing: true,
+    anticipatePin: 1,
+    invalidateOnRefresh: true,
+    onToggle: (self) => setSnapActive(self.isActive),
+    onEnter: () => {
+      if (currentIndex !== 0) snapToSlide(0);
+      else finishSnap(0);
+    },
+    onEnterBack: () => {
+      if (currentIndex !== count - 1) snapToSlide(count - 1);
+      else finishSnap(count - 1);
+    },
+    onLeave: () => setSnapActive(false),
+    onLeaveBack: () => setSnapActive(false),
+  });
+
+  function progressForIndex(index) {
+    if (count <= 1) return 0;
+    return index / (count - 1);
+  }
+
+  function scrollYForIndex(index) {
+    return st.start + progressForIndex(index) * (st.end - st.start);
+  }
+
+  function releaseSnapLock() {
+    isAnimating = false;
+    wheelLocked = false;
+  }
+
+  function renderSlide(index) {
+    const p = progressForIndex(index);
+    slideProxy.p = p;
+    update(p);
+  }
+
+  function playSettle(index) {
+    const line = phraseData[index]?.el?.querySelector('.lp-scroll-phrase-line');
+    if (!line) return;
+    settleTween?.kill();
+    gsap.set(line, { scale: 1.05, y: -6 });
+    settleTween = gsap.to(line, {
+      scale: 1,
+      y: 0,
+      duration: 0.48,
+      ease: 'power4.out',
+    });
+  }
+
+  function finishSnap(index) {
+    currentIndex = index;
+    const endP = progressForIndex(index);
+    slideProxy.p = endP;
+    window.scrollTo(0, scrollYForIndex(index));
+    ScrollTrigger.update();
+    update(endP);
+    playSettle(index);
+    releaseSnapLock();
+  }
+
+  function snapToSlide(index, duration = SNAP_DURATION) {
+    if (index < 0 || index >= count) return false;
+    if (isAnimating) return false;
+
+    if (index === currentIndex && duration <= 0.06) {
+      finishSnap(index);
+      return true;
+    }
+
+    if (index === currentIndex) return true;
+
+    slideTween?.kill();
+    settleTween?.kill();
+
+    const startP = progressForIndex(currentIndex);
+    const endP = progressForIndex(index);
+
+    isAnimating = true;
+    wheelLocked = true;
+    slideProxy.p = startP;
+    update(startP);
+
+    if (duration <= 0.06) {
+      finishSnap(index);
+      return true;
+    }
+
+    slideTween = gsap.to(slideProxy, {
+      p: endP,
+      duration,
+      ease: SNAP_EASE,
+      overwrite: true,
+      onUpdate: () => update(slideProxy.p),
+      onComplete: () => finishSnap(index),
+    });
+
+    return true;
+  }
+
+  function lockAndSnap(nextIndex) {
+    if (nextIndex < 0 || nextIndex >= count || isAnimating) return;
+    snapToSlide(nextIndex);
+  }
+
+  function onWheel(e) {
+    if (!st.isActive) return;
+
+    const goingDown = e.deltaY > 0;
+    const atLast = currentIndex >= count - 1;
+    const atFirst = currentIndex <= 0;
+
+    if (isAnimating || wheelLocked) {
+      e.preventDefault();
       return;
     }
 
-    const update = (progress) => {
-      const assemble = Math.min(progress / 0.5, 1);
-      applyScrollCharProgress(chars, assemble);
-      if (hint) hint.style.opacity = assemble > 0.4 ? '0' : '1';
-    };
+    if (goingDown && atLast) return;
+    if (!goingDown && atFirst) return;
 
-    const st = ScrollTrigger.create({
-      trigger: stage,
-      start: 'top top',
-      end: 'bottom bottom',
-      scrub: 0.45,
-      invalidateOnRefresh: true,
-      onUpdate: (self) => update(self.progress),
-    });
+    e.preventDefault();
 
-    update(st.progress);
-    instances.push(st);
-  });
+    if (Math.abs(e.deltaY) < 4) return;
 
-  return instances;
+    lockAndSnap(currentIndex + (goingDown ? 1 : -1));
+  }
+
+  let touchStartY = 0;
+  let touchStartX = 0;
+
+  function onTouchStart(e) {
+    if (!st.isActive) return;
+    touchStartY = e.touches[0].clientY;
+    touchStartX = e.touches[0].clientX;
+  }
+
+  function onTouchEnd(e) {
+    if (!st.isActive || isAnimating || wheelLocked) return;
+
+    const dy = touchStartY - e.changedTouches[0].clientY;
+    const dx = touchStartX - e.changedTouches[0].clientX;
+    if (Math.abs(dy) < 40 || Math.abs(dy) < Math.abs(dx)) return;
+
+    if (dy > 0 && currentIndex < count - 1) lockAndSnap(currentIndex + 1);
+    else if (dy < 0 && currentIndex > 0) lockAndSnap(currentIndex - 1);
+  }
+
+  function onKeyDown(e) {
+    if (!st.isActive || isAnimating || wheelLocked) return;
+    if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+      if (currentIndex < count - 1) {
+        e.preventDefault();
+        lockAndSnap(currentIndex + 1);
+      }
+    } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+      if (currentIndex > 0) {
+        e.preventDefault();
+        lockAndSnap(currentIndex - 1);
+      }
+    }
+  }
+
+  window.addEventListener('wheel', onWheel, { passive: false });
+  pin.addEventListener('touchstart', onTouchStart, { passive: true });
+  pin.addEventListener('touchend', onTouchEnd, { passive: true });
+  window.addEventListener('keydown', onKeyDown);
+
+  renderSlide(0);
+
+  window.addEventListener('resize', () => ScrollTrigger.refresh(), { passive: true });
+  return st;
 }
 
 function animateCounters(gsap) {
@@ -542,6 +795,24 @@ function animateCountersHandoff(gsap) {
 }
 
 let landingPageInitialized = false;
+let scrollShowcaseMounted = false;
+
+function mountScrollShowcase(gsap, ScrollTrigger) {
+  if (scrollShowcaseMounted) return;
+  scrollShowcaseMounted = true;
+  initScrollShowcase(gsap, ScrollTrigger);
+  ScrollTrigger?.refresh();
+  window.addEventListener('load', () => ScrollTrigger?.refresh(), { once: true });
+}
+
+function buildLandingReveal(startHeroHandoff, finalize) {
+  return () => {
+    if (typeof startHeroHandoff === 'function') startHeroHandoff();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(finalize);
+    });
+  };
+}
 
 export async function initLandingPage(options = {}) {
   if (landingPageInitialized) return;
@@ -563,14 +834,11 @@ export async function initLandingPage(options = {}) {
   });
 
   if (prefersReducedMotion()) {
-    document.querySelectorAll('.lp-scroll-text-display').forEach((display) => {
-      splitScrollTextLines(display);
-      applyScrollCharProgress([...display.querySelectorAll('.lp-scroll-char')], 1);
+    return buildLandingReveal(null, () => {
+      mountScrollShowcase(null, null);
+      setCountersStatic();
+      revealStatic();
     });
-    document.querySelectorAll('.lp-scroll-text-hint').forEach((h) => { h.style.display = 'none'; });
-    setCountersStatic();
-    revealStatic();
-    return;
   }
 
   let revealTimer = null;
@@ -582,12 +850,10 @@ export async function initLandingPage(options = {}) {
   try {
     gsap = await loadGsapWithScrollTrigger();
   } catch {
-    document.querySelectorAll('.lp-scroll-text-display').forEach((display) => {
-      splitScrollTextLines(display);
-      applyScrollCharProgress([...display.querySelectorAll('.lp-scroll-char')], 1);
+    return buildLandingReveal(null, () => {
+      mountScrollShowcase(null, null);
+      revealStatic();
     });
-    revealStatic();
-    return;
   }
 
   const ST = window.ScrollTrigger;
@@ -752,9 +1018,7 @@ export async function initLandingPage(options = {}) {
     });
   });
 
-  initScrollTextBands(gsap, ST);
-
-  ST?.refresh();
-
-  return startHeroHandoff;
+  return buildLandingReveal(startHeroHandoff, () => {
+    mountScrollShowcase(gsap, ST);
+  });
 }

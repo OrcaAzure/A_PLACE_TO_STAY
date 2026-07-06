@@ -218,6 +218,7 @@ body:not(.lp-ready) #lp-page .lp-mobile-cta a[href*="login"] {
 html.scroll-smooth,
 body.lp-shell {
   scroll-padding-top: calc(4.25rem + env(safe-area-inset-top, 0px));
+  scroll-snap-type: y proximity;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
@@ -239,6 +240,8 @@ body.lp-shell::-webkit-scrollbar {
   height: 100dvh;
   display: flex;
   flex-direction: column;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
 }
 
 .lp-hero > .relative.z-10,
@@ -286,101 +289,177 @@ body.lp-shell::-webkit-scrollbar {
   display: none;
 }
 
-/* Scroll-assemble text bands (below hero) */
-.lp-scroll-text-band {
+/* Full-viewport scroll showcase — chapel / garden / rooms + synced photos */
+.lp-scroll-section {
   position: relative;
+  min-height: 100dvh;
+  overflow: visible;
+  background: #1a365d;
+  overscroll-behavior: none;
 }
 
-.lp-scroll-text-band--light {
-  margin-top: -2px;
-  background: var(--lp-section-light);
-  border-top: none;
-  border-bottom: none;
+body.lp-scroll-snap-active {
+  overscroll-behavior-y: none;
 }
 
-.lp-scroll-text-band--dark {
-  background: linear-gradient(145deg, #1a365d 0%, #2c5282 100%);
-}
-
-.lp-scroll-text-stage {
+.lp-scroll-pin {
   position: relative;
-  height: 200vh;
-}
-
-.lp-scroll-text-pin {
-  position: sticky;
-  top: calc(4.25rem + env(safe-area-inset-top, 0px));
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: calc(100vh - 4.25rem - env(safe-area-inset-top, 0px));
-  height: calc(100dvh - 4.25rem - env(safe-area-inset-top, 0px));
-  padding: 2rem max(1rem, env(safe-area-inset-left, 0px));
-  text-align: center;
-  perspective: 600px;
-  perspective-origin: 50% 50%;
+  transform: translateZ(0);
+}
+
+.lp-scroll-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.lp-scroll-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0;
+  transform: scale(1.06);
+  will-change: opacity, transform;
+}
+
+.lp-scroll-bg-img.is-active {
+  opacity: 1;
+}
+
+.lp-scroll-bg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(118deg, rgba(26, 54, 93, 0.72) 0%, rgba(26, 54, 93, 0.42) 42%, rgba(26, 54, 93, 0.28) 100%),
+    linear-gradient(to bottom, rgba(26, 54, 93, 0.15) 0%, rgba(26, 54, 93, 0.35) 100%);
+  pointer-events: none;
+}
+
+.lp-scroll-rail {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+  pointer-events: none;
+  user-select: none;
+}
+
+.lp-scroll-rail--left {
+  left: max(1.5rem, env(safe-area-inset-left, 0px));
+  transform: translateY(-50%);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.lp-scroll-rail--right {
+  right: max(1.5rem, env(safe-area-inset-right, 0px));
+  transform: translateY(-50%) rotate(180deg);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.lp-scroll-rail::after {
+  content: '';
+  display: block;
+  width: 1px;
+  height: 3.5rem;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.45), transparent);
 }
 
 .lp-scroll-text-hint {
-  margin: 0 0 1.25rem;
+  position: absolute;
+  top: clamp(1.5rem, 4vh, 2.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  margin: 0;
   font-size: 0.625rem;
-  letter-spacing: 0.22em;
+  font-weight: 600;
+  letter-spacing: 0.38em;
   text-transform: uppercase;
-  color: rgba(26, 54, 93, 0.38);
+  color: rgba(255, 255, 255, 0.45);
   transition: opacity 0.25s ease;
-}
-
-.lp-scroll-text-band--dark .lp-scroll-text-hint {
-  color: rgba(255, 255, 255, 0.38);
 }
 
 .lp-scroll-text-hint::after {
   content: '';
   display: block;
   width: 1px;
-  height: 2.5rem;
+  height: 2.25rem;
   margin: 0.75rem auto 0;
-  background: linear-gradient(to bottom, rgba(26, 54, 93, 0.28), transparent);
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.4), transparent);
 }
 
-.lp-scroll-text-band--dark .lp-scroll-text-hint::after {
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.35), transparent);
+.lp-scroll-phrases {
+  position: relative;
+  z-index: 3;
+  width: min(92vw, 56rem);
+  min-height: clamp(4rem, 12vh, 6rem);
+  perspective: 800px;
+  text-align: center;
 }
 
-.lp-scroll-text-display {
+.lp-scroll-phrase {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
   margin: 0;
-  font-size: clamp(2rem, 6vw, 3.75rem);
-  font-weight: 700;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
-  text-transform: uppercase;
-  color: #1a365d;
-  transform-style: preserve-3d;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  will-change: opacity, transform;
   backface-visibility: hidden;
 }
 
-.lp-scroll-text-band--dark .lp-scroll-text-display {
-  color: #fff;
+.lp-scroll-phrase[data-scroll-phrase="0"] {
+  opacity: 1;
 }
 
-.lp-scroll-text-line {
+.lp-scroll-phrase-line {
+  display: block;
+  font-size: clamp(2.5rem, 9vw, 5rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+  text-transform: capitalize;
+  color: #fff;
+  text-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   transform-style: preserve-3d;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+.lp-scroll-phrase-line--accent .lp-scroll-char {
+  color: #f6ad55;
 }
 
 .lp-scroll-char {
   display: inline-block;
   transform-style: preserve-3d;
   transform-origin: 50% 50%;
-  will-change: transform;
+  will-change: transform, opacity;
 }
 
 .lp-scroll-char--space {
-  width: 0.35em;
-}
-
-.lp-scroll-text-accent .lp-scroll-char {
-  color: #f6ad55;
+  width: 0.3em;
 }
 
 .lp-hero-bg-wrap {
@@ -1288,20 +1367,12 @@ body.lp-shell::-webkit-scrollbar {
     margin-bottom: 1rem;
   }
 
-  .lp-scroll-text-stage {
-    height: 175vh;
+  .lp-scroll-rail {
+    display: none;
   }
 
-  .lp-scroll-text-pin {
-    height: calc(100vh - 3.75rem - env(safe-area-inset-top, 0px));
-    height: calc(100dvh - 3.75rem - env(safe-area-inset-top, 0px));
-    top: calc(3.75rem + env(safe-area-inset-top, 0px));
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-  }
-
-  .lp-scroll-text-display {
-    font-size: clamp(1.65rem, 8vw, 2.5rem);
+  .lp-scroll-phrase-line {
+    font-size: clamp(2rem, 11vw, 2.75rem);
   }
 
   .lp-hero-sub {
