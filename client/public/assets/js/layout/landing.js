@@ -358,7 +358,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   const hint = pin.querySelector('.lp-scroll-text-hint');
   const phrases = [...pin.querySelectorAll('.lp-scroll-phrase')];
   const bgImages = [...pin.querySelectorAll('.lp-scroll-bg-img')];
-  const rails = section.querySelectorAll('.lp-scroll-rail');
+  const rails = pin.querySelectorAll('.lp-scroll-rail');
   const count = phrases.length;
   if (!count) return;
 
@@ -368,81 +368,181 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return { el: phraseEl, chars };
   });
 
-  function setBackgroundBlend(floatIndex) {
-    const activeIndex = Math.min(Math.floor(floatIndex), count - 1);
-    const nextIndex = Math.min(activeIndex + 1, count - 1);
-    const blend = smoothStep(floatIndex - activeIndex);
-
-    bgImages.forEach((img, i) => {
-      let opacity = 0;
-      let scale = 1.06;
-
-      if (count === 1) {
-        opacity = 1;
-        scale = 1;
-      } else if (i === activeIndex) {
-        opacity = nextIndex === activeIndex ? 1 : 1 - blend;
-        scale = 1.05 - blend * 0.025;
-      } else if (i === nextIndex && nextIndex !== activeIndex) {
-        opacity = blend;
-        scale = 1.025 + blend * 0.025;
-      }
-
-      img.style.opacity = String(opacity);
-      img.style.transform = `scale(${scale})`;
-      img.classList.toggle('is-active', opacity > 0.5);
-    });
-  }
-
-  function phraseState(index, progress) {
-    const floatIndex = progress * Math.max(count - 1, 1);
-    const dist = Math.abs(floatIndex - index);
-    if (dist > 0.42) return { assemble: 0, opacity: 0 };
-    const t = 1 - dist / 0.42;
-    const opacity = t * t * t;
-    return { assemble: opacity, opacity };
-  }
-
-  function update(progress) {
-    const p = Math.min(Math.max(progress, 0), 1);
+  function showSlide(index, { animateChars = false } = {}) {
+    const idx = Math.min(count - 1, Math.max(0, index));
 
     phraseData.forEach((phrase, i) => {
-      const state = phraseState(i, p);
-      applyScrollCharProgress(phrase.chars, state.assemble);
-      const lift = (1 - state.opacity) * 36;
-      phrase.el.style.opacity = String(state.opacity);
-      phrase.el.style.transform = `translate(-50%, calc(-50% + ${lift}px)) scale(${0.94 + state.opacity * 0.06})`;
+      const on = i === idx;
+      gsap.set(phrase.el, {
+        opacity: on ? 1 : 0,
+        xPercent: -50,
+        yPercent: -50,
+        y: on ? 0 : 24,
+        scale: on ? 1 : 0.96,
+        pointerEvents: on ? 'auto' : 'none',
+      });
+      applyScrollCharProgress(phrase.chars, on ? 1 : 0);
     });
 
-    setBackgroundBlend(p * Math.max(count - 1, 1));
+    bgImages.forEach((img, i) => {
+      const on = i === idx;
+      gsap.set(img, {
+        opacity: on ? 1 : 0,
+        scale: on ? 1 : 1.05,
+      });
+      img.classList.toggle('is-active', on);
+    });
 
-    if (hint) hint.style.opacity = p < 0.05 ? '1' : '0';
+    if (hint) hint.style.opacity = idx === 0 ? '1' : '0';
     rails.forEach((rail) => {
-      rail.style.opacity = String(0.35 + Math.min(p * 1.2, 1) * 0.55);
+      rail.style.opacity = '0.55';
     });
+
+    if (animateChars && phraseData[idx]?.chars.length) {
+      applyScrollCharProgress(phraseData[idx].chars, 0);
+      const proxy = { p: 0 };
+      gsap.to(proxy, {
+        p: 1,
+        duration: 0.45,
+        ease: 'power2.out',
+        onUpdate: () => applyScrollCharProgress(phraseData[idx].chars, proxy.p),
+      });
+    }
+
+    return idx;
   }
 
   if (prefersReducedMotion() || !ScrollTrigger) {
-    phraseData.forEach((phrase, i) => {
-      applyScrollCharProgress(phrase.chars, i === 0 ? 1 : 0);
-      phrase.el.style.opacity = i === 0 ? '1' : '0';
-    });
-    setBackgroundBlend(0);
+    showSlide(0);
     if (hint) hint.style.display = 'none';
     return;
   }
 
-  const SNAP_DURATION = 0.78;
-  const SNAP_EASE = 'expo.inOut';
+  const SNAP_MS = 0.65;
+  const WHEEL_STEP = 32;
+  const WHEEL_RESET_MS = 140;
+
   let currentIndex = 0;
   let isAnimating = false;
-  let wheelLocked = false;
-  let slideTween = null;
-  let settleTween = null;
-  const slideProxy = { p: 0 };
+  let activeTween = null;
+  let wheelAccum = 0;
+  let wheelTimer = null;
 
   function setSnapActive(active) {
     document.body.classList.toggle('lp-scroll-snap-active', active);
+    document.documentElement.classList.toggle('lp-scroll-snap-active', active);
+  }
+
+  function progressToIndex(progress) {
+    if (count <= 1) return 0;
+    return Math.min(count - 1, Math.max(0, Math.round(progress * (count - 1))));
+  }
+
+  function scrollYForIndex(index) {
+    if (count <= 1) return st.start;
+    return st.start + (index / (count - 1)) * (st.end - st.start);
+  }
+
+  function playSettle(index) {
+    const line = phraseData[index]?.el?.querySelector('.lp-scroll-phrase-line');
+    if (!line) return;
+    gsap.fromTo(line,
+      { scale: 1.03, y: -3 },
+      { scale: 1, y: 0, duration: 0.32, ease: 'power3.out' });
+  }
+
+  function crossfadeToSlide(fromIdx, toIdx) {
+    const dur = SNAP_MS;
+    const tl = gsap.timeline();
+
+    if (fromIdx !== toIdx && bgImages[fromIdx]) {
+      tl.to(bgImages[fromIdx], { opacity: 0, scale: 1.04, duration: dur * 0.45, ease: 'power2.in' }, 0);
+    }
+    if (bgImages[toIdx]) {
+      tl.fromTo(bgImages[toIdx],
+        { opacity: 0, scale: 1.06 },
+        { opacity: 1, scale: 1, duration: dur * 0.7, ease: 'power2.out' },
+        dur * 0.12);
+      bgImages.forEach((img, i) => img.classList.toggle('is-active', i === toIdx));
+    }
+
+    phraseData.forEach((phrase, i) => {
+      if (i === fromIdx && fromIdx !== toIdx) {
+        tl.to(phrase.el, { opacity: 0, y: -16, scale: 0.98, duration: dur * 0.35, ease: 'power2.in' }, 0);
+      }
+    });
+
+    const incoming = phraseData[toIdx];
+    if (incoming) {
+      gsap.set(incoming.el, { opacity: 0, xPercent: -50, yPercent: -50, y: 28, scale: 0.96 });
+      tl.to(incoming.el, { opacity: 1, y: 0, scale: 1, duration: dur * 0.62, ease: 'power3.out' }, dur * 0.18);
+      tl.call(() => {
+        applyScrollCharProgress(incoming.chars, 0);
+        const proxy = { p: 0 };
+        gsap.to(proxy, {
+          p: 1,
+          duration: 0.42,
+          ease: 'power2.out',
+          onUpdate: () => applyScrollCharProgress(incoming.chars, proxy.p),
+        });
+      }, null, dur * 0.22);
+    }
+
+    if (hint) tl.to(hint, { opacity: toIdx === 0 ? 1 : 0, duration: 0.2 }, 0);
+    return tl;
+  }
+
+  function normalizeWheelDelta(e) {
+    let delta = e.deltaY;
+    if (e.deltaMode === 1) delta *= 16;
+    else if (e.deltaMode === 2) delta *= window.innerHeight;
+    return delta;
+  }
+
+  function resetWheelAccum() {
+    wheelAccum = 0;
+    if (wheelTimer) {
+      window.clearTimeout(wheelTimer);
+      wheelTimer = null;
+    }
+  }
+
+  function scheduleWheelReset() {
+    if (wheelTimer) window.clearTimeout(wheelTimer);
+    wheelTimer = window.setTimeout(resetWheelAccum, WHEEL_RESET_MS);
+  }
+
+  function goToSlide(nextIndex) {
+    if (nextIndex < 0 || nextIndex >= count || isAnimating) return false;
+    if (nextIndex === currentIndex) return true;
+
+    activeTween?.kill();
+    isAnimating = true;
+    resetWheelAccum();
+
+    const fromIdx = currentIndex;
+    const targetY = scrollYForIndex(nextIndex);
+    currentIndex = nextIndex;
+
+    activeTween = gsap.timeline({
+      onComplete: () => {
+        window.scrollTo(0, targetY);
+        ScrollTrigger.update();
+        showSlide(nextIndex);
+        playSettle(nextIndex);
+        isAnimating = false;
+        activeTween = null;
+      },
+    });
+
+    activeTween.add(crossfadeToSlide(fromIdx, nextIndex), 0);
+    activeTween.to(window, {
+      scrollTo: { y: targetY, autoKill: false },
+      duration: SNAP_MS,
+      ease: 'power3.inOut',
+    }, 0);
+
+    return true;
   }
 
   const st = ScrollTrigger.create({
@@ -454,126 +554,57 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     anticipatePin: 1,
     invalidateOnRefresh: true,
     onToggle: (self) => setSnapActive(self.isActive),
-    onEnter: () => {
-      if (currentIndex !== 0) snapToSlide(0);
-      else finishSnap(0);
+    onEnter(self) {
+      resetWheelAccum();
+      if (!isAnimating) {
+        currentIndex = showSlide(progressToIndex(self.progress));
+      }
     },
-    onEnterBack: () => {
-      if (currentIndex !== count - 1) snapToSlide(count - 1);
-      else finishSnap(count - 1);
+    onEnterBack(self) {
+      resetWheelAccum();
+      if (!isAnimating) {
+        currentIndex = showSlide(progressToIndex(self.progress));
+      }
     },
-    onLeave: () => setSnapActive(false),
-    onLeaveBack: () => setSnapActive(false),
+    onLeave: () => {
+      activeTween?.kill();
+      isAnimating = false;
+      resetWheelAccum();
+    },
+    onLeaveBack: () => {
+      activeTween?.kill();
+      isAnimating = false;
+      resetWheelAccum();
+    },
   });
-
-  function progressForIndex(index) {
-    if (count <= 1) return 0;
-    return index / (count - 1);
-  }
-
-  function scrollYForIndex(index) {
-    return st.start + progressForIndex(index) * (st.end - st.start);
-  }
-
-  function releaseSnapLock() {
-    isAnimating = false;
-    wheelLocked = false;
-  }
-
-  function renderSlide(index) {
-    const p = progressForIndex(index);
-    slideProxy.p = p;
-    update(p);
-  }
-
-  function playSettle(index) {
-    const line = phraseData[index]?.el?.querySelector('.lp-scroll-phrase-line');
-    if (!line) return;
-    settleTween?.kill();
-    gsap.set(line, { scale: 1.05, y: -6 });
-    settleTween = gsap.to(line, {
-      scale: 1,
-      y: 0,
-      duration: 0.48,
-      ease: 'power4.out',
-    });
-  }
-
-  function finishSnap(index) {
-    currentIndex = index;
-    const endP = progressForIndex(index);
-    slideProxy.p = endP;
-    window.scrollTo(0, scrollYForIndex(index));
-    ScrollTrigger.update();
-    update(endP);
-    playSettle(index);
-    releaseSnapLock();
-  }
-
-  function snapToSlide(index, duration = SNAP_DURATION) {
-    if (index < 0 || index >= count) return false;
-    if (isAnimating) return false;
-
-    if (index === currentIndex && duration <= 0.06) {
-      finishSnap(index);
-      return true;
-    }
-
-    if (index === currentIndex) return true;
-
-    slideTween?.kill();
-    settleTween?.kill();
-
-    const startP = progressForIndex(currentIndex);
-    const endP = progressForIndex(index);
-
-    isAnimating = true;
-    wheelLocked = true;
-    slideProxy.p = startP;
-    update(startP);
-
-    if (duration <= 0.06) {
-      finishSnap(index);
-      return true;
-    }
-
-    slideTween = gsap.to(slideProxy, {
-      p: endP,
-      duration,
-      ease: SNAP_EASE,
-      overwrite: true,
-      onUpdate: () => update(slideProxy.p),
-      onComplete: () => finishSnap(index),
-    });
-
-    return true;
-  }
-
-  function lockAndSnap(nextIndex) {
-    if (nextIndex < 0 || nextIndex >= count || isAnimating) return;
-    snapToSlide(nextIndex);
-  }
 
   function onWheel(e) {
     if (!st.isActive) return;
 
-    const goingDown = e.deltaY > 0;
+    const delta = normalizeWheelDelta(e);
+    if (!delta) return;
+
+    const goingDown = delta > 0;
     const atLast = currentIndex >= count - 1;
     const atFirst = currentIndex <= 0;
 
-    if (isAnimating || wheelLocked) {
+    if (isAnimating) {
       e.preventDefault();
       return;
     }
 
+    // Let native scroll leave the section at first/last slide
     if (goingDown && atLast) return;
     if (!goingDown && atFirst) return;
 
     e.preventDefault();
+    wheelAccum += delta;
+    scheduleWheelReset();
+    if (Math.abs(wheelAccum) < WHEEL_STEP) return;
 
-    if (Math.abs(e.deltaY) < 4) return;
-
-    lockAndSnap(currentIndex + (goingDown ? 1 : -1));
+    const direction = wheelAccum > 0 ? 1 : -1;
+    resetWheelAccum();
+    goToSlide(currentIndex + direction);
   }
 
   let touchStartY = 0;
@@ -586,39 +617,40 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   }
 
   function onTouchEnd(e) {
-    if (!st.isActive || isAnimating || wheelLocked) return;
-
+    if (!st.isActive || isAnimating) return;
     const dy = touchStartY - e.changedTouches[0].clientY;
     const dx = touchStartX - e.changedTouches[0].clientX;
-    if (Math.abs(dy) < 40 || Math.abs(dy) < Math.abs(dx)) return;
+    if (Math.abs(dy) < 44 || Math.abs(dy) < Math.abs(dx)) return;
 
-    if (dy > 0 && currentIndex < count - 1) lockAndSnap(currentIndex + 1);
-    else if (dy < 0 && currentIndex > 0) lockAndSnap(currentIndex - 1);
+    if (dy > 0 && currentIndex < count - 1) goToSlide(currentIndex + 1);
+    else if (dy < 0 && currentIndex > 0) goToSlide(currentIndex - 1);
   }
 
   function onKeyDown(e) {
-    if (!st.isActive || isAnimating || wheelLocked) return;
+    if (!st.isActive || isAnimating) return;
     if (e.key === 'ArrowDown' || e.key === 'PageDown') {
-      if (currentIndex < count - 1) {
-        e.preventDefault();
-        lockAndSnap(currentIndex + 1);
-      }
+      e.preventDefault();
+      if (currentIndex < count - 1) goToSlide(currentIndex + 1);
     } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
-      if (currentIndex > 0) {
-        e.preventDefault();
-        lockAndSnap(currentIndex - 1);
-      }
+      e.preventDefault();
+      if (currentIndex > 0) goToSlide(currentIndex - 1);
     }
   }
 
-  window.addEventListener('wheel', onWheel, { passive: false });
+  window.addEventListener('wheel', onWheel, { passive: false, capture: true });
   pin.addEventListener('touchstart', onTouchStart, { passive: true });
   pin.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('keydown', onKeyDown);
 
-  renderSlide(0);
+  currentIndex = showSlide(0);
 
-  window.addEventListener('resize', () => ScrollTrigger.refresh(), { passive: true });
+  window.addEventListener('resize', () => {
+    ScrollTrigger.refresh();
+    if (st.isActive && !isAnimating) {
+      window.scrollTo(0, scrollYForIndex(currentIndex));
+    }
+  }, { passive: true });
+
   return st;
 }
 
