@@ -39,6 +39,38 @@ body.guest-shell {
   border-color: rgba(203, 213, 224, 0.5);
 }
 
+.guest-top-nav .lp-nav-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 0.75rem;
+}
+
+.guest-top-nav .lp-nav-brand {
+  justify-self: start;
+}
+
+.guest-top-nav .guest-top-nav-links {
+  justify-self: center;
+}
+
+.guest-top-nav .guest-top-nav-actions {
+  justify-self: end;
+  margin-left: 0;
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .guest-top-nav .lp-nav-inner {
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .guest-top-nav .guest-top-nav-actions {
+    margin-left: auto;
+  }
+}
+
 .guest-user-dropdown {
   background: #ffffff !important;
   border-color: rgba(203, 213, 224, 0.45) !important;

@@ -83,6 +83,7 @@ header.lp-nav {
   font-weight: 500;
   color: #4a5568;
   white-space: nowrap;
+  text-decoration: none;
   transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
 }
 

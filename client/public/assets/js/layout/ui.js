@@ -364,10 +364,8 @@ function renderGuestBottomNav(items, active) {
 }
 
 function guestTopNavLinkClass(isActive) {
-  const base = 'text-label-md transition-colors no-underline';
-  return isActive
-    ? `${base} text-primary font-semibold`
-    : `${base} text-on-surface-variant hover:text-primary`;
+  const base = 'lp-nav-link';
+  return isActive ? `${base} is-active` : base;
 }
 
 function guestMobileNavLinkClass(isActive) {
@@ -382,10 +380,8 @@ function renderGuestTopNavLinks(items, active) {
 }
 
 function guestPortalNavLinkClass(active) {
-  const base = 'text-label-md transition-colors no-underline';
-  return active
-    ? `${base} text-primary font-semibold`
-    : `${base} text-on-surface-variant hover:text-primary`;
+  const base = 'lp-nav-link';
+  return active ? `${base} is-active` : base;
 }
 
 function renderGuestPortalNavLinks(activePage) {
@@ -412,21 +408,6 @@ function renderGuestMobileNavLinks(activePage) {
     return `<a class="${cls}" href="${item.href}" aria-current="${activePage === item.id ? 'page' : 'false'}"><span class="material-symbols-outlined text-[20px] text-primary/80">${item.icon}</span>${item.label}</a>`;
   }).join('');
 }
-
-const GUEST_LANDING_SEARCH_DESKTOP = `
-        <label class="lp-nav-search group flex items-center gap-2 bg-surface-container-low/80 px-3.5 py-2 rounded-full border border-outline-variant/40 min-w-0 w-[12.5rem] focus-within:border-primary/40 focus-within:ring-2 focus-within:ring-primary/15 transition-all">
-          <span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0 group-focus-within:text-primary transition-colors">search</span>
-          <input id="landing-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0 placeholder:text-on-surface-variant/70" placeholder="Search…" type="search" aria-label="Search facilities"/>
-        </label>`;
-
-const GUEST_LANDING_SEARCH_MOBILE = `
-      <div class="pt-3 mt-2 border-t border-outline-variant/30">
-        <label class="text-label-sm text-on-surface-variant block mb-2 px-1" for="landing-search-mobile">Search facilities</label>
-        <div class="lp-nav-search flex items-center gap-2 bg-surface-container-low px-3 py-2.5 rounded-xl border border-outline-variant/40">
-          <span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">search</span>
-          <input id="landing-search-mobile" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0" placeholder="Chapel, GMC, basketball…" type="search"/>
-        </div>
-      </div>`;
 
 const GUEST_SECTION_SCROLLER = `
 <nav class="lp-section-scroller hidden xl:block" aria-label="Page sections">
@@ -481,8 +462,6 @@ function buildGuestShell({
     .replace(/\{\{BRAND_HREF\}\}/g, homeHref)
     .replace(/\{\{HOME_HREF\}\}/g, homeHref)
     .replace(/\{\{NAV_MODIFIER_CLASSES\}\}/g, 'lp-nav-is-visible')
-    .replace(/\{\{LANDING_SEARCH_DESKTOP\}\}/g, landingHome ? GUEST_LANDING_SEARCH_DESKTOP : '')
-    .replace(/\{\{LANDING_SEARCH_MOBILE\}\}/g, landingHome ? GUEST_LANDING_SEARCH_MOBILE : '')
     .replace(/\{\{PORTAL_NAV_LINKS\}\}/g, renderGuestPortalNavLinks(activePage))
     .replace(/\{\{MOBILE_NAV_LINKS\}\}/g, renderGuestMobileNavLinks(activePage))
     .replace(/\{\{USER_NAME\}\}/g, userName)
