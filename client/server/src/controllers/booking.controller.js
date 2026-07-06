@@ -18,7 +18,8 @@ import {
   resolveSeason,
 } from '../services/booking.service.js';
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
-import { assertCanCancelRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
+import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
+import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from '../services/ancillary.service.js';
 import { getInvoiceSnapshot, ensureInvoiceForBooking } from '../services/payment.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
@@ -204,21 +205,89 @@ export const updateBooking = async (req, res) => {
     }
 
     if (!isAdmin) {
-      const { status } = req.body;
-      if (status !== 'Cancelled') {
-        return res.status(403).json({ message: 'You can only cancel your own pending bookings' });
+      const cutoffHours = await getGuestCancellationCutoffHours();
+
+      if (req.body.status === 'Cancelled') {
+        const cancelError = assertCanCancelRoomBooking({
+          status: existing.status,
+          check_in: existing.check_in,
+          check_out: existing.check_out,
+          isAdmin: false,
+          cutoffHours,
+        });
+        if (cancelError) return res.status(400).json({ message: cancelError });
+        await pool.query('UPDATE bookings_rooms SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
+        const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
+        return res.status(200).json({ message: 'Booking cancelled', booking: await enrichBooking(rows[0]) });
       }
-      const cancelError = assertCanCancelRoomBooking({
+
+      const modifyError = assertCanModifyRoomBooking({
         status: existing.status,
         check_in: existing.check_in,
         check_out: existing.check_out,
         isAdmin: false,
-        cutoffHours: await getGuestCancellationCutoffHours(),
+        cutoffHours,
       });
-      if (cancelError) return res.status(400).json({ message: cancelError });
-      await pool.query('UPDATE bookings_rooms SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
+      if (modifyError) return res.status(400).json({ message: modifyError });
+
+      const wasApproved = existing.status === 'Approved';
+      const { modification_message } = req.body;
+      if (wasApproved && !String(modification_message || '').trim()) {
+        return res.status(400).json({ message: 'Please explain what you want changed.' });
+      }
+
+      const validated = await validateBookingUpdate(existing, req.body, false);
+      const { check_in, check_out, guest_count, notes, contact_phone, room_id, meals, fees, meal_allergen_notes } = req.body;
+      const mealRates = await getMealRates();
+      let feesToSave = fees;
+      if (fees != null) {
+        const catalogRows = await fetchExtraServiceRows();
+        const existingFees = await getBookingFees(req.params.id);
+        feesToSave = sanitizeGuestSubmittedFees(fees, catalogRows, existingFees);
+      }
+      const grandTotal = meals != null || feesToSave != null
+        ? await computeGrandTotal({ roomTotal: validated.totalAmount, meals, fees: feesToSave, mealRates })
+        : validated.totalAmount;
+
+      const nextStatus = wasApproved ? 'Pending' : 'Pending';
+      const modNote = wasApproved
+        ? `[Modification requested] ${String(modification_message).trim()}`
+        : (modification_message?.trim() ? `[Updated by guest] ${modification_message.trim()}` : '');
+      const clientNotes = notes != null ? notes : existing.notes;
+      const combinedNotes = modNote
+        ? [clientNotes, modNote].filter((n) => n != null && String(n).trim()).join('\n')
+        : clientNotes;
+
+      await pool.query(
+        `UPDATE bookings_rooms SET
+          room_id = COALESCE(?, room_id),
+          check_in = COALESCE(?, check_in),
+          check_out = COALESCE(?, check_out),
+          guest_count = COALESCE(?, guest_count),
+          status = ?,
+          season = ?, occupancy_item = ?,
+          notes = ?,
+          contact_phone = COALESCE(?, contact_phone),
+          meal_allergen_notes = COALESCE(?, meal_allergen_notes),
+          total_amount = ?
+        WHERE id = ?`,
+        [
+          room_id ?? validated.roomId,
+          check_in, check_out, guest_count, nextStatus,
+          validated.season, validated.occupancyItem,
+          combinedNotes, contact_phone, meal_allergen_notes, grandTotal,
+          req.params.id,
+        ]
+      );
+
+      if (meals != null) await saveBookingMeals(req.params.id, meals, mealRates);
+      if (feesToSave != null) await saveBookingFees(req.params.id, feesToSave);
+
       const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
-      return res.status(200).json({ message: 'Booking cancelled', booking: await enrichBooking(rows[0]) });
+      return res.status(200).json({
+        message: wasApproved ? 'Modification request submitted' : 'Booking updated',
+        booking: await enrichBooking(rows[0]),
+      });
     }
 
     if (req.body.status === 'Cancelled') {

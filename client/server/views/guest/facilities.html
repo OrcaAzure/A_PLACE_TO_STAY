@@ -680,12 +680,14 @@
     let reserveBtn;
     if (readOnly) {
       reserveBtn = `<div class="mt-auto w-full py-3 text-center bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">visibility</span>View only</div>`;
-    } else if (st.bookable) {
+    } else if (st.bookable && stayMatchesLastSearch()) {
       const checkIn = checkInEl.value;
       const checkOut = checkOutEl.value;
       const guests = guestsEl.value || '1';
       const href = buildBookReservationUrl({ roomId: room.id, checkIn, checkOut, guests });
       reserveBtn = `<a href="${href}" class="mt-auto block text-center w-full py-3 bg-primary text-white rounded-xl font-bold text-label-md hover:brightness-110 transition-all shadow-md active:scale-95 no-underline">Reserve</a>`;
+    } else if (st.bookable && !stayMatchesLastSearch()) {
+      reserveBtn = `<button type="button" class="mt-auto w-full py-3 bg-amber-50 text-amber-900 border border-amber-200 rounded-xl font-bold text-label-md cursor-pointer" data-refresh-stay-search>Update search to reserve</button>`;
     } else {
       reserveBtn = `<button disabled class="mt-auto w-full py-3 bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md cursor-not-allowed">${st.label}</button>`;
     }
@@ -872,6 +874,7 @@
   guestsEl.addEventListener('input', () => {
     persistStayCriteria();
     updateStayFormState();
+    onStayCriteriaChange();
   });
   guestsEl.addEventListener('change', onStayCriteriaChange);
   checkInEl.min = todayStr;
@@ -900,6 +903,11 @@
     const btn = e.target.closest('button[data-category]');
     if (!btn) return;
     setSelectedCategory(btn.dataset.category, { scroll: true });
+  });
+  document.getElementById('rooms-mount')?.addEventListener('click', (e) => {
+    if (e.target.closest('[data-refresh-stay-search]')) {
+      checkAvailability();
+    }
   });
 
   let searchTimer;

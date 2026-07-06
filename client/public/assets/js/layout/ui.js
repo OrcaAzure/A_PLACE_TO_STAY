@@ -235,6 +235,15 @@ async function loadGuestTemplates() {
   return guestTemplatesPromise;
 }
 
+function ensureGuestWizardStyles() {
+  if (document.getElementById('guest-wizard-styles')) return;
+  const link = document.createElement('link');
+  link.id = 'guest-wizard-styles';
+  link.rel = 'stylesheet';
+  link.href = '/assets/css/features/guest-reservation-wizard.css';
+  document.head.appendChild(link);
+}
+
 if (typeof window !== 'undefined') {
   ensureBootLoader();
   const path = window.location.pathname;
@@ -630,6 +639,18 @@ export async function initAppLayout(config = {}) {
       document.body.className = 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen';
       updateActiveNav(activePage, navItems);
       updateGuestChrome({ userName, userRole, userInitial });
+      if (activePage === 'reservations') {
+        ensureGuestWizardStyles();
+        if (!document.getElementById('reservation-wizard-modal')) {
+          const [reservationWizard, groupWizard] = await Promise.all([
+            loadComponent('/components/reservation-wizard-modal.html'),
+            loadComponent('/components/group-wizard-modal.html'),
+          ]);
+          document.body.insertAdjacentHTML('beforeend', reservationWizard + groupWizard);
+        }
+        initReservationWizard();
+        initGroupWizard();
+      }
       releaseChromeBoot();
       return;
     }
@@ -646,6 +667,15 @@ export async function initAppLayout(config = {}) {
     }
 
     const templates = isGuest ? await loadGuestTemplates() : await loadAdminTemplates();
+    let extraGuestModals = '';
+    if (isGuest && activePage === 'reservations') {
+      ensureGuestWizardStyles();
+      const [reservationWizard, groupWizard] = await Promise.all([
+        loadComponent('/components/reservation-wizard-modal.html'),
+        loadComponent('/components/group-wizard-modal.html'),
+      ]);
+      extraGuestModals = reservationWizard + groupWizard;
+    }
     const shellHtml = isGuest
       ? buildGuestShell({
           templates,
@@ -671,7 +701,7 @@ export async function initAppLayout(config = {}) {
           brandHref: '/admin/dashboard.html',
         }) + renderAdminBottomNav(ADMIN_MOBILE_NAV, activePage);
 
-    document.body.innerHTML = shellHtml;
+    document.body.innerHTML = shellHtml + extraGuestModals;
     if (preservedNodes.childNodes.length) {
       document.body.appendChild(preservedNodes);
     }
@@ -681,8 +711,14 @@ export async function initAppLayout(config = {}) {
 
     bindLayoutEvents({ isGuest });
     if (isGuest) {
+      ensureGuestWizardStyles();
       initGuestPortalChrome().catch(() => {});
       initGuestPageNavTransitions();
+      if (activePage === 'reservations') {
+        ensureGuestWizardStyles();
+        initReservationWizard();
+        initGroupWizard();
+      }
       releaseChromeBoot();
     } else {
       ensureSidebarUi();

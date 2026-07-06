@@ -1,0 +1,548 @@
+/**
+ * Guest portal — reservation & group modify wizards.
+ * Self-contained so modify flow works without admin-only stylesheets.
+ */
+
+body.guest-portal #reservation-wizard-overlay,
+body.guest-portal #group-wizard-overlay {
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: opacity 0.22s ease;
+}
+
+body.guest-portal #reservation-wizard-modal,
+body.guest-portal #group-wizard-modal {
+  padding: 1rem;
+  transition: opacity 0.22s ease;
+}
+
+body.guest-portal #reservation-wizard-modal .res-modal,
+body.guest-portal #group-wizard-modal .res-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 44rem;
+  max-height: 92vh;
+  margin: 0 auto;
+  background: #fff;
+  border: 1px solid var(--color-outline-variant, #CBD5E0);
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(26, 54, 93, 0.2);
+  overflow: hidden;
+  transform: translateY(10px) scale(0.98);
+  opacity: 0;
+  transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.28s ease;
+}
+
+body.guest-portal.guest-wizard-open #reservation-wizard-modal:not(.hidden) .res-modal,
+body.guest-portal.guest-wizard-open #group-wizard-modal:not(.hidden) .res-modal {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+body.guest-portal .res-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #EDF2F7;
+  flex-shrink: 0;
+}
+
+body.guest-portal .res-modal-title {
+  font-family: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--color-on-surface, #1A202C);
+  margin: 0;
+}
+
+body.guest-portal .res-hint {
+  font-size: 0.875rem;
+  color: var(--color-on-surface-variant, #718096);
+  line-height: 1.45;
+  margin: 0.25rem 0 0;
+}
+
+body.guest-portal .res-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--color-on-surface-variant, #4A5568);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s ease;
+}
+
+body.guest-portal .res-icon-btn:hover {
+  background: var(--color-surface-container, #EDF2F7);
+}
+
+body.guest-portal .res-steps {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.35rem;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  background: var(--color-surface-container-low, #F8FAFC);
+  border-bottom: 1px solid #EDF2F7;
+  flex-shrink: 0;
+  scrollbar-width: thin;
+}
+
+body.guest-portal .res-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  color: #718096;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+body.guest-portal .res-step.is-active {
+  background: var(--color-primary, #1A365D);
+  color: #fff;
+  font-weight: 600;
+}
+
+body.guest-portal .res-step.is-done {
+  color: var(--color-primary, #1A365D);
+}
+
+body.guest-portal .res-step-num {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.08);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+body.guest-portal .res-step.is-active .res-step-num {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+body.guest-portal .res-modal-body,
+body.guest-portal .res-wizard-body {
+  padding: 1.25rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  min-height: 280px;
+}
+
+body.guest-portal .res-wizard-body--enter {
+  animation: guestWizardBodyIn 0.28s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@keyframes guestWizardBodyIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+body.guest-portal .res-modal-footer {
+  padding: 1rem 1.5rem 1.25rem;
+  border-top: 1px solid #EDF2F7;
+  background: #fff;
+  flex-shrink: 0;
+}
+
+body.guest-portal .res-wizard-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+body.guest-portal .res-error {
+  color: #A81D23;
+  font-size: 0.9375rem;
+  margin: 0;
+  padding: 0.65rem 0.85rem;
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  border-radius: 0.5rem;
+}
+
+body.guest-portal .res-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+body.guest-portal .res-btn.hidden,
+body.guest-portal .res-error.hidden {
+  display: none !important;
+}
+
+body.guest-portal .res-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-height: 3rem;
+  padding: 0.5rem 1.25rem;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  border: 1px solid #CBD5E0;
+  background: #fff;
+  color: #1A365D;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+
+body.guest-portal .res-btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+body.guest-portal .res-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+body.guest-portal .res-btn--primary {
+  flex: 1;
+  background: var(--color-primary, #1A365D);
+  border-color: var(--color-primary, #1A365D);
+  color: #fff;
+}
+
+body.guest-portal .res-btn--primary:hover:not(:disabled) {
+  background: var(--color-primary-container, #2C5282);
+}
+
+body.guest-portal .res-btn--ghost {
+  min-width: 6rem;
+}
+
+body.guest-portal .res-btn--ghost:hover:not(:disabled) {
+  background: #F8FAFC;
+}
+
+body.guest-portal .res-btn--secondary {
+  background: #F8FAFC;
+}
+
+body.guest-portal .res-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4A5568;
+  margin: 0.75rem 0 0.375rem;
+}
+
+body.guest-portal .res-label:first-child {
+  margin-top: 0;
+}
+
+body.guest-portal .res-input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  border: 1px solid #CBD5E0;
+  border-radius: 0.5rem;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.guest-portal .res-input:focus {
+  outline: none;
+  border-color: var(--color-primary, #1A365D);
+  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.12);
+}
+
+body.guest-portal .res-input--short {
+  max-width: 8rem;
+}
+
+body.guest-portal .res-lead {
+  font-size: 1rem;
+  color: #4A5568;
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+body.guest-portal .res-subhead {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #1A202C;
+  margin: 1rem 0 0.5rem;
+}
+
+body.guest-portal .res-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+body.guest-portal .res-banner {
+  padding: 0.875rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.9375rem;
+  margin: 0 0 1rem;
+  line-height: 1.5;
+}
+
+body.guest-portal .res-banner--ok {
+  background: #ECFDF5;
+  border: 1px solid #A7F3D0;
+  color: #065F46;
+}
+
+body.guest-portal .res-banner--warn {
+  background: #FEF2F2;
+  border: 1px solid #FECACA;
+  color: #991B1B;
+}
+
+body.guest-portal .res-review {
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+body.guest-portal .res-review h4 {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #718096;
+  margin: 0 0 0.35rem;
+  font-weight: 700;
+}
+
+body.guest-portal .res-review p {
+  margin: 0;
+  line-height: 1.5;
+  color: #1A202C;
+}
+
+body.guest-portal .guest-wizard-contact {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.125rem;
+  background: linear-gradient(135deg, #F8FAFC 0%, #fff 100%);
+  border: 1px solid #E2E8F0;
+  border-radius: 0.875rem;
+}
+
+body.guest-portal .guest-wizard-contact__avatar {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  background: var(--color-primary, #1A365D);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1.125rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+body.guest-portal .guest-wizard-contact__name {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  color: #1A202C;
+  margin: 0 0 0.2rem;
+}
+
+body.guest-portal .guest-wizard-contact__meta {
+  font-size: 0.875rem;
+  color: #4A5568;
+  margin: 0;
+  line-height: 1.45;
+}
+
+body.guest-portal .guest-wizard-contact--compact {
+  margin-top: 0.35rem;
+  padding: 0.75rem 1rem;
+}
+
+body.guest-portal .res-room-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+body.guest-portal .res-room-card,
+body.guest-portal .res-room-row {
+  text-align: left;
+  padding: 1rem;
+  border: 2px solid #E2E8F0;
+  border-radius: 0.75rem;
+  background: #fff;
+  cursor: pointer;
+  width: 100%;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.guest-portal .res-room-card:hover:not(:disabled),
+body.guest-portal .res-room-row:hover:not(:disabled) {
+  border-color: var(--color-primary, #1A365D);
+}
+
+body.guest-portal .res-room-card.is-selected,
+body.guest-portal .res-room-row.is-selected {
+  border-color: var(--color-primary, #1A365D);
+  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.12);
+}
+
+body.guest-portal .res-room-card.is-disabled,
+body.guest-portal .res-room-row.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+body.guest-portal .res-pill {
+  display: inline-block;
+  padding: 0.2rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+body.guest-portal .res-pill--approved { background: #ECFDF5; color: #065F46; }
+body.guest-portal .res-pill--pending { background: #FFFBEB; color: #92400E; }
+body.guest-portal .res-pill--rejected { background: #FEF2F2; color: #991B1B; }
+body.guest-portal .res-pill--cancelled { background: #F1F5F9; color: #475569; }
+
+body.guest-portal .res-meals-box {
+  border: 1px solid #E2E8F0;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+body.guest-portal .res-meal-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #EDF2F7;
+}
+
+body.guest-portal .res-meal-row:last-child {
+  border-bottom: none;
+}
+
+body.guest-portal .res-qty {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+body.guest-portal .res-qty button {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 1px solid #CBD5E0;
+  border-radius: 0.5rem;
+  background: #fff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1A365D;
+  cursor: pointer;
+}
+
+body.guest-portal .res-grand-total {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1A365D;
+  text-align: right;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 2px solid #E2E8F0;
+}
+
+body.guest-portal .res-fee-table {
+  width: 100%;
+  margin-top: 0.75rem;
+  font-size: 0.9375rem;
+  border-collapse: collapse;
+}
+
+body.guest-portal .res-fee-table th,
+body.guest-portal .res-fee-table td {
+  padding: 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid #EDF2F7;
+}
+
+body.guest-portal .res-quick-fees {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+body.guest-portal .res-quick-fee {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  border: 1px dashed #CBD5E0;
+  border-radius: 0.5rem;
+  background: #F8FAFC;
+  cursor: pointer;
+}
+
+body.guest-portal .res-empty-box {
+  text-align: center;
+  padding: 2rem;
+  color: #718096;
+}
+
+@media (max-width: 640px) {
+  body.guest-portal #reservation-wizard-modal,
+  body.guest-portal #group-wizard-modal {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  body.guest-portal #reservation-wizard-modal .res-modal,
+  body.guest-portal #group-wizard-modal .res-modal {
+    max-height: 94vh;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  body.guest-portal .res-row {
+    grid-template-columns: 1fr;
+  }
+
+  body.guest-portal .res-step-label {
+    display: none;
+  }
+
+  body.guest-portal .res-btn--ghost {
+    flex: 0 0 auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.guest-portal #reservation-wizard-modal .res-modal,
+  body.guest-portal #group-wizard-modal .res-modal,
+  body.guest-portal .res-wizard-body--enter {
+    animation: none;
+    transition: none;
+    transform: none;
+    opacity: 1;
+  }
+}

@@ -7,9 +7,9 @@ import {
 } from '/assets/js/services/api.js';
 import {
   WIZARD_STEPS, escapeHtml, formatDateLong, formatMoney,
-  emptyWizardState, mealsFromBooking, calcGrandTotal, calcMealsSubtotal, calcFeesSubtotal, availLabel, debounce,
+  emptyWizardState, mealsFromBooking, calcGrandTotal, calcMealsSubtotal, calcFeesSubtotal, sanitizeGuestModifyFees, availLabel, debounce,
   loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
-  recommendRooms, recommendationReason, servicesToQuickFees, filterRoomsList,
+  recommendRooms, recommendationReason, servicesToQuickFees, applyLoggedInGuestContact, filterRoomsList,
   DORM_MIN_GUEST_COUNT, dormPriceLabel, effectiveCapacityMin,
   isRoomListVisible, isRoomBookable, dormMinGuestsNotice,
 } from '/assets/js/features/reservation-shared.js';
@@ -22,6 +22,33 @@ let fiscalBounds = null;
 let quickFees = [];
 
 function $(id) { return document.getElementById(id); }
+
+function nameInitials(name) {
+  const parts = String(name || 'G').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'G';
+  return parts.slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+}
+
+function setBtnVisible(el, visible) {
+  if (!el) return;
+  el.classList.toggle('hidden', !visible);
+  el.hidden = !visible;
+}
+
+function renderGuestContactCard({ lead, compact } = {}) {
+  const phone = state.contactPhone?.trim() || 'No phone on file';
+  const email = state.email?.trim() || 'No email on file';
+  const card = `
+    <div class="guest-wizard-contact${compact ? ' guest-wizard-contact--compact' : ''}">
+      <div class="guest-wizard-contact__avatar" aria-hidden="true">${escapeHtml(nameInitials(state.guestName))}</div>
+      <div>
+        <p class="guest-wizard-contact__name">${escapeHtml(state.guestName || 'Guest')}</p>
+        <p class="guest-wizard-contact__meta">${escapeHtml(phone)}<br>${escapeHtml(email)}</p>
+      </div>
+    </div>`;
+  if (compact) return card;
+  return `${lead ? `<p class="res-lead">${lead}</p>` : ''}${card}`;
+}
 
 function renderSteps() {
   const el = $('reservation-wizard-steps');
@@ -37,6 +64,9 @@ function renderSteps() {
 }
 
 function renderStep1() {
+  if (state.guestModify) {
+    return renderGuestContactCard({ lead: 'Your contact details for this stay.' });
+  }
   const opts = users.map((u) =>
     `<option value="${u.id}" data-name="${escapeHtml(u.full_name)}" data-email="${escapeHtml(u.email)}"${String(u.id) === String(state.userId) ? ' selected' : ''}>${escapeHtml(u.full_name)}</option>`
   ).join('');
@@ -193,7 +223,15 @@ function renderStep4() {
   ).join('');
   const quickFeesBlock = quickFees.length
     ? `<div class="res-quick-fees">${quickBtns}</div>`
-    : '<p class="res-hint">No extra services in the catalog yet — add a custom line below or configure fees under Facilities → Extra fees.</p>';
+    : (state.guestModify
+      ? '<p class="res-hint">No add-on services are listed right now. Contact housing if you need something extra.</p>'
+      : '<p class="res-hint">No extra services in the catalog yet — add a custom line below or configure fees under Facilities → Extra fees.</p>');
+  const customFeeBlock = state.guestModify ? '' : `
+    <div class="res-row">
+      <div><label class="res-label">Fee name</label><input id="wiz-fee-name" class="res-input" placeholder="e.g. Extra mattress" /></div>
+      <div><label class="res-label">Amount (₱)</label><input id="wiz-fee-amt" class="res-input" type="number" min="0" step="1" placeholder="0" /></div>
+    </div>
+    <button type="button" id="wiz-add-fee" class="res-btn res-btn--secondary">Add Custom Fee</button>`;
   return `
     <p class="res-lead">Add meals if needed. Set a different quantity for each meal.</p>
     <div class="res-meals-box">
@@ -206,13 +244,11 @@ function renderStep4() {
     <label class="res-label" for="wiz-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
     <textarea id="wiz-meal-allergens" class="res-input" rows="2" placeholder="e.g. nut allergy, gluten-free, vegetarian…">${escapeHtml(state.mealAllergenNotes || '')}</textarea>
     <h3 class="res-subhead">Additional fees (optional)</h3>
-    <p class="res-hint">Tap a catalog fee or add your own.</p>
+    <p class="res-hint">${state.guestModify
+    ? 'Tap a catalog fee to add it. Custom charges must be arranged with housing.'
+    : 'Tap a catalog fee or add your own.'}</p>
     ${quickFeesBlock}
-    <div class="res-row">
-      <div><label class="res-label">Fee name</label><input id="wiz-fee-name" class="res-input" placeholder="e.g. Extra mattress" /></div>
-      <div><label class="res-label">Amount (₱)</label><input id="wiz-fee-amt" class="res-input" type="number" min="0" step="1" placeholder="0" /></div>
-    </div>
-    <button type="button" id="wiz-add-fee" class="res-btn res-btn--secondary">Add Custom Fee</button>
+    ${customFeeBlock}
     ${state.fees.length ? `<table class="res-fee-table"><thead><tr><th>Fee</th><th>Amount</th><th></th></tr></thead><tbody>${feeRows}</tbody></table>
       <p class="res-meal-total">Fees subtotal: <strong>${formatMoney(calcFeesSubtotal(state.fees))}</strong></p>` : ''}`;
 }
@@ -222,7 +258,17 @@ function renderStep5() {
   const grand = calcGrandTotal(state.roomTotal, state.meals, state.fees, state.mealRates);
   const mealLines = ['Breakfast', 'Lunch', 'Dinner', 'Snack'].filter((t) => state.meals[t] > 0)
     .map((t) => `${t} × ${state.meals[t]} = ${formatMoney(state.meals[t] * state.mealRates[t])}`).join('<br>');
-  const modifyBlock = state.modifyRequest ? `
+  const modifyBlock = state.guestModify
+    ? (state.guestWasApproved ? `
+    <div class="res-banner res-banner--warn">
+      This reservation was already approved. Submitting changes sends it back to housing for review.
+    </div>
+    <label class="res-label" for="wiz-guest-message">Message to housing (required)</label>
+    <textarea id="wiz-guest-message" class="res-input" rows="3" placeholder="e.g. We need to arrive one day later and would like a room on the ground floor if possible.">${escapeHtml(state.guestMessage)}</textarea>
+  ` : `
+    <div class="res-banner res-banner--ok">You can update your pending request. Housing will review any changes.</div>
+  `)
+    : state.modifyRequest ? `
     <div class="res-banner res-banner--warn">
       You are approving this request with changes. The guest will receive an email explaining what changed.
     </div>
@@ -235,7 +281,9 @@ function renderStep5() {
   return `
     <p class="res-lead">Please review everything before saving.</p>
     ${modifyBlock}
-    <div class="res-review"><h4>Guest</h4><p>${escapeHtml(state.guestName)} · ${escapeHtml(state.contactPhone || '—')} · ${escapeHtml(state.email || '—')}</p></div>
+    ${state.guestModify
+    ? `<div class="res-review"><h4>Guest</h4>${renderGuestContactCard({ compact: true })}</div>`
+    : `<div class="res-review"><h4>Guest</h4><p>${escapeHtml(state.guestName)} · ${escapeHtml(state.contactPhone || '—')} · ${escapeHtml(state.email || '—')}</p></div>`}
     <div class="res-review"><h4>Stay</h4><p>${formatDateLong(state.checkIn)} to ${formatDateLong(state.checkOut)} · ${state.guestCount} guest(s)</p></div>
     <div class="res-review"><h4>Room</h4><p>${r ? `Room ${escapeHtml(r.room_number)} · ${escapeHtml(r.room_type_label || r.room_type)} — ${formatMoney(state.roomTotal)}${dormPriceLabel(r, state.guestCount, r.nights) ? `<br><span class="res-hint">${escapeHtml(dormPriceLabel(r, state.guestCount, r.nights))}</span>` : ''}` : '—'}</p></div>
     ${mealLines ? `<div class="res-review"><h4>Meals</h4><p>${mealLines}</p></div>` : ''}
@@ -249,21 +297,29 @@ function renderBody() {
   const mount = $('reservation-wizard-body');
   if (!mount) return;
   const fns = { 1: renderStep1, 2: renderStep2, 3: renderStep3, 4: renderStep4, 5: renderStep5 };
+  mount.classList.remove('res-wizard-body--enter');
   mount.innerHTML = fns[state.step]?.() || '';
+  requestAnimationFrame(() => mount.classList.add('res-wizard-body--enter'));
 
-  $('reservation-wizard-title').textContent = state.mode === 'edit'
-    ? 'Edit Reservation'
-    : state.modifyRequest
-      ? 'Modify & Approve Request'
-      : state.fromRequestId
-        ? 'Approve Guest Request'
-        : 'Create Reservation';
+  $('reservation-wizard-title').textContent = state.guestModify
+    ? 'Modify Reservation'
+    : state.mode === 'edit'
+      ? 'Edit Reservation'
+      : state.modifyRequest
+        ? 'Modify & Approve Request'
+        : state.fromRequestId
+          ? 'Approve Guest Request'
+          : 'Create Reservation';
   $('reservation-wizard-subtitle').textContent = WIZARD_STEPS[state.step - 1]?.short || '';
-  $('reservation-wizard-back').classList.toggle('hidden', state.step <= 1);
-  $('reservation-wizard-next').classList.toggle('hidden', state.step >= 5);
-  $('reservation-wizard-confirm').classList.toggle('hidden', state.step < 5);
+  setBtnVisible($('reservation-wizard-back'), state.step > 1);
+  setBtnVisible($('reservation-wizard-next'), state.step < 5);
+  setBtnVisible($('reservation-wizard-confirm'), state.step >= 5);
   $('reservation-wizard-next').disabled = state.saving;
   $('reservation-wizard-confirm').disabled = state.saving;
+  $('reservation-wizard-next').textContent = state.saving ? 'Please wait…' : 'Next step';
+  $('reservation-wizard-confirm').textContent = state.saving
+    ? 'Saving…'
+    : (state.guestModify ? 'Submit changes' : 'Save reservation');
 
   const err = $('reservation-wizard-error');
   if (state.error) { err.textContent = state.error; err.classList.remove('hidden'); }
@@ -293,6 +349,9 @@ function readFields() {
   }
   if ($('wiz-meal-allergens')) {
     state.mealAllergenNotes = $('wiz-meal-allergens').value?.trim() || '';
+  }
+  if ($('wiz-guest-message')) {
+    state.guestMessage = $('wiz-guest-message').value?.trim() || '';
   }
 }
 
@@ -396,6 +455,7 @@ function bindEvents() {
   });
 
   $('wiz-add-fee')?.addEventListener('click', () => {
+    if (state.guestModify) return;
     const name = $('wiz-fee-name')?.value?.trim();
     const amount = Number($('wiz-fee-amt')?.value);
     if (!name || !amount) { state.error = 'Enter a fee name and amount.'; renderBody(); return; }
@@ -415,7 +475,7 @@ function bindEvents() {
 function validate() {
   readFields();
   state.error = null;
-  if (state.step === 1 && !state.guestName) { state.error = 'Please enter the guest name.'; return false; }
+  if (state.step === 1 && !state.guestModify && !state.guestName) { state.error = 'Please enter the guest name.'; return false; }
   if (state.step === 2) {
     if (!state.checkIn || !state.checkOut) { state.error = 'Please select check-in and check-out dates.'; return false; }
     if (state.checkOut <= state.checkIn) { state.error = 'Check-out must be after check-in.'; return false; }
@@ -425,8 +485,12 @@ function validate() {
     state.error = dormMinGuestsNotice(state.guestCount);
     return false;
   }
-  if (state.step === 5 && state.modifyRequest && !state.guestMessage?.trim()) {
+  if (state.step === 5 && state.modifyRequest && !state.guestModify && !state.guestMessage?.trim()) {
     state.error = 'Please enter a message explaining the change for the guest.';
+    return false;
+  }
+  if (state.step === 5 && state.guestModify && state.guestWasApproved && !state.guestMessage?.trim()) {
+    state.error = 'Please enter a message explaining what you want changed.';
     return false;
   }
   return true;
@@ -450,8 +514,13 @@ function goBack() {
 
 async function confirmSave() {
   readFields();
-  if (state.modifyRequest && !state.guestMessage?.trim()) {
+  if (state.modifyRequest && !state.guestModify && !state.guestMessage?.trim()) {
     state.error = 'Please enter a message explaining the change for the guest.';
+    renderBody();
+    return;
+  }
+  if (state.guestModify && state.guestWasApproved && !state.guestMessage?.trim()) {
+    state.error = 'Please enter a message explaining what you want changed.';
     renderBody();
     return;
   }
@@ -461,28 +530,37 @@ async function confirmSave() {
   renderBody();
 
   const noteText = state.notes || '';
-  const modLine = state.modifyRequest && state.guestMessage?.trim()
-    ? `[Modified by admin] ${state.guestMessage.trim()}`
-    : '';
-  const combinedNotes = [noteText, modLine].filter(Boolean).join('\n') || undefined;
+  let modLine = '';
+  if (!state.guestModify && state.modifyRequest && state.guestMessage?.trim()) {
+    modLine = `[Modified by admin] ${state.guestMessage.trim()}`;
+  }
+  const combinedNotes = state.guestModify
+    ? (noteText || undefined)
+    : [noteText, modLine].filter(Boolean).join('\n') || undefined;
 
   const payload = {
-    user_id: state.userId ? Number(state.userId) : undefined,
-    guest_name: state.guestName,
-    email: state.email || undefined,
+    user_id: state.guestModify ? undefined : (state.userId ? Number(state.userId) : undefined),
+    guest_name: state.guestModify ? undefined : state.guestName,
+    email: state.guestModify ? undefined : (state.email || undefined),
     room_id: Number(state.roomId),
     check_in: state.checkIn,
     check_out: state.checkOut,
     guest_count: state.guestCount,
     contact_phone: state.contactPhone || undefined,
     notes: combinedNotes,
-    status: 'Approved',
+    status: state.guestModify ? 'Pending' : 'Approved',
     meals: state.meals,
-    fees: state.fees,
+    fees: state.guestModify
+      ? sanitizeGuestModifyFees(state.fees, quickFees, state.originalFees)
+      : state.fees,
     meal_allergen_notes: state.mealAllergenNotes || undefined,
-    notify_guest: Boolean(state.fromRequestId || state.modifyRequest),
-    notify_modification: Boolean(state.modifyRequest),
-    modification_message: state.modifyRequest ? state.guestMessage?.trim() : undefined,
+    modification_message: state.guestModify && state.guestWasApproved
+      ? state.guestMessage?.trim()
+      : (state.guestModify && state.guestMessage?.trim()
+        ? state.guestMessage.trim()
+        : (state.modifyRequest ? state.guestMessage?.trim() : undefined)),
+    notify_guest: Boolean(!state.guestModify && (state.fromRequestId || state.modifyRequest)),
+    notify_modification: Boolean(!state.guestModify && state.modifyRequest),
   };
 
   try {
@@ -505,13 +583,19 @@ async function confirmSave() {
 function showModal() {
   $('reservation-wizard-overlay')?.classList.remove('hidden');
   $('reservation-wizard-modal')?.classList.remove('hidden');
+  document.body.classList.add('guest-wizard-open');
   document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => {
+    $('reservation-wizard-modal')?.querySelector('.res-modal')?.getBoundingClientRect();
+  });
 }
 
 function hideModal() {
   $('reservation-wizard-overlay')?.classList.add('hidden');
   $('reservation-wizard-modal')?.classList.add('hidden');
-  document.body.style.overflow = '';
+  document.body.classList.remove('guest-wizard-open');
+  const groupOpen = !$('group-wizard-modal')?.classList.contains('hidden');
+  if (!groupOpen) document.body.style.overflow = '';
 }
 
 export function isReservationWizardOpen() { return isOpen; }
@@ -522,6 +606,8 @@ export async function openReservationWizard(options = {}) {
     bookingId = null,
     fromRequestId = null,
     modifyRequest = false,
+    guestModify = false,
+    guestWasApproved = false,
     prefill = null,
     originalRequest = null,
   } = options;
@@ -529,14 +615,17 @@ export async function openReservationWizard(options = {}) {
   state.mode = mode;
   state.fromRequestId = fromRequestId;
   state.modifyRequest = modifyRequest;
+  state.guestModify = guestModify;
+  state.guestWasApproved = guestWasApproved;
 
   try {
-    const [usersResult, mealRatesResult, fiscalResult, catalogResult] = await Promise.all([
-      getUsers(),
+    const loaders = [
+      guestModify ? getUsers().catch(() => []) : getUsers(),
       getMealRates(),
       loadFiscalYearBounds(),
       getFacilitiesOverview().catch(() => ({ services: [] })),
-    ]);
+    ];
+    const [usersResult, mealRatesResult, fiscalResult, catalogResult] = await Promise.all(loaders);
     users = usersResult;
     state.mealRates = mealRatesResult;
     fiscalBounds = fiscalResult;
@@ -561,6 +650,8 @@ export async function openReservationWizard(options = {}) {
     state.meals = mealsFromBooking(booking.meals || []);
     state.mealAllergenNotes = booking.meal_allergen_notes || '';
     state.fees = (booking.fees || []).map((f) => ({ fee_name: f.fee_name, amount: f.amount }));
+    state.originalFees = state.fees.map((f) => ({ ...f }));
+    if (guestModify) applyLoggedInGuestContact(state);
   }
 
   if (prefill) {
@@ -593,6 +684,10 @@ export async function openReservationWizard(options = {}) {
     state.originalRoomLabel = [prefill.facility?.building, prefill.facility?.roomNumber].filter(Boolean).join(' ');
   }
 
+  if (guestModify && state.checkIn && state.checkOut && state.checkOut > state.checkIn) {
+    state.step = 2;
+  }
+
   isOpen = true;
   showModal();
   renderSteps();
@@ -618,6 +713,11 @@ export function initReservationWizard() {
   $('reservation-wizard-back')?.addEventListener('click', goBack);
   $('reservation-wizard-next')?.addEventListener('click', goNext);
   $('reservation-wizard-confirm')?.addEventListener('click', confirmSave);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !isOpen) return;
+    closeReservationWizard();
+  });
 
   window.addEventListener('reservation-wizard:open', (e) => openReservationWizard(e.detail || {}));
 }

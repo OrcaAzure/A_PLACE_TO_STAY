@@ -75,6 +75,24 @@ export function groupServiceRows(rows) {
   return [...byCategory.values()];
 }
 
+function feeKey(name, amount) {
+  return `${String(name || '').trim()}|${Number(amount)}`;
+}
+
+/** Guests may only keep existing fees or add catalog-listed extras (not arbitrary amounts). */
+export function sanitizeGuestSubmittedFees(submitted = [], catalogRows = [], originalFees = []) {
+  const catalogKeys = new Set(
+    (catalogRows || []).map((row) => feeKey(row.item, row.rate))
+  );
+  const originalKeys = new Set(
+    (originalFees || []).map((f) => feeKey(f.fee_name || f.service_name, f.amount))
+  );
+  return (submitted || []).filter((f) => {
+    const key = feeKey(f.fee_name || f.service_name || f.name, f.amount);
+    return catalogKeys.has(key) || originalKeys.has(key);
+  });
+}
+
 export async function fetchRoomRateRows() {
   const [rows] = await pool.query(
     `SELECT id, room_type, item, season, rate FROM rates_rooms`

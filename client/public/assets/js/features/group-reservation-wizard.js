@@ -8,7 +8,7 @@ import {
 import {
   GROUP_WIZARD_STEPS, escapeHtml, formatDateLong, formatMoney,
   emptyGroupWizardState, mealsFromBooking, calcMealsSubtotal, calcFeesSubtotal, calcGroupGrandTotal,
-  assignedGuestTotal, debounce, servicesToQuickFees,
+  assignedGuestTotal, debounce, servicesToQuickFees, applyLoggedInGroupContact, sanitizeGuestModifyFees,
   loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
 } from '/assets/js/features/reservation-shared.js';
 
@@ -21,6 +21,27 @@ let quickFees = [];
 
 function $(id) { return document.getElementById(id); }
 
+function setBtnVisible(el, visible) {
+  if (!el) return;
+  el.classList.toggle('hidden', !visible);
+  el.hidden = !visible;
+}
+
+function renderGroupContactCard({ lead, compact } = {}) {
+  const phone = state.contactPhone?.trim() || 'No phone on file';
+  const email = state.email?.trim() || 'No email on file';
+  const card = `
+    <div class="guest-wizard-contact${compact ? ' guest-wizard-contact--compact' : ''}">
+      <div class="guest-wizard-contact__avatar" aria-hidden="true">${escapeHtml(nameInitials(state.contactName || state.groupName))}</div>
+      <div>
+        <p class="guest-wizard-contact__name">${escapeHtml(state.groupName || 'Group')}</p>
+        <p class="guest-wizard-contact__meta">${escapeHtml(state.contactName || 'Contact')} · ${escapeHtml(phone)}<br>${escapeHtml(email)}</p>
+      </div>
+    </div>`;
+  if (compact) return card;
+  return `${lead ? `<p class="res-lead">${lead}</p>` : ''}${card}`;
+}
+
 function renderSteps() {
   const el = $('group-wizard-steps');
   if (!el) return;
@@ -32,7 +53,16 @@ function renderSteps() {
   }).join('');
 }
 
+function nameInitials(name) {
+  const parts = String(name || 'G').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'G';
+  return parts.slice(0, 2).map((p) => p[0]).join('').toUpperCase();
+}
+
 function renderStep1() {
+  if (state.guestModify) {
+    return renderGroupContactCard({ lead: 'Your group contact details.' });
+  }
   const opts = users.map((u) =>
     `<option value="${u.id}" data-name="${escapeHtml(u.full_name)}" data-email="${escapeHtml(u.email)}"${String(u.id) === String(state.userId) ? ' selected' : ''}>${escapeHtml(u.full_name)}</option>`
   ).join('');
@@ -187,7 +217,15 @@ function renderStep4() {
   ).join('');
   const quickFeesBlock = quickFees.length
     ? `<div class="res-quick-fees">${quickBtns}</div>`
-    : '<p class="res-hint">No extra services in the catalog yet — add a custom line below or configure fees under Facilities → Extra fees.</p>';
+    : (state.guestModify
+      ? '<p class="res-hint">No add-on services are listed right now. Contact housing if you need something extra.</p>'
+      : '<p class="res-hint">No extra services in the catalog yet — add a custom line below or configure fees under Facilities → Extra fees.</p>');
+  const customFeeBlock = state.guestModify ? '' : `
+    <div class="res-row">
+      <div><label class="res-label">Fee name</label><input id="gw-fee-name" class="res-input" placeholder="e.g. Extra mattress" /></div>
+      <div><label class="res-label">Amount (₱)</label><input id="gw-fee-amt" class="res-input" type="number" min="0" /></div>
+    </div>
+    <button type="button" id="gw-add-fee" class="res-btn res-btn--secondary">Add Custom Fee</button>`;
   return `
     <p class="res-lead">Meals and fees apply to the whole group.</p>
     <div class="res-meals-box">
@@ -200,12 +238,11 @@ function renderStep4() {
     <label class="res-label" for="gw-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
     <textarea id="gw-meal-allergens" class="res-input" rows="2" placeholder="e.g. nut allergy, gluten-free, vegetarian…">${escapeHtml(state.mealAllergenNotes || '')}</textarea>
     <h3 class="res-subhead">Additional fees (optional)</h3>
+    <p class="res-hint">${state.guestModify
+    ? 'Tap a catalog fee to add it. Custom charges must be arranged with housing.'
+    : 'Tap a catalog fee or add your own.'}</p>
     ${quickFeesBlock}
-    <div class="res-row">
-      <div><label class="res-label">Fee name</label><input id="gw-fee-name" class="res-input" placeholder="e.g. Extra mattress" /></div>
-      <div><label class="res-label">Amount (₱)</label><input id="gw-fee-amt" class="res-input" type="number" min="0" /></div>
-    </div>
-    <button type="button" id="gw-add-fee" class="res-btn res-btn--secondary">Add Custom Fee</button>
+    ${customFeeBlock}
     ${state.fees.length ? `<table class="res-fee-table"><tbody>${feeRows}</tbody></table>` : ''}`;
 }
 
@@ -215,7 +252,13 @@ function renderStep5() {
     return room ? `Room ${escapeHtml(room.room_number)} (${sel.guest_count} guest(s))` : '';
   }).filter(Boolean).join('<br>');
   const grand = calcGroupGrandTotal(state);
-  const modifyBlock = state.modifyRequest ? `
+  const modifyBlock = state.guestModify
+    ? (state.guestWasApproved ? `
+    <div class="res-banner res-banner--warn">This group reservation was already approved. Submitting changes sends it back to housing for review.</div>
+    <label class="res-label" for="gw-guest-message">Message to housing (required)</label>
+    <textarea id="gw-guest-message" class="res-input" rows="3" placeholder="e.g. Two more guests are joining — we need an extra room if possible.">${escapeHtml(state.guestMessage)}</textarea>
+  ` : `<div class="res-banner res-banner--ok">You can update your pending group request. Housing will review any changes.</div>`)
+    : state.modifyRequest ? `
     <div class="res-banner res-banner--warn">You are approving this group request with changes. The guest will receive an email with your message.</div>
     <label class="res-label" for="gw-guest-message">Message to guest (required)</label>
     <textarea id="gw-guest-message" class="res-input" rows="3" placeholder="e.g. We could not assign all requested rooms, so we placed your group in nearby rooms instead.">${escapeHtml(state.guestMessage)}</textarea>
@@ -224,7 +267,9 @@ function renderStep5() {
   return `
     <p class="res-lead">Review the group reservation before saving.</p>
     ${modifyBlock}
-    <div class="res-review"><h4>Group</h4><p><strong>${escapeHtml(state.groupName)}</strong><br>${escapeHtml(state.contactName)} · ${escapeHtml(state.contactPhone || '—')}</p></div>
+    <div class="res-review"><h4>Group</h4>${state.guestModify
+    ? renderGroupContactCard({ compact: true })
+    : `<p><strong>${escapeHtml(state.groupName)}</strong><br>${escapeHtml(state.contactName)} · ${escapeHtml(state.contactPhone || '—')}</p>`}</div>
     <div class="res-review"><h4>Stay</h4><p>${formatDateLong(state.checkIn)} to ${formatDateLong(state.checkOut)} · ${state.totalGuests} guest(s) · ${state.selectedRooms.length} room(s)</p></div>
     <div class="res-review"><h4>Rooms</h4><p>${roomLines || '—'}</p></div>
     <label class="res-label">Notes (optional)</label>
@@ -236,22 +281,29 @@ function renderBody() {
   const mount = $('group-wizard-body');
   if (!mount) return;
   const fns = { 1: renderStep1, 2: renderStep2, 3: renderStep3, 4: renderStep4, 5: renderStep5 };
+  mount.classList.remove('res-wizard-body--enter');
   mount.innerHTML = fns[state.step]?.() || '';
+  requestAnimationFrame(() => mount.classList.add('res-wizard-body--enter'));
 
-  $('group-wizard-title').textContent = state.mode === 'edit'
-    ? 'Edit Group Reservation'
-    : state.modifyRequest
-      ? 'Modify & Approve Group Request'
-      : state.fromRequestId
-        ? 'Approve Group Request'
-        : 'Create Group Reservation';
+  $('group-wizard-title').textContent = state.guestModify
+    ? 'Modify Group Reservation'
+    : state.mode === 'edit'
+      ? 'Edit Group Reservation'
+      : state.modifyRequest
+        ? 'Modify & Approve Group Request'
+        : state.fromRequestId
+          ? 'Approve Group Request'
+          : 'Create Group Reservation';
   $('group-wizard-subtitle').textContent = GROUP_WIZARD_STEPS[state.step - 1]?.short || '';
-  $('group-wizard-back').classList.toggle('hidden', state.step <= 1);
-  $('group-wizard-next').classList.toggle('hidden', state.step >= 5);
-  $('group-wizard-confirm').classList.toggle('hidden', state.step < 5);
+  setBtnVisible($('group-wizard-back'), state.step > 1);
+  setBtnVisible($('group-wizard-next'), state.step < 5);
+  setBtnVisible($('group-wizard-confirm'), state.step >= 5);
   $('group-wizard-next').disabled = state.saving;
   $('group-wizard-confirm').disabled = state.saving;
-  $('group-wizard-confirm').textContent = state.saving ? 'Saving…' : 'Save Group';
+  $('group-wizard-confirm').textContent = state.saving
+    ? 'Saving…'
+    : (state.guestModify ? 'Submit changes' : 'Save group');
+  $('group-wizard-next').textContent = state.saving ? 'Please wait…' : 'Next step';
 
   const err = $('group-wizard-error');
   if (state.error) { err.textContent = state.error; err.classList.remove('hidden'); }
@@ -416,6 +468,7 @@ function bindEvents() {
   });
 
   $('gw-add-fee')?.addEventListener('click', () => {
+    if (state.guestModify) return;
     const name = $('gw-fee-name')?.value?.trim();
     const amount = Number($('gw-fee-amt')?.value);
     if (!name || !amount) { state.error = 'Enter a fee name and amount.'; renderBody(); return; }
@@ -431,7 +484,7 @@ function bindEvents() {
 function validate() {
   readStepFields();
   state.error = null;
-  if (state.step === 1) {
+  if (state.step === 1 && !state.guestModify) {
     if (!state.groupName) { state.error = 'Please enter the group name.'; return false; }
     if (!state.contactName) { state.error = 'Please enter a contact person.'; return false; }
   }
@@ -447,8 +500,12 @@ function validate() {
       return false;
     }
   }
-  if (state.step === 5 && state.modifyRequest && !state.guestMessage?.trim()) {
+  if (state.step === 5 && state.modifyRequest && !state.guestModify && !state.guestMessage?.trim()) {
     state.error = 'Please enter a message explaining the change for the guest.';
+    return false;
+  }
+  if (state.step === 5 && state.guestModify && state.guestWasApproved && !state.guestMessage?.trim()) {
+    state.error = 'Please enter a message explaining what you want changed.';
     return false;
   }
   return true;
@@ -483,38 +540,52 @@ async function confirmSave() {
     renderBody();
     return;
   }
-  if (state.modifyRequest && !state.guestMessage?.trim()) {
+  if (state.modifyRequest && !state.guestModify && !state.guestMessage?.trim()) {
     state.error = 'Please enter a message explaining the change for the guest.';
+    renderBody();
+    return;
+  }
+  if (state.guestModify && state.guestWasApproved && !state.guestMessage?.trim()) {
+    state.error = 'Please enter a message explaining what you want changed.';
     renderBody();
     return;
   }
   state.saving = true;
   renderBody();
 
-  const modLine = state.modifyRequest && state.guestMessage?.trim()
-    ? `[Modified by admin] ${state.guestMessage.trim()}`
-    : '';
-  const combinedNotes = [state.notes, modLine].filter(Boolean).join('\n') || undefined;
+  let modLine = '';
+  if (!state.guestModify && state.modifyRequest && state.guestMessage?.trim()) {
+    modLine = `[Modified by admin] ${state.guestMessage.trim()}`;
+  }
+  const combinedNotes = state.guestModify
+    ? (state.notes || undefined)
+    : [state.notes, modLine].filter(Boolean).join('\n') || undefined;
 
   const payload = {
     group_name: state.groupName,
     contact_name: state.contactName,
     contact_phone: state.contactPhone || undefined,
     contact_email: state.email || undefined,
-    user_id: state.userId ? Number(state.userId) : undefined,
+    user_id: state.guestModify ? undefined : (state.userId ? Number(state.userId) : undefined),
     check_in: state.checkIn,
     check_out: state.checkOut,
     total_guests: state.totalGuests,
     rooms_requested: state.roomsRequested || undefined,
     notes: combinedNotes,
-    status: 'Approved',
+    status: state.guestModify ? 'Pending' : 'Approved',
     rooms: state.selectedRooms,
     meals: state.meals,
-    fees: state.fees,
+    fees: state.guestModify
+      ? sanitizeGuestModifyFees(state.fees, quickFees, state.originalFees)
+      : state.fees,
     meal_allergen_notes: state.mealAllergenNotes || undefined,
-    notify_guest: Boolean(state.fromRequestId || state.modifyRequest),
-    notify_modification: Boolean(state.modifyRequest),
-    modification_message: state.modifyRequest ? state.guestMessage?.trim() : undefined,
+    modification_message: state.guestModify && state.guestWasApproved
+      ? state.guestMessage?.trim()
+      : (state.guestModify && state.guestMessage?.trim()
+        ? state.guestMessage.trim()
+        : (state.modifyRequest ? state.guestMessage?.trim() : undefined)),
+    notify_guest: Boolean(!state.guestModify && (state.fromRequestId || state.modifyRequest)),
+    notify_modification: Boolean(!state.guestModify && state.modifyRequest),
   };
 
   try {
@@ -537,13 +608,16 @@ async function confirmSave() {
 function showModal() {
   $('group-wizard-overlay')?.classList.remove('hidden');
   $('group-wizard-modal')?.classList.remove('hidden');
+  document.body.classList.add('guest-wizard-open');
   document.body.style.overflow = 'hidden';
 }
 
 function hideModal() {
   $('group-wizard-overlay')?.classList.add('hidden');
   $('group-wizard-modal')?.classList.add('hidden');
-  document.body.style.overflow = '';
+  document.body.classList.remove('guest-wizard-open');
+  const roomOpen = !$('reservation-wizard-modal')?.classList.contains('hidden');
+  if (!roomOpen) document.body.style.overflow = '';
 }
 
 export function isGroupWizardOpen() { return isOpen; }
@@ -554,21 +628,26 @@ export async function openGroupWizard(options = {}) {
     groupId = null,
     fromRequestId = null,
     modifyRequest = false,
+    guestModify = false,
+    guestWasApproved = false,
     prefill = null,
   } = options;
   state = emptyGroupWizardState();
   state.mode = mode;
   state.fromRequestId = fromRequestId;
   state.modifyRequest = modifyRequest;
+  state.guestModify = guestModify;
+  state.guestWasApproved = guestWasApproved;
   state.groupId = groupId;
 
   try {
-    const [usersResult, mealRatesResult, fiscalResult, catalogResult] = await Promise.all([
-      getUsers(),
+    const loaders = [
+      guestModify ? getUsers().catch(() => []) : getUsers(),
       getMealRates(),
       loadFiscalYearBounds(),
       getFacilitiesOverview().catch(() => ({ services: [] })),
-    ]);
+    ];
+    const [usersResult, mealRatesResult, fiscalResult, catalogResult] = await Promise.all(loaders);
     users = usersResult;
     state.mealRates = mealRatesResult;
     fiscalBounds = fiscalResult;
@@ -594,10 +673,12 @@ export async function openGroupWizard(options = {}) {
     state.meals = mealsFromBooking(group.meals || []);
     state.mealAllergenNotes = group.meal_allergen_notes || '';
     state.fees = (group.fees || []).map((f) => ({ fee_name: f.fee_name, amount: f.amount }));
+    state.originalFees = state.fees.map((f) => ({ ...f }));
     state.selectedRooms = (group.bookings || []).map((b) => ({
       room_id: b.room_id,
       guest_count: b.guest_count,
     }));
+    if (guestModify) applyLoggedInGroupContact(state);
   }
 
   if (prefill) {
@@ -617,6 +698,10 @@ export async function openGroupWizard(options = {}) {
       state.meals = Array.isArray(prefill.meals) ? mealsFromBooking(prefill.meals) : { ...state.meals, ...prefill.meals };
     }
     if (prefill.mealAllergenNotes != null) state.mealAllergenNotes = prefill.mealAllergenNotes;
+  }
+
+  if (guestModify && state.checkIn && state.checkOut && state.checkOut > state.checkIn) {
+    state.step = 2;
   }
 
   isOpen = true;
@@ -644,4 +729,9 @@ export function initGroupWizard() {
   $('group-wizard-next')?.addEventListener('click', goNext);
   $('group-wizard-confirm')?.addEventListener('click', confirmSave);
   window.addEventListener('group-wizard:open', (e) => openGroupWizard(e.detail || {}));
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || !isOpen) return;
+    closeGroupWizard();
+  });
 }

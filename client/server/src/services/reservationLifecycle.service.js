@@ -50,11 +50,11 @@ export function venueEventPhase(eventDate, startTime, endTime, now = new Date())
   return 'upcoming';
 }
 
-export function cutoffHoursError(cutoffHours) {
+export function cutoffHoursError(cutoffHours, action = 'Cancellations') {
   const hours = Number(cutoffHours);
   if (hours <= 0) return null;
-  if (hours === 1) return 'Cancellations must be made at least 1 hour before check-in or the event start.';
-  return `Cancellations must be made at least ${hours} hours before check-in or the event start.`;
+  if (hours === 1) return `${action} must be made at least 1 hour before check-in or the event start.`;
+  return `${action} must be made at least ${hours} hours before check-in or the event start.`;
 }
 
 export function assertCanCancelRoomBooking({
@@ -101,6 +101,54 @@ export function assertCanCancelVenueBooking({
     }
   } else if (!['Pending', 'Approved'].includes(s)) {
     return 'Only pending or approved bookings can be cancelled.';
+  }
+  return null;
+}
+
+export function assertCanModifyRoomBooking({
+  status, check_in, check_out, isAdmin = false, cutoffHours = 0,
+}) {
+  const s = String(status || '');
+  if (s === 'Cancelled' || s === 'Rejected') {
+    return 'This reservation is already closed.';
+  }
+  const phase = roomStayPhase(check_in, check_out);
+  if (phase === 'past') return 'Cannot modify — this stay has already ended.';
+  if (phase === 'active') return 'Cannot modify — this stay is in progress.';
+
+  if (!isAdmin) {
+    if (!['Pending', 'Approved'].includes(s)) {
+      return 'Only pending or approved reservations can be modified.';
+    }
+    if (hoursUntilCheckIn(check_in) < cutoffHours) {
+      return cutoffHoursError(cutoffHours, 'Changes');
+    }
+  } else if (!['Pending', 'Approved'].includes(s)) {
+    return 'Only pending or approved reservations can be modified.';
+  }
+  return null;
+}
+
+export function assertCanModifyVenueBooking({
+  status, event_date, start_time, end_time, isAdmin = false, cutoffHours = 0,
+}) {
+  const s = String(status || '');
+  if (s === 'Cancelled' || s === 'Rejected') {
+    return 'This booking is already closed.';
+  }
+  const phase = venueEventPhase(event_date, start_time, end_time);
+  if (phase === 'past') return 'Cannot modify — this event has already ended.';
+  if (phase === 'active') return 'Cannot modify — this event is in progress.';
+
+  if (!isAdmin) {
+    if (!['Pending', 'Approved'].includes(s)) {
+      return 'Only pending or approved bookings can be modified.';
+    }
+    if (hoursUntilEventStart(event_date, start_time) < cutoffHours) {
+      return cutoffHoursError(cutoffHours, 'Changes');
+    }
+  } else if (!['Pending', 'Approved'].includes(s)) {
+    return 'Only pending or approved bookings can be modified.';
   }
   return null;
 }

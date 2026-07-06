@@ -3,6 +3,7 @@
 import {
   getRoomAvailability, suggestGroupRooms, updateBooking, updateGroup,
 } from '/assets/js/services/api.js';
+import { normStatus } from '/assets/js/features/reservation-shared.js';
 
 export function parseRequestKey(key) {
   if (String(key).startsWith('g-')) return { kind: 'group', id: key.slice(2) };
@@ -127,6 +128,29 @@ export function openModifyRequestWizard(r, { modifyRequest = true } = {}) {
           roomNumber: r.facility?.roomNumber,
           roomLabel: [r.facility?.building, r.facility?.roomNumber].filter(Boolean).join(' '),
         },
+      },
+    }));
+  }
+}
+
+export function openGuestModifyWizard(booking) {
+  const guestWasApproved = normStatus(booking.status) === 'approved';
+  if (booking.kind === 'group') {
+    window.dispatchEvent(new CustomEvent('group-wizard:open', {
+      detail: {
+        mode: 'edit',
+        groupId: booking.id,
+        guestModify: true,
+        guestWasApproved,
+      },
+    }));
+  } else {
+    window.dispatchEvent(new CustomEvent('reservation-wizard:open', {
+      detail: {
+        mode: 'edit',
+        bookingId: booking.id,
+        guestModify: true,
+        guestWasApproved,
       },
     }));
   }

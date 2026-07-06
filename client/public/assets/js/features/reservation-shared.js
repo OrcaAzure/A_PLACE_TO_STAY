@@ -58,12 +58,38 @@ export const WIZARD_STEPS = [
 
 export function servicesToQuickFees(services = []) {
   const fees = [];
+  const seen = new Set();
   for (const group of services) {
     for (const item of group.items || []) {
+      const key = `${item.item}|${Number(item.rate)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
       fees.push({ name: item.item, amount: item.rate, category: group.category });
     }
   }
   return fees;
+}
+
+/** Fill missing guest contact fields from the logged-in portal user (guest modify). */
+export function applyLoggedInGuestContact(state) {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!state.guestName) state.guestName = user.full_name || user.name || '';
+    if (!state.email) state.email = user.email || '';
+    if (!state.contactPhone) state.contactPhone = user.phone || user.contact_phone || '';
+  } catch { /* ignore */ }
+  return state;
+}
+
+/** Fill missing group contact fields from the logged-in portal user (guest modify). */
+export function applyLoggedInGroupContact(state) {
+  try {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    if (!state.contactName) state.contactName = user.full_name || user.name || '';
+    if (!state.email) state.email = user.email || '';
+    if (!state.contactPhone) state.contactPhone = user.phone || user.contact_phone || '';
+  } catch { /* ignore */ }
+  return state;
 }
 
 export function escapeHtml(str) {
@@ -213,6 +239,14 @@ export function canGuestCancelVenueBooking(booking, { now = new Date(), cutoffHo
   ) >= Number(cutoffHours);
 }
 
+export function canGuestModifyRoomBooking(booking, opts = {}) {
+  return canGuestCancelRoomBooking(booking, opts);
+}
+
+export function canGuestModifyVenueBooking(booking, opts = {}) {
+  return canGuestCancelVenueBooking(booking, opts);
+}
+
 export function canAdminCancelVenueBooking(booking, now = new Date()) {
   const status = normStatus(booking.status);
   if (!['pending', 'approved'].includes(status)) return false;
@@ -321,6 +355,7 @@ export function getReservationCategory(booking) {
 export function emptyWizardState() {
   return {
     step: 1, mode: 'create', bookingId: null, fromRequestId: null, modifyRequest: false,
+    guestModify: false, guestWasApproved: false,
     guestName: '', contactPhone: '', email: '', userId: '',
     checkIn: '', checkOut: '', guestCount: 2, roomId: '', selectedRoom: null,
     originalRoomId: '', originalCheckIn: '', originalCheckOut: '',
@@ -328,7 +363,7 @@ export function emptyWizardState() {
     roomSearch: '', showRecommendations: false,
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     mealAllergenNotes: '',
-    fees: [], notes: '',
+    fees: [], originalFees: [], notes: '',
     availableRooms: [], availableCount: 0,
     mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 },
     roomTotal: 0, loadingRooms: false, saving: false, error: null,
@@ -360,6 +395,20 @@ export function calcFeesSubtotal(fees = []) {
   return (fees || []).reduce((s, f) => s + Number(f.amount || 0), 0);
 }
 
+/** Guests may only keep existing fees or add catalog-listed extras (not custom lines). */
+export function sanitizeGuestModifyFees(submitted = [], catalog = [], originalFees = []) {
+  const catalogKeys = new Set(
+    (catalog || []).map((f) => `${String(f.name || '').trim()}|${Number(f.amount)}`)
+  );
+  const originalKeys = new Set(
+    (originalFees || []).map((f) => `${String(f.fee_name || '').trim()}|${Number(f.amount)}`)
+  );
+  return (submitted || []).filter((f) => {
+    const key = `${String(f.fee_name || '').trim()}|${Number(f.amount)}`;
+    return catalogKeys.has(key) || originalKeys.has(key);
+  });
+}
+
 export function calcGrandTotal(roomTotal, meals, fees, rates) {
   return Math.round((Number(roomTotal || 0) + calcMealsSubtotal(meals, rates) + calcFeesSubtotal(fees)) * 100) / 100;
 }
@@ -375,6 +424,7 @@ export const GROUP_WIZARD_STEPS = [
 export function emptyGroupWizardState() {
   return {
     step: 1, mode: 'create', groupId: null, fromRequestId: null, modifyRequest: false,
+    guestModify: false, guestWasApproved: false,
     groupName: '', contactName: '', contactPhone: '', email: '', userId: '',
     checkIn: '', checkOut: '', totalGuests: 10, roomsRequested: null,
     guestMessage: '',
@@ -382,7 +432,7 @@ export function emptyGroupWizardState() {
     roomSearch: '',
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     mealAllergenNotes: '',
-    fees: [], notes: '',
+    fees: [], originalFees: [], notes: '',
     mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 },
     loadingRooms: false, saving: false, error: null,
   };

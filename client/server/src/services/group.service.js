@@ -15,7 +15,8 @@ import {
   getRoomById,
 } from './booking.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
-import { assertCanCancelRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
+import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
+import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from './ancillary.service.js';
 import { sendGroupModifiedEmail, sendGroupConfirmationEmail } from './email.service.js';
 import { ensureInvoiceForBooking, ensureInvoicesForGroup, getInvoiceSnapshot } from './payment.service.js';
 
@@ -137,7 +138,6 @@ async function validateRoomAssignments({ checkIn, checkOut, rooms, excludeGroupI
     if (capErr) throw new Error(`Room ${room.room_number}: ${capErr}`);
     if (room.status === 'Maintenance') throw new Error(`Room ${room.room_number} is out of order.`);
     if (room.status === 'Dirty') throw new Error(`Room ${room.room_number} is check-out / dirty and not ready yet.`);
-    if (room.status === 'Occupied') throw new Error(`Room ${room.room_number} is currently occupied.`);
 
     const overlap = await hasOverlappingBooking(roomId, checkIn, checkOut, null, excludeGroupId);
     if (overlap) throw new Error(`Room ${room.room_number} is already booked on these dates.`);
@@ -310,18 +310,105 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
   if (!isAdmin && group.user_id !== userId) throw new Error('Forbidden');
 
   if (!isAdmin) {
-    if (body.status !== 'Cancelled') {
-      throw new Error('You can only cancel your own pending group requests');
+    const cutoffHours = await getGuestCancellationCutoffHours();
+
+    if (body.status === 'Cancelled') {
+      const cancelError = assertCanCancelRoomBooking({
+        status: group.status,
+        check_in: group.check_in,
+        check_out: group.check_out,
+        isAdmin: false,
+        cutoffHours,
+      });
+      if (cancelError) throw new Error(cancelError);
+      await pool.query('UPDATE reservation_groups SET status = ? WHERE id = ?', ['Cancelled', groupId]);
+      return getGroupById(groupId);
     }
-    const cancelError = assertCanCancelRoomBooking({
+
+    const modifyError = assertCanModifyRoomBooking({
       status: group.status,
       check_in: group.check_in,
       check_out: group.check_out,
       isAdmin: false,
-      cutoffHours: await getGuestCancellationCutoffHours(),
+      cutoffHours,
     });
-    if (cancelError) throw new Error(cancelError);
-    await pool.query('UPDATE reservation_groups SET status = ? WHERE id = ?', ['Cancelled', groupId]);
+    if (modifyError) throw new Error(modifyError);
+
+    const wasApproved = group.status === 'Approved';
+    const { modification_message } = body;
+    if (wasApproved && !String(modification_message || '').trim()) {
+      throw new Error('Please explain what you want changed.');
+    }
+
+    const {
+      group_name, contact_name, contact_phone, contact_email,
+      check_in, check_out, total_guests, rooms_requested, notes,
+      rooms, meals, fees, meal_allergen_notes,
+    } = body;
+
+    const nextCheckIn = check_in || group.check_in;
+    const nextCheckOut = check_out || group.check_out;
+    const nextGuests = total_guests != null ? Math.max(1, Number(total_guests)) : group.total_guests;
+    const nextStatus = 'Pending';
+
+    await validateReservationDates(nextCheckIn, nextCheckOut, { bypassAdvanceLimit: false });
+
+    const modNote = wasApproved
+      ? `[Modification requested] ${String(modification_message).trim()}`
+      : (modification_message?.trim() ? `[Updated by guest] ${modification_message.trim()}` : '');
+    const clientNotes = notes != null ? notes : group.notes;
+    const combinedNotes = modNote
+      ? [clientNotes, modNote].filter((n) => n != null && String(n).trim()).join('\n')
+      : clientNotes;
+
+    await pool.query(
+      `UPDATE reservation_groups SET
+        group_name = COALESCE(?, group_name),
+        contact_name = COALESCE(?, contact_name),
+        contact_phone = COALESCE(?, contact_phone),
+        contact_email = COALESCE(?, contact_email),
+        check_in = ?,
+        check_out = ?,
+        total_guests = ?,
+        rooms_requested = COALESCE(?, rooms_requested),
+        status = ?,
+        notes = ?
+       WHERE id = ?`,
+      [
+        group_name, contact_name, contact_phone, contact_email,
+        nextCheckIn, nextCheckOut, nextGuests, rooms_requested,
+        nextStatus, combinedNotes, groupId,
+      ]
+    );
+
+    if (rooms?.length) {
+      const assignedGuests = rooms.reduce((s, r) => s + Number(r.guest_count || 0), 0);
+      if (assignedGuests !== nextGuests) {
+        throw new Error(`Guest count per room must add up to ${nextGuests} (currently ${assignedGuests}).`);
+      }
+      let feesToSave = fees;
+      if (fees != null) {
+        const catalogRows = await fetchExtraServiceRows();
+        const firstBookingId = group.bookings?.[0]?.id;
+        const existingFees = firstBookingId ? await getBookingFees(firstBookingId) : [];
+        feesToSave = sanitizeGuestSubmittedFees(fees, catalogRows, existingFees);
+      }
+      return saveGroupBookings({
+        groupId,
+        userId: group.user_id,
+        checkIn: nextCheckIn,
+        checkOut: nextCheckOut,
+        rooms,
+        status: nextStatus,
+        notes: combinedNotes,
+        contactPhone: contact_phone ?? group.contact_phone,
+        meals,
+        fees: feesToSave,
+        meal_allergen_notes,
+        bypassAdvanceLimit: false,
+      });
+    }
+
     return getGroupById(groupId);
   }
 

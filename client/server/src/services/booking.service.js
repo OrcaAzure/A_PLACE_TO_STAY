@@ -204,9 +204,6 @@ export async function prepareBookingInsert({
   if (room.status === 'Maintenance') {
     throw new Error('This room is under maintenance and cannot be booked');
   }
-  if (room.status === 'Occupied') {
-    throw new Error('This room is currently occupied and cannot be booked for these dates');
-  }
   if (room.status === 'Dirty') {
     throw new Error('This room is being prepared and is not available to book yet');
   }
@@ -250,9 +247,6 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
   if (!room) throw new Error('Room not found');
   if (room.status === 'Maintenance') {
     throw new Error('This room is under maintenance and cannot be booked');
-  }
-  if (room.status === 'Occupied') {
-    throw new Error('This room is currently occupied and cannot be booked for these dates');
   }
   if (room.status === 'Dirty') {
     throw new Error('This room is being prepared and is not available to book yet');

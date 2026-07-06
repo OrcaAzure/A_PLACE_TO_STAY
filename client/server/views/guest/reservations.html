@@ -11,6 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/assets/css/global/landing.css"/>
 <link rel="stylesheet" href="/assets/css/global/guest-portal.css"/>
+<link rel="stylesheet" href="/assets/css/features/guest-reservation-wizard.css" />
 <link rel="stylesheet" href="/assets/css/global/main.css" />
 <link rel="stylesheet" href="/assets/css/components/components.css" />
 <link rel="stylesheet" href="/assets/css/global/responsive.css" />
@@ -456,6 +457,51 @@
   </div>
 </div>
 
+<!-- Venue modify modal -->
+<div id="venue-modify-overlay" class="modal-overlay is-hidden fixed inset-0 z-[80] flex items-end sm:items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="venue-modify-title">
+  <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto nice-scroll">
+    <div class="flex items-center justify-between p-5 border-b border-outline-variant">
+      <h3 id="venue-modify-title" class="font-headline-sm text-headline-sm">Modify venue booking</h3>
+      <button type="button" id="venue-modify-close" class="p-2 rounded-lg hover:bg-surface-container" aria-label="Close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <form id="venue-modify-form" class="p-5 space-y-4">
+      <p id="venue-modify-venue-name" class="text-body-sm font-medium text-on-surface"></p>
+      <div id="venue-modify-approved-banner" class="hidden bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3 text-body-sm">
+        This booking was already approved. Submitting changes sends it back to housing for review.
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="venue-modify-date">Event date</label>
+          <input id="venue-modify-date" type="date" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="venue-modify-guests">Guests</label>
+          <input id="venue-modify-guests" type="number" min="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="venue-modify-start">Start time</label>
+          <input id="venue-modify-start" type="time" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="venue-modify-end">End time</label>
+          <input id="venue-modify-end" type="time" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
+        </div>
+      </div>
+      <div id="venue-modify-message-wrap" class="hidden">
+        <label class="text-label-sm text-on-surface-variant block mb-1" for="venue-modify-message">Message to housing (required)</label>
+        <textarea id="venue-modify-message" rows="3" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Explain what you need changed…"></textarea>
+      </div>
+      <div id="venue-modify-error" class="hidden text-body-sm text-error bg-error-container rounded-lg px-3 py-2"></div>
+      <div class="flex gap-3 pt-1">
+        <button type="button" id="venue-modify-cancel" class="flex-1 py-3 border border-outline-variant rounded-lg font-label-md hover:bg-surface-container">Cancel</button>
+        <button type="submit" id="venue-modify-submit" class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90">Submit changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 </div>
 
 <script type="module">
@@ -464,12 +510,13 @@
   import {
     getBookings, getGroups, createBooking, updateBooking, updateGroup,
     getRoomAvailability, normalizeBooking, formatGroupId,
-    getFacilityBookings, cancelFacilityBooking, normalizeFacilityBooking,
+    getFacilityBookings, cancelFacilityBooking, updateFacilityBooking, normalizeFacilityBooking,
     getFiscalYear, getSupportContact,
   } from '/assets/js/services/api.js';
   import {
     loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
-    canGuestCancelRoomBooking, canGuestCancelVenueBooking, lifecyclePhaseForBooking, venuePhaseLabel, normStatus,
+    canGuestCancelRoomBooking, canGuestCancelVenueBooking, canGuestModifyRoomBooking, canGuestModifyVenueBooking,
+    lifecyclePhaseForBooking, venuePhaseLabel, normStatus,
     DORM_MIN_GUEST_COUNT, dormPriceLabel, isRoomBookable, isRoomListVisible, dormMinGuestsNotice,
   } from '/assets/js/features/reservation-shared.js';
   import { parseBookQuery, priceNoticeHtml, hasCompleteBookIntent } from '/assets/js/features/guest-booking-flow.js';
@@ -477,6 +524,7 @@
   import { loadGuestInvoices } from '/assets/js/features/guest-invoices.js';
   import { initGuestSupportCompose } from '/assets/js/features/guest-support-compose.js';
   import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
+  import { openGuestModifyWizard } from '/assets/js/features/booking-actions.js';
 
   requireAuth();
   await initAppLayout({
@@ -635,6 +683,8 @@
     const idLabel = isGroup ? formatGroupId(b.id) : `#APT-${b.id}`;
     const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
     const lifecycleBadge = lifecycleGuestBadge(b);
+    const canModify = !readOnly && canGuestModifyRoomBooking(b, cancelOpts);
+    const canCancel = !readOnly && canGuestCancelRoomBooking(b, cancelOpts);
     const typeBadge = isGroup
       ? '<span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">Group</span>'
       : '<span class="bg-surface-container text-on-surface-variant px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">Single</span>';
@@ -667,7 +717,8 @@
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
-          ${(!readOnly && canGuestCancelRoomBooking(b, cancelOpts)) ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">${b.status === 'pending' ? 'Cancel request' : 'Cancel reservation'}</button>` : ''}
+          ${canModify ? `<button type="button" class="modify-booking-btn px-4 py-2 text-label-md font-label-md text-primary hover:bg-primary/10 rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">Modify</button>` : ''}
+          ${canCancel ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">${b.status === 'pending' ? 'Cancel request' : 'Cancel reservation'}</button>` : ''}
         </div>
       </div>`;
   }
@@ -769,10 +820,22 @@
       return;
     }
     list.innerHTML = bookings.map((b, i) => renderCard(b, i)).join('');
-    list.querySelectorAll('.cancel-booking-btn').forEach((btn) => {
-      btn.addEventListener('click', () => cancelBooking(btn.dataset.id, btn.dataset.kind));
-    });
   }
+
+  document.getElementById('reservations-list')?.addEventListener('click', async (e) => {
+    const modifyBtn = e.target.closest('.modify-booking-btn');
+    if (modifyBtn) {
+      const id = modifyBtn.dataset.id;
+      const kind = modifyBtn.dataset.kind || 'single';
+      const booking = allBookings.find((b) => String(b.id) === String(id) && (b.kind || 'single') === kind);
+      if (booking) openGuestModifyWizard(booking);
+      return;
+    }
+    const cancelBtn = e.target.closest('.cancel-booking-btn');
+    if (cancelBtn) {
+      await cancelBooking(cancelBtn.dataset.id, cancelBtn.dataset.kind);
+    }
+  });
 
   async function cancelBooking(id, kind = 'single') {
     if (!confirm('Cancel this reservation? This cannot be undone.')) return;
@@ -831,6 +894,43 @@
   const successPanel = document.getElementById('booking-success-panel');
   let availableRooms = [];
   let selectedRoom = null;
+  let lastRoomSearch = null;
+
+  function readRoomSearchSnapshot() {
+    return {
+      checkIn: document.getElementById('booking-check-in')?.value || '',
+      checkOut: document.getElementById('booking-check-out')?.value || '',
+      guests: String(Number(document.getElementById('booking-guests')?.value) || 1),
+    };
+  }
+
+  function roomSearchMatchesSelection() {
+    if (!lastRoomSearch || !selectedRoom) return false;
+    const current = readRoomSearchSnapshot();
+    return current.checkIn === lastRoomSearch.checkIn
+      && current.checkOut === lastRoomSearch.checkOut
+      && current.guests === lastRoomSearch.guests;
+  }
+
+  function invalidateRoomSelection(message) {
+    if (!selectedRoom && !roomInput.value) return;
+    selectedRoom = null;
+    roomInput.value = '';
+    submitBtn.disabled = true;
+    document.getElementById('booking-summary')?.classList.add('hidden');
+    bookingExtras.reset();
+    if (message) {
+      const errorEl = document.getElementById('booking-form-error');
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    }
+  }
+
+  function onBookingCriteriaChange() {
+    if (!lastRoomSearch) return;
+    if (roomSearchMatchesSelection()) return;
+    invalidateRoomSelection('Your dates or guest count changed — search again and re-select a room.');
+  }
   let bookingMode = 'search';
   let savedTrip = null;
 
@@ -885,6 +985,7 @@
   function resetBookingResults() {
     availableRooms = [];
     selectedRoom = null;
+    lastRoomSearch = null;
     roomInput.value = '';
     submitBtn.disabled = true;
     document.getElementById('room-results-wrap').classList.add('hidden');
@@ -1044,6 +1145,7 @@
         return;
       }
       selectRoom(room);
+      lastRoomSearch = readRoomSearchSnapshot();
     } catch (err) {
       errorEl.textContent = err.message || 'Could not verify room availability';
       errorEl.classList.remove('hidden');
@@ -1135,6 +1237,7 @@
     try {
       const data = await getRoomAvailability({ check_in: checkIn, check_out: checkOut, guest_count: guests });
       availableRooms = data.rooms || [];
+      lastRoomSearch = readRoomSearchSnapshot();
       renderRoomResults(preferredRoomId);
     } catch (err) {
       errorEl.textContent = err.message || 'Could not load availability';
@@ -1175,6 +1278,11 @@
   }
 
   document.getElementById('find-rooms-btn').addEventListener('click', () => findRooms());
+  ['booking-check-in', 'booking-check-out', 'booking-guests'].forEach((id) => {
+    const el = document.getElementById(id);
+    el?.addEventListener('change', onBookingCriteriaChange);
+    el?.addEventListener('input', onBookingCriteriaChange);
+  });
   document.getElementById('booking-change-selection').addEventListener('click', () => {
     setBookingMode('search');
     findRooms(selectedRoom?.id || roomInput.value);
@@ -1196,16 +1304,41 @@
       errorEl.classList.remove('hidden');
       return;
     }
+    if (!roomSearchMatchesSelection()) {
+      errorEl.textContent = 'Your dates or guest count changed — search again and re-select a room.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
     const bookedRoom = selectedRoom;
+    const checkIn = document.getElementById('booking-check-in').value;
+    const checkOut = document.getElementById('booking-check-out').value;
     const { meals, fees, meal_allergen_notes } = bookingExtras.getPayload();
     try {
+      const verify = await getRoomAvailability({
+        check_in: checkIn,
+        check_out: checkOut,
+        guest_count: guestCount,
+      });
+      const stillAvailable = (verify.rooms || []).find(
+        (r) => String(r.id) === String(roomInput.value) && r.availability_status === 'available',
+      );
+      if (!stillAvailable) {
+        errorEl.textContent = 'That room is no longer available for these dates. Search again or pick another room.';
+        errorEl.classList.remove('hidden');
+        availableRooms = verify.rooms || [];
+        lastRoomSearch = readRoomSearchSnapshot();
+        invalidateRoomSelection();
+        setBookingMode('search');
+        renderRoomResults();
+        return;
+      }
       await createBooking({
         room_id: Number(roomInput.value),
-        check_in: document.getElementById('booking-check-in').value,
-        check_out: document.getElementById('booking-check-out').value,
-        guest_count: Number(document.getElementById('booking-guests').value) || 1,
+        check_in: checkIn,
+        check_out: checkOut,
+        guest_count: guestCount,
         notes: document.getElementById('booking-notes').value.trim() || null,
         meals,
         fees,
@@ -1254,6 +1387,7 @@
     const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
     const phaseBadge = lifecycleGuestBadge(b);
     const canCancel = !readOnly && canGuestCancelVenueBooking(b, { cutoffHours: cancellationCutoffHours });
+    const canModify = !readOnly && canGuestModifyVenueBooking(b, { cutoffHours: cancellationCutoffHours });
     return `
       <div class="group bg-white p-5 rounded-2xl border border-outline-variant hover:border-primary/40 hover:shadow-lg lift reveal" style="animation-delay:${0.05 * index}s" data-venue-id="${b.id}">
         <div class="flex flex-col sm:flex-row gap-6">
@@ -1288,6 +1422,7 @@
           </div>
         </div>
         <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
+          ${canModify ? `<button type="button" class="modify-fb-btn px-4 py-2 text-label-md font-label-md text-primary hover:bg-primary/10 rounded-lg transition-colors" data-fb-id="${b.id}">Modify</button>` : ''}
           ${canCancel ? `<button type="button" class="cancel-fb-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-fb-id="${b.id}">${normStatus(b.status) === 'pending' ? 'Cancel request' : 'Cancel reservation'}</button>` : ''}
         </div>
       </div>`;
@@ -1344,6 +1479,13 @@
   }
 
   document.getElementById('venue-bookings-list')?.addEventListener('click', async (e) => {
+    const modifyBtn = e.target.closest('.modify-fb-btn');
+    if (modifyBtn) {
+      const id = modifyBtn.dataset.fbId;
+      const booking = allVenueBookings.find((b) => String(b.id) === String(id));
+      if (booking) openVenueModifyModal(booking);
+      return;
+    }
     const btn = e.target.closest('.cancel-fb-btn');
     if (!btn) return;
     if (!confirm('Cancel this venue booking? This cannot be undone.')) return;
@@ -1353,6 +1495,73 @@
     } catch (err) {
       alert(err.message || 'Could not cancel');
     }
+  });
+
+  const venueModifyOverlay = document.getElementById('venue-modify-overlay');
+  let venueModifyTarget = null;
+
+  function openVenueModifyModal(booking) {
+    venueModifyTarget = booking;
+    document.getElementById('venue-modify-venue-name').textContent = booking.venueName || booking.title || 'Venue booking';
+    document.getElementById('venue-modify-date').value = booking.eventDate || '';
+    document.getElementById('venue-modify-start').value = booking.startTime || '';
+    document.getElementById('venue-modify-end').value = booking.endTime || '';
+    document.getElementById('venue-modify-guests').value = booking.guestCount || 1;
+    document.getElementById('venue-modify-message').value = '';
+    const approved = normStatus(booking.status) === 'approved';
+    document.getElementById('venue-modify-approved-banner').classList.toggle('hidden', !approved);
+    document.getElementById('venue-modify-message-wrap').classList.toggle('hidden', !approved);
+    document.getElementById('venue-modify-error').classList.add('hidden');
+    openModal(venueModifyOverlay);
+  }
+
+  function closeVenueModifyModal() {
+    venueModifyTarget = null;
+    closeModal(venueModifyOverlay);
+  }
+
+  document.getElementById('venue-modify-close')?.addEventListener('click', closeVenueModifyModal);
+  document.getElementById('venue-modify-cancel')?.addEventListener('click', closeVenueModifyModal);
+  venueModifyOverlay?.addEventListener('click', (e) => { if (e.target === venueModifyOverlay) closeVenueModifyModal(); });
+
+  document.getElementById('venue-modify-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!venueModifyTarget) return;
+    const errorEl = document.getElementById('venue-modify-error');
+    errorEl.classList.add('hidden');
+    const approved = normStatus(venueModifyTarget.status) === 'approved';
+    const message = document.getElementById('venue-modify-message').value.trim();
+    if (approved && !message) {
+      errorEl.textContent = 'Please explain what you want changed.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    const submitBtn = document.getElementById('venue-modify-submit');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving…';
+    try {
+      await updateFacilityBooking(venueModifyTarget.id, {
+        event_date: document.getElementById('venue-modify-date').value,
+        start_time: document.getElementById('venue-modify-start').value,
+        end_time: document.getElementById('venue-modify-end').value,
+        guest_count: Number(document.getElementById('venue-modify-guests').value) || 1,
+        modification_message: approved ? message : (message || undefined),
+      });
+      closeVenueModifyModal();
+      await loadVenueBookings();
+      await loadBookings({ background: true });
+    } catch (err) {
+      errorEl.textContent = err.message || 'Could not save changes';
+      errorEl.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit changes';
+    }
+  });
+
+  window.addEventListener('booking:updated', () => {
+    loadBookings({ background: true });
+    if (venueBookingsLoaded) loadVenueBookings({ background: true });
   });
 
   document.getElementById('venue-status-filter')?.addEventListener('click', (e) => {
