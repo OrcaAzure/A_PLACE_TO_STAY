@@ -47,6 +47,8 @@ function emptyState() {
     guestMessage: '',
     rateQuote: null,
     saving: false,
+    formError: '',
+    slotCheck: { checked: false, available: true, message: '' },
   };
 }
 
@@ -124,6 +126,24 @@ function rateHintHtml() {
   return `<p id="vbw-rate-hint" class="text-sm text-slate-600 mt-1"><strong>${escapeHtml(label)}</strong> rate: ${rateText}</p>`;
 }
 
+function slotInlineError() {
+  if (!state.slotCheck.checked || state.slotCheck.available) return '';
+  return state.slotCheck.message || 'This time slot is not available.';
+}
+
+function updateSlotErrorUI() {
+  const el = $('vbw-slot-error');
+  if (!el) return;
+  const msg = slotInlineError();
+  if (msg) {
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  } else {
+    el.textContent = '';
+    el.classList.add('hidden');
+  }
+}
+
 function renderSteps() {
   const el = $('venue-wizard-steps');
   if (!el) return;
@@ -182,6 +202,7 @@ function renderStep2() {
         <input id="vbw-end" class="res-input" type="time" value="${escapeHtml(state.endTime)}" required />
       </div>
     </div>
+    <p id="vbw-slot-error" class="res-error res-slot-error${slotInlineError() ? '' : ' hidden'}" role="alert">${escapeHtml(slotInlineError())}</p>
     <label class="res-label">Number of guests</label>
     <input id="vbw-guests" class="res-input res-input--short" type="number" min="1" max="500" value="${state.guestCount}" />
     <label class="res-label">Notes (optional)</label>
@@ -274,6 +295,39 @@ function readForm() {
   if (msgEl) state.guestMessage = msgEl.value.trim();
 }
 
+async function refreshSlotAvailability() {
+  const catalogId = state.facilityId || state.eventVenueId;
+  if (!catalogId || !state.eventDate || !state.startTime || !state.endTime || state.endTime <= state.startTime) {
+    state.slotCheck = { checked: false, available: true, message: '' };
+    updateSlotErrorUI();
+    return;
+  }
+  try {
+    const slot = await checkVenueSlotAvailability({
+      facility_id: catalogId,
+      event_date: state.eventDate,
+      start_time: state.startTime,
+      end_time: state.endTime,
+      exclude_booking_id: state.bookingId || state.fromRequestId || undefined,
+    });
+    state.slotCheck = {
+      checked: true,
+      available: Boolean(slot.available),
+      message: slot.available ? '' : (slot.message || 'This time slot is not available.'),
+    };
+    if (slot.available && state.rateQuote) {
+      state.rateQuote = { ...state.rateQuote, estimated_total: slot.estimated_total };
+    }
+  } catch (err) {
+    state.slotCheck = {
+      checked: true,
+      available: false,
+      message: err.message || 'Could not verify this time slot.',
+    };
+  }
+  updateSlotErrorUI();
+}
+
 async function refreshRateQuote() {
   const hint = $('vbw-rate-hint');
   if ((!state.facilityId && !state.eventVenueId && (!state.category || !state.item)) || !state.eventDate) {
@@ -287,16 +341,7 @@ async function refreshRateQuote() {
     state.rateQuote = catalogId
       ? await getVenueRateQuote({ facility_id: catalogId, date: state.eventDate })
       : await getVenueRateQuote(state.category, state.item, state.eventDate);
-    if (state.startTime && state.endTime && state.endTime > state.startTime && catalogId) {
-      const slot = await checkVenueSlotAvailability({
-        facility_id: catalogId,
-        event_date: state.eventDate,
-        start_time: state.startTime,
-        end_time: state.endTime,
-        exclude_booking_id: state.bookingId || state.fromRequestId || undefined,
-      });
-      state.rateQuote = { ...state.rateQuote, estimated_total: slot.estimated_total };
-    }
+    await refreshSlotAvailability();
     if (hint) {
       const label = state.rateQuote.calendar_season || state.rateQuote.season;
       hint.innerHTML = `<strong>${escapeHtml(label)}</strong> rate: ${formatMoney(state.rateQuote.rate)}/hr`;
@@ -323,6 +368,7 @@ function bindStep1() {
 function bindStep2() {
   const onScheduleChange = async () => {
     readForm();
+    state.formError = '';
     await refreshRateQuote();
   };
   $('vbw-space')?.addEventListener('change', onScheduleChange);
@@ -332,10 +378,15 @@ function bindStep2() {
 }
 
 function showError(msg) {
+  state.formError = msg || '';
   const el = $('venue-wizard-error');
   if (!el) return;
-  if (!msg) { el.classList.add('hidden'); el.textContent = ''; return; }
-  el.textContent = msg;
+  if (!state.formError) {
+    el.classList.add('hidden');
+    el.textContent = '';
+    return;
+  }
+  el.textContent = state.formError;
   el.classList.remove('hidden');
 }
 
@@ -357,7 +408,7 @@ function renderBody() {
     confirmBtn.disabled = state.saving;
     confirmBtn.textContent = confirmLabel();
   }
-  showError('');
+  showError(state.formError);
 
   if (state.step === 1) bindStep1();
   if (state.step === 2) {
@@ -378,6 +429,9 @@ function validateStep2() {
   if (!state.startTime || !state.endTime) return 'Please set start and end times.';
   if (state.endTime <= state.startTime) return 'End time must be after start time.';
   if (state.guestCount < 1) return 'Guest count must be at least 1.';
+  if (state.slotCheck.checked && !state.slotCheck.available) {
+    return state.slotCheck.message || 'This time slot is not available.';
+  }
   return '';
 }
 
@@ -399,7 +453,11 @@ function validateCurrentStep() {
   return '';
 }
 
-function goNext() {
+async function goNext() {
+  readForm();
+  if (state.step === 2 && venues.length) {
+    await refreshRateQuote();
+  }
   const err = validateCurrentStep();
   if (err) { showError(err); return; }
   if (state.step === 2 && !venues.length) return;
@@ -443,16 +501,12 @@ async function confirmSave() {
   try {
     const catalogId = state.facilityId || state.eventVenueId;
     if (catalogId) {
-      const slot = await checkVenueSlotAvailability({
-        facility_id: catalogId,
-        event_date: state.eventDate,
-        start_time: state.startTime,
-        end_time: state.endTime,
-        exclude_booking_id: state.bookingId || state.fromRequestId || undefined,
-      });
-      if (!slot.available) {
-        showError(slot.message || 'This time slot is not available.');
+      await refreshSlotAvailability();
+      if (!state.slotCheck.available) {
+        const msg = state.slotCheck.message || 'This time slot is not available.';
+        state.formError = msg;
         state.saving = false;
+        state.step = 2;
         renderBody();
         return;
       }
@@ -495,7 +549,14 @@ async function confirmSave() {
     refreshVenueScheduleBoard().catch(() => {});
     closeVenueBookingWizard();
   } catch (e) {
-    showError(e.message || 'Could not save venue booking.');
+    const msg = e.message || 'Could not save venue booking.';
+    if (/booked|slot|not available|overlap/i.test(msg)) {
+      state.slotCheck = { checked: true, available: false, message: msg };
+      state.formError = msg;
+      state.step = 2;
+    } else {
+      showError(msg);
+    }
   } finally {
     state.saving = false;
     renderBody();
@@ -628,7 +689,7 @@ export function initVenueBookingWizard() {
   $('venue-wizard-close')?.addEventListener('click', closeVenueBookingWizard);
   $('venue-wizard-overlay')?.addEventListener('click', closeVenueBookingWizard);
   $('venue-wizard-back')?.addEventListener('click', goBack);
-  $('venue-wizard-next')?.addEventListener('click', goNext);
+  $('venue-wizard-next')?.addEventListener('click', () => { goNext().catch((err) => showError(err.message)); });
   $('venue-wizard-confirm')?.addEventListener('click', confirmSave);
   $('venue-wizard-modal')?.addEventListener('click', (e) => {
     if (e.target.id === 'venue-wizard-modal') closeVenueBookingWizard();
