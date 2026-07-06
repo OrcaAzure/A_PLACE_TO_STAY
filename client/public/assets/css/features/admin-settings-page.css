@@ -593,6 +593,503 @@
   background: #fff;
 }
 
+/* ── Rate calendar ── */
+.rate-cal {
+  margin-top: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  overflow: hidden;
+}
+
+.rate-cal__block {
+  padding: 1.125rem 1.25rem;
+  background: #fff;
+}
+
+.rate-cal__block + .rate-cal__block {
+  border-top: 1px solid #e8edf3;
+}
+
+.rate-cal__block-title {
+  margin: 0 0 0.875rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.rate-cal__block-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.625rem 1rem;
+  margin-bottom: 0.875rem;
+}
+
+.rate-cal__block-head .rate-cal__block-title {
+  margin-bottom: 0;
+}
+
+.rate-cal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rate-cal__action {
+  padding: 0.4375rem 0.875rem;
+  border: 1px solid #dbe3ec;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.rate-cal__action:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.rate-cal__action--muted {
+  background: transparent;
+  border-color: transparent;
+  color: #64748b;
+}
+
+.rate-cal__action--muted:hover {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #334155;
+}
+
+.rate-field-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.rate-field {
+  min-height: 2.375rem;
+  padding: 0.4375rem 0.625rem;
+  border: 1px solid #dbe3ec;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #fff;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.rate-field:focus {
+  outline: none;
+  border-color: #64748b;
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.12);
+}
+
+.rate-field--season {
+  min-width: 7.5rem;
+  font-weight: 600;
+}
+
+.rate-field--month {
+  flex: 1 1 5rem;
+  min-width: 4.5rem;
+}
+
+.rate-field--day {
+  width: 3.5rem;
+  min-width: 3.5rem;
+  flex: 0 0 3.5rem;
+  text-align: center;
+  padding-inline: 0.35rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rate-field--day::-webkit-outer-spin-button,
+.rate-field--day::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
+.rate-field--day[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.rate-field--date {
+  width: 100%;
+}
+
+/* Weekend */
+.rate-weekend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.rate-weekend__switch {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rate-weekend__switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rate-weekend__switch-ui {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: background 0.2s;
+}
+
+.rate-weekend__switch-ui::after {
+  content: '';
+  position: absolute;
+  top: 0.1875rem;
+  left: 0.1875rem;
+  width: 1.125rem;
+  height: 1.125rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+  transition: transform 0.2s;
+}
+
+.rate-weekend__switch input:checked + .rate-weekend__switch-ui {
+  background: #1a365d;
+}
+
+.rate-weekend__switch input:checked + .rate-weekend__switch-ui::after {
+  transform: translateX(1.25rem);
+}
+
+.rate-weekend__switch-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.rate-weekend__switch-title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.35;
+}
+
+.rate-weekend__switch-hint {
+  font-size: 0.8125rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.rate-weekend__panel {
+  display: none;
+  gap: 1rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid #e8edf3;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+}
+
+.rate-weekend__panel.is-open {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 560px) {
+  .rate-weekend__panel.is-open {
+    grid-template-columns: 1fr auto;
+    align-items: end;
+  }
+}
+
+.rate-weekend__group {
+  min-width: 0;
+}
+
+.rate-weekend__days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rate-weekend__day {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  height: 2.375rem;
+  padding: 0 0.625rem;
+  border: 1px solid #dbe3ec;
+  border-radius: 0.5rem;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.rate-weekend__day input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rate-weekend__day:has(input:checked) {
+  border-color: #fdba74;
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+/* Period rows */
+.rate-cal__periods {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.rate-cal__empty {
+  margin: 0;
+  padding: 1rem 1.125rem;
+  border: 1px dashed #dbe3ec;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+  font-size: 0.875rem;
+  color: #64748b;
+  text-align: center;
+  line-height: 1.45;
+}
+
+.rate-cal__empty.hidden {
+  display: none;
+}
+
+.rate-period {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  padding: 1rem 1.125rem;
+  border: 1px solid #e8edf3;
+  border-radius: 0.625rem;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.rate-period__top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.rate-period__seasons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rate-season-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0 0.875rem;
+  border: 1px solid #dbe3ec;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.rate-season-pill input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rate-season-pill--peak:has(input:checked) {
+  border-color: #fdba74;
+  background: #fff7ed;
+  color: #9a3412;
+  box-shadow: 0 0 0 1px rgba(251, 146, 60, 0.15);
+}
+
+.rate-season-pill--super:has(input:checked) {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.15);
+}
+
+.rate-period__dates {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .rate-period__dates {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+}
+
+.rate-period__date-block {
+  min-width: 0;
+}
+
+.rate-period__date-inputs {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: nowrap;
+}
+
+.rate-period__note {
+  width: 100%;
+  min-height: 2.375rem;
+  padding: 0.4375rem 0.625rem;
+  border: 1px solid #dbe3ec;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+  background: #fff;
+}
+
+.rate-period__note:focus {
+  outline: none;
+  border-color: #64748b;
+  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.12);
+}
+
+.rate-period__remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.rate-period__remove .material-symbols-outlined {
+  font-size: 1.125rem;
+}
+
+.rate-period__remove:hover {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Preview */
+.rate-cal__preview {
+  margin-top: 0;
+}
+
+.rate-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+
+.rate-preview__dates {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+}
+
+@media (min-width: 480px) {
+  .rate-preview__dates {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+}
+
+.rate-preview__field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.rate-preview__result {
+  padding: 0.875rem 1rem;
+  border: 1px solid #e8edf3;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+  min-height: 3rem;
+}
+
+.rate-preview__summary {
+  margin: 0 0 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.rate-preview__message {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #94a3b8;
+}
+
+.rate-preview__message--error {
+  color: #b91c1c;
+}
+
+.rate-preview__nights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rate-preview__night {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.rate-preview__night-date {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #64748b;
+}
+
 /* ── Feedback ── */
 .settings-feedback {
   padding: 0.5rem 0.75rem;

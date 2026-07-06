@@ -185,10 +185,17 @@ export async function runSchemaPatches() {
     await pool.execute(
       `CREATE TABLE IF NOT EXISTS system_settings (
          setting_key   VARCHAR(64) PRIMARY KEY,
-         setting_value VARCHAR(255) NOT NULL,
+         setting_value TEXT NOT NULL,
          updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
        )`
     );
+    try {
+      await pool.execute(
+        `ALTER TABLE system_settings MODIFY setting_value TEXT NOT NULL`
+      );
+    } catch (err) {
+      console.warn('[schema] system_settings.setting_value TEXT patch skipped:', err.message);
+    }
     for (const [key, value] of Object.entries(FISCAL_YEAR_DEFAULTS)) {
       await pool.execute(
         `INSERT INTO system_settings (setting_key, setting_value)

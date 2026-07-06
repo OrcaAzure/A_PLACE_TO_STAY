@@ -222,7 +222,6 @@ async function runSeasonSettingsMigration() {
   );
 
   const defaultPeriods = JSON.stringify([
-    { season: 'Regular', start_month: 7, start_day: 1, end_month: 3, end_day: 31 },
     { season: 'Peak', start_month: 4, start_day: 1, end_month: 5, end_day: 31 },
     { season: 'Super Peak', start_month: 6, start_day: 1, end_month: 6, end_day: 30 },
   ]);
@@ -231,6 +230,13 @@ async function runSeasonSettingsMigration() {
      VALUES ('lodging_season_periods', ?)
      ON DUPLICATE KEY UPDATE setting_key = setting_key`,
     [defaultPeriods]
+  );
+
+  await pool.execute(
+    `INSERT INTO system_settings (setting_key, setting_value)
+     VALUES ('lodging_season_weekend_rule', ?)
+     ON DUPLICATE KEY UPDATE setting_key = setting_key`,
+    [JSON.stringify({ enabled: false, days: [5, 6, 0], season: 'Peak' })]
   );
 
   try {

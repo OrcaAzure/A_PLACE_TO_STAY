@@ -135,10 +135,33 @@
                   <p class="settings-form-group__hint" id="sys-advance-hint"></p>
                 </div>
 
-                <div class="settings-form-group" data-settings-search="rate season regular peak super peak pricing dates">
-                  <span class="settings-form-group__label">Rate seasons</span>
+                <div class="settings-form-group" data-settings-search="rate season regular peak super peak pricing dates calendar">
+                  <span class="settings-form-group__label">Rate calendar</span>
                   <p class="settings-form-group__hint" id="sys-season-summary">Loading…</p>
-                  <div id="season-periods-mount" class="settings-season-grid"></div>
+
+                  <div class="rate-cal">
+                    <section class="rate-cal__block">
+                      <h3 class="rate-cal__block-title">Weekends</h3>
+                      <div id="season-weekend-mount"></div>
+                    </section>
+
+                    <section class="rate-cal__block rate-cal__block--periods">
+                      <div class="rate-cal__block-head">
+                        <h3 class="rate-cal__block-title">Special periods</h3>
+                        <div class="rate-cal__actions">
+                          <button type="button" id="season-add-period" class="rate-cal__action">Add period</button>
+                          <button type="button" id="season-add-weekend" class="rate-cal__action rate-cal__action--muted" title="Override the weekend rule for specific dates">Override weekend</button>
+                        </div>
+                      </div>
+                      <div id="season-periods-list" class="rate-cal__periods"></div>
+                      <p id="season-periods-empty" class="rate-cal__empty">No special periods — only the weekend rule applies.</p>
+                    </section>
+
+                    <section class="rate-cal__block rate-cal__block--preview">
+                      <h3 class="rate-cal__block-title">Preview</h3>
+                      <div id="season-preview-mount" class="rate-cal__preview"></div>
+                    </section>
+                  </div>
                 </div>
 
                 <div class="settings-form-group" data-settings-search="cancellation cancel guest hours">

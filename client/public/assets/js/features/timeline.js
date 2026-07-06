@@ -2,7 +2,13 @@
  * Reservation Master Timeline — simple upcoming list + optional room calendar.
  */
 import { openModal, closeModal, syncTimelineScroll, scrollTimelineToToday } from '/assets/js/layout/ui.js';
-import { getRooms, getBookings, getFacilityBookings, normalizeRoom, normalizeBooking, normalizeManageRequest, normalizeFacilityBooking } from '/assets/js/services/api.js';
+import { getRooms, getBookings, getFacilityBookings, getFiscalYear, normalizeRoom, normalizeBooking, normalizeManageRequest, normalizeFacilityBooking } from '/assets/js/services/api.js';
+import {
+  buildSeasonMap,
+  normalizeSeasonCalendar,
+  seasonShortLabel,
+  seasonSlug,
+} from '/assets/js/features/season-calendar.js';
 import {
   approveRequest, rejectRequest, openModifyRequestWizard, openModifyVenueWizard, openAdminEditVenueWizard,
   confirmDeclineRequest,
@@ -275,15 +281,21 @@ function renderMonthEventChip(booking) {
     </button>`;
 }
 
-function renderMonthDayCell(day, dayBookings) {
+function renderMonthDayCell(day, dayBookings, lodgingSeason = null) {
   const visible = dayBookings.slice(0, MAX_EVENTS_PER_DAY);
   const overflow = dayBookings.length - visible.length;
+  const slug = lodgingSeason ? seasonSlug(lodgingSeason) : '';
   const dayCls = [
     'mac-day',
     !day.inMonth ? 'mac-day--outside' : '',
     day.isToday ? 'mac-day--today' : '',
     day.isWeekend && day.inMonth ? 'mac-day--weekend' : '',
+    slug && day.inMonth ? `mac-day--season-${slug}` : '',
   ].filter(Boolean).join(' ');
+
+  const seasonBadge = slug && day.inMonth
+    ? `<span class="mac-day-season mac-day-season--${slug}" title="${escapeHtml(lodgingSeason)} rate">${escapeHtml(seasonShortLabel(lodgingSeason))}</span>`
+    : '';
 
   const eventsHtml = visible.map(renderMonthEventChip).join('');
   const moreHtml = overflow > 0
@@ -292,12 +304,15 @@ function renderMonthDayCell(day, dayBookings) {
 
   return `
     <div class="${dayCls}" data-day="${day.iso}">
-      <span class="mac-day-num">${day.dayNum}</span>
+      <div class="mac-day-head">
+        <span class="mac-day-num">${day.dayNum}</span>
+        ${seasonBadge}
+      </div>
       <div class="mac-day-events">${eventsHtml}${moreHtml}</div>
     </div>`;
 }
 
-function renderMonthCalendar(bookings, year, month, todayStr) {
+function renderMonthCalendar(bookings, year, month, todayStr, { seasonMap = null } = {}) {
   const weeks = buildMonthWeeks(year, month, todayStr);
   const visible = calendarBookings(bookings);
   const weekdayHeader = WEEKDAYS.map((d) =>
@@ -305,7 +320,11 @@ function renderMonthCalendar(bookings, year, month, todayStr) {
 
   const weeksHtml = weeks.map((week) => {
     const daysHtml = week.map((day) =>
-      renderMonthDayCell(day, bookingsOnDay(visible, day.iso))).join('');
+      renderMonthDayCell(
+        day,
+        bookingsOnDay(visible, day.iso),
+        seasonMap?.get(day.iso) ?? null,
+      )).join('');
     return `<div class="mac-week">${daysHtml}</div>`;
   }).join('');
 
@@ -844,6 +863,7 @@ const DEFAULT_CAL_FILTERS = {
   showPending: true,
   showApproved: true,
   showCancelled: false,
+  showSeasonRates: false,
   searchQuery: '',
 };
 
@@ -879,15 +899,18 @@ function applyCalendarFilters(bookings, filters) {
   });
 }
 
-function renderFilterRow({ id, checked, attrs = '', label, swatchClass = '' }) {
+function renderFilterRow({ id, checked, attrs = '', label, hint = '', swatchClass = '' }) {
   const swatch = swatchClass
     ? `cal-filter-box cal-filter-swatch ${swatchClass}`
     : 'cal-filter-box';
+  const labelHtml = hint
+    ? `<span class="cal-filter-label-wrap"><span class="cal-filter-label">${label}</span><span class="cal-filter-hint">${hint}</span></span>`
+    : `<span class="cal-filter-label">${label}</span>`;
   return `
     <label class="cal-filter-row">
       <input type="checkbox" class="cal-filter-input"${id ? ` id="${id}"` : ''} ${checked ? 'checked' : ''} ${attrs} />
       <span class="${swatch}" aria-hidden="true"></span>
-      <span class="cal-filter-label">${label}</span>
+      ${labelHtml}
     </label>`;
 }
 
@@ -943,6 +966,24 @@ function renderCalendarFilterSidebar(filters) {
       </div>
     </section>`;
 
+  const seasonChecks = `
+    <section class="cal-filter-section cal-filter-section--season">
+      <h4 class="cal-filter-title">Rate seasons</h4>
+      <div class="cal-filter-list">
+        ${renderFilterRow({
+          checked: filters.showSeasonRates,
+          attrs: 'data-filter-bool="showSeasonRates"',
+          label: 'Highlight each day',
+          hint: 'See Regular, Peak, or Super Peak on every date',
+        })}
+      </div>
+      <ul class="cal-legend-list cal-season-legend" aria-label="Rate season colors">
+        <li><span class="cal-legend-swatch cal-swatch--season-regular"></span>Regular</li>
+        <li><span class="cal-legend-swatch cal-swatch--season-peak"></span>Peak</li>
+        <li><span class="cal-legend-swatch cal-swatch--season-super"></span>Super Peak</li>
+      </ul>
+    </section>`;
+
   return `
     <aside class="cal-sidebar" id="cal-sidebar">
       <button type="button" class="cal-sidebar-close" id="cal-sidebar-close" aria-label="Close filters">
@@ -952,6 +993,7 @@ function renderCalendarFilterSidebar(filters) {
         <div class="cal-sidebar-mini" id="cal-mini-mount"></div>
         ${typeChecks}
         ${statusChecks}
+        ${seasonChecks}
         <section class="cal-filter-section cal-filter-legend">
           <h4 class="cal-filter-title">Colors on calendar</h4>
           <ul class="cal-legend-list">
@@ -998,6 +1040,7 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
   let allBookings = [];
   let rawBookingsById = {};
   let rawVenueById = {};
+  let seasonCalendar = normalizeSeasonCalendar({});
   let filters = structuredClone(DEFAULT_CAL_FILTERS);
   if (deepLink.pending) {
     filters.showPending = true;
@@ -1035,6 +1078,19 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
     bindFilterEvents();
   }
 
+  async function loadSeasonCalendar() {
+    if (!withFilters) return;
+    try {
+      const fy = await getFiscalYear();
+      seasonCalendar = normalizeSeasonCalendar({
+        season_periods: fy.seasonPeriods || fy.settings?.season_periods,
+        weekend_rule: fy.weekendRule || fy.settings?.weekend_rule,
+      });
+    } catch {
+      seasonCalendar = normalizeSeasonCalendar({});
+    }
+  }
+
   function renderMonth() {
     const periodEl = document.getElementById('timeline-period');
     if (periodEl) periodEl.textContent = `${MONTHS_FULL[viewMonth]} ${viewYear}`;
@@ -1052,7 +1108,15 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
 
     const mount = document.getElementById('mac-cal-mount');
     if (!mount) return;
-    mount.innerHTML = renderMonthCalendar(visible, viewYear, viewMonth, todayStr);
+
+    let seasonMap = null;
+    if (withFilters && filters.showSeasonRates) {
+      const weeks = buildMonthWeeks(viewYear, viewMonth, todayStr);
+      const dates = weeks.flat().map((d) => d.iso);
+      seasonMap = buildSeasonMap(dates, seasonCalendar);
+    }
+
+    mount.innerHTML = renderMonthCalendar(visible, viewYear, viewMonth, todayStr, { seasonMap });
     bindMonthCalendar(mount, {
       bookings: visible,
       rawBookingsById,
@@ -1081,9 +1145,12 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
 
   function bindFilterEvents() {
     document.querySelectorAll('[data-filter-bool]').forEach((input) => {
-      input.addEventListener('change', () => {
+      input.addEventListener('change', async () => {
         const key = input.getAttribute('data-filter-bool');
         filters[key] = input.checked;
+        if (key === 'showSeasonRates' && input.checked) {
+          await loadSeasonCalendar();
+        }
         renderMonth();
       });
     });
@@ -1105,6 +1172,7 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
       rawVenueById = Object.fromEntries(rawVenues.map((b) => [String(b.id), b]));
 
       if (withFilters) {
+        await loadSeasonCalendar();
         renderFilters();
       }
 
@@ -1151,6 +1219,15 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
     if (sidebar.contains(e.target) || e.target.closest('#cal-filters-toggle')) return;
     sidebar.classList.remove('cal-sidebar--open');
   });
+
+  if (withFilters) {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      loadSeasonCalendar().then(() => {
+        if (filters.showSeasonRates) renderMonth();
+      });
+    });
+  }
 
   return { refresh };
 }

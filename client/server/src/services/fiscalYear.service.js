@@ -2,13 +2,14 @@ import { pool } from '../config/db.js';
 import { FISCAL_YEAR_DEFAULTS } from '../utils/constants.js';
 import {
   LODGING_SEASONS,
-  DEFAULT_SEASON_PERIODS,
-  normalizeSeasonPeriods,
-  setSeasonPeriods,
   getSeasonPeriods,
+  getWeekendRule,
+  setSeasonCalendar,
   resolveLodgingSeasonForDate,
   describeSeasonPeriods,
   formatSeasonPeriodLabel,
+  normalizeSeasonPeriodList,
+  normalizeWeekendRule,
 } from './season.service.js';
 
 const SETTING_KEYS = [
@@ -112,6 +113,7 @@ export async function getFiscalYearSettings() {
     );
     const stored = Object.fromEntries(rows.map((r) => [r.setting_key, r.setting_value]));
     const season_periods = await getSeasonPeriods();
+    const weekend_rule = await getWeekendRule();
     let cutoffHours = readSettingInt(stored, 'guest_cancellation_cutoff_hours', null, 0, 2160);
     if (cutoffHours == null) {
       const legacyDays = readSettingInt(stored, 'guest_cancellation_cutoff_days', FISCAL_YEAR_DEFAULTS.guest_cancellation_cutoff_hours / 24, 0, 90);
@@ -123,11 +125,13 @@ export async function getFiscalYearSettings() {
       booking_advance_months: readSettingInt(stored, 'booking_advance_months', FISCAL_YEAR_DEFAULTS.booking_advance_months, 1, 36),
       guest_cancellation_cutoff_hours: cutoffHours,
       season_periods,
+      weekend_rule,
     };
   } catch {
     return {
       ...FISCAL_YEAR_DEFAULTS,
-      season_periods: DEFAULT_SEASON_PERIODS.map((p) => ({ ...p })),
+      season_periods: [],
+      weekend_rule: { enabled: false, days: [5, 6, 0], season: 'Peak' },
     };
   }
 }
@@ -157,10 +161,17 @@ export async function updateFiscalYearSettings(updates = {}) {
     ),
   };
 
-  if (updates.season_periods != null) {
-    next.season_periods = await setSeasonPeriods(updates.season_periods);
+  const calendarUpdates = {};
+  if (updates.season_periods != null) calendarUpdates.periods = updates.season_periods;
+  if (updates.weekend_rule != null) calendarUpdates.weekend_rule = updates.weekend_rule;
+
+  if (Object.keys(calendarUpdates).length) {
+    const saved = await setSeasonCalendar(calendarUpdates);
+    next.season_periods = saved.periods;
+    next.weekend_rule = saved.weekend_rule;
   } else {
     next.season_periods = current.season_periods;
+    next.weekend_rule = current.weekend_rule;
   }
 
   for (const key of SETTING_KEYS) {
@@ -185,7 +196,10 @@ export async function getPublicFiscalYearInfo({ bypassAdvanceLimit = false } = {
   const settings = await getFiscalYearSettings();
   const bounds = getBookingDateBounds(settings, { bypassAdvanceLimit });
   const today = bounds.minDate;
-  const seasonForToday = await resolveLodgingSeasonForDate(today, settings.season_periods);
+  const seasonForToday = await resolveLodgingSeasonForDate(today, {
+    season_periods: settings.season_periods,
+    weekend_rule: settings.weekend_rule,
+  });
   const checkInFiscalYear = bounds.maxCheckInDate
     ? getFiscalYearForDate(bounds.maxCheckInDate, settings)
     : null;
@@ -194,7 +208,8 @@ export async function getPublicFiscalYearInfo({ bypassAdvanceLimit = false } = {
     ...bounds,
     settings,
     seasonPeriods: settings.season_periods,
-    seasonPeriodsSummary: describeSeasonPeriods(settings.season_periods),
+    weekendRule: settings.weekend_rule,
+    seasonPeriodsSummary: describeSeasonPeriods(settings.season_periods, settings.weekend_rule),
     seasonForToday,
     activeLodgingSeason: seasonForToday,
     activeSeasonLabel: `${seasonForToday} season rates apply today`,
@@ -206,7 +221,13 @@ export async function getPublicFiscalYearInfo({ bypassAdvanceLimit = false } = {
   };
 }
 
-export { formatSeasonPeriodLabel, describeSeasonPeriods, LODGING_SEASONS };
+export {
+  formatSeasonPeriodLabel,
+  describeSeasonPeriods,
+  normalizeSeasonPeriodList,
+  normalizeWeekendRule,
+  LODGING_SEASONS,
+};
 
 export function formatCancellationPolicyLabel(cutoffHours) {
   const hours = Number(cutoffHours);

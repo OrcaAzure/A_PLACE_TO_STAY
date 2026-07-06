@@ -119,6 +119,13 @@ export async function updateFiscalYearSettings(payload) {
   });
 }
 
+export async function previewSeasonCalendar(payload) {
+  return apiRequest('/settings/season-preview', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function getUsers(params = {}) {
   const qs = new URLSearchParams();
   if (params.role) qs.set('role', params.role);
