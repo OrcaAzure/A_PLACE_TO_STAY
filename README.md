@@ -110,17 +110,22 @@ App HTML lives in `client/server/views/`; CSS/JS live under `client/public/asset
 
 Bookings auto-calculate price, season, and check room availability.
 
-## Project status (~78% complete)
+## Project status (~89% complete)
 
 | Area | Done | Notes |
 |------|------|-------|
-| Admin portal | ~85% | Dashboard, reservations, facilities, guest access wired to API |
-| Guest portal | ~80% | Reservations & facilities live; settings profile now saves |
-| Backend API | ~75% | Core flows done; rates/seasons admin UI not built |
-| Auth & email | ~90% | Login, reset, guest-access emails (needs valid SMTP) |
-| Dev tooling | ~85% | Setup script, health check, automated API tests (`npm test`) |
+| Admin portal | ~88% | Dashboard, reservations, facilities, guest access, billing wired to API |
+| Guest portal | ~90% | Book, modify, cancel reservations; venue bookings; profile saves |
+| Backend API | ~88% | Core flows done; room/venue rates and seasonal periods in Settings |
+| Auth & email | ~92% | 12 automated email templates; needs production SMTP to deliver |
+| Dev tooling | ~82% | Setup, Docker, health check, 21 API tests (`npm test`); no CI yet |
+| Deployment / ops | ~65% | Docs and configs ready; staging/prod not validated with IT yet |
 
-**Still in progress:** payment recording UI (mark-as-paid added), notification prefs, landing page polish.
+**Product overall ~89% · production-ready ~75%** (blocked mainly on IT: DB, SSL, SMTP, smoke test).
+
+**Still in progress:** guest notification prefs (UI only), admin venue modify UI, in-app notification feed, CI pipeline.
+
+**Recently shipped:** guest self-modify (room/group/venue), self-modify confirmation emails, landing page polish, multiple seasonal rate periods, automated tests.
 
 ## Automated tests
 
@@ -131,6 +136,25 @@ npm run test:unit        # middleware permission guards only (no database)
 ```
 
 Integration tests use `client/server/.env` and seeded users (`admin@aptspace.com`, `maria.santos@apts.edu.ph` / `password`). They are skipped automatically when MySQL is unavailable.
+
+**Not covered yet:** booking create/update flows, guest-access workflow, guest self-modify emails.
+
+## Automated emails
+
+Templates live in `client/server/src/services/email.service.js`. In development without SMTP, bodies are logged to the console (`[email dev]`).
+
+| Email | When |
+|-------|------|
+| Guest access invite | Admin creates external guest account |
+| Password reset | Forgot-password flow |
+| Room / group confirmation | Booking approved |
+| Room / group modified (admin) | Admin modifies with message |
+| Guest self-modify (room / group / venue) | Guest updates pending or re-requests approved booking |
+| Housing / venue invoice | Booking approved or admin sends from Billing |
+| Payment receipt | Admin records payment |
+| Support message | Guest submits support form (to `SUPPORT_EMAIL`) |
+
+Verify SMTP before deploy: `node client/server/scripts/validate-smtp.mjs --send-test`
 
 ## Production deployment
 
@@ -229,17 +253,18 @@ See `deploy/apache-proxy.example.conf` for a starter Apache config to hand to IT
 | SQL injection | Good | Parameterized queries throughout |
 | Rate limiting | Partial | Login, forgot-password, reset-password (20 / 15 min) |
 | Password hashing | Good | bcrypt cost 10 |
-| Page access | Client-only | Admin HTML is not server-guarded — APIs enforce permissions |
+| Page access | Good | Admin/guest HTML requires httpOnly session cookie; APIs enforce permissions |
 | CORS | Configured | Set `ALLOWED_ORIGIN` in production |
 | Secrets | Validated | Weak `JWT_SECRET` blocked at startup in production |
 | Demo data | Guarded | Skipped when `NODE_ENV=production` |
 
-**Fixed in this pass:** user IDOR (`GET /api/users/:id`), production seed guard, env validation, generic 500 errors in production, password min length 8 in production, request body size limit (1 MB).
+**Implemented:** user IDOR guard, production seed guard, env validation, page auth middleware, single-session login, login lockout, httpOnly cookie for page routes, generic 500 errors in production.
 
-**Still recommended (your team):**
+**Still recommended before go-live:**
+- Staging deploy + smoke test with IT (see `deploy/STAGING.md`)
+- Production SMTP (`SMTP_*` in `.env`) — password reset and booking emails will not deliver without it
 - Put nginx/Cloudflare in front with HTTPS and WAF
-- Use a secrets manager or host env vars (not committed `.env`)
-- Rotate `JWT_SECRET` only with a forced re-login plan
-- Add more automated tests for booking create/update flows and guest-access workflow
-- Consider httpOnly cookie sessions instead of `localStorage` JWT (larger change)
+- Use host env vars or a secrets manager (not committed `.env`)
+- Expand automated tests (booking CRUD, guest-access, guest-modify emails)
+- Move API JWT fully off `localStorage` (httpOnly cookie exists for pages only)
 - Tighten CSP once Tailwind is built locally (remove CDN `unsafe-eval`)
