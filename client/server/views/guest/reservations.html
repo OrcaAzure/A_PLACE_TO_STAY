@@ -96,6 +96,25 @@
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; }
   }
+
+  .guest-stays-filter-select {
+    min-width: 10rem;
+    min-height: 2.5rem;
+    padding: 0.5rem 2rem 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border: 1px solid var(--outline-variant, #cbd5e1);
+    border-radius: 0.5rem;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 0.5rem center;
+    background-size: 1.125rem;
+    color: inherit;
+    cursor: pointer;
+    appearance: none;
+  }
+  .guest-stays-filter-select:focus {
+    outline: none;
+    border-color: #1d4ed8;
+    box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.2);
+  }
 </style>
 </head>
 <body>
@@ -181,10 +200,10 @@
       </div>
     </section>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter">
-      <div class="lg:col-span-8 space-y-gutter">
+    <div id="featured-card" class="hidden mb-xl"></div>
 
-        <div id="featured-card" class="hidden"></div>
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
+      <div class="lg:col-span-8">
 
         <div class="bg-white rounded-xl border border-outline-variant shadow-sm reveal" style="animation-delay:.28s">
           <div class="flex border-b border-outline-variant px-4 pt-3 gap-1" role="tablist">
@@ -194,23 +213,21 @@
 
           <div data-res-panel="room-stays" role="tabpanel">
 
-        <div class="bg-white p-4 rounded-xl flex flex-wrap items-center gap-3" style="animation-delay:.3s">
-          <div class="flex items-center gap-2 mr-1 text-on-surface-variant">
-            <span class="material-symbols-outlined text-[20px]">filter_list</span>
-            <span class="text-label-sm uppercase tracking-wider font-bold">Filter</span>
+        <div class="p-4 flex flex-wrap items-center gap-3" style="animation-delay:.3s">
+          <div class="flex flex-1 min-w-0 items-center gap-3 flex-wrap sm:flex-nowrap">
+            <div class="flex items-center bg-surface-container-low px-3 py-2 rounded-lg border border-outline-variant flex-1 min-w-[12rem] focus-within:border-primary focus-within:shadow-sm transition-all">
+              <span class="material-symbols-outlined text-outline text-[18px] shrink-0">search</span>
+              <input id="reservation-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0" placeholder="Search reservations..." type="search" autocomplete="off" />
+            </div>
+            <select id="status-filter" class="guest-stays-filter-select shrink-0" aria-label="Filter by status">
+              <option value="">All statuses</option>
+              <option value="approved">Approved</option>
+              <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
           </div>
-          <div id="status-filter" class="flex flex-wrap gap-1.5">
-            <button data-status="" class="seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-primary text-on-primary">All</button>
-            <button data-status="approved" class="seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Approved</button>
-            <button data-status="pending" class="seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Pending</button>
-            <button data-status="rejected" class="seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Rejected</button>
-            <button data-status="cancelled" class="seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Cancelled</button>
-          </div>
-          <div class="flex items-center bg-surface-container-low px-3 py-2 rounded-full border border-outline-variant w-full sm:w-64 focus-within:border-primary focus-within:shadow-sm transition-all">
-            <span class="material-symbols-outlined text-outline text-[18px] shrink-0">search</span>
-            <input id="reservation-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0" placeholder="Search reservations..." type="text" />
-          </div>
-          <div class="ml-auto flex items-center gap-2 text-body-sm text-on-surface-variant shrink-0">
+          <div class="flex items-center gap-2 text-body-sm text-on-surface-variant shrink-0 sm:ml-auto">
             <span class="material-symbols-outlined text-[18px]">calendar_today</span>
             <span id="current-month-label">This Month</span>
           </div>
@@ -226,21 +243,19 @@
 
           <div data-res-panel="venues" class="is-tab-hidden hidden" role="tabpanel">
 
-        <div class="bg-white p-4 rounded-xl flex flex-wrap items-center gap-3">
-          <div class="flex items-center gap-2 mr-1 text-on-surface-variant">
-            <span class="material-symbols-outlined text-[20px]">filter_list</span>
-            <span class="text-label-sm uppercase tracking-wider font-bold">Filter</span>
-          </div>
-          <div id="venue-status-filter" class="flex flex-wrap gap-1.5">
-            <button data-venue-status="" class="venue-seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-primary text-on-primary">All</button>
-            <button data-venue-status="approved" class="venue-seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Approved</button>
-            <button data-venue-status="pending" class="venue-seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Pending</button>
-            <button data-venue-status="rejected" class="venue-seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Rejected</button>
-            <button data-venue-status="cancelled" class="venue-seg-btn px-4 py-1.5 rounded-full text-body-sm font-medium bg-surface-container-low border border-outline-variant hover:bg-surface-container">Cancelled</button>
-          </div>
-          <div class="flex items-center bg-surface-container-low px-3 py-2 rounded-full border border-outline-variant w-full sm:w-64 focus-within:border-primary focus-within:shadow-sm transition-all">
-            <span class="material-symbols-outlined text-outline text-[18px] shrink-0">search</span>
-            <input id="venue-bookings-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0" placeholder="Search venue bookings..." type="text" />
+        <div class="p-4 flex flex-wrap items-center gap-3">
+          <div class="flex flex-1 min-w-0 items-center gap-3 flex-wrap sm:flex-nowrap">
+            <div class="flex items-center bg-surface-container-low px-3 py-2 rounded-lg border border-outline-variant flex-1 min-w-[12rem] focus-within:border-primary focus-within:shadow-sm transition-all">
+              <span class="material-symbols-outlined text-outline text-[18px] shrink-0">search</span>
+              <input id="venue-bookings-search" class="bg-transparent border-none focus:ring-0 text-body-sm w-full min-w-0" placeholder="Search venue bookings..." type="search" autocomplete="off" />
+            </div>
+            <select id="venue-status-filter" class="guest-stays-filter-select shrink-0" aria-label="Filter venue bookings by status">
+              <option value="">All statuses</option>
+              <option value="approved">Approved</option>
+              <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
           </div>
         </div>
 
@@ -254,8 +269,8 @@
         </div><!-- /tab workspace -->
       </div>
 
-      <div class="lg:col-span-4 space-y-gutter">
-        <div class="bg-primary text-white p-6 rounded-2xl shadow-lg relative overflow-hidden group reveal" style="animation-delay:.35s">
+      <div class="lg:col-span-4 space-y-gutter lg:sticky lg:top-6">
+        <div class="bg-primary text-white p-6 rounded-xl border border-primary shadow-sm relative overflow-hidden group reveal" style="animation-delay:.35s">
           <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl float-blob"></div>
           <h4 class="font-headline-sm text-headline-sm mb-4 relative z-10">Need Assistance?</h4>
           <p class="font-body-sm text-body-sm text-white/80 mb-6 relative z-10">Our facility managers are available to help you with special equipment requests or catering.</p>
@@ -264,7 +279,7 @@
           </button>
         </div>
 
-        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.38s" id="guest-support-mail-card">
+        <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm reveal" style="animation-delay:.38s" id="guest-support-mail-card">
           <div class="flex items-start gap-3">
             <span class="material-symbols-outlined text-primary mt-1">mail</span>
             <div class="min-w-0">
@@ -280,20 +295,7 @@
           </div>
         </div>
 
-        <div class="bg-white p-6 rounded-2xl border border-outline-variant shadow-sm reveal" style="animation-delay:.42s">
-          <h4 class="font-headline-sm text-headline-sm mb-6 flex items-center justify-between">
-            Reservation Timeline
-            <span class="text-[12px] font-bold text-on-surface-variant" id="timeline-month"></span>
-          </h4>
-          <div class="relative pl-6 border-l-2 border-surface-container" id="timeline-list">
-            <div class="space-y-6">
-              <div class="skeleton h-12"></div>
-              <div class="skeleton h-12"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-surface-container-low p-6 rounded-2xl border border-outline-variant reveal" style="animation-delay:.49s">
+        <div class="bg-surface-container-low p-6 rounded-xl border border-outline-variant reveal" style="animation-delay:.42s">
           <div class="flex items-start gap-3">
             <span class="material-symbols-outlined text-amber-600 mt-1">info</span>
             <div>
@@ -589,8 +591,6 @@
   cancelOpts.now = now;
   document.getElementById('current-month-label').textContent =
     now.toLocaleString('default', { month: 'long', year: 'numeric' });
-  document.getElementById('timeline-month').textContent =
-    now.toLocaleString('default', { month: 'long' });
 
   const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
   const fmtDate = (d) => {
@@ -723,26 +723,6 @@
       </div>`;
   }
 
-  function renderTimeline(bookings) {
-    const upcoming = bookings
-      .filter((b) => b.status === 'approved' && b.startDate >= todayStr)
-      .sort((a, b) => String(a.startDate).localeCompare(String(b.startDate)))
-      .slice(0, 3);
-
-    const el = document.getElementById('timeline-list');
-    if (!upcoming.length) {
-      el.innerHTML = '<p class="text-body-sm text-on-surface-variant">No upcoming reservations.</p>';
-      return;
-    }
-    el.innerHTML = upcoming.map((b, i) => `
-      <div class="mb-8 relative reveal ${i > 0 ? 'opacity-70' : ''}" style="animation-delay:${0.1 * i}s">
-        <div class="absolute -left-[31px] top-1 w-4 h-4 rounded-full ${i === 0 ? 'bg-primary live-dot' : 'bg-surface-container'} border-4 border-white shadow-sm"></div>
-        <p class="text-[11px] font-bold ${i === 0 ? 'text-primary' : 'text-on-surface-variant'} uppercase">${fmtDate(b.startDate)}</p>
-        <h5 class="text-body-md font-bold">${b.facilityLabel || b.title}</h5>
-        <p class="text-body-sm text-on-surface-variant">${b.guestCount || 1} Guest(s)</p>
-      </div>`).join('');
-  }
-
   let allBookings = [];
   let activeStatus = '';
   let searchTerm = '';
@@ -784,7 +764,6 @@
       );
 
       renderFeatured(allBookings);
-      renderTimeline(allBookings);
       applyAndRender();
       if (!background) await loadGuestInvoices();
     } catch (err) {
@@ -850,19 +829,9 @@
     }
   }
 
-  /* ---------- Status filter pills ---------- */
-  document.getElementById('status-filter').addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-status]');
-    if (!btn) return;
-    activeStatus = btn.dataset.status;
-    document.querySelectorAll('#status-filter button').forEach((b) => {
-      const on = b === btn;
-      b.classList.toggle('bg-primary', on);
-      b.classList.toggle('text-on-primary', on);
-      b.classList.toggle('bg-surface-container-low', !on);
-      b.classList.toggle('border', !on);
-      b.classList.toggle('border-outline-variant', !on);
-    });
+  /* ---------- Status filter ---------- */
+  document.getElementById('status-filter')?.addEventListener('change', (e) => {
+    activeStatus = e.target.value;
     applyAndRender();
   });
 
@@ -1589,18 +1558,8 @@
     if (venueBookingsLoaded) loadVenueBookings({ background: true });
   });
 
-  document.getElementById('venue-status-filter')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-venue-status]');
-    if (!btn) return;
-    venueActiveStatus = btn.dataset.venueStatus;
-    document.querySelectorAll('#venue-status-filter button').forEach((b) => {
-      const on = b === btn;
-      b.classList.toggle('bg-primary', on);
-      b.classList.toggle('text-on-primary', on);
-      b.classList.toggle('bg-surface-container-low', !on);
-      b.classList.toggle('border', !on);
-      b.classList.toggle('border-outline-variant', !on);
-    });
+  document.getElementById('venue-status-filter')?.addEventListener('change', (e) => {
+    venueActiveStatus = e.target.value;
     applyAndRenderVenues();
   });
 
