@@ -8,7 +8,7 @@ import {
   canAdminCancelVenueBooking, canAdminModifyVenueBooking, lifecyclePhaseForBooking, lifecyclePhaseBadge,
 } from '/assets/js/features/reservation-shared.js';
 import { closeVenueBookingWizard, openVenueBookingWizard } from '/assets/js/features/venue-booking-wizard.js';
-import { openAdminEditVenueWizard, openModifyVenueWizard } from '/assets/js/features/booking-actions.js';
+import { openAdminEditVenueWizard, openModifyVenueWizard, confirmAdminCancelReservation, confirmDeclineRequest } from '/assets/js/features/booking-actions.js';
 
 let initialized = false;
 let isOpen = false;
@@ -160,6 +160,16 @@ export function closeManageVenueBookingsModal() {
 }
 
 async function setStatus(id, status) {
+  const item = list.find((x) => String(x.id) === String(id));
+  const label = item?.guestName || 'this venue booking';
+  const pending = item ? normStatus(item.status) === 'pending' : false;
+  if (status === 'Cancelled') {
+    const confirmed = await confirmAdminCancelReservation(label, { pending });
+    if (!confirmed) return;
+  } else if (status === 'Rejected') {
+    const confirmed = await confirmDeclineRequest(label);
+    if (!confirmed) return;
+  }
   try {
     await updateFacilityBooking(id, { status });
     window.dispatchEvent(new CustomEvent('booking:updated'));
@@ -198,13 +208,11 @@ function onClick(e) {
   }
   const decline = e.target.closest('[data-vb-decline]');
   if (decline) {
-    if (!window.confirm('Decline this venue booking request?')) return;
     setStatus(Number(decline.dataset.vbDecline), 'Rejected');
     return;
   }
   const cancel = e.target.closest('[data-vb-cancel]');
   if (cancel) {
-    if (!window.confirm('Cancel this venue booking?')) return;
     setStatus(Number(cancel.dataset.vbCancel), 'Cancelled');
   }
 }

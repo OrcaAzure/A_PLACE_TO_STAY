@@ -14,6 +14,7 @@ import {
   resolveGuestUser,
   notifyBookingCreated,
   notifyBookingUpdated,
+  notifyBookingCancelled,
   notifyGuestRoomSelfModified,
   getRoomById,
   resolveSeason,
@@ -219,7 +220,9 @@ export const updateBooking = async (req, res) => {
         if (cancelError) return res.status(400).json({ message: cancelError });
         await pool.query('UPDATE bookings_rooms SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
         const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
-        return res.status(200).json({ message: 'Booking cancelled', booking: await enrichBooking(rows[0]) });
+        const booking = await enrichBooking(rows[0]);
+        notifyBookingCancelled(rows[0], { cancelledByGuest: true });
+        return res.status(200).json({ message: 'Booking cancelled', booking });
       }
 
       const modifyError = assertCanModifyRoomBooking({
@@ -371,6 +374,8 @@ export const updateBooking = async (req, res) => {
         modificationMessage: modification_message,
         notifyModification: Boolean(notify_modification),
       });
+    } else if (status === 'Cancelled') {
+      notifyBookingCancelled(rows[0], { cancelledByGuest: false });
     }
 
     res.status(200).json({ message: 'Booking updated', booking });

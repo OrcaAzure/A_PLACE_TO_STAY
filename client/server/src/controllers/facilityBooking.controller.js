@@ -22,6 +22,7 @@ import {
 } from '../services/facility.service.js';
 import { fetchFacilitiesWithRates, FACILITY_GROUP_ICONS } from '../services/facilityCatalog.service.js';
 import { sendGuestVenueSelfModifyEmail, sendVenueModifiedEmail } from '../services/email.service.js';
+import { notifyVenueBookingCancelled } from '../services/booking.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -192,6 +193,7 @@ export const updateFacilityBooking = async (req, res) => {
         if (cancelError) return res.status(400).json({ message: cancelError });
         await pool.query('UPDATE bookings_facilities SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
         const [guestRows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
+        notifyVenueBookingCancelled(guestRows[0], { cancelledByGuest: true });
         return res.status(200).json({ message: 'Booking cancelled', booking: guestRows[0] });
       }
 
@@ -306,6 +308,7 @@ export const updateFacilityBooking = async (req, res) => {
         if (cancelError) return res.status(400).json({ message: cancelError });
         await pool.query('UPDATE bookings_facilities SET status = ? WHERE id = ?', ['Cancelled', req.params.id]);
         const [cancelRows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
+        notifyVenueBookingCancelled(cancelRows[0], { cancelledByGuest: false });
         return res.status(200).json({ message: 'Booking cancelled', booking: cancelRows[0] });
       }
 
@@ -434,6 +437,10 @@ export const updateFacilityBooking = async (req, res) => {
          WHERE id = ?`,
         [status, notes, req.params.id]
       );
+      if (status === 'Cancelled') {
+        const [cancelRows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
+        notifyVenueBookingCancelled(cancelRows[0], { cancelledByGuest: false });
+      }
     }
 
     const becameApproved = req.body.status === 'Approved' && prev.status !== 'Approved';

@@ -5,6 +5,7 @@ import { openModal, closeModal, syncTimelineScroll, scrollTimelineToToday } from
 import { getRooms, getBookings, getFacilityBookings, normalizeRoom, normalizeBooking, normalizeManageRequest, normalizeFacilityBooking } from '/assets/js/services/api.js';
 import {
   approveRequest, rejectRequest, openModifyRequestWizard, openModifyVenueWizard, openAdminEditVenueWizard,
+  confirmDeclineRequest,
   notifyBookingUpdated,
 } from '/assets/js/features/booking-actions.js';
 import { updateFacilityBooking } from '/assets/js/services/api.js';
@@ -824,7 +825,8 @@ export function openVenueBookingModal(rawBooking, { onRefresh } = {}) {
     openAdminEditVenueWizard(b);
   });
   body?.querySelector('[data-vd-decline]')?.addEventListener('click', async () => {
-    if (!window.confirm('Decline this venue booking?')) return;
+    const confirmed = await confirmDeclineRequest(b.guestName || 'this venue request');
+    if (!confirmed) return;
     try {
       await updateFacilityBooking(b.id, { status: 'Rejected' });
       notifyBookingUpdated();

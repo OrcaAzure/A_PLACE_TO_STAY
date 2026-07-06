@@ -510,7 +510,7 @@
   import {
     getBookings, getGroups, createBooking, updateBooking, updateGroup,
     getRoomAvailability, normalizeBooking, formatGroupId,
-    getFacilityBookings, cancelFacilityBooking, updateFacilityBooking, normalizeFacilityBooking,
+    getFacilityBookings, updateFacilityBooking, normalizeFacilityBooking,
     getFiscalYear, getSupportContact,
   } from '/assets/js/services/api.js';
   import {
@@ -524,7 +524,7 @@
   import { loadGuestInvoices } from '/assets/js/features/guest-invoices.js';
   import { initGuestSupportCompose } from '/assets/js/features/guest-support-compose.js';
   import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
-  import { openGuestModifyWizard } from '/assets/js/features/booking-actions.js';
+  import { openGuestModifyWizard, confirmGuestCancelReservation, cancelRoomReservation, cancelVenueReservation } from '/assets/js/features/booking-actions.js';
 
   requireAuth();
   await initAppLayout({
@@ -838,10 +838,12 @@
   });
 
   async function cancelBooking(id, kind = 'single') {
-    if (!confirm('Cancel this reservation? This cannot be undone.')) return;
+    const booking = allBookings.find((b) => String(b.id) === String(id) && (b.kind || 'single') === kind);
+    if (!booking) return;
+    const confirmed = await confirmGuestCancelReservation(booking);
+    if (!confirmed) return;
     try {
-      if (kind === 'group') await updateGroup(id, { status: 'Cancelled' });
-      else await updateBooking(id, { status: 'Cancelled' });
+      await cancelRoomReservation(id, { kind });
       await loadBookings();
     } catch (err) {
       alert(err.message || 'Could not cancel');
@@ -1295,10 +1297,32 @@
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
-    if (!roomInput.value) return;
     const errorEl = document.getElementById('booking-form-error');
+    if (readOnly) {
+      errorEl.textContent = 'Your account cannot create reservations online. Please contact housing staff.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (!roomInput.value) return;
     errorEl.classList.add('hidden');
+    const checkIn = document.getElementById('booking-check-in').value;
+    const checkOut = document.getElementById('booking-check-out').value;
     const guestCount = Number(document.getElementById('booking-guests').value) || 1;
+    if (!checkIn || !checkOut) {
+      errorEl.textContent = 'Please choose check-in and check-out dates.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (new Date(checkOut) <= new Date(checkIn)) {
+      errorEl.textContent = 'Check-out must be after check-in.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (checkIn < todayStr) {
+      errorEl.textContent = 'Check-in cannot be in the past.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
     if (selectedRoom?.room_type === 'Dorm' && guestCount < DORM_MIN_GUEST_COUNT) {
       errorEl.textContent = dormMinGuestsNotice(guestCount);
       errorEl.classList.remove('hidden');
@@ -1312,8 +1336,6 @@
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
     const bookedRoom = selectedRoom;
-    const checkIn = document.getElementById('booking-check-in').value;
-    const checkOut = document.getElementById('booking-check-out').value;
     const { meals, fees, meal_allergen_notes } = bookingExtras.getPayload();
     try {
       const verify = await getRoomAvailability({
@@ -1488,9 +1510,12 @@
     }
     const btn = e.target.closest('.cancel-fb-btn');
     if (!btn) return;
-    if (!confirm('Cancel this venue booking? This cannot be undone.')) return;
+    const booking = allVenueBookings.find((b) => String(b.id) === String(btn.dataset.fbId));
+    if (!booking) return;
+    const confirmed = await confirmGuestCancelReservation({ ...booking, kind: 'venue' });
+    if (!confirmed) return;
     try {
-      await cancelFacilityBooking(btn.dataset.fbId);
+      await cancelVenueReservation(btn.dataset.fbId);
       await loadVenueBookings();
     } catch (err) {
       alert(err.message || 'Could not cancel');

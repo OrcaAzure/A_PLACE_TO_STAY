@@ -247,6 +247,16 @@ export function canGuestModifyVenueBooking(booking, opts = {}) {
   return canGuestCancelVenueBooking(booking, opts);
 }
 
+export function canAdminCancelRoomBooking(booking, now = new Date()) {
+  const status = normStatus(booking.status);
+  if (!['pending', 'approved'].includes(status)) return false;
+  return roomStayPhase(
+    booking.check_in || booking.checkIn || booking.startDate,
+    booking.check_out || booking.checkOut || booking.endDate,
+    localDateStr(now),
+  ) === 'upcoming';
+}
+
 export function canAdminCancelVenueBooking(booking, now = new Date()) {
   const status = normStatus(booking.status);
   if (!['pending', 'approved'].includes(status)) return false;

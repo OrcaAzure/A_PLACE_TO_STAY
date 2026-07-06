@@ -51,7 +51,7 @@ function emptyState() {
 }
 
 function isEditing() {
-  return state.mode === 'edit' || state.fromRequestId || state.modifyRequest;
+  return Boolean(state.bookingId || state.fromRequestId || state.modifyRequest);
 }
 
 function wizardTitle() {
@@ -202,9 +202,7 @@ function renderStep3() {
     </div>
     <label class="res-label" for="vbw-guest-message">Message to guest (required)</label>
     <textarea id="vbw-guest-message" class="res-input" rows="3" placeholder="e.g. We moved your event to the larger chapel to accommodate your guest count.">${escapeHtml(state.guestMessage)}</textarea>
-  ` : (state.fromRequestId ? `
-    <div class="res-banner res-banner--ok">The guest will receive a confirmation email when you save.</div>
-  ` : '');
+  ` : '';
 
   return `
     <p class="res-lead">${state.modifyRequest
@@ -573,7 +571,9 @@ export async function openVenueBookingWizard(detail = {}) {
     const booking = results[2];
     if (booking) {
       state.bookingId = booking.id;
-      state.fromRequestId = state.fromRequestId || booking.id;
+      if (state.modifyRequest && !state.fromRequestId) {
+        state.fromRequestId = booking.id;
+      }
       state.userId = booking.user_id || '';
       state.guestName = booking.guest_name || '';
       state.email = booking.guest_email || '';

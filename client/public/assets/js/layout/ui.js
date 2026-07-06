@@ -225,14 +225,37 @@ async function loadGuestTemplates() {
       loadComponent('/components/guest-footer.html'),
       loadComponent('/components/guest-landing-body.html'),
       loadComponent('/components/notifications.html'),
-    ]).then(([guestNav, guestFooter, guestLandingBody, notifications]) => ({
+      loadComponent('/components/modal.html'),
+    ]).then(([guestNav, guestFooter, guestLandingBody, notifications, modal]) => ({
       guestNav,
       guestFooter,
       guestLandingBody,
       notifications,
+      modal,
     }));
   }
   return guestTemplatesPromise;
+}
+
+let confirmModalEventsBound = false;
+
+function bindConfirmModalEvents() {
+  if (confirmModalEventsBound) return;
+  confirmModalEventsBound = true;
+  document.getElementById('modal-close')?.addEventListener('click', closeModal);
+  document.getElementById('modal-overlay')?.addEventListener('click', closeModal);
+  document.getElementById('app-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'app-modal') closeModal();
+  });
+}
+
+/** Guest pages omit admin shell markup — mount shared confirm dialog on demand. */
+export async function ensureConfirmModalMounted() {
+  if (!document.getElementById('app-modal')) {
+    const html = (await loadGuestTemplates()).modal || await loadComponent('/components/modal.html');
+    document.body.insertAdjacentHTML('beforeend', html);
+  }
+  bindConfirmModalEvents();
 }
 
 function ensureGuestWizardStyles() {
@@ -477,7 +500,8 @@ function buildGuestShell({
       <div id="page-content" class="${pageClass}">${content}</div>
     </main>
     ${footer}
-    ${templates.notifications}
+    ${templates.notifications || ''}
+    ${templates.modal || ''}
   `;
 }
 
@@ -618,6 +642,7 @@ export async function initAppLayout(config = {}) {
       document.body.className = 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen';
       updateActiveNav(activePage, navItems);
       updateGuestChrome({ userName, userRole, userInitial });
+      await ensureConfirmModalMounted();
       if (activePage === 'reservations') {
         ensureGuestWizardStyles();
         if (!document.getElementById('reservation-wizard-modal')) {
@@ -690,6 +715,7 @@ export async function initAppLayout(config = {}) {
 
     bindLayoutEvents({ isGuest });
     if (isGuest) {
+      await ensureConfirmModalMounted();
       ensureGuestWizardStyles();
       initGuestPortalChrome().catch(() => {});
       initGuestPageNavTransitions();
@@ -987,8 +1013,11 @@ export function closeDrawer() {
 export function openModal(title, bodyHtml, options = {}) {
   const { subtitle = '' } = options;
   const subtitleEl = document.getElementById('modalSubtitle');
-  document.getElementById('modalTitle').textContent = title;
-  document.getElementById('modalBody').innerHTML = bodyHtml;
+  const titleEl = document.getElementById('modalTitle');
+  const bodyEl = document.getElementById('modalBody');
+  if (!titleEl || !bodyEl) return;
+  titleEl.textContent = title;
+  bodyEl.innerHTML = bodyHtml;
   if (subtitleEl) {
     if (subtitle) {
       subtitleEl.textContent = subtitle;
@@ -1025,7 +1054,7 @@ export function confirmModal({
   danger = false,
   elevate = false,
 } = {}) {
-  return new Promise((resolve) => {
+  return ensureConfirmModalMounted().then(() => new Promise((resolve) => {
     const overlay = document.getElementById('modal-overlay');
     const modal = document.getElementById('app-modal');
     let settled = false;
@@ -1064,7 +1093,7 @@ export function confirmModal({
       document.getElementById('modal-close')?.addEventListener('click', () => finish(false), { once: true });
       document.getElementById('modal-overlay')?.addEventListener('click', () => finish(false), { once: true });
     });
-  });
+  })).catch(() => false);
 }
 
 export function switchDrawerTab(tabId) {

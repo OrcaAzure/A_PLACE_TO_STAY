@@ -3,8 +3,12 @@
 import { getBookings, getGroups, deleteBooking, deleteGroup } from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDateLong, statusBadge, debounce, normStatus, getReservationCategory,
-  lifecyclePhaseForBooking, lifecyclePhaseBadge,
+  lifecyclePhaseForBooking, lifecyclePhaseBadge, canAdminCancelRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
+import {
+  cancelRoomReservation, confirmAdminCancelReservation,
+} from '/assets/js/features/booking-actions.js';
+import { confirmModal } from '/assets/js/layout/ui.js';
 
 let initialized = false;
 let isOpen = false;
@@ -62,6 +66,7 @@ function renderList() {
       ? escapeHtml(item.group_name || item.contact_name || 'Unnamed group')
       : escapeHtml(item.guest_name || 'Unknown guest');
     const key = isGroup ? `g-${item.id}` : `b-${item.id}`;
+    const canCancel = canAdminCancelRoomBooking(item);
 
     return `<article class="res-list-card" role="listitem">
       <div class="res-list-card-top">
@@ -90,9 +95,10 @@ function renderList() {
         <button type="button" class="res-btn res-btn--primary res-btn--wide" data-edit-res="${key}">
           <span class="material-symbols-outlined">edit</span> Edit
         </button>
-        <button type="button" class="res-btn res-btn--reject res-btn--wide" data-del-res="${key}">
-          <span class="material-symbols-outlined">delete</span> Delete
-        </button>
+        ${canCancel ? `
+          <button type="button" class="res-btn res-btn--reject res-btn--wide" data-cancel-res="${key}">
+            <span class="material-symbols-outlined">cancel</span> Cancel
+          </button>` : ''}
       </div>
     </article>`;
   }).join('');
@@ -165,12 +171,36 @@ function openWizard(kind, id) {
   }
 }
 
+async function cancel(key) {
+  const { kind, id } = parseKey(key);
+  const item = list.find((x) => x.kind === kind && String(x.id) === String(id));
+  if (!item) return;
+  const name = kind === 'group' ? item.group_name : item.guest_name;
+  const pending = normStatus(item.status) === 'pending';
+  const confirmed = await confirmAdminCancelReservation(name || 'this reservation', { pending });
+  if (!confirmed) return;
+  try {
+    await cancelRoomReservation(id, { kind });
+    window.dispatchEvent(new CustomEvent('booking:updated'));
+    await load();
+  } catch (err) {
+    alert(err.message || 'Could not cancel this reservation.');
+  }
+}
+
 async function remove(key) {
   const { kind, id } = parseKey(key);
   const item = list.find((x) => x.kind === kind && String(x.id) === String(id));
   if (!item) return;
   const name = kind === 'group' ? item.group_name : item.guest_name;
-  if (!window.confirm(`Delete reservation for ${name}? This cannot be undone.`)) return;
+  const confirmed = await confirmModal({
+    title: 'Delete reservation record?',
+    message: `Are you sure you want to permanently delete the record for <strong>${escapeHtml(name || 'this guest')}</strong>? This cannot be undone.`,
+    confirmLabel: 'Delete permanently',
+    cancelLabel: 'Keep record',
+    danger: true,
+  });
+  if (!confirmed) return;
   if (kind === 'group') await deleteGroup(id);
   else await deleteBooking(id);
   window.dispatchEvent(new CustomEvent('booking:updated'));
@@ -196,6 +226,8 @@ function onClick(e) {
     openWizard(kind, id);
     return;
   }
+  const cancelBtn = e.target.closest('[data-cancel-res]');
+  if (cancelBtn) { cancel(cancelBtn.getAttribute('data-cancel-res')); return; }
   const del = e.target.closest('[data-del-res]');
   if (del) { remove(del.getAttribute('data-del-res')); return; }
   if (e.target.closest('#manage-reservations-close-btn')) closeManageReservationsModal();

@@ -10,12 +10,15 @@ import {
 import {
   approveRequest, rejectRequest, openModifyRequestWizard, openModifyVenueWizard, openAdminEditVenueWizard,
   requestKey, parseRequestKey,
+  cancelRoomReservation, cancelVenueReservation,
+  confirmAdminCancelReservation, confirmDeclineRequest,
   notifyBookingUpdated,
 } from '/assets/js/features/booking-actions.js';
+import { confirmModal } from '/assets/js/layout/ui.js';
 import {
   escapeHtml, formatDateLong, formatMoney, formatSubmittedAt, statusBadge, debounce,
   normStatus, stayNights, getReservationCategory, lifecyclePhaseForBooking, lifecyclePhaseBadge,
-  canAdminCancelVenueBooking, canAdminModifyVenueBooking,
+  canAdminCancelVenueBooking, canAdminModifyVenueBooking, canAdminCancelRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
@@ -558,6 +561,7 @@ function renderStayCard(item) {
     ? `facilities.html?tab=rooms&amp;room=${item.room_id}`
     : 'facilities.html?tab=rooms';
   const body = isGroup ? renderGroupStayDetails(item) : renderSingleStayDetails(item);
+  const canCancel = canAdminCancelRoomBooking(item);
   const summaryHtml = renderDatesTriple([
     { label: 'Check-in', value: formatDateLong(item.check_in) },
     { label: 'Check-out', value: formatDateLong(item.check_out) },
@@ -583,9 +587,10 @@ function renderStayCard(item) {
         <button type="button" class="res-btn res-btn--primary res-btn--wide" data-edit-res="${key}">
           <span class="material-symbols-outlined">edit</span> Edit
         </button>
-        <button type="button" class="res-btn res-btn--reject res-btn--wide" data-del-res="${key}">
-          <span class="material-symbols-outlined">delete</span> Delete
-        </button>
+        ${canCancel ? `
+          <button type="button" class="res-btn res-btn--reject res-btn--wide" data-cancel-res="${key}">
+            <span class="material-symbols-outlined">cancel</span> Cancel
+          </button>` : ''}
       </div>`,
   });
 }
@@ -757,12 +762,14 @@ async function rejectPending(key) {
   const name = r.kind === 'group'
     ? (r.groupName || r.requester?.name || 'this group')
     : (r.requester?.name || 'this guest');
-  const note = window.prompt(`Decline request from ${name}? Optional reason (saved in notes):`, '');
+  const confirmed = await confirmDeclineRequest(name);
+  if (!confirmed) return;
+  const note = window.prompt(`Optional reason for ${name} (saved in notes):`, '');
   if (note === null) return;
   state.saving = true;
   renderActivePanel();
   try {
-    await rejectRequest(r, { note: note.trim() });
+    await rejectRequest(r, note.trim());
     notifyBookingUpdated();
     await loadAll();
   } catch (err) {
@@ -794,13 +801,38 @@ function openEdit(key) {
   }
 }
 
+async function cancelStay(key) {
+  const { kind, id } = parseResKey(key);
+  const list = kind === 'group' ? state.groupStays : state.roomStays;
+  const item = list.find((x) => String(x.id) === String(id));
+  if (!item) return;
+  const name = kind === 'group' ? item.group_name : item.guest_name;
+  const pending = normStatus(item.status) === 'pending';
+  const confirmed = await confirmAdminCancelReservation(name || 'this reservation', { pending });
+  if (!confirmed) return;
+  try {
+    await cancelRoomReservation(id, { kind });
+    notifyBookingUpdated();
+    await loadAll();
+  } catch (err) {
+    alert(err.message || 'Could not cancel this reservation.');
+  }
+}
+
 async function deleteStay(key) {
   const { kind, id } = parseResKey(key);
   const list = kind === 'group' ? state.groupStays : state.roomStays;
   const item = list.find((x) => String(x.id) === String(id));
   if (!item) return;
   const name = kind === 'group' ? item.group_name : item.guest_name;
-  if (!window.confirm(`Delete reservation for ${name}? This cannot be undone.`)) return;
+  const confirmed = await confirmModal({
+    title: 'Delete reservation record?',
+    message: `Are you sure you want to permanently delete the record for <strong>${escapeHtml(name || 'this guest')}</strong>? This cannot be undone.`,
+    confirmLabel: 'Delete permanently',
+    cancelLabel: 'Keep record',
+    danger: true,
+  });
+  if (!confirmed) return;
   if (kind === 'group') await deleteGroup(id);
   else await deleteBooking(id);
   notifyBookingUpdated();
@@ -819,7 +851,14 @@ function editVenue(id) {
   openAdminEditVenueWizard(item);
 }
 
-async function setVenueStatus(id, status) {
+async function setVenueStatus(id, status, { label = 'this venue booking', pending = false } = {}) {
+  if (status === 'Cancelled') {
+    const confirmed = await confirmAdminCancelReservation(label, { pending });
+    if (!confirmed) return;
+  } else if (status === 'Rejected') {
+    const confirmed = await confirmDeclineRequest(label);
+    if (!confirmed) return;
+  }
   try {
     await updateFacilityBooking(id, { status });
     notifyBookingUpdated();
@@ -922,24 +961,37 @@ function bindEvents() {
     if (modify) { modifyPending(modify.getAttribute('data-modify')); return; }
     const edit = e.target.closest('[data-edit-res]');
     if (edit) { openEdit(edit.getAttribute('data-edit-res')); return; }
+    const cancelRes = e.target.closest('[data-cancel-res]');
+    if (cancelRes) { cancelStay(cancelRes.getAttribute('data-cancel-res')); return; }
     const del = e.target.closest('[data-del-res]');
     if (del) { deleteStay(del.getAttribute('data-del-res')); return; }
     const vbApprove = e.target.closest('[data-vb-approve]');
-    if (vbApprove) { setVenueStatus(Number(vbApprove.dataset.vbApprove), 'Approved'); return; }
+    if (vbApprove) {
+      setVenueStatus(Number(vbApprove.dataset.vbApprove), 'Approved');
+      return;
+    }
     const vbModify = e.target.closest('[data-vb-modify]');
     if (vbModify) { modifyVenuePending(Number(vbModify.dataset.vbModify)); return; }
     const vbEdit = e.target.closest('[data-vb-edit]');
     if (vbEdit) { editVenue(Number(vbEdit.dataset.vbEdit)); return; }
     const vbDecline = e.target.closest('[data-vb-decline]');
     if (vbDecline) {
-      if (!window.confirm('Decline this venue booking request?')) return;
-      setVenueStatus(Number(vbDecline.dataset.vbDecline), 'Rejected');
+      const item = state.venueBookings.find((v) => String(v.id) === String(vbDecline.dataset.vbDecline));
+      setVenueStatus(
+        Number(vbDecline.dataset.vbDecline),
+        'Rejected',
+        { label: item?.guestName || 'this venue request', pending: true },
+      );
       return;
     }
     const vbCancel = e.target.closest('[data-vb-cancel]');
     if (vbCancel) {
-      if (!window.confirm('Cancel this venue booking?')) return;
-      setVenueStatus(Number(vbCancel.dataset.vbCancel), 'Cancelled');
+      const item = state.venueBookings.find((v) => String(v.id) === String(vbCancel.dataset.vbCancel));
+      setVenueStatus(
+        Number(vbCancel.dataset.vbCancel),
+        'Cancelled',
+        { label: item?.guestName || 'this venue booking', pending: normStatus(item?.status) === 'pending' },
+      );
     }
   });
 

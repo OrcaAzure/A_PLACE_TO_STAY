@@ -2,7 +2,11 @@ import { pool } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import { calcNights, isEmpty } from '../utils/helpers.js';
 import { DEFAULT_BOOKING_GUEST_ROLE } from '../utils/constants.js';
-import { sendBookingConfirmationEmail, sendBookingModifiedEmail, sendGuestRoomSelfModifyEmail } from './email.service.js';
+import {
+  sendBookingConfirmationEmail, sendBookingRequestReceivedEmail,
+  sendBookingModifiedEmail, sendGuestRoomSelfModifyEmail,
+  sendRoomBookingCancelledEmail, sendVenueBookingCancelledEmail,
+} from './email.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
 import { DEFAULT_MEAL_RATES } from '../constants/ancillary.js';
 import { getMealRatesMap } from './ancillary.service.js';
@@ -450,9 +454,28 @@ export async function getAvailableRooms({
 }
 
 export function notifyBookingCreated(bookingRow) {
-  void sendBookingConfirmationEmail(
+  const user = { full_name: bookingRow.guest_name, email: bookingRow.guest_email };
+  const status = String(bookingRow.status || '').toLowerCase();
+  if (status === 'approved') {
+    void sendBookingConfirmationEmail(user, bookingRow);
+  } else if (status === 'pending') {
+    void sendBookingRequestReceivedEmail(user, bookingRow);
+  }
+}
+
+export function notifyBookingCancelled(bookingRow, { cancelledByGuest = true } = {}) {
+  void sendRoomBookingCancelledEmail(
     { full_name: bookingRow.guest_name, email: bookingRow.guest_email },
-    bookingRow
+    bookingRow,
+    { cancelledByGuest }
+  );
+}
+
+export function notifyVenueBookingCancelled(bookingRow, { cancelledByGuest = true } = {}) {
+  void sendVenueBookingCancelledEmail(
+    { full_name: bookingRow.guest_name, email: bookingRow.guest_email },
+    bookingRow,
+    { cancelledByGuest }
   );
 }
 

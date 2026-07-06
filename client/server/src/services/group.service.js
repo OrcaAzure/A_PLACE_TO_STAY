@@ -17,7 +17,7 @@ import {
 import { validateReservationDates } from './fiscalYear.service.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from './ancillary.service.js';
-import { sendGroupModifiedEmail, sendGroupConfirmationEmail, sendGuestGroupSelfModifyEmail } from './email.service.js';
+import { sendGroupModifiedEmail, sendGroupConfirmationEmail, sendGuestGroupSelfModifyEmail, sendGroupBookingCancelledEmail } from './email.service.js';
 import { ensureInvoiceForBooking, ensureInvoicesForGroup, getInvoiceSnapshot } from './payment.service.js';
 
 const bookingSelect = `
@@ -51,6 +51,17 @@ function notifyGuestGroupSelfModified({ previous, current, wasApproved, message 
       previousCheckOut: previous.check_out,
       previousRoomsRequested: previous.rooms_requested,
     }
+  );
+}
+
+function notifyGroupCancelled(group, { cancelledByGuest = true } = {}) {
+  void sendGroupBookingCancelledEmail(
+    {
+      full_name: group.contact_name,
+      email: group.contact_email || group.requester_email,
+    },
+    group,
+    { cancelledByGuest }
   );
 }
 
@@ -339,7 +350,10 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       });
       if (cancelError) throw new Error(cancelError);
       await pool.query('UPDATE reservation_groups SET status = ? WHERE id = ?', ['Cancelled', groupId]);
-      return getGroupById(groupId);
+      await pool.query('DELETE FROM bookings_rooms WHERE group_id = ?', [groupId]);
+      const cancelled = await getGroupById(groupId);
+      notifyGroupCancelled(cancelled, { cancelledByGuest: true });
+      return cancelled;
     }
 
     const modifyError = assertCanModifyRoomBooking({
@@ -517,8 +531,10 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       meal_allergen_notes,
       bypassAdvanceLimit: isAdmin,
     });
-    if (body.notify_guest && isAdmin) {
-      const fresh = await getGroupById(groupId);
+    const fresh = await getGroupById(groupId);
+    if (nextStatus === 'Cancelled' && isAdmin) {
+      notifyGroupCancelled(fresh, { cancelledByGuest: false });
+    } else if (body.notify_guest && isAdmin) {
       if (body.notify_modification && body.modification_message) {
         await sendGroupModifiedEmail(
           { full_name: fresh.contact_name, email: fresh.contact_email },
@@ -548,7 +564,9 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
   }
 
   const result = await getGroupById(groupId);
-  if (body.notify_guest && isAdmin && body.notify_modification && body.modification_message) {
+  if (nextStatus === 'Cancelled' && isAdmin) {
+    notifyGroupCancelled(result, { cancelledByGuest: false });
+  } else if (body.notify_guest && isAdmin && body.notify_modification && body.modification_message) {
     await sendGroupModifiedEmail(
       { full_name: result.contact_name, email: result.contact_email },
       result,

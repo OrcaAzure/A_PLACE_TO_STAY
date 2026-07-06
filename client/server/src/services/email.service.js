@@ -203,29 +203,151 @@ export async function sendGuestAccessEmail(user, tempPassword) {
   });
 }
 
-export async function sendBookingConfirmationEmail(user, booking) {
-  const name = user.full_name || user.guest_name || 'Guest';
-  const room = booking.building_name
+function bookingRoomLabel(booking) {
+  return booking.building_name
     ? `${booking.building_name} — Room ${booking.room_number}`
     : `Room ${booking.room_number || booking.room_id}`;
+}
+
+export async function sendBookingRequestReceivedEmail(user, booking) {
+  const name = user.full_name || user.guest_name || 'Guest';
+  const room = bookingRoomLabel(booking);
   const checkIn = booking.check_in;
   const checkOut = booking.check_out;
   const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
 
   return sendMail({
     to: user.email || user.guest_email,
-    subject: 'Booking Confirmation — AptSpace',
+    subject: 'Reservation Request Received — AptSpace',
     html: `
-      <h2>Booking Confirmed</h2>
-      <p>Hi ${name},</p>
-      <p>Your reservation has been received. Here are the details:</p>
+      <h2>Reservation Request Received</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>We received your room reservation request. Housing staff will review it and email you when it is approved.</p>
       <ul>
-        <li><strong>Room:</strong> ${room}</li>
-        <li><strong>Check-in:</strong> ${checkIn}</li>
-        <li><strong>Check-out:</strong> ${checkOut}</li>
-        <li><strong>Total:</strong> ${price}</li>
+        <li><strong>Room:</strong> ${escapeHtml(room)}</li>
+        <li><strong>Check-in:</strong> ${escapeHtml(checkIn)}</li>
+        <li><strong>Check-out:</strong> ${escapeHtml(checkOut)}</li>
+        <li><strong>Estimated total:</strong> ${price}</li>
+        <li><strong>Status:</strong> Pending review</li>
       </ul>
-      <p>Thank you for booking with AptSpace.</p>
+      <p>View your requests: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+    `,
+  });
+}
+
+export async function sendBookingConfirmationEmail(user, booking) {
+  const name = user.full_name || user.guest_name || 'Guest';
+  const room = bookingRoomLabel(booking);
+  const checkIn = booking.check_in;
+  const checkOut = booking.check_out;
+  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+
+  return sendMail({
+    to: user.email || user.guest_email,
+    subject: 'Reservation Confirmed — AptSpace',
+    html: `
+      <h2>Reservation Confirmed</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Your room reservation has been approved. Here are the details:</p>
+      <ul>
+        <li><strong>Room:</strong> ${escapeHtml(room)}</li>
+        <li><strong>Check-in:</strong> ${escapeHtml(checkIn)}</li>
+        <li><strong>Check-out:</strong> ${escapeHtml(checkOut)}</li>
+        <li><strong>Total:</strong> ${price}</li>
+        <li><strong>Status:</strong> Approved</li>
+      </ul>
+      <p>View your reservation: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+    `,
+  });
+}
+
+function cancellationIntro({ cancelledByGuest, reservationType }) {
+  if (cancelledByGuest) {
+    return `Your ${reservationType} has been cancelled as requested.`;
+  }
+  return `Your ${reservationType} has been cancelled by housing staff. If you have questions, contact us at ${escapeHtml(getSupportEmail())}.`;
+}
+
+export async function sendRoomBookingCancelledEmail(user, booking, { cancelledByGuest = true } = {}) {
+  const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
+  const room = bookingRoomLabel(booking);
+  const checkIn = booking.check_in;
+  const checkOut = booking.check_out;
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+
+  return sendMail({
+    to: resolveGuestRecipientEmail({ user, booking }),
+    subject: 'Room Reservation Cancelled — AptSpace',
+    html: `
+      <h2>Room Reservation Cancelled</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>${cancellationIntro({ cancelledByGuest, reservationType: 'room reservation' })}</p>
+      <ul>
+        <li><strong>Room:</strong> ${escapeHtml(room)}</li>
+        <li><strong>Check-in:</strong> ${escapeHtml(checkIn)}</li>
+        <li><strong>Check-out:</strong> ${escapeHtml(checkOut)}</li>
+        <li><strong>Status:</strong> Cancelled</li>
+      </ul>
+      <p>View your reservations: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+    `,
+  });
+}
+
+export async function sendVenueBookingCancelledEmail(user, booking, { cancelledByGuest = true } = {}) {
+  const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
+  const venue = [booking.facility_category, booking.facility_name || booking.facility_room_code]
+    .filter(Boolean)
+    .join(' — ');
+  const eventDate = formatEventDate(booking.event_date);
+  const start = formatTime12(booking.start_time);
+  const end = formatTime12(booking.end_time);
+  const timeRange = start && end ? `${start} – ${end}` : '—';
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+
+  return sendMail({
+    to: resolveGuestRecipientEmail({ user, booking }),
+    subject: 'Venue Booking Cancelled — AptSpace',
+    html: `
+      <h2>Venue Booking Cancelled</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>${cancellationIntro({ cancelledByGuest, reservationType: 'venue booking' })}</p>
+      <ul>
+        <li><strong>Venue:</strong> ${escapeHtml(venue)}</li>
+        <li><strong>Event date:</strong> ${escapeHtml(eventDate)}</li>
+        <li><strong>Time:</strong> ${escapeHtml(timeRange)}</li>
+        <li><strong>Guests:</strong> ${escapeHtml(booking.guest_count || 1)}</li>
+        <li><strong>Status:</strong> Cancelled</li>
+      </ul>
+      <p>View your bookings: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+    `,
+  });
+}
+
+export async function sendGroupBookingCancelledEmail(user, group, { cancelledByGuest = true } = {}) {
+  const name = user.full_name || group.contact_name || 'Guest';
+  const roomLines = (group.bookings || [])
+    .map((b) => `${b.building_name || ''} Room ${b.room_number || '?'}`)
+    .join(', ') || '—';
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+
+  return sendMail({
+    to: resolveGuestRecipientEmail({ user, group }),
+    subject: 'Group Reservation Cancelled — AptSpace',
+    html: `
+      <h2>Group Reservation Cancelled</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>${cancellationIntro({ cancelledByGuest, reservationType: 'group reservation' })}</p>
+      <ul>
+        <li><strong>Group:</strong> ${escapeHtml(group.group_name || '—')}</li>
+        <li><strong>Check-in:</strong> ${escapeHtml(group.check_in)}</li>
+        <li><strong>Check-out:</strong> ${escapeHtml(group.check_out)}</li>
+        <li><strong>Guests:</strong> ${escapeHtml(group.total_guests)}</li>
+        <li><strong>Rooms:</strong> ${escapeHtml(roomLines)}</li>
+        <li><strong>Status:</strong> Cancelled</li>
+      </ul>
+      <p>View your reservations: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
     `,
   });
 }

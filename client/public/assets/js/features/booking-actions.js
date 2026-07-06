@@ -1,9 +1,10 @@
-/** Shared approve / modify / decline actions for admin reservation flows. */
+/** Shared approve / modify / decline / cancel actions for reservation flows. */
 
 import {
-  getRoomAvailability, suggestGroupRooms, updateBooking, updateGroup,
+  getRoomAvailability, suggestGroupRooms, updateBooking, updateGroup, updateFacilityBooking,
 } from '/assets/js/services/api.js';
-import { normStatus } from '/assets/js/features/reservation-shared.js';
+import { escapeHtml, normStatus } from '/assets/js/features/reservation-shared.js';
+import { confirmModal } from '/assets/js/layout/ui.js';
 
 export function parseRequestKey(key) {
   if (String(key).startsWith('g-')) return { kind: 'group', id: key.slice(2) };
@@ -57,14 +58,14 @@ export async function approveRequest(r) {
 
 export async function rejectSingleRequest(r, note = '') {
   const notes = note
-    ? `${r.notes ? r.notes + '\n' : ''}[Rejected] ${note}`
+    ? `${r.notes ? `${r.notes}\n` : ''}[Rejected] ${note}`
     : r.notes;
   await updateBooking(r.id, { status: 'Rejected', notes });
 }
 
 export async function rejectGroupRequest(r, note = '') {
   const notes = note
-    ? `${r.notes ? r.notes + '\n' : ''}[Rejected] ${note}`
+    ? `${r.notes ? `${r.notes}\n` : ''}[Rejected] ${note}`
     : r.notes;
   await updateGroup(r.id, { status: 'Rejected', notes });
 }
@@ -72,6 +73,82 @@ export async function rejectGroupRequest(r, note = '') {
 export async function rejectRequest(r, note = '') {
   if (r.kind === 'group') await rejectGroupRequest(r, note);
   else await rejectSingleRequest(r, note);
+}
+
+export async function cancelRoomReservation(id, { kind = 'single' } = {}) {
+  if (kind === 'group') return updateGroup(id, { status: 'Cancelled' });
+  return updateBooking(id, { status: 'Cancelled' });
+}
+
+export async function cancelVenueReservation(id) {
+  return updateFacilityBooking(id, { status: 'Cancelled' });
+}
+
+/**
+ * Shared confirmation dialog for cancelling reservations.
+ * `message` is HTML — escape dynamic values before passing.
+ */
+export async function confirmCancelReservation({
+  title,
+  message,
+  confirmLabel = 'Cancel reservation',
+  cancelLabel = 'Keep reservation',
+} = {}) {
+  return confirmModal({
+    title: title || 'Cancel reservation?',
+    message: message || 'Are you sure you want to cancel this reservation? This cannot be undone.',
+    confirmLabel,
+    cancelLabel,
+    danger: true,
+  });
+}
+
+export function buildGuestCancelMessage(booking, { pending = false } = {}) {
+  const label = escapeHtml(
+    booking.facilityLabel || booking.title || booking.venueName || `reservation #${booking.id}`
+  );
+  const pendingText = pending
+    ? 'This will withdraw your pending request.'
+    : 'This cannot be undone.';
+  return `Are you sure you want to cancel <strong>${label}</strong>? ${pendingText}`;
+}
+
+export function buildAdminCancelMessage(label, { pending = false } = {}) {
+  const pendingText = pending
+    ? 'The guest will no longer see this as an open request.'
+    : 'The reservation will be marked cancelled and kept on file.';
+  return `Are you sure you want to cancel <strong>${escapeHtml(label)}</strong>? ${pendingText}`;
+}
+
+export async function confirmGuestCancelReservation(booking) {
+  const pending = normStatus(booking.status) === 'pending';
+  const isGroup = booking.kind === 'group';
+  const isVenue = booking.kind === 'venue';
+  return confirmCancelReservation({
+    title: pending
+      ? 'Cancel request?'
+      : (isVenue ? 'Cancel venue booking?' : (isGroup ? 'Cancel group reservation?' : 'Cancel reservation?')),
+    message: buildGuestCancelMessage(booking, { pending }),
+    confirmLabel: pending ? 'Cancel request' : 'Cancel reservation',
+  });
+}
+
+export async function confirmAdminCancelReservation(label, { pending = false } = {}) {
+  return confirmCancelReservation({
+    title: pending ? 'Cancel request?' : 'Cancel reservation?',
+    message: buildAdminCancelMessage(label, { pending }),
+    confirmLabel: pending ? 'Cancel request' : 'Cancel reservation',
+  });
+}
+
+export async function confirmDeclineRequest(label) {
+  return confirmModal({
+    title: 'Decline request?',
+    message: `Are you sure you want to decline <strong>${escapeHtml(label)}</strong>? The guest will be notified that this request was not approved.`,
+    confirmLabel: 'Decline request',
+    cancelLabel: 'Keep request',
+    danger: true,
+  });
 }
 
 export function openModifyRequestWizard(r, { modifyRequest = true } = {}) {
