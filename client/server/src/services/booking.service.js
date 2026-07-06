@@ -2,7 +2,7 @@ import { pool } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import { calcNights, isEmpty } from '../utils/helpers.js';
 import { DEFAULT_BOOKING_GUEST_ROLE } from '../utils/constants.js';
-import { sendBookingConfirmationEmail, sendBookingModifiedEmail } from './email.service.js';
+import { sendBookingConfirmationEmail, sendBookingModifiedEmail, sendGuestRoomSelfModifyEmail } from './email.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
 import { DEFAULT_MEAL_RATES } from '../constants/ancillary.js';
 import { getMealRatesMap } from './ancillary.service.js';
@@ -481,4 +481,26 @@ export async function notifyBookingUpdated({ previous, current, modificationMess
   if (String(current.status).toLowerCase() === 'approved') {
     notifyBookingCreated(current);
   }
+}
+
+export async function notifyGuestRoomSelfModified({ previous, current, wasApproved, message }) {
+  const user = { full_name: current.guest_name, email: current.guest_email };
+  let previousRoom = '—';
+  if (previous?.room_id) {
+    const [rows] = await pool.query(
+      `SELECT r.room_number, b.name AS building_name
+       FROM rooms r JOIN buildings b ON r.building_id = b.id WHERE r.id = ? LIMIT 1`,
+      [previous.room_id]
+    );
+    if (rows[0]) {
+      previousRoom = `${rows[0].building_name} Room ${rows[0].room_number}`;
+    }
+  }
+  void sendGuestRoomSelfModifyEmail(user, current, {
+    wasApproved,
+    message,
+    previousRoom,
+    previousCheckIn: previous?.check_in,
+    previousCheckOut: previous?.check_out,
+  });
 }

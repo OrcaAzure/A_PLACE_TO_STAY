@@ -21,6 +21,7 @@ import {
   bookingDurationHours,
 } from '../services/facility.service.js';
 import { fetchFacilitiesWithRates, FACILITY_GROUP_ICONS } from '../services/facilityCatalog.service.js';
+import { sendGuestVenueSelfModifyEmail } from '../services/email.service.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -265,6 +266,18 @@ export const updateFacilityBooking = async (req, res) => {
       );
 
       const [guestRows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
+      void sendGuestVenueSelfModifyEmail(
+        { full_name: guestRows[0].guest_name, email: guestRows[0].guest_email },
+        guestRows[0],
+        {
+          wasApproved,
+          message: modification_message,
+          previousEventDate: prev.event_date,
+          previousStartTime: prev.start_time,
+          previousEndTime: prev.end_time,
+          previousGuestCount: prev.guest_count,
+        }
+      );
       return res.status(200).json({
         message: wasApproved ? 'Modification request submitted' : 'Booking updated',
         booking: guestRows[0],

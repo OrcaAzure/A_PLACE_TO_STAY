@@ -181,19 +181,6 @@ export async function sendGuestAccessEmail(user, tempPassword) {
   });
 }
 
-export async function sendWelcomeEmail(user) {
-  const name = user.full_name || 'Guest';
-  return sendMail({
-    to: user.email,
-    subject: 'Welcome to AptSpace',
-    html: `
-      <h2>Welcome to AptSpace, ${name}!</h2>
-      <p>Your account has been created successfully. You can now log in and manage your reservations.</p>
-      <p>Thank you for choosing AptSpace.</p>
-    `,
-  });
-}
-
 export async function sendBookingConfirmationEmail(user, booking) {
   const name = user.full_name || user.guest_name || 'Guest';
   const room = booking.building_name
@@ -217,6 +204,157 @@ export async function sendBookingConfirmationEmail(user, booking) {
         <li><strong>Total:</strong> ${price}</li>
       </ul>
       <p>Thank you for booking with AptSpace.</p>
+    `,
+  });
+}
+
+function guestSelfModifyIntro(wasApproved) {
+  if (wasApproved) {
+    return 'We received your request to change an approved reservation. Housing staff will review your updates and confirm by email.';
+  }
+  return 'Your pending reservation was updated. Housing staff will review the latest details when processing your request.';
+}
+
+function guestSelfModifyMessageBlock(message) {
+  const text = String(message || '').trim();
+  if (!text) return '';
+  return `<blockquote style="margin:1rem 0;padding:0.75rem 1rem;background:#f8fafc;border-left:4px solid #1A365D;">${escapeHtml(text)}</blockquote>`;
+}
+
+export async function sendGuestRoomSelfModifyEmail(user, booking, {
+  wasApproved,
+  message,
+  previousRoom,
+  previousCheckIn,
+  previousCheckOut,
+}) {
+  const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const room = booking.building_name
+    ? `${booking.building_name} — Room ${booking.room_number}`
+    : `Room ${booking.room_number || booking.room_id}`;
+  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
+  const previousBlock = wasApproved ? `
+      <p><strong>Previous reservation:</strong></p>
+      <ul>
+        <li><strong>Room:</strong> ${escapeHtml(previousRoom || '—')}</li>
+        <li><strong>Check-in:</strong> ${escapeHtml(previousCheckIn || '—')}</li>
+        <li><strong>Check-out:</strong> ${escapeHtml(previousCheckOut || '—')}</li>
+      </ul>` : '';
+
+  return sendMail({
+    to: user.email || user.guest_email || booking.guest_email,
+    subject: wasApproved
+      ? 'Modification Request Received — AptSpace'
+      : 'Your Reservation Was Updated — AptSpace',
+    html: `
+      <h2>${wasApproved ? 'Modification Request Received' : 'Reservation Updated'}</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>${guestSelfModifyIntro(wasApproved)}</p>
+      ${guestSelfModifyMessageBlock(message)}
+      ${previousBlock}
+      <p><strong>${wasApproved ? 'Requested details' : 'Updated details'}:</strong></p>
+      <ul>
+        <li><strong>Room:</strong> ${escapeHtml(room)}</li>
+        <li><strong>Check-in:</strong> ${escapeHtml(booking.check_in)}</li>
+        <li><strong>Check-out:</strong> ${escapeHtml(booking.check_out)}</li>
+        <li><strong>Guests:</strong> ${escapeHtml(booking.guest_count ?? '—')}</li>
+        <li><strong>Estimated total:</strong> ${price}</li>
+        <li><strong>Status:</strong> Pending review</li>
+      </ul>
+      <p>View your reservation: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+    `,
+  });
+}
+
+export async function sendGuestGroupSelfModifyEmail(user, group, {
+  wasApproved,
+  message,
+  previousCheckIn,
+  previousCheckOut,
+  previousRoomsRequested,
+}) {
+  const name = user.full_name || group.contact_name || 'Guest';
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const roomLines = (group.bookings || [])
+    .map((b) => `${b.building_name || ''} Room ${b.room_number || '?'}`)
+    .join(', ') || 'To be assigned';
+  const previousBlock = wasApproved ? `
+      <p><strong>Previous request:</strong> ${escapeHtml(previousCheckIn || '—')} to ${escapeHtml(previousCheckOut || '—')} · ${escapeHtml(previousRoomsRequested ?? '—')} room(s) requested</p>` : '';
+
+  return sendMail({
+    to: user.email || group.contact_email,
+    subject: wasApproved
+      ? 'Group Modification Request Received — AptSpace'
+      : 'Your Group Reservation Was Updated — AptSpace',
+    html: `
+      <h2>${wasApproved ? 'Group Modification Request Received' : 'Group Reservation Updated'}</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>${guestSelfModifyIntro(wasApproved)}</p>
+      ${guestSelfModifyMessageBlock(message)}
+      ${previousBlock}
+      <p><strong>${wasApproved ? 'Requested details' : 'Updated details'} for ${escapeHtml(group.group_name)}:</strong></p>
+      <ul>
+        <li><strong>Check-in:</strong> ${escapeHtml(group.check_in)}</li>
+        <li><strong>Check-out:</strong> ${escapeHtml(group.check_out)}</li>
+        <li><strong>Guests:</strong> ${escapeHtml(group.total_guests)}</li>
+        <li><strong>Rooms:</strong> ${escapeHtml(roomLines)}</li>
+        <li><strong>Status:</strong> Pending review</li>
+      </ul>
+      <p>View your reservation: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+    `,
+  });
+}
+
+export async function sendGuestVenueSelfModifyEmail(user, booking, {
+  wasApproved,
+  message,
+  previousEventDate,
+  previousStartTime,
+  previousEndTime,
+  previousGuestCount,
+}) {
+  const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const venue = [booking.facility_category, booking.facility_name || booking.facility_room_code]
+    .filter(Boolean)
+    .join(' — ');
+  const eventDate = formatEventDate(booking.event_date);
+  const start = formatTime12(booking.start_time);
+  const end = formatTime12(booking.end_time);
+  const timeRange = start && end ? `${start} – ${end}` : '—';
+  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
+  const prevStart = formatTime12(previousStartTime);
+  const prevEnd = formatTime12(previousEndTime);
+  const previousBlock = wasApproved ? `
+      <p><strong>Previous booking:</strong></p>
+      <ul>
+        <li><strong>Date:</strong> ${escapeHtml(formatEventDate(previousEventDate))}</li>
+        <li><strong>Time:</strong> ${escapeHtml(prevStart && prevEnd ? `${prevStart} – ${prevEnd}` : '—')}</li>
+        <li><strong>Guests:</strong> ${escapeHtml(previousGuestCount ?? '—')}</li>
+      </ul>` : '';
+
+  return sendMail({
+    to: user.email || user.guest_email || booking.guest_email,
+    subject: wasApproved
+      ? 'Venue Modification Request Received — AptSpace'
+      : 'Your Venue Booking Was Updated — AptSpace',
+    html: `
+      <h2>${wasApproved ? 'Venue Modification Request Received' : 'Venue Booking Updated'}</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>${guestSelfModifyIntro(wasApproved)}</p>
+      ${guestSelfModifyMessageBlock(message)}
+      ${previousBlock}
+      <p><strong>${wasApproved ? 'Requested details' : 'Updated details'}:</strong></p>
+      <ul>
+        <li><strong>Venue:</strong> ${escapeHtml(venue)}</li>
+        <li><strong>Event date:</strong> ${escapeHtml(eventDate)}</li>
+        <li><strong>Time:</strong> ${escapeHtml(timeRange)}</li>
+        <li><strong>Guests:</strong> ${escapeHtml(booking.guest_count || 1)}</li>
+        <li><strong>Estimated total:</strong> ${price}</li>
+        <li><strong>Status:</strong> Pending review</li>
+      </ul>
+      <p>View your booking: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
     `,
   });
 }

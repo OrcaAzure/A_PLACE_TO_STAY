@@ -17,7 +17,7 @@ import {
 import { validateReservationDates } from './fiscalYear.service.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from './ancillary.service.js';
-import { sendGroupModifiedEmail, sendGroupConfirmationEmail } from './email.service.js';
+import { sendGroupModifiedEmail, sendGroupConfirmationEmail, sendGuestGroupSelfModifyEmail } from './email.service.js';
 import { ensureInvoiceForBooking, ensureInvoicesForGroup, getInvoiceSnapshot } from './payment.service.js';
 
 const bookingSelect = `
@@ -36,6 +36,20 @@ const groupSelect = `
   FROM reservation_groups rg
   JOIN users u ON rg.user_id = u.id
 `;
+
+function notifyGuestGroupSelfModified({ previous, current, wasApproved, message }) {
+  void sendGuestGroupSelfModifyEmail(
+    { full_name: current.contact_name, email: current.contact_email },
+    current,
+    {
+      wasApproved,
+      message,
+      previousCheckIn: previous.check_in,
+      previousCheckOut: previous.check_out,
+      previousRoomsRequested: previous.rooms_requested,
+    }
+  );
+}
 
 export function suggestRoomAssignment(availableRooms, totalGuests) {
   const rooms = availableRooms
@@ -393,7 +407,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
         const existingFees = firstBookingId ? await getBookingFees(firstBookingId) : [];
         feesToSave = sanitizeGuestSubmittedFees(fees, catalogRows, existingFees);
       }
-      return saveGroupBookings({
+      const updated = await saveGroupBookings({
         groupId,
         userId: group.user_id,
         checkIn: nextCheckIn,
@@ -407,9 +421,23 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
         meal_allergen_notes,
         bypassAdvanceLimit: false,
       });
+      notifyGuestGroupSelfModified({
+        previous: group,
+        current: updated,
+        wasApproved,
+        message: modification_message,
+      });
+      return updated;
     }
 
-    return getGroupById(groupId);
+    const fresh = await getGroupById(groupId);
+    notifyGuestGroupSelfModified({
+      previous: group,
+      current: fresh,
+      wasApproved,
+      message: modification_message,
+    });
+    return fresh;
   }
 
   const {

@@ -14,6 +14,7 @@ import {
   resolveGuestUser,
   notifyBookingCreated,
   notifyBookingUpdated,
+  notifyGuestRoomSelfModified,
   getRoomById,
   resolveSeason,
 } from '../services/booking.service.js';
@@ -284,9 +285,16 @@ export const updateBooking = async (req, res) => {
       if (feesToSave != null) await saveBookingFees(req.params.id, feesToSave);
 
       const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
+      const booking = await enrichBooking(rows[0]);
+      void notifyGuestRoomSelfModified({
+        previous: existing,
+        current: rows[0],
+        wasApproved,
+        message: modification_message,
+      });
       return res.status(200).json({
         message: wasApproved ? 'Modification request submitted' : 'Booking updated',
-        booking: await enrichBooking(rows[0]),
+        booking,
       });
     }
 
