@@ -1,6 +1,59 @@
 /** Shared reservation UI helpers */
 
 export const MEAL_TYPE_LIST = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+export const MEAL_MAX_QTY = 9999;
+/** Dorm nightly rate — priced with the room, not as a booking add-on. */
+export const PER_PERSON_NIGHT_EXTRA_ITEM = 'Per person per Night';
+
+export function clampMealQty(value) {
+  const n = Math.floor(Number(value));
+  if (Number.isNaN(n) || n < 0) return 0;
+  return Math.min(MEAL_MAX_QTY, n);
+}
+
+export function readMealQtyInput(input) {
+  return clampMealQty(input?.value);
+}
+
+/** Admin wizard meal row with typeable quantity. */
+export function renderAdminMealRow(type, qty, price, { idPrefix = 'wiz' } = {}) {
+  const safeQty = clampMealQty(qty);
+  const inputId = `${idPrefix}-meal-qty-${type.toLowerCase()}`;
+  return `
+    <div class="res-meal-row">
+      <div>
+        <strong>${type}</strong>
+        <span class="res-meal-price">${formatMoney(price)} each</span>
+      </div>
+      <div class="res-meal-qty-wrap">
+        <label class="res-sr-only" for="${inputId}">${type} quantity</label>
+        <input type="number" id="${inputId}" class="res-meal-qty-input" data-meal-qty="${type}" min="0" max="${MEAL_MAX_QTY}" step="1" value="${safeQty}" inputmode="numeric" aria-label="${type} quantity" />
+      </div>
+      <span class="res-meal-sub" data-meal-sub="${type}">${formatMoney(price * safeQty)}</span>
+    </div>`;
+}
+
+export function syncAdminMealSubtotals(root, meals, mealRates) {
+  if (!root) return;
+  MEAL_TYPE_LIST.forEach((type) => {
+    const sub = root.querySelector(`[data-meal-sub="${type}"]`);
+    if (sub) sub.textContent = formatMoney((Number(mealRates[type]) || 0) * clampMealQty(meals[type]));
+    const total = root.querySelector('[data-meals-total]');
+    if (total) {
+      const sum = MEAL_TYPE_LIST.reduce((s, t) => s + (Number(mealRates[t]) || 0) * clampMealQty(meals[t]), 0);
+      total.textContent = formatMoney(sum);
+    }
+  });
+}
+
+export function readMealsFromInputs(root, meals) {
+  const next = { ...meals };
+  MEAL_TYPE_LIST.forEach((type) => {
+    const input = root?.querySelector(`[data-meal-qty="${type}"]`);
+    if (input) next[type] = readMealQtyInput(input);
+  });
+  return next;
+}
 
 /** FY26 pricelist — dorm bookings require at least this many guests. */
 export const DORM_MIN_GUEST_COUNT = 5;
@@ -378,6 +431,7 @@ export function emptyWizardState() {
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     mealAllergenNotes: '',
     fees: [], originalFees: [], notes: '',
+    expandedFeeGroupId: null,
     availableRooms: [], availableCount: 0,
     mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 },
     roomTotal: 0, loadingRooms: false, saving: false, error: null,
@@ -447,6 +501,7 @@ export function emptyGroupWizardState() {
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     mealAllergenNotes: '',
     fees: [], originalFees: [], notes: '',
+    expandedFeeGroupId: null,
     mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 },
     loadingRooms: false, saving: false, error: null,
   };

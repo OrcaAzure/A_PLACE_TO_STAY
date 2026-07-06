@@ -108,11 +108,293 @@
 .res-meal-total { text-align: right; margin-top: 0.5rem; font-size: 0.9375rem; }
 .res-qty { display: flex; align-items: center; gap: 0.5rem; }
 .res-qty button { width: 2.5rem; height: 2.5rem; border: 1px solid #CBD5E0; border-radius: 0.5rem; background: #fff; font-size: 1.25rem; font-weight: 700; color: #1A365D; cursor: pointer; }
+.res-meal-qty-wrap {
+  display: flex;
+  justify-content: flex-end;
+}
+.res-meal-qty-input {
+  width: 5rem;
+  min-height: 2.5rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #CBD5E0;
+  border-radius: 0.5rem;
+  background: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  color: #1A202C;
+}
+.res-meal-qty-input:focus {
+  outline: none;
+  border-color: #1A365D;
+  box-shadow: 0 0 0 3px rgba(26,54,93,.12);
+}
+.res-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .res-qty span { min-width: 1.5rem; text-align: center; font-size: 1.125rem; font-weight: 700; }
 
 .res-quick-fees { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0.75rem 0; }
 .res-quick-fee { padding: 0.5rem 0.75rem; font-size: 0.8125rem; border: 1px dashed #CBD5E0; border-radius: 0.5rem; background: #F8FAFC; cursor: pointer; }
 .res-quick-fee:hover { border-color: #1A365D; background: #fff; }
+
+/* Grouped fee picker (admin wizards — matches guest booking UX) */
+.res-wizard-fee-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.res-wizard-fee-picker .guest-service-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+@media (min-width: 480px) {
+  .res-wizard-fee-picker .guest-service-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.res-wizard-fee-picker .guest-service-card {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fafbfc;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.res-wizard-fee-picker .guest-service-card:hover {
+  border-color: #cbd5e0;
+  background: #fff;
+}
+
+.res-wizard-fee-picker .guest-service-card--expandable.is-open {
+  border-color: rgba(26, 54, 93, 0.3);
+  background: #fff;
+}
+
+.res-wizard-fee-picker .guest-service-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.6rem;
+  background: #edf2f7;
+  color: #4a5568;
+  flex-shrink: 0;
+}
+
+.res-wizard-fee-picker .guest-service-card__body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.res-wizard-fee-picker .guest-service-card__title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1a202c;
+  line-height: 1.3;
+}
+
+.res-wizard-fee-picker .guest-service-card__price,
+.res-wizard-fee-picker .guest-service-card__hint {
+  font-size: 0.6875rem;
+  color: #718096;
+}
+
+.res-wizard-fee-picker .guest-service-card__price {
+  font-weight: 600;
+  color: #1a365d;
+}
+
+.res-wizard-fee-picker .guest-service-card__add,
+.res-wizard-fee-picker .guest-service-card__chevron {
+  flex-shrink: 0;
+  font-size: 1.15rem;
+  color: #94a3b8;
+}
+
+.res-wizard-fee-picker .guest-service-drawer {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #fafbfc;
+}
+
+.res-wizard-fee-picker .guest-service-drawer__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.res-wizard-fee-picker .guest-service-drawer__title {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.res-wizard-fee-picker .guest-service-drawer__done {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #1a365d;
+  cursor: pointer;
+}
+
+.res-wizard-fee-picker .guest-service-drawer__section-label {
+  margin: 0 0 0.4rem;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.res-wizard-fee-picker .guest-service-drawer__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.res-wizard-fee-picker .guest-service-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 0.65rem;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+
+.res-wizard-fee-picker .guest-service-row:hover {
+  border-color: #e2e8f0;
+}
+
+.res-wizard-fee-picker .guest-service-row__name {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #2d3748;
+}
+
+.res-wizard-fee-picker .guest-service-row__price {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #1a365d;
+  white-space: nowrap;
+}
+
+.res-wizard-fee-picker .guest-added-extras {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.75rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+}
+
+.res-wizard-fee-picker .guest-added-extras__label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #718096;
+}
+
+.res-wizard-fee-picker .guest-added-extras__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.15rem;
+  height: 1.15rem;
+  padding: 0 0.3rem;
+  border-radius: 999px;
+  background: #edf2f7;
+  font-size: 0.625rem;
+  color: #4a5568;
+}
+
+.res-wizard-fee-picker .guest-added-extras__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.res-wizard-fee-picker .guest-added-extras__item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.res-wizard-fee-picker .guest-added-extras__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border: none;
+  border-radius: 999px;
+  background: #f7fafc;
+  color: #718096;
+  cursor: pointer;
+}
+
+.res-wizard-fee-picker .guest-added-extras__remove:hover {
+  background: #fef2f2;
+  color: #a81d23;
+}
+
+.res-fee-picker-custom {
+  margin-top: 0.25rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #edf2f7;
+}
+
+.res-fee-picker-custom__label {
+  margin: 0 0 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #718096;
+}
 .res-fee-table { width: 100%; margin-top: 0.75rem; font-size: 0.9375rem; }
 .res-fee-table th, .res-fee-table td { padding: 0.5rem; text-align: left; border-bottom: 1px solid #EDF2F7; }
 

@@ -10,7 +10,11 @@ import {
   calcGrandTotal,
   formatMoney,
   escapeHtml,
+  clampMealQty,
+  readMealQtyInput,
+  MEAL_MAX_QTY,
 } from '/assets/js/features/reservation-shared.js';
+import { buildFeeGroups, LAUNDRY_GROUP_ID } from '/assets/js/features/booking-fee-picker.js';
 
 const MEAL_META = {
   Breakfast: { icon: 'free_breakfast', tone: 'amber' },
@@ -19,100 +23,8 @@ const MEAL_META = {
   Snack: { icon: 'cookie', tone: 'rose' },
 };
 
-const LAUNDRY_CATEGORIES = new Set(['Laundry', 'Laundry-Iron']);
-const LAUNDRY_GROUP_ID = 'laundry';
-
-const GROUP_LABELS = {
-  'Corkage Fee': 'Corkage',
-  'Maid Service': 'Maid Service',
-  'Accommodation Extras': 'Room extras',
-};
-
-const GROUP_ICONS = {
-  [LAUNDRY_GROUP_ID]: 'local_laundry_service',
-  Laundry: 'local_laundry_service',
-  'Laundry-Iron': 'iron',
-  'Corkage Fee': 'restaurant',
-  'Maid Service': 'cleaning_services',
-  'Accommodation Extras': 'bed',
-};
-
-const FEE_ICONS = {
-  Laundry: 'local_laundry_service',
-  Corkage: 'wine_bar',
-};
-
 function emptyMeals() {
   return { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 };
-}
-
-function feeIcon(name, category = '') {
-  if (LAUNDRY_CATEGORIES.has(category)) return 'local_laundry_service';
-  return FEE_ICONS[name] || GROUP_ICONS[category] || 'add_circle';
-}
-
-function groupLabel(category) {
-  return GROUP_LABELS[category] || category;
-}
-
-/** Build top-level fee groups; laundry sub-items stay nested until expanded. */
-function buildFeeGroups(services = []) {
-  const topLevel = [];
-  const laundryItems = [];
-
-  for (const group of services || []) {
-    const items = (group.items || [])
-      .filter((item) => !(
-        group.category === 'Accommodation Extras'
-        && (item.item === 'Extra Bed or Extra Person' || item.item === 'Per person per Night')
-      ))
-      .map((item) => ({
-      name: item.item,
-      amount: Number(item.rate),
-      category: group.category,
-    }));
-
-    if (LAUNDRY_CATEGORIES.has(group.category)) {
-      laundryItems.push(...items);
-      continue;
-    }
-
-    if (!items.length) continue;
-
-    if (items.length === 1) {
-      const item = items[0];
-      const genericName = /^(per person|per load|each)$/i.test(String(item.name).trim());
-      topLevel.push({
-        id: group.category,
-        label: genericName ? groupLabel(group.category) : item.name,
-        icon: GROUP_ICONS[group.category] || feeIcon(item.name, group.category),
-        type: 'single',
-        item,
-      });
-    } else {
-      topLevel.push({
-        id: group.category,
-        label: groupLabel(group.category),
-        icon: GROUP_ICONS[group.category] || 'add_circle',
-        type: 'expandable',
-        items,
-      });
-    }
-  }
-
-  if (laundryItems.length) {
-    topLevel.push({
-      id: LAUNDRY_GROUP_ID,
-      label: 'Laundry',
-      icon: GROUP_ICONS[LAUNDRY_GROUP_ID],
-      type: 'expandable',
-      items: laundryItems,
-    });
-  }
-
-  const singles = topLevel.filter((g) => g.type === 'single');
-  const expandables = topLevel.filter((g) => g.type === 'expandable');
-  return [...singles, ...expandables];
 }
 
 export function createGuestBookingExtras({
@@ -193,12 +105,10 @@ export function createGuestBookingExtras({
             <strong>${type}</strong>
             <span>${formatMoney(price)} each</span>
           </div>
-          <div class="guest-meal-card__stepper">
-            <button type="button" class="guest-meal-step" data-meal-minus="${type}" aria-label="Less ${type}" ${qty <= 0 ? 'disabled' : ''}>−</button>
-            <span class="guest-meal-qty" aria-live="polite">${qty}</span>
-            <button type="button" class="guest-meal-step" data-meal-plus="${type}" aria-label="More ${type}">+</button>
+          <div class="guest-meal-card__qty">
+            <input type="number" class="guest-meal-qty-input" data-meal-qty="${type}" min="0" max="${MEAL_MAX_QTY}" step="1" value="${qty}" inputmode="numeric" aria-label="${type} quantity" />
           </div>
-          ${qty > 0 ? `<p class="guest-meal-card__sub">${formatMoney(price * qty)}</p>` : ''}
+          ${qty > 0 ? `<p class="guest-meal-card__sub" data-meal-sub="${type}">${formatMoney(price * qty)}</p>` : `<p class="guest-meal-card__sub guest-meal-card__sub--empty" data-meal-sub="${type}"></p>`}
         </article>`;
     }).join('');
   }
@@ -283,9 +193,10 @@ export function createGuestBookingExtras({
   }
 
   function renderSubmenuItem(item) {
+    const label = item.label || item.name;
     return `
       <button type="button" class="guest-service-row" data-quick-fee="${escapeHtml(item.name)}" data-quick-amt="${item.amount}" data-quick-category="${escapeHtml(item.category || '')}">
-        <span class="guest-service-row__name">${escapeHtml(item.name)}</span>
+        <span class="guest-service-row__name">${escapeHtml(label)}</span>
         <span class="guest-service-row__price">${formatMoney(item.amount)}</span>
         <span class="material-symbols-outlined guest-service-row__add" aria-hidden="true">add</span>
       </button>`;
@@ -313,6 +224,24 @@ export function createGuestBookingExtras({
       </ul>`;
   }
 
+  function syncMealSubtotals() {
+    MEAL_TYPE_LIST.forEach((type) => {
+      const qty = clampMealQty(meals[type]);
+      const sub = mealsMount?.querySelector(`[data-meal-sub="${type}"]`);
+      if (!sub) return;
+      const price = mealRates[type] || 0;
+      if (qty > 0) {
+        sub.textContent = formatMoney(price * qty);
+        sub.classList.remove('guest-meal-card__sub--empty');
+      } else {
+        sub.textContent = '';
+        sub.classList.add('guest-meal-card__sub--empty');
+      }
+      const card = mealsMount?.querySelector(`[data-meal-type="${type}"]`);
+      card?.classList.toggle('is-active', qty > 0);
+    });
+  }
+
   function render() {
     renderMeals();
     renderFeeChips();
@@ -321,23 +250,23 @@ export function createGuestBookingExtras({
   }
 
   function bind() {
-    mealsMount?.addEventListener('click', (e) => {
-      const plus = e.target.closest('[data-meal-plus]');
-      const minus = e.target.closest('[data-meal-minus]');
-      if (plus) {
-        const type = plus.dataset.mealPlus;
-        meals[type] = (meals[type] || 0) + 1;
-        render();
-        onChange();
-        return;
-      }
-      if (minus) {
-        const type = minus.dataset.mealMinus;
-        meals[type] = Math.max(0, (meals[type] || 0) - 1);
-        render();
-        onChange();
-      }
+    mealsMount?.addEventListener('input', (e) => {
+      const input = e.target.closest('[data-meal-qty]');
+      if (!input) return;
+      const type = input.dataset.mealQty;
+      meals[type] = readMealQtyInput(input);
+      syncMealSubtotals();
+      onChange();
     });
+
+    mealsMount?.addEventListener('blur', (e) => {
+      const input = e.target.closest('[data-meal-qty]');
+      if (!input) return;
+      const type = input.dataset.mealQty;
+      meals[type] = readMealQtyInput(input);
+      input.value = meals[type];
+      syncMealSubtotals();
+    }, true);
 
     feeChipsMount?.addEventListener('click', (e) => {
       const groupBtn = e.target.closest('[data-fee-group]');

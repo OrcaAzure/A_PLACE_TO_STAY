@@ -10,14 +10,18 @@ import {
   emptyGroupWizardState, mealsFromBooking, calcMealsSubtotal, calcFeesSubtotal, calcGroupGrandTotal,
   assignedGuestTotal, debounce, servicesToQuickFees, applyLoggedInGroupContact, sanitizeGuestModifyFees,
   loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
+  renderAdminMealRow, readMealsFromInputs, syncAdminMealSubtotals, clampMealQty,
 } from '/assets/js/features/reservation-shared.js';
+import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
 
 let initialized = false;
 let isOpen = false;
 let state = emptyGroupWizardState();
 let users = [];
 let fiscalBounds = null;
+let feeGroups = [];
 let quickFees = [];
+let feePickerClickBound = false;
 
 function $(id) { return document.getElementById(id); }
 
@@ -197,35 +201,22 @@ function renderStep3() {
 }
 
 function renderMealRow(type, qty) {
-  const price = state.mealRates[type];
-  return `<div class="res-meal-row">
-    <div><strong>${type}</strong><span class="res-meal-price">${formatMoney(price)} each</span></div>
-    <div class="res-qty">
-      <button type="button" data-meal-minus="${type}">−</button><span>${qty}</span>
-      <button type="button" data-meal-plus="${type}">+</button>
-    </div>
-    <span class="res-meal-sub">${formatMoney(price * qty)}</span>
-  </div>`;
+  return renderAdminMealRow(type, qty, state.mealRates[type], { idPrefix: 'gw' });
 }
 
 function renderStep4() {
-  const feeRows = state.fees.map((f, i) =>
-    `<tr><td>${escapeHtml(f.fee_name)}</td><td>${formatMoney(f.amount)}</td>
-     <td><button type="button" class="res-btn-sm res-btn-sm--danger" data-fee-rm="${i}">Remove</button></td></tr>`).join('');
-  const quickBtns = quickFees.map((f) =>
-    `<button type="button" class="res-quick-fee" data-quick-fee="${escapeHtml(f.name)}" data-quick-amt="${f.amount}">${escapeHtml(f.name)} (${formatMoney(f.amount)})</button>`
-  ).join('');
-  const quickFeesBlock = quickFees.length
-    ? `<div class="res-quick-fees">${quickBtns}</div>`
-    : (state.guestModify
-      ? '<p class="res-hint">No add-on services are listed right now. Contact housing if you need something extra.</p>'
-      : '<p class="res-hint">No extra services in the catalog yet — add a custom line below or configure fees under Facilities → Extra fees.</p>');
-  const customFeeBlock = state.guestModify ? '' : `
-    <div class="res-row">
-      <div><label class="res-label">Fee name</label><input id="gw-fee-name" class="res-input" placeholder="e.g. Extra mattress" /></div>
-      <div><label class="res-label">Amount (₱)</label><input id="gw-fee-amt" class="res-input" type="number" min="0" /></div>
-    </div>
-    <button type="button" id="gw-add-fee" class="res-btn res-btn--secondary">Add Custom Fee</button>`;
+  const feePickerBlock = renderWizardFeePicker({
+    feeGroups,
+    expandedGroupId: state.expandedFeeGroupId,
+    fees: state.fees,
+    emptyMessage: state.guestModify
+      ? 'No add-on services are listed right now. Contact housing if you need something extra.'
+      : 'No extra services in the catalog yet — add a custom line below or configure fees under Facilities → Extra fees.',
+    showCustom: !state.guestModify,
+    customNameInputId: 'gw-fee-name',
+    customAmtInputId: 'gw-fee-amt',
+    customAddBtnId: 'gw-add-fee',
+  });
   return `
     <p class="res-lead">Meals and fees apply to the whole group.</p>
     <div class="res-meals-box">
@@ -233,17 +224,15 @@ function renderStep4() {
       ${renderMealRow('Lunch', state.meals.Lunch)}
       ${renderMealRow('Dinner', state.meals.Dinner)}
       ${renderMealRow('Snack', state.meals.Snack)}
-      <p class="res-meal-total">Meals subtotal: <strong>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
+      <p class="res-meal-total">Meals subtotal: <strong data-meals-total>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
     </div>
     <label class="res-label" for="gw-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
     <textarea id="gw-meal-allergens" class="res-input" rows="2" placeholder="e.g. nut allergy, gluten-free, vegetarian…">${escapeHtml(state.mealAllergenNotes || '')}</textarea>
     <h3 class="res-subhead">Additional fees (optional)</h3>
     <p class="res-hint">${state.guestModify
-    ? 'Tap a catalog fee to add it. Custom charges must be arranged with housing.'
-    : 'Tap a catalog fee or add your own.'}</p>
-    ${quickFeesBlock}
-    ${customFeeBlock}
-    ${state.fees.length ? `<table class="res-fee-table"><tbody>${feeRows}</tbody></table>` : ''}`;
+    ? 'Choose a category, then add catalog fees. Custom charges must be arranged with housing.'
+    : 'Choose a category to browse options, or add a custom fee below.'}</p>
+    ${feePickerBlock}`;
 }
 
 function renderStep5() {
@@ -333,6 +322,10 @@ function readAllFields() {
   state.guestMessage = $('gw-guest-message')?.value?.trim() ?? state.guestMessage;
   if ($('gw-meal-allergens')) state.mealAllergenNotes = $('gw-meal-allergens').value?.trim() || '';
   if ($('gw-room-search')) state.roomSearch = $('gw-room-search').value;
+  const mealRoot = $('group-wizard-body');
+  if (mealRoot?.querySelector('[data-meal-qty]')) {
+    state.meals = readMealsFromInputs(mealRoot, state.meals);
+  }
 }
 
 function readStepFields() {
@@ -456,16 +449,36 @@ function bindEvents() {
 
   const bodyEl = $('group-wizard-body');
   ['Breakfast', 'Lunch', 'Dinner', 'Snack'].forEach((type) => {
-    bodyEl?.querySelector(`[data-meal-plus="${type}"]`)?.addEventListener('click', () => { state.meals[type]++; renderBody(); });
-    bodyEl?.querySelector(`[data-meal-minus="${type}"]`)?.addEventListener('click', () => { state.meals[type] = Math.max(0, state.meals[type] - 1); renderBody(); });
-  });
-
-  bodyEl?.querySelectorAll('[data-quick-fee]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.fees.push({ fee_name: btn.getAttribute('data-quick-fee'), amount: Number(btn.getAttribute('data-quick-amt')) });
-      renderBody();
+    bodyEl?.querySelector(`[data-meal-qty="${type}"]`)?.addEventListener('input', (e) => {
+      state.meals[type] = clampMealQty(e.target.value);
+      syncAdminMealSubtotals(bodyEl, state.meals, state.mealRates);
+    });
+    bodyEl?.querySelector(`[data-meal-qty="${type}"]`)?.addEventListener('blur', (e) => {
+      state.meals[type] = clampMealQty(e.target.value);
+      e.target.value = state.meals[type];
+      syncAdminMealSubtotals(bodyEl, state.meals, state.mealRates);
     });
   });
+
+  if (!feePickerClickBound) {
+    $('group-wizard-body')?.addEventListener('click', (e) => {
+      if (!e.target.closest('[data-fee-picker]')) return;
+      const handled = handleWizardFeePickerClick(e, {
+        getExpandedGroupId: () => state.expandedFeeGroupId,
+        setExpandedGroupId: (id) => { state.expandedFeeGroupId = id; renderBody(); },
+        onAddFee: (fee) => {
+          state.fees.push(fee);
+          renderBody();
+        },
+        onRemoveFee: (index) => {
+          state.fees.splice(index, 1);
+          renderBody();
+        },
+      });
+      if (handled) e.stopPropagation();
+    });
+    feePickerClickBound = true;
+  }
 
   $('gw-add-fee')?.addEventListener('click', () => {
     if (state.guestModify) return;
@@ -474,10 +487,6 @@ function bindEvents() {
     if (!name || !amount) { state.error = 'Enter a fee name and amount.'; renderBody(); return; }
     state.fees.push({ fee_name: name, amount });
     renderBody();
-  });
-
-  bodyEl?.querySelectorAll('[data-fee-rm]').forEach((btn) => {
-    btn.addEventListener('click', () => { state.fees.splice(Number(btn.getAttribute('data-fee-rm')), 1); renderBody(); });
   });
 }
 
@@ -652,9 +661,11 @@ export async function openGroupWizard(options = {}) {
     state.mealRates = mealRatesResult;
     fiscalBounds = fiscalResult;
     quickFees = servicesToQuickFees(catalogResult.services || []);
+    feeGroups = buildFeeGroups(catalogResult.services || []);
   } catch {
     users = [];
     quickFees = [];
+    feeGroups = [];
   }
 
   if (groupId) {

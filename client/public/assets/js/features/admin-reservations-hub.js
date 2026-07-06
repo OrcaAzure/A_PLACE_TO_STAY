@@ -106,15 +106,23 @@ function setTab(tab, { pushUrl = true } = {}) {
   renderActivePanel();
 }
 
+function sortBySubmittedDesc(a, b) {
+  const aTs = String(a.submittedAt || a.updatedAt || a.created_at || '');
+  const bTs = String(b.submittedAt || b.updatedAt || b.created_at || '');
+  return bTs.localeCompare(aTs);
+}
+
 function pendingRoomGroups() {
   return [
     ...state.roomRequests.filter((r) => normStatus(r.status) === 'pending'),
     ...state.groupRequests.filter((r) => normStatus(r.status) === 'pending'),
-  ];
+  ].sort(sortBySubmittedDesc);
 }
 
 function pendingVenues() {
-  return state.venueBookings.filter((b) => normStatus(b.status) === 'pending');
+  return state.venueBookings
+    .filter((b) => normStatus(b.status) === 'pending')
+    .sort(sortBySubmittedDesc);
 }
 
 function pendingCounts() {

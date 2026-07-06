@@ -881,6 +881,12 @@ body.guest-shell {
   color: #718096;
 }
 
+.guest-meal-card__qty {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
 .guest-meal-card__stepper {
   display: inline-flex;
   align-items: center;
@@ -891,33 +897,30 @@ body.guest-shell {
   border: 1px solid #e2e8f0;
 }
 
-.guest-meal-step {
-  width: 1.5rem;
-  height: 1.5rem;
-  border: none;
-  border-radius: 999px;
-  background: #f7fafc;
-  color: #1a365d;
-  font-size: 0.9375rem;
-  line-height: 1;
+.guest-meal-qty-input {
+  width: 100%;
+  max-width: 5.25rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.35rem 0.35rem 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.55rem;
+  background: #fff;
+  font-size: 0.875rem;
   font-weight: 700;
-  cursor: pointer;
-}
-
-.guest-meal-step:hover:not(:disabled) {
-  background: #edf2f7;
-}
-
-.guest-meal-step:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-
-.guest-meal-qty {
-  min-width: 1.1rem;
-  font-size: 0.8125rem;
-  font-weight: 700;
+  text-align: center;
   color: #1a202c;
+}
+
+.guest-meal-qty-input:focus {
+  outline: none;
+  border-color: rgba(26, 54, 93, 0.35);
+  box-shadow: 0 0 0 2px rgba(26, 54, 93, 0.12);
+}
+
+.guest-meal-card__sub--empty {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
 }
 
 .guest-meal-card__sub {

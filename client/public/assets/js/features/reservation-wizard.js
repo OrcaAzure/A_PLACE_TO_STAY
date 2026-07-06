@@ -12,14 +12,18 @@ import {
   recommendRooms, recommendationReason, servicesToQuickFees, applyLoggedInGuestContact, filterRoomsList,
   DORM_MIN_GUEST_COUNT, dormPriceLabel, effectiveCapacityMin,
   isRoomListVisible, isRoomBookable, dormMinGuestsNotice,
+  renderAdminMealRow, readMealsFromInputs, syncAdminMealSubtotals, clampMealQty,
 } from '/assets/js/features/reservation-shared.js';
+import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
 
 let initialized = false;
 let isOpen = false;
 let state = emptyWizardState();
 let users = [];
 let fiscalBounds = null;
+let feeGroups = [];
 let quickFees = [];
+let feePickerClickBound = false;
 
 function $(id) { return document.getElementById(id); }
 
@@ -198,40 +202,22 @@ function renderStep3() {
 }
 
 function renderMealRow(type, qty) {
-  const price = state.mealRates[type];
-  return `
-    <div class="res-meal-row">
-      <div>
-        <strong>${type}</strong>
-        <span class="res-meal-price">${formatMoney(price)} each</span>
-      </div>
-      <div class="res-qty">
-        <button type="button" data-meal-minus="${type}" aria-label="Less ${type}">−</button>
-        <span>${qty}</span>
-        <button type="button" data-meal-plus="${type}" aria-label="More ${type}">+</button>
-      </div>
-      <span class="res-meal-sub">${formatMoney(price * qty)}</span>
-    </div>`;
+  return renderAdminMealRow(type, qty, state.mealRates[type], { idPrefix: 'wiz' });
 }
 
 function renderStep4() {
-  const feeRows = state.fees.map((f, i) => `
-    <tr><td>${escapeHtml(f.fee_name)}</td><td>${formatMoney(f.amount)}</td>
-    <td><button type="button" class="res-btn-sm res-btn-sm--danger" data-fee-rm="${i}">Remove</button></td></tr>`).join('');
-  const quickBtns = quickFees.map((f) =>
-    `<button type="button" class="res-quick-fee" data-quick-fee="${escapeHtml(f.name)}" data-quick-amt="${f.amount}">${escapeHtml(f.name)} (${formatMoney(f.amount)})</button>`
-  ).join('');
-  const quickFeesBlock = quickFees.length
-    ? `<div class="res-quick-fees">${quickBtns}</div>`
-    : (state.guestModify
-      ? '<p class="res-hint">No add-on services are listed right now. Contact housing if you need something extra.</p>'
-      : '<p class="res-hint">No extra services in the catalog yet — add a custom line below or configure fees under Facilities → Extra fees.</p>');
-  const customFeeBlock = state.guestModify ? '' : `
-    <div class="res-row">
-      <div><label class="res-label">Fee name</label><input id="wiz-fee-name" class="res-input" placeholder="e.g. Extra mattress" /></div>
-      <div><label class="res-label">Amount (₱)</label><input id="wiz-fee-amt" class="res-input" type="number" min="0" step="1" placeholder="0" /></div>
-    </div>
-    <button type="button" id="wiz-add-fee" class="res-btn res-btn--secondary">Add Custom Fee</button>`;
+  const feePickerBlock = renderWizardFeePicker({
+    feeGroups,
+    expandedGroupId: state.expandedFeeGroupId,
+    fees: state.fees,
+    emptyMessage: state.guestModify
+      ? 'No add-on services are listed right now. Contact housing if you need something extra.'
+      : 'No extra services in the catalog yet — add a custom line below or configure fees under Facilities → Extra fees.',
+    showCustom: !state.guestModify,
+    customNameInputId: 'wiz-fee-name',
+    customAmtInputId: 'wiz-fee-amt',
+    customAddBtnId: 'wiz-add-fee',
+  });
   return `
     <p class="res-lead">Add meals if needed. Set a different quantity for each meal.</p>
     <div class="res-meals-box">
@@ -239,18 +225,15 @@ function renderStep4() {
       ${renderMealRow('Lunch', state.meals.Lunch)}
       ${renderMealRow('Dinner', state.meals.Dinner)}
       ${renderMealRow('Snack', state.meals.Snack)}
-      <p class="res-meal-total">Meals subtotal: <strong>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
+      <p class="res-meal-total">Meals subtotal: <strong data-meals-total>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
     </div>
     <label class="res-label" for="wiz-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
     <textarea id="wiz-meal-allergens" class="res-input" rows="2" placeholder="e.g. nut allergy, gluten-free, vegetarian…">${escapeHtml(state.mealAllergenNotes || '')}</textarea>
     <h3 class="res-subhead">Additional fees (optional)</h3>
     <p class="res-hint">${state.guestModify
-    ? 'Tap a catalog fee to add it. Custom charges must be arranged with housing.'
-    : 'Tap a catalog fee or add your own.'}</p>
-    ${quickFeesBlock}
-    ${customFeeBlock}
-    ${state.fees.length ? `<table class="res-fee-table"><thead><tr><th>Fee</th><th>Amount</th><th></th></tr></thead><tbody>${feeRows}</tbody></table>
-      <p class="res-meal-total">Fees subtotal: <strong>${formatMoney(calcFeesSubtotal(state.fees))}</strong></p>` : ''}`;
+    ? 'Choose a category, then add catalog fees. Custom charges must be arranged with housing.'
+    : 'Choose a category to browse options, or add a custom fee below.'}</p>
+    ${feePickerBlock}`;
 }
 
 function renderStep5() {
@@ -350,6 +333,10 @@ function readFields() {
   if ($('wiz-meal-allergens')) {
     state.mealAllergenNotes = $('wiz-meal-allergens').value?.trim() || '';
   }
+  const mealRoot = $('reservation-wizard-body');
+  if (mealRoot?.querySelector('[data-meal-qty]')) {
+    state.meals = readMealsFromInputs(mealRoot, state.meals);
+  }
   if ($('wiz-guest-message')) {
     state.guestMessage = $('wiz-guest-message').value?.trim() || '';
   }
@@ -443,16 +430,36 @@ function bindEvents() {
 
   const bodyEl = $('reservation-wizard-body');
   ['Breakfast', 'Lunch', 'Dinner', 'Snack'].forEach((type) => {
-    bodyEl?.querySelector(`[data-meal-plus="${type}"]`)?.addEventListener('click', () => { state.meals[type]++; renderBody(); });
-    bodyEl?.querySelector(`[data-meal-minus="${type}"]`)?.addEventListener('click', () => { state.meals[type] = Math.max(0, state.meals[type] - 1); renderBody(); });
-  });
-
-  $('reservation-wizard-body')?.querySelectorAll('[data-quick-fee]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.fees.push({ fee_name: btn.getAttribute('data-quick-fee'), amount: Number(btn.getAttribute('data-quick-amt')) });
-      renderBody();
+    bodyEl?.querySelector(`[data-meal-qty="${type}"]`)?.addEventListener('input', (e) => {
+      state.meals[type] = clampMealQty(e.target.value);
+      syncAdminMealSubtotals(bodyEl, state.meals, state.mealRates);
+    });
+    bodyEl?.querySelector(`[data-meal-qty="${type}"]`)?.addEventListener('blur', (e) => {
+      state.meals[type] = clampMealQty(e.target.value);
+      e.target.value = state.meals[type];
+      syncAdminMealSubtotals(bodyEl, state.meals, state.mealRates);
     });
   });
+
+  if (!feePickerClickBound) {
+    $('reservation-wizard-body')?.addEventListener('click', (e) => {
+      if (!e.target.closest('[data-fee-picker]')) return;
+      const handled = handleWizardFeePickerClick(e, {
+        getExpandedGroupId: () => state.expandedFeeGroupId,
+        setExpandedGroupId: (id) => { state.expandedFeeGroupId = id; renderBody(); },
+        onAddFee: (fee) => {
+          state.fees.push(fee);
+          renderBody();
+        },
+        onRemoveFee: (index) => {
+          state.fees.splice(index, 1);
+          renderBody();
+        },
+      });
+      if (handled) e.stopPropagation();
+    });
+    feePickerClickBound = true;
+  }
 
   $('wiz-add-fee')?.addEventListener('click', () => {
     if (state.guestModify) return;
@@ -462,13 +469,6 @@ function bindEvents() {
     state.fees.push({ fee_name: name, amount });
     state.error = null;
     renderBody();
-  });
-
-  $('reservation-wizard-body')?.querySelectorAll('[data-fee-rm]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      state.fees.splice(Number(btn.getAttribute('data-fee-rm')), 1);
-      renderBody();
-    });
   });
 }
 
@@ -630,9 +630,11 @@ export async function openReservationWizard(options = {}) {
     state.mealRates = mealRatesResult;
     fiscalBounds = fiscalResult;
     quickFees = servicesToQuickFees(catalogResult.services || []);
+    feeGroups = buildFeeGroups(catalogResult.services || []);
   } catch {
     users = [];
     quickFees = [];
+    feeGroups = [];
   }
 
   if (bookingId) {
