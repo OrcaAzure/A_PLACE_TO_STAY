@@ -17,13 +17,13 @@ body.guest-shell {
 }
 
 /* ── Guest nav — solid bar (inherits .lp-nav tokens from landing.css) ── */
-.guest-top-nav.lp-nav-is-visible {
+.guest-top-nav {
   background: var(--lp-nav-bg, #ffffff);
   border-color: var(--lp-nav-border, rgba(203, 213, 224, 0.45));
   box-shadow: var(--lp-nav-shadow, 0 1px 0 rgba(26, 54, 93, 0.04));
 }
 
-.guest-top-nav.lp-nav-is-visible.is-scrolled {
+.guest-top-nav.is-scrolled {
   background: var(--lp-nav-bg-scrolled, #ffffff);
   border-color: var(--lp-nav-border-scrolled, rgba(203, 213, 224, 0.5));
   box-shadow: var(--lp-nav-shadow-scrolled, 0 4px 24px rgba(26, 54, 93, 0.08));
@@ -49,15 +49,6 @@ body.guest-shell {
 }
 
 .guest-shell #page-content.guest-landing {
-  padding-top: 0;
-}
-
-/* App pages — nav overlays on hover, no reserved header gap */
-.guest-shell #page-content.guest-app-page {
-  padding-top: max(1rem, env(safe-area-inset-top, 0px));
-}
-
-.guest-shell #page-content.guest-landing {
   flex: 1 1 auto;
   width: 100%;
   max-width: none;
@@ -71,7 +62,7 @@ body.guest-shell {
   width: 100%;
   max-width: 1280px;
   margin: 0 auto;
-  padding: 1.5rem max(1rem, env(safe-area-inset-left, 0px)) 2.5rem max(1rem, env(safe-area-inset-right, 0px));
+  padding: max(calc(4.25rem + 1.5rem), calc(4.25rem + env(safe-area-inset-top, 0px))) max(1rem, env(safe-area-inset-left, 0px)) 2.5rem max(1rem, env(safe-area-inset-right, 0px));
   box-sizing: border-box;
 }
 
