@@ -6,6 +6,16 @@ export const ROOM_RATE_ITEMS = ['Single/Double Occupancy', 'Daily Maximum'];
 export const ROOM_RATE_SEASONS = ['Regular', 'Peak', 'Super Peak'];
 export const ROOM_RATE_ITEM_MAX_LENGTH = 120;
 
+/** Built-in occupancy rate row names (FY26 pricelist). */
+export const SINGLE_DOUBLE_OCCUPANCY_ITEM = 'Single/Double Occupancy';
+export const DAILY_MAXIMUM_ITEM = 'Daily Maximum';
+
+/**
+ * Guests at or below this count use Single/Double; above uses Daily Maximum.
+ * Matches the standard FY26 lodging pricelist (1–2 vs 3+).
+ */
+export const SINGLE_DOUBLE_MAX_GUESTS = 2;
+
 /** Starter rows shown when a room type has no saved price rows yet. */
 export const DEFAULT_ROOM_RATE_ITEMS = [...ROOM_RATE_ITEMS];
 

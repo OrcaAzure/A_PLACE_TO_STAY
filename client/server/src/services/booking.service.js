@@ -10,7 +10,7 @@ import {
 import { validateReservationDates } from './fiscalYear.service.js';
 import { DEFAULT_MEAL_RATES } from '../constants/ancillary.js';
 import { getMealRatesMap } from './ancillary.service.js';
-import { resolveRateRoomType, formatRoomTypeLabel, DORM_MIN_GUEST_COUNT } from '../constants/rooms.js';
+import { resolveRateRoomType, formatRoomTypeLabel, DORM_MIN_GUEST_COUNT, SINGLE_DOUBLE_OCCUPANCY_ITEM, DAILY_MAXIMUM_ITEM, SINGLE_DOUBLE_MAX_GUESTS } from '../constants/rooms.js';
 import {
   resolveLodgingSeasonForDate,
   addDaysISO,
@@ -75,8 +75,42 @@ export async function getRate(roomType, occupancyItem, season) {
   return rows.length ? Number(rows[0].rate) : null;
 }
 
+export async function roomHasRateItem(roomType, item) {
+  if (!roomType || !item) return false;
+  const [rows] = await pool.query(
+    'SELECT 1 FROM rates_rooms WHERE room_type = ? AND item = ? LIMIT 1',
+    [roomType, item],
+  );
+  return rows.length > 0;
+}
+
+/** Pick occupancy row from guest count (1–2 → Single/Double, 3+ → Daily Maximum). */
+export function pickOccupancyItemByGuestCount(roomType, guestCount) {
+  if (roomType === 'Dorm') return PER_PERSON_NIGHT_ITEM;
+  const guests = Math.max(1, Number(guestCount) || 1);
+  if (guests <= SINGLE_DOUBLE_MAX_GUESTS) return SINGLE_DOUBLE_OCCUPANCY_ITEM;
+  return DAILY_MAXIMUM_ITEM;
+}
+
+/**
+ * Resolve which price row applies for a stay.
+ * Honors an explicit admin override; otherwise uses the 1–2 / 3+ pricelist rule.
+ * Falls back to Single/Double when Daily Maximum is not configured for the room type.
+ */
+export async function resolveOccupancyItem({ roomType, guestCount, explicitItem = null } = {}) {
+  const override = String(explicitItem || '').trim();
+  if (override) return override;
+
+  const preferred = pickOccupancyItemByGuestCount(roomType, guestCount);
+  if (preferred === DAILY_MAXIMUM_ITEM && !(await roomHasRateItem(roomType, DAILY_MAXIMUM_ITEM))) {
+    return SINGLE_DOUBLE_OCCUPANCY_ITEM;
+  }
+  return preferred;
+}
+
+/** @deprecated Use resolveOccupancyItem — kept for callers that only need a dorm vs room default. */
 export function defaultOccupancyItem(roomType) {
-  return roomType === 'Dorm' ? 'Per person per Night' : 'Single/Double Occupancy';
+  return roomType === 'Dorm' ? PER_PERSON_NIGHT_ITEM : SINGLE_DOUBLE_OCCUPANCY_ITEM;
 }
 
 export async function calculateTotalAmount({
@@ -104,14 +138,14 @@ export async function calculateTotalAmount({
   let total = 0;
 
   switch (occupancyItem) {
-    case 'Single/Double Occupancy':
+    case SINGLE_DOUBLE_OCCUPANCY_ITEM:
       total = rate * nights;
-      if (roomType !== 'Dorm' && guestCount > 2) {
+      if (roomType !== 'Dorm' && guestCount > SINGLE_DOUBLE_MAX_GUESTS) {
         const extraRate = await getAccommodationExtraRate(season, LODGING_EXTRA_ITEM);
-        if (extraRate != null) total += extraRate * (guestCount - 2) * nights;
+        if (extraRate != null) total += extraRate * (guestCount - SINGLE_DOUBLE_MAX_GUESTS) * nights;
       }
       break;
-    case 'Daily Maximum':
+    case DAILY_MAXIMUM_ITEM:
     default:
       total = rate * nights;
       break;
@@ -217,9 +251,12 @@ export async function prepareBookingInsert({
   const overlap = await hasOverlappingBooking(roomId, checkIn, checkOut);
   if (overlap) throw new Error('This room is already reserved for the selected dates.');
 
-  const resolvedSeason = season || (await resolveSeason(checkIn));
-  const resolvedOccupancy = occupancyItem || defaultOccupancyItem(room.room_type);
   const rateRoomType = resolveRateRoomType(room);
+  const resolvedOccupancy = await resolveOccupancyItem({
+    roomType: rateRoomType,
+    guestCount,
+    explicitItem: occupancyItem,
+  });
   const nights = calcNights(checkIn, checkOut);
   const totalAmount = await calculateStayTotalAmount({
     roomType: rateRoomType,
@@ -229,8 +266,12 @@ export async function prepareBookingInsert({
     checkOut,
   });
 
+  if (totalAmount == null) {
+    throw new Error('Room pricing is not configured for these dates. Contact the office to complete this booking.');
+  }
+
   return {
-    season: resolvedSeason,
+    season: season || (await resolveSeason(checkIn)),
     occupancy_item: resolvedOccupancy,
     total_amount: totalAmount,
     nights,
@@ -269,15 +310,23 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
   let totalAmount = body.total_amount ?? existing.total_amount;
 
   if (!isEmpty(body.check_in) || !isEmpty(body.check_out) || body.guest_count != null || body.room_id != null) {
+    const rateRoomType = resolveRateRoomType(room);
     season = await resolveSeason(checkIn);
-    occupancyItem = occupancyItem || defaultOccupancyItem(room.room_type);
+    occupancyItem = await resolveOccupancyItem({
+      roomType: rateRoomType,
+      guestCount,
+      explicitItem: body.occupancy_item != null ? body.occupancy_item : null,
+    });
     totalAmount = await calculateStayTotalAmount({
-      roomType: resolveRateRoomType(room),
+      roomType: rateRoomType,
       occupancyItem,
       guestCount,
       checkIn,
       checkOut,
     });
+    if (totalAmount == null) {
+      throw new Error('Room pricing is not configured for these dates.');
+    }
   }
 
   return { checkIn, checkOut, guestCount, season, occupancyItem, totalAmount, roomId };
@@ -397,20 +446,24 @@ export async function getAvailableRooms({
       availabilityStatus = 'dorm_min_guests';
     } else if (!groupPicker && room.room_type !== 'Dorm' && count < physicalMin) {
       availabilityStatus = 'too_small';
-    } else if (groupPicker && count > room.capacity_max) availabilityStatus = 'too_small';
+    }     else if (groupPicker && count > room.capacity_max) availabilityStatus = 'too_small';
 
-    const occupancyItem = defaultOccupancyItem(room.room_type);
-    let pricePerNight = null;
-    let estimatedTotal = null;
     const pricingGuests = (() => {
       if (groupPicker) return Math.max(physicalMin, Math.min(count, room.capacity_max));
       if (room.room_type === 'Dorm') return Math.max(count, DORM_MIN_GUEST_COUNT);
       return count;
     })();
 
+    const rateRoomType = resolveRateRoomType(room);
+    const occupancyItem = await resolveOccupancyItem({
+      roomType: rateRoomType,
+      guestCount: pricingGuests,
+    });
+    let pricePerNight = null;
+    let estimatedTotal = null;
+
     if (availabilityStatus !== 'maintenance' && availabilityStatus !== 'booked'
       && availabilityStatus !== 'occupied' && availabilityStatus !== 'dirty') {
-      const rateRoomType = resolveRateRoomType(room);
       estimatedTotal = await calculateStayTotalAmount({
         roomType: rateRoomType,
         occupancyItem,
@@ -440,6 +493,7 @@ export async function getAvailableRooms({
         : count >= physicalMin && count <= room.capacity_max) && meetsDormMinimum,
       meets_dorm_minimum: meetsDormMinimum,
       per_person_pricing: room.room_type === 'Dorm',
+      occupancy_item: occupancyItem,
       price_per_night: pricePerNight,
       estimated_total: estimatedTotal,
       nights,
