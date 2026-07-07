@@ -23,8 +23,13 @@ body.lp-page-hidden > #lp-welcome {
 /* ── Welcome screen (after preloader) ─────────────────────────────── */
 
 .lp-welcome {
-  --lp-welcome-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --lp-welcome-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --lp-cine-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  --lp-primary: #1a365d;
+  --lp-accent-light: #90cdf4;
+  --lp-accent: #63b3ed;
+  --lp-accent-deep: #4299e1;
+  --lp-brand-size: clamp(5.5rem, 23vw, 12.5rem);
   position: fixed;
   inset: 0;
   z-index: 99990;
@@ -32,244 +37,399 @@ body.lp-page-hidden > #lp-welcome {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  background: #152a4a;
+  background: radial-gradient(ellipse 100% 80% at 50% 42%, #1a365d 0%, #152a4a 48%, #0c1424 100%);
   opacity: 1;
-  transition: opacity 0.36s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-}
-
-.lp-welcome::before {
-  content: '';
-  position: absolute;
-  inset: -40%;
-  z-index: 0;
-  background: linear-gradient(
-    155deg,
-    #152a4a 0%,
-    #123f6f 22%,
-    #1a365d 44%,
-    #2c5282 66%,
-    #123f6f 88%,
-    #152a4a 100%
-  );
-  background-size: 320% 320%;
-  animation: lp-welcome-bg-shift 9s ease-in-out infinite;
-  pointer-events: none;
+  transition: opacity 0.52s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: auto;
 }
 
 .lp-welcome.is-exiting {
   opacity: 0;
+  pointer-events: none;
+}
+
+.lp-welcome.is-exiting .lp-welcome__stage {
+  transform: scale(1.04);
+  filter: blur(6px);
+  opacity: 0;
+}
+
+.lp-welcome__vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 72% 62% at 50% 48%, transparent 0%, rgba(0, 0, 0, 0.28) 100%);
+}
+
+/* Left grid / window shadow */
+.lp-welcome__bg-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.lp-welcome__bg-grid::before {
+  content: '';
+  position: absolute;
+  left: -10%;
+  top: -12%;
+  width: 55%;
+  height: 125%;
+  transform: rotate(-7deg);
+  opacity: 0.16;
+  filter: blur(1.5px);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(144, 205, 244, 0.08) 0,
+      rgba(144, 205, 244, 0.08) 1px,
+      transparent 1px,
+      transparent 56px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(144, 205, 244, 0.06) 0,
+      rgba(144, 205, 244, 0.06) 1px,
+      transparent 1px,
+      transparent 56px
+    );
+  mask-image: linear-gradient(108deg, rgba(0, 0, 0, 0.9) 0%, transparent 88%);
+}
+
+.lp-welcome__bg-grid::after {
+  content: '';
+  position: absolute;
+  left: 3%;
+  top: 8%;
+  width: 36%;
+  height: 74%;
+  transform: rotate(-4deg);
+  border: 1px solid rgba(144, 205, 244, 0.07);
+  border-radius: 2px;
+  box-shadow: 20px 28px 56px rgba(0, 0, 0, 0.4);
+  opacity: 0.3;
+  filter: blur(0.5px);
+  mask-image: linear-gradient(118deg, black 15%, transparent 92%);
+}
+
+/* Right smoke */
+.lp-welcome__bg-smoke {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.lp-welcome__smoke {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(48px);
+  animation: lp-welcome-smoke-drift 18s ease-in-out infinite;
+}
+
+.lp-welcome__smoke--a {
+  right: -2%;
+  top: 14%;
+  width: min(380px, 46vw);
+  height: min(380px, 46vw);
+  background: radial-gradient(circle, rgba(144, 205, 244, 0.18) 0%, transparent 72%);
+  opacity: 0.4;
+}
+
+.lp-welcome__smoke--b {
+  right: 10%;
+  bottom: 20%;
+  width: min(260px, 32vw);
+  height: min(260px, 32vw);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+  opacity: 0.3;
+  animation-delay: -6s;
 }
 
 .lp-welcome__inner {
   position: relative;
   z-index: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 2rem;
-  text-align: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 100%;
+  padding: clamp(1rem, 4vh, 2rem) clamp(0.75rem, 3vw, 1.5rem);
 }
 
-.lp-welcome__mascot {
+.lp-welcome__stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(94vw, 1100px);
+  transition:
+    transform 0.52s var(--lp-cine-ease),
+    filter 0.52s ease,
+    opacity 0.52s ease;
+}
+
+.lp-welcome.is-entering .lp-welcome__stage {
+  opacity: 0;
+  transform: scale(0.97);
+}
+
+.lp-welcome:not(.is-entering) .lp-welcome__stage {
+  opacity: 1;
+  transform: scale(1);
+  transition:
+    opacity 0.9s var(--lp-cine-ease),
+    transform 0.9s var(--lp-cine-ease),
+    filter 0.52s ease;
+}
+
+.lp-welcome__title-line {
+  margin: 0 0 clamp(0.5rem, 1.5vh, 0.85rem);
+  font-family: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  font-size: clamp(0.9375rem, 2.4vw, 1.25rem);
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(248, 250, 252, 0.72);
+  opacity: 0;
+  transform: translateY(12px);
+  filter: blur(4px);
+}
+
+.lp-welcome:not(.is-entering) .lp-welcome__title-line {
+  animation: lp-welcome-cine-sub 1s var(--lp-cine-ease) 0.12s forwards;
+}
+
+/* Search zone — magnifier sweeps over text */
+.lp-welcome__search-zone {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: min(9rem, 38vw);
-  height: min(9rem, 24vh);
-  filter: drop-shadow(0 10px 28px rgba(0, 0, 0, 0.25));
+  width: 100%;
+  min-height: clamp(10rem, 32vw, 16.5rem);
+  padding: clamp(2rem, 6vw, 3.25rem) clamp(0.5rem, 2vw, 1rem);
 }
 
-.lp-welcome__mascot-media {
-  opacity: 0;
-  transform: scale(0.6);
-  filter: blur(8px);
-  will-change: transform, opacity, filter;
-}
-
-.lp-welcome:not(.is-entering) .lp-welcome__mascot-media {
-  animation: lp-welcome-icon-enter 500ms var(--lp-welcome-spring) forwards;
-}
-
-.lp-welcome__glow {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 72%;
-  height: 72%;
-  border-radius: 50%;
-  border: 2px solid rgba(109, 100, 229, 0.55);
-  box-shadow: 0 0 24px rgba(100, 89, 255, 0.35);
-  transform: translate(-50%, -50%) scale(0.7);
-  opacity: 0;
-  pointer-events: none;
-}
-
-.lp-welcome:not(.is-entering) .lp-welcome__glow {
-  animation: lp-welcome-icon-glow 480ms ease-out 500ms forwards;
-}
-
-.lp-welcome__lottie {
-  display: block;
-  width: min(9rem, 38vw);
-  height: min(9rem, 24vh);
-  background: transparent !important;
-}
-
-.lp-welcome__mark {
-  font-size: 3.5rem;
-  color: #f8fafc;
-  opacity: 0.92;
-}
-
-.lp-welcome__title {
-  margin: 0;
-  font-family: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
-  font-size: clamp(1.625rem, 4.5vw, 2.25rem);
-  font-weight: 700;
-  color: #f8fafc;
-  line-height: 1.2;
+.lp-welcome__search-text {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
+  width: 100%;
+  pointer-events: none;
 }
 
-.lp-welcome__title-line {
-  display: block;
-  font-size: 0.68em;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: rgba(248, 250, 252, 0.9);
+.lp-welcome__brand {
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  line-height: 0.92;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.lp-welcome__apt,
+.lp-welcome__space {
+  font-family: 'Rillosta', 'Segoe Script', cursive;
+  font-weight: 400;
+  font-size: var(--lp-brand-size);
+  letter-spacing: 0;
   opacity: 0;
-  transform: translateY(12px);
+  filter: blur(10px);
+  transform: translateY(0.2em);
 }
 
-.lp-welcome:not(.is-entering) .lp-welcome__title-line {
-  animation: lp-welcome-text-rise 400ms var(--lp-welcome-ease) 300ms forwards;
+.lp-welcome:not(.is-entering) .lp-welcome__apt {
+  animation: lp-welcome-word-in 1.05s var(--lp-cine-ease) 0.32s forwards;
 }
 
-.lp-welcome__title-brand {
-  display: block;
-  position: relative;
-  font-weight: 800;
-  letter-spacing: 0.15em;
-  opacity: 0;
-  transform: translateY(12px);
-  background: linear-gradient(135deg, #f8fafc 15%, #6d64e5 90%);
+.lp-welcome:not(.is-entering) .lp-welcome__space {
+  animation: lp-welcome-space-in 1.05s var(--lp-cine-ease) 0.48s forwards;
+}
+
+.lp-welcome__apt {
+  color: #ffffff;
+  text-shadow: 0 4px 48px rgba(0, 0, 0, 0.35);
+}
+
+.lp-welcome__space {
+  margin-left: 0.12em;
+  background: linear-gradient(
+    175deg,
+    var(--lp-accent-light) 0%,
+    var(--lp-accent) 50%,
+    var(--lp-accent-deep) 100%
+  );
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   color: transparent;
 }
 
-.lp-welcome:not(.is-entering) .lp-welcome__title-brand {
-  animation: lp-welcome-brand-reveal 500ms var(--lp-welcome-ease) 450ms forwards;
-}
-
-.lp-welcome__underline {
+/* Magnifier — overlaps text, sweeps left → right */
+.lp-welcome__icon {
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -0.15em;
-  height: 2px;
-  background: #6459ff;
-  border-radius: 1px;
-  transform: scaleX(0);
-  transform-origin: left center;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(6rem, 18vw, 9rem);
+  height: clamp(6rem, 18vw, 9rem);
+  margin: 0;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  animation:
+    lp-welcome-icon-in 0.85s var(--lp-cine-ease) 0.55s forwards,
+    lp-welcome-search-sweep 4.2s ease-in-out 1.35s infinite;
 }
 
-.lp-welcome:not(.is-entering) .lp-welcome__underline {
-  animation: lp-welcome-underline-draw 350ms cubic-bezier(0.4, 0, 0.2, 1) 950ms forwards;
+.lp-welcome__icon-glow {
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(99, 179, 237, 0.45) 0%,
+    rgba(44, 82, 130, 0.18) 50%,
+    transparent 72%
+  );
+  filter: blur(4px);
+  pointer-events: none;
 }
 
-@keyframes lp-welcome-bg-shift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+.lp-welcome__icon-media {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
-@keyframes lp-welcome-icon-enter {
-  from {
-    opacity: 0;
-    transform: scale(0.6);
-    filter: blur(8px);
-  }
+.lp-welcome__lottie {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: transparent !important;
+}
+
+.lp-welcome__magnifier {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes lp-welcome-cine-sub {
   to {
     opacity: 1;
-    transform: scale(1);
+    transform: translateY(0);
     filter: blur(0);
   }
 }
 
-@keyframes lp-welcome-icon-glow {
+@keyframes lp-welcome-word-in {
   0% {
-    opacity: 0.7;
-    transform: translate(-50%, -50%) scale(0.75);
-    border-color: rgba(109, 100, 229, 0.6);
-    box-shadow: 0 0 20px rgba(100, 89, 255, 0.4);
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateY(0.2em);
   }
   100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes lp-welcome-space-in {
+  0% {
     opacity: 0;
-    transform: translate(-50%, -50%) scale(1.85);
-    border-color: rgba(100, 89, 255, 0);
-    box-shadow: 0 0 0 24px rgba(100, 89, 255, 0);
+    filter: blur(10px);
+    transform: translateY(0.2em);
   }
-}
-
-@keyframes lp-welcome-text-rise {
-  to {
+  100% {
     opacity: 1;
+    filter: drop-shadow(0 0 24px rgba(99, 179, 237, 0.45));
     transform: translateY(0);
   }
 }
 
-@keyframes lp-welcome-brand-reveal {
-  to {
-    opacity: 1;
-    transform: translateY(0);
-    letter-spacing: -0.02em;
+@keyframes lp-welcome-icon-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lp-welcome-search-sweep {
+  0%, 100% {
+    left: 12%;
+  }
+  50% {
+    left: 88%;
   }
 }
 
-@keyframes lp-welcome-underline-draw {
-  to { transform: scaleX(1); }
+@keyframes lp-welcome-smoke-drift {
+  0%, 100% { transform: translate(0, 0); }
+  50% { transform: translate(-10px, -6px); }
+}
+
+@media (max-width: 480px) {
+  .lp-welcome {
+    --lp-brand-size: clamp(3.75rem, 19vw, 6rem);
+  }
+
+  .lp-welcome__title-line {
+    letter-spacing: 0.22em;
+  }
+
+  .lp-welcome__icon {
+    width: clamp(5rem, 20vw, 6.5rem);
+    height: clamp(5rem, 20vw, 6.5rem);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lp-welcome {
+  .lp-welcome,
+  .lp-welcome__stage {
     transition-duration: 0.12s;
   }
 
-  .lp-welcome::before {
-    animation: none;
-    background-size: 100% 100%;
-    background-position: 50% 50%;
+  .lp-welcome.is-exiting .lp-welcome__stage {
+    transform: none;
+    filter: none;
   }
 
-  .lp-welcome__mascot-media {
+  .lp-welcome.is-entering .lp-welcome__stage,
+  .lp-welcome:not(.is-entering) .lp-welcome__stage {
+    opacity: 1;
+    transform: none;
+  }
+
+  .lp-welcome__title-line,
+  .lp-welcome__apt,
+  .lp-welcome__space,
+  .lp-welcome__icon {
     opacity: 1;
     transform: none;
     filter: none;
     animation: none !important;
   }
 
-  .lp-welcome__glow {
-    display: none;
+  .lp-welcome__icon {
+    left: 50%;
+    transform: translate(-50%, -50%);
   }
 
-  .lp-welcome__title-line,
-  .lp-welcome__title-brand {
-    opacity: 1;
-    transform: none;
-    letter-spacing: -0.02em;
-    animation: none !important;
-  }
-
-  .lp-welcome__underline {
-    transform: scaleX(1);
-    animation: none !important;
+  .lp-welcome__smoke {
+    animation: none;
   }
 }
 
@@ -628,5 +788,4 @@ body.lp-page-hidden > #lp-welcome {
   }
 
 }
-
 

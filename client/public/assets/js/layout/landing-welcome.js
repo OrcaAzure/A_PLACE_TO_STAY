@@ -1,12 +1,12 @@
 /**
- * Simple landing welcome after the greeting preloader.
+ * Landing welcome after the greeting preloader.
  * Preloader → "Welcome to AptSpace" → landing page.
  */
 
 const IDLE_LOTTIE_SRC = '/assets/animations/idle-magnifier-animation.lottie';
 const DOTLOTTIE_CDN = 'https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs';
-const WELCOME_MS = 2200;
-const EXIT_MS = 360;
+const WELCOME_MS = 2500;
+const EXIT_MS = 520;
 
 let dotLottiePromise = null;
 
@@ -50,9 +50,53 @@ function loadDotLottie() {
   return dotLottiePromise;
 }
 
-/** Preload Lottie during the greeting preloader. */
-export function preloadWelcomeAssets() {
-  return loadDotLottie();
+const MAGNIFIER_SVG = `
+  <svg class="lp-welcome__magnifier" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <circle cx="27" cy="27" r="17" fill="#f8fafc" stroke="#475569" stroke-width="4"/>
+    <rect x="39" y="39" width="6" height="18" rx="3" transform="rotate(45 39 39)" fill="#64748b"/>
+  </svg>`;
+
+const LOTTIE_MARKUP = `
+  <dotlottie-player
+    class="lp-welcome__lottie"
+    src="${IDLE_LOTTIE_SRC}"
+    autoplay
+    loop
+    mode="normal"
+    background="transparent"
+  ></dotlottie-player>`;
+
+function buildWelcomeOverlay() {
+  const el = document.createElement('div');
+  el.id = 'lp-welcome';
+  el.className = 'lp-welcome is-entering';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  el.setAttribute('aria-label', 'Welcome to AptSpace');
+  el.innerHTML = `
+    <div class="lp-welcome__bg-grid" aria-hidden="true"></div>
+    <div class="lp-welcome__bg-smoke" aria-hidden="true">
+      <span class="lp-welcome__smoke lp-welcome__smoke--a"></span>
+      <span class="lp-welcome__smoke lp-welcome__smoke--b"></span>
+    </div>
+    <div class="lp-welcome__vignette" aria-hidden="true"></div>
+    <div class="lp-welcome__inner">
+      <div class="lp-welcome__stage">
+        <div class="lp-welcome__search-zone">
+          <div class="lp-welcome__search-text">
+            <p class="lp-welcome__title-line">Welcome to</p>
+            <h1 class="lp-welcome__brand" aria-label="AptSpace">
+              <span class="lp-welcome__apt">Apt</span><span class="lp-welcome__space">Space</span>
+            </h1>
+          </div>
+          <div class="lp-welcome__icon" aria-hidden="true">
+            <span class="lp-welcome__icon-glow"></span>
+            <span class="lp-welcome__icon-media">${LOTTIE_MARKUP}</span>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  return el;
 }
 
 function playLottie(player) {
@@ -66,39 +110,14 @@ function playLottie(player) {
   });
 }
 
-function buildWelcomeOverlay(useLottie) {
-  const mascotMedia = useLottie
-    ? `<dotlottie-player
-        class="lp-welcome__lottie"
-        src="${IDLE_LOTTIE_SRC}"
-        autoplay
-        loop
-        mode="normal"
-        background="transparent"
-      ></dotlottie-player>`
-    : `<span class="lp-welcome__mark material-symbols-outlined" aria-hidden="true">apartment</span>`;
+function mountMagnifierFallback(welcome) {
+  const media = welcome.querySelector('.lp-welcome__icon-media');
+  if (media) media.innerHTML = MAGNIFIER_SVG;
+}
 
-  const el = document.createElement('div');
-  el.id = 'lp-welcome';
-  el.className = 'lp-welcome is-entering';
-  el.setAttribute('role', 'status');
-  el.setAttribute('aria-live', 'polite');
-  el.setAttribute('aria-label', 'Welcome to AptSpace');
-  el.innerHTML = `
-    <div class="lp-welcome__inner">
-      <div class="lp-welcome__mascot" role="img" aria-label="AptSpace">
-        <span class="lp-welcome__glow" aria-hidden="true"></span>
-        <div class="lp-welcome__mascot-media">${mascotMedia}</div>
-      </div>
-      <h1 class="lp-welcome__title">
-        <span class="lp-welcome__title-line">Welcome to</span>
-        <span class="lp-welcome__title-brand">
-          AptSpace
-          <span class="lp-welcome__underline" aria-hidden="true"></span>
-        </span>
-      </h1>
-    </div>`;
-  return el;
+/** Preload Lottie during the greeting preloader. */
+export function preloadWelcomeAssets() {
+  return loadDotLottie();
 }
 
 /**
@@ -110,7 +129,7 @@ export function mountLandingWelcome() {
 
   document.getElementById('lp-welcome')?.remove();
 
-  const welcome = buildWelcomeOverlay(true);
+  const welcome = buildWelcomeOverlay();
   document.body.appendChild(welcome);
   document.body.classList.add('lp-page-hidden');
   return welcome;
@@ -132,15 +151,12 @@ export async function runLandingWelcome() {
   loadDotLottie().then((ok) => {
     if (!welcome.isConnected) return;
     if (!ok) {
-      const media = welcome.querySelector('.lp-welcome__mascot-media');
-      if (media) {
-        media.innerHTML = '<span class="lp-welcome__mark material-symbols-outlined" aria-hidden="true">apartment</span>';
-      }
+      mountMagnifierFallback(welcome);
       return;
     }
-    const media = welcome.querySelector('.lp-welcome__mascot-media');
+    const media = welcome.querySelector('.lp-welcome__icon-media');
     if (media && !media.querySelector('dotlottie-player')) {
-      media.innerHTML = `<dotlottie-player class="lp-welcome__lottie" src="${IDLE_LOTTIE_SRC}" autoplay loop mode="normal" background="transparent"></dotlottie-player>`;
+      media.innerHTML = LOTTIE_MARKUP;
     }
     playLottie(welcome.querySelector('dotlottie-player'));
   });
