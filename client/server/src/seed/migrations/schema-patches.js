@@ -7,6 +7,7 @@ import {
   runDeluxeRoomTypeMigration,
   runDormCapacityMigration,
   runSuperiorGuestRoomCapacityMigration,
+  runVipRoomMigration,
   runSeasonSettingsMigration,
   runLodgingExtrasMigration,
 } from './rooms.js';
@@ -402,6 +403,12 @@ export async function runSchemaPatches() {
     await runSuperiorGuestRoomCapacityMigration();
   } catch (err) {
     console.warn('[schema] superior guest room capacity migration skipped:', err.message);
+  }
+
+  try {
+    await runVipRoomMigration();
+  } catch (err) {
+    console.warn('[schema] VIP room migration skipped:', err.message);
   }
 
   try {

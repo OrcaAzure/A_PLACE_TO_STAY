@@ -214,6 +214,23 @@ async function runSuperiorGuestRoomCapacityMigration() {
   console.log('[schema] GMC Superior Guest Room capacities updated (FY26 sheet)');
 }
 
+/** Room 415 is the sole VIP unit — pricing is configured separately in admin. */
+async function runVipRoomMigration() {
+  const [[gmc]] = await pool.execute(
+    `SELECT id FROM buildings WHERE name = 'Global Missions Center' LIMIT 1`
+  );
+  if (!gmc?.id) return;
+
+  await pool.execute(
+    `UPDATE rooms
+     SET room_type = 'VIP', capacity_min = 1, capacity_max = 4
+     WHERE building_id = ? AND room_number = '415'`,
+    [gmc.id]
+  );
+
+  console.log('[schema] GMC room 415 set to VIP');
+}
+
 async function runSeasonSettingsMigration() {
   await pool.execute(
     `INSERT INTO system_settings (setting_key, setting_value)
@@ -336,6 +353,7 @@ export {
   runDeluxeRoomTypeMigration,
   runDormCapacityMigration,
   runSuperiorGuestRoomCapacityMigration,
+  runVipRoomMigration,
   runSeasonSettingsMigration,
   runLodgingExtrasMigration,
 };

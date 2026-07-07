@@ -22,6 +22,7 @@ const ADD_TYPE_VALUE = '__add_type__';
 const BUILTIN_ROOM_TYPES = [
   { value: 'Dorm', label: 'Dorm (group sleep)', icon: 'night_shelter', capacity: { min: 5, max: 12 } },
   { value: 'Superior Guest Room', label: 'Superior Guest Room', icon: 'king_bed', capacity: { min: 1, max: 4 } },
+  { value: 'VIP', label: 'VIP', icon: 'workspace_premium', capacity: { min: 1, max: 4 } },
   { value: 'Standard Apartment', label: 'Standard Apartment', icon: 'apartment', capacity: { min: 1, max: 4 } },
   { value: 'Deluxe Apartment', label: 'Deluxe Apartment', icon: 'holiday_village', capacity: { min: 1, max: 6 } },
 ];

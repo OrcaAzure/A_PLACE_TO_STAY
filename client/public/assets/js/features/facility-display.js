@@ -6,6 +6,7 @@ export const ROOM_TYPE_ICON = {
   'Dorm': 'bed',
   'Superior Guest Room': 'king_bed',
   'Standard Apartment': 'apartment',
+  VIP: 'workspace_premium',
   'Deluxe 2 BR': 'meeting_room',
   'Deluxe 3 BR': 'meeting_room',
 };
@@ -14,6 +15,7 @@ export const ROOM_TYPE_IMAGE = {
   'Dorm': 'https://images.unsplash.com/photo-1555854877-bab0e5b6b4f5?auto=format&fit=crop&w=1200&q=80',
   'Superior Guest Room': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1200&q=80',
   'Standard Apartment': 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
+  VIP: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
   'Deluxe 2 BR': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
   'Deluxe 3 BR': 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80',
 };

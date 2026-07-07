@@ -227,6 +227,7 @@ function roomCardTypeLabel(room) {
     Dorm: 'Group sleep',
     'Standard Apartment': 'Apartment',
     'Superior Guest Room': 'Superior guest room',
+    VIP: 'VIP room',
     'Deluxe Apartment': 'Deluxe apartment',
   };
   return friendly[key] || normalizeRoomTypeFilterLabel(room);

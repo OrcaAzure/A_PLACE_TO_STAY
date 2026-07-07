@@ -11,6 +11,7 @@ export const ROOM_RATE_BASE_TIERS = [
   'Standard Apartment',
   'Deluxe 2 BR',
   'Deluxe 3 BR',
+  'VIP',
 ];
 
 /** Inventory room types that are NOT priced through rates_rooms directly. */
@@ -24,6 +25,7 @@ export const ROOM_RATE_TIER_ICONS = {
   'Standard Apartment': 'apartment',
   'Deluxe 2 BR': 'holiday_village',
   'Deluxe 3 BR': 'holiday_village',
+  VIP: 'workspace_premium',
 };
 
 /** Friendly label for a pricing tier. */

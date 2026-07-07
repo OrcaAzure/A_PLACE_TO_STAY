@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS rooms (
 CREATE TABLE IF NOT EXISTS rates_rooms (
     id        INT AUTO_INCREMENT PRIMARY KEY,
     -- Free-form pricing tier so admins can price custom room types.
-    -- Built-in tiers: Superior Guest Room, Standard Apartment, Deluxe 2 BR, Deluxe 3 BR.
+    -- Built-in tiers: Superior Guest Room, Standard Apartment, Deluxe 2 BR, Deluxe 3 BR, VIP.
     room_type VARCHAR(100) NOT NULL,
     item      ENUM(
                 'Single/Double Occupancy',
@@ -638,7 +638,7 @@ INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_m
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '412', 'Superior Guest Room', 1, 4),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '413', 'Superior Guest Room', 1, 3),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '414', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '415', 'Superior Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '415', 'VIP', 1, 4),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '416', 'Superior Guest Room', 1, 4)
 ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
