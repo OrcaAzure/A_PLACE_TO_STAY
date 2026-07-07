@@ -430,8 +430,17 @@ export async function runSchemaPatches() {
     // work by matching the same string (Superior Guest Room, Deluxe 2 BR, etc.).
     await pool.execute(`ALTER TABLE rooms MODIFY room_type VARCHAR(100) NOT NULL`);
     await pool.execute(`ALTER TABLE rates_rooms MODIFY room_type VARCHAR(100) NOT NULL`);
+    await pool.execute(`ALTER TABLE rates_rooms MODIFY item VARCHAR(120) NOT NULL`);
   } catch (err) {
     console.warn('[schema] room type column migration skipped:', err.message);
+  }
+
+  try {
+    if (await tableExists('bookings_rooms')) {
+      await pool.execute(`ALTER TABLE bookings_rooms MODIFY occupancy_item VARCHAR(120) NOT NULL DEFAULT 'Single/Double Occupancy'`);
+    }
+  } catch (err) {
+    console.warn('[schema] bookings_rooms.occupancy_item migration skipped:', err.message);
   }
 
   if (await tableExists('payments')) {

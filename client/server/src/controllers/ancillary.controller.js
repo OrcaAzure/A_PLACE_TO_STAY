@@ -7,7 +7,11 @@ import {
   ACCOMMODATION_EXTRAS_CATEGORY,
   PER_PERSON_NIGHT_ITEM,
 } from '../constants/ancillary.js';
-import { ROOM_RATE_ITEMS, ROOM_RATE_SEASONS } from '../constants/rooms.js';
+import {
+  ROOM_RATE_SEASONS,
+  normalizeRoomRateItemName,
+  ROOM_RATE_ITEM_MAX_LENGTH,
+} from '../constants/rooms.js';
 import {
   fetchExtraServiceRows,
   fetchMealRateRows,
@@ -43,67 +47,120 @@ export const getRoomRatesCatalog = async (req, res) => {
   }
 };
 
+function parseRoomRateRows(body = {}) {
+  if (Array.isArray(body.rows) && body.rows.length) {
+    return body.rows.map((row) => ({
+      item: normalizeRoomRateItemName(row.item),
+      rates: Array.isArray(row.rates) ? row.rates : [],
+    }));
+  }
+
+  if (!Array.isArray(body.rates)) return [];
+
+  const grouped = new Map();
+  for (const entry of body.rates) {
+    const item = normalizeRoomRateItemName(entry.item);
+    const season = String(entry.season || '').trim();
+    if (!item || !season) continue;
+    if (!grouped.has(item)) grouped.set(item, []);
+    grouped.get(item).push({ season, rate: entry.rate });
+  }
+
+  return [...grouped.entries()].map(([item, rates]) => ({ item, rates }));
+}
+
 /** Bulk save the season x item price matrix for one room tier. */
 export const saveRoomRates = async (req, res) => {
   try {
     const roomType = String(req.body.room_type || '').trim();
-    const rates = Array.isArray(req.body.rates) ? req.body.rates : [];
+    const rowDefs = parseRoomRateRows(req.body);
 
     if (!roomType) return res.status(400).json({ message: 'A room type is required.' });
     if (roomType.length > 100) return res.status(400).json({ message: 'Room type name is too long.' });
 
-    // Dorm is priced per-person-per-night in rates_extra_services (Accommodation Extras),
-    // not in rates_rooms. Route its save there so both editors stay in sync.
     const isDorm = roomType === 'Dorm';
-    const allowedItems = isDorm ? [PER_PERSON_NIGHT_ITEM] : ROOM_RATE_ITEMS;
 
-    const normalized = [];
-    for (const entry of rates) {
-      const item = String(entry.item || '').trim();
-      const season = String(entry.season || '').trim();
-      if (!allowedItems.includes(item)) {
-        return res.status(400).json({ message: `Invalid rate type: ${item || '(blank)'}` });
+    if (isDorm) {
+      const dormRow = rowDefs[0] || { item: PER_PERSON_NIGHT_ITEM, rates: [] };
+      if (normalizeRoomRateItemName(dormRow.item) !== PER_PERSON_NIGHT_ITEM) {
+        return res.status(400).json({ message: `Dorm pricing must use "${PER_PERSON_NIGHT_ITEM}".` });
       }
-      if (!ROOM_RATE_SEASONS.includes(season)) {
-        return res.status(400).json({ message: `Invalid season: ${season || '(blank)'}` });
-      }
-      const hasRate = entry.rate != null && String(entry.rate).trim() !== '';
-      const rate = Number(entry.rate);
-      if (hasRate && (!Number.isFinite(rate) || rate <= 0)) {
-        return res.status(400).json({ message: 'Prices must be greater than 0.' });
-      }
-      normalized.push({ item, season, rate: hasRate ? rate : null });
-    }
 
-    for (const { item, season, rate } of normalized) {
-      if (isDorm) {
-        if (rate != null) {
+      for (const season of ROOM_RATE_SEASONS) {
+        const entry = dormRow.rates.find((r) => String(r.season || '').trim() === season) || { rate: null };
+        const hasRate = entry.rate != null && String(entry.rate).trim() !== '';
+        const rate = Number(entry.rate);
+        if (hasRate && (!Number.isFinite(rate) || rate <= 0)) {
+          return res.status(400).json({ message: 'Prices must be greater than 0.' });
+        }
+
+        if (hasRate) {
           await pool.query(
             `INSERT INTO rates_extra_services (category, item, season, rate)
              VALUES (?, ?, ?, ?)
              ON DUPLICATE KEY UPDATE rate = VALUES(rate)`,
-            [ACCOMMODATION_EXTRAS_CATEGORY, item, season, rate]
+            [ACCOMMODATION_EXTRAS_CATEGORY, PER_PERSON_NIGHT_ITEM, season, rate]
           );
         } else {
           await pool.query(
             'DELETE FROM rates_extra_services WHERE category = ? AND item = ? AND season = ?',
-            [ACCOMMODATION_EXTRAS_CATEGORY, item, season]
+            [ACCOMMODATION_EXTRAS_CATEGORY, PER_PERSON_NIGHT_ITEM, season]
           );
         }
-        continue;
       }
 
-      if (rate != null) {
+      bustCatalogAndFacilities();
+      return res.status(200).json({ message: 'Room prices saved', room_rates: await getRoomRateGroups() });
+    }
+
+    if (!rowDefs.length) {
+      return res.status(400).json({ message: 'Add at least one price row.' });
+    }
+
+    const seenItems = new Set();
+    const normalizedRows = [];
+
+    for (const row of rowDefs) {
+      const item = normalizeRoomRateItemName(row.item);
+      if (!item) {
+        return res.status(400).json({ message: 'Every price row needs a name.' });
+      }
+      if (item.length > ROOM_RATE_ITEM_MAX_LENGTH) {
+        return res.status(400).json({ message: `Price row names must be ${ROOM_RATE_ITEM_MAX_LENGTH} characters or fewer.` });
+      }
+      if (seenItems.has(item)) {
+        return res.status(400).json({ message: `Duplicate price row: "${item}".` });
+      }
+      seenItems.add(item);
+
+      const cells = [];
+      for (const season of ROOM_RATE_SEASONS) {
+        const entry = row.rates.find((r) => String(r.season || '').trim() === season) || { rate: null };
+        const hasRate = entry.rate != null && String(entry.rate).trim() !== '';
+        const rate = Number(entry.rate);
+        if (hasRate && (!Number.isFinite(rate) || rate <= 0)) {
+          return res.status(400).json({ message: 'Prices must be greater than 0 (leave blank to skip).' });
+        }
+        cells.push({ season, rate: hasRate ? rate : null });
+      }
+
+      if (!cells.some((cell) => cell.rate != null)) {
+        return res.status(400).json({ message: `Add at least one price for "${item}", or remove the row.` });
+      }
+
+      normalizedRows.push({ item, cells });
+    }
+
+    await pool.query('DELETE FROM rates_rooms WHERE room_type = ?', [roomType]);
+
+    for (const row of normalizedRows) {
+      for (const { season, rate } of row.cells) {
+        if (rate == null) continue;
         await pool.query(
           `INSERT INTO rates_rooms (room_type, item, season, rate)
            VALUES (?, ?, ?, ?)
            ON DUPLICATE KEY UPDATE rate = VALUES(rate)`,
-          [roomType, item, season, rate]
-        );
-      } else {
-        await pool.query(
-          'DELETE FROM rates_rooms WHERE room_type = ? AND item = ? AND season = ?',
-          [roomType, item, season]
+          [roomType, row.item, season, rate]
         );
       }
     }

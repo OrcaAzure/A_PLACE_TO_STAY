@@ -62,10 +62,7 @@ CREATE TABLE IF NOT EXISTS rates_rooms (
     -- Free-form pricing tier so admins can price custom room types.
     -- Built-in tiers: Superior Guest Room, Standard Apartment, Deluxe 2 BR, Deluxe 3 BR, VIP.
     room_type VARCHAR(100) NOT NULL,
-    item      ENUM(
-                'Single/Double Occupancy',
-                'Daily Maximum'
-              ) NOT NULL,
+    item      VARCHAR(120) NOT NULL,
     season    ENUM('Regular', 'Peak', 'Super Peak') NOT NULL,
     rate      DECIMAL(10,2) NOT NULL,
 
@@ -286,12 +283,7 @@ CREATE TABLE IF NOT EXISTS bookings_rooms (
                      'Peak',
                      'Super Peak'
                    ) NOT NULL DEFAULT 'Regular',
-    occupancy_item ENUM(
-                     'Per person per Night',
-                     'Single/Double Occupancy',
-                     'Daily Maximum',
-                     'Extra Bed or Extra Person'
-                   ) NOT NULL DEFAULT 'Single/Double Occupancy',
+    occupancy_item VARCHAR(120) NOT NULL DEFAULT 'Single/Double Occupancy',
     guest_count    INT NOT NULL DEFAULT 1,
     total_amount   DECIMAL(10,2) DEFAULT NULL,
     status         ENUM(

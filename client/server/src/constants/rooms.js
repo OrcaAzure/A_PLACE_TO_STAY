@@ -4,6 +4,32 @@ export const DELUXE_3_BEDROOM_ROOM_NUMBERS = new Set(['201', '304']);
 /** Room nightly-rate matrix dimensions (rates_rooms). */
 export const ROOM_RATE_ITEMS = ['Single/Double Occupancy', 'Daily Maximum'];
 export const ROOM_RATE_SEASONS = ['Regular', 'Peak', 'Super Peak'];
+export const ROOM_RATE_ITEM_MAX_LENGTH = 120;
+
+/** Starter rows shown when a room type has no saved price rows yet. */
+export const DEFAULT_ROOM_RATE_ITEMS = [...ROOM_RATE_ITEMS];
+
+export function normalizeRoomRateItemName(value) {
+  return String(value || '').trim().slice(0, ROOM_RATE_ITEM_MAX_LENGTH);
+}
+
+/** Distinct price row names for one room tier, with defaults first. */
+export function collectRoomRateItemsForTier(roomType, rateRows = []) {
+  const fromDb = [...new Set(
+    rateRows
+      .filter((row) => row.room_type === roomType)
+      .map((row) => normalizeRoomRateItemName(row.item))
+      .filter(Boolean),
+  )];
+
+  if (fromDb.length) {
+    const defaults = ROOM_RATE_ITEMS.filter((item) => fromDb.includes(item));
+    const custom = fromDb.filter((item) => !ROOM_RATE_ITEMS.includes(item)).sort((a, b) => a.localeCompare(b));
+    return [...defaults, ...custom];
+  }
+
+  return [...DEFAULT_ROOM_RATE_ITEMS];
+}
 
 /** Built-in priceable tiers. Dorm is intentionally excluded (priced via Accommodation Extras). */
 export const ROOM_RATE_BASE_TIERS = [

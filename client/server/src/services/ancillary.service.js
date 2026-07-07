@@ -9,12 +9,12 @@ import {
 } from '../constants/ancillary.js';
 import {
   ROOM_RATE_BASE_TIERS,
-  ROOM_RATE_ITEMS,
   ROOM_RATE_SEASONS,
   ROOM_RATE_TIER_ICONS,
   NON_RATE_ROOM_TYPES,
   DERIVED_RATE_ROOM_TYPES,
   roomRateTierLabel,
+  collectRoomRateItemsForTier,
 } from '../constants/rooms.js';
 
 export async function fetchMealRateRows() {
@@ -162,19 +162,22 @@ export async function getRoomRateGroups() {
 
   const dormGroup = await getDormRateGroup();
 
-  const roomGroups = tiers.map((tier) => ({
-    room_type: tier,
-    label: roomRateTierLabel(tier),
-    icon: ROOM_RATE_TIER_ICONS[tier] || 'meeting_room',
-    custom: !ROOM_RATE_BASE_TIERS.includes(tier),
-    items: ROOM_RATE_ITEMS.map((item) => ({
-      item,
-      cells: ROOM_RATE_SEASONS.map((season) => {
-        const rate = rateMap.get(`${tier}|${item}|${season}`);
-        return { season, rate: rate != null ? rate : null };
-      }),
-    })),
-  }));
+  const roomGroups = tiers.map((tier) => {
+    const items = collectRoomRateItemsForTier(tier, rateRows);
+    return {
+      room_type: tier,
+      label: roomRateTierLabel(tier),
+      icon: ROOM_RATE_TIER_ICONS[tier] || 'meeting_room',
+      custom: !ROOM_RATE_BASE_TIERS.includes(tier),
+      items: items.map((item) => ({
+        item,
+        cells: ROOM_RATE_SEASONS.map((season) => {
+          const rate = rateMap.get(`${tier}|${item}|${season}`);
+          return { season, rate: rate != null ? rate : null };
+        }),
+      })),
+    };
+  });
 
   return [dormGroup, ...roomGroups];
 }

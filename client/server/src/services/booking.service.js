@@ -112,10 +112,9 @@ export async function calculateTotalAmount({
       }
       break;
     case 'Daily Maximum':
-      total = rate * nights;
-      break;
     default:
       total = rate * nights;
+      break;
   }
 
   return Math.round(total * 100) / 100;
