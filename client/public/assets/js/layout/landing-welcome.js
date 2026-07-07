@@ -27,7 +27,7 @@ function loadDotLottie() {
       window.clearTimeout(timer);
       resolve(ok);
     };
-    const timer = window.setTimeout(() => finish(false), 4000);
+    const timer = window.setTimeout(() => finish(false), 8000);
 
     const onReady = () => finish(!!customElements.get('dotlottie-player'));
 
@@ -56,15 +56,58 @@ const MAGNIFIER_SVG = `
     <rect x="39" y="39" width="6" height="18" rx="3" transform="rotate(45 39 39)" fill="#64748b"/>
   </svg>`;
 
-const LOTTIE_MARKUP = `
-  <dotlottie-player
-    class="lp-welcome__lottie"
-    src="${IDLE_LOTTIE_SRC}"
-    autoplay
-    loop
-    mode="normal"
-    background="transparent"
-  ></dotlottie-player>`;
+function createLottiePlayer() {
+  const player = document.createElement('dotlottie-player');
+  player.className = 'lp-welcome__lottie';
+  player.setAttribute('src', IDLE_LOTTIE_SRC);
+  player.setAttribute('autoplay', '');
+  player.setAttribute('loop', '');
+  player.setAttribute('mode', 'normal');
+  player.setAttribute('background', 'transparent');
+  return player;
+}
+
+function playLottie(player) {
+  if (!player) return;
+  requestAnimationFrame(() => {
+    try {
+      if (typeof player.play === 'function') player.play();
+      else if (typeof player.setAttribute === 'function') player.setAttribute('autoplay', '');
+    } catch {
+      /* player may upgrade asynchronously */
+    }
+  });
+}
+
+function mountMagnifierFallback(welcome) {
+  const media = welcome.querySelector('.lp-welcome__icon-media');
+  if (media) media.innerHTML = MAGNIFIER_SVG;
+}
+
+/** Inject Lottie only after the custom element is defined (avoids upgrade bugs). */
+async function mountWelcomeLottie(welcome) {
+  const media = welcome.querySelector('.lp-welcome__icon-media');
+  if (!media || !welcome.isConnected) return;
+
+  const ok = await loadDotLottie();
+  if (!ok || !welcome.isConnected) {
+    mountMagnifierFallback(welcome);
+    return;
+  }
+
+  media.replaceChildren(createLottiePlayer());
+  const player = media.querySelector('dotlottie-player');
+  if (!player) return;
+
+  const start = () => playLottie(player);
+  if (player.dotLottie) {
+    start();
+    return;
+  }
+
+  player.addEventListener('ready', start, { once: true });
+  window.setTimeout(start, 500);
+}
 
 function buildWelcomeOverlay() {
   const el = document.createElement('div');
@@ -89,30 +132,16 @@ function buildWelcomeOverlay() {
               <span class="lp-welcome__apt">Apt</span><span class="lp-welcome__space">Space</span>
             </h1>
           </div>
-          <div class="lp-welcome__icon" aria-hidden="true">
-            <span class="lp-welcome__icon-glow"></span>
-            <span class="lp-welcome__icon-media">${LOTTIE_MARKUP}</span>
+          <div class="lp-welcome__icon-track" aria-hidden="true">
+            <div class="lp-welcome__icon">
+              <span class="lp-welcome__icon-glow"></span>
+              <span class="lp-welcome__icon-media"></span>
+            </div>
           </div>
         </div>
       </div>
     </div>`;
   return el;
-}
-
-function playLottie(player) {
-  if (!player) return;
-  requestAnimationFrame(() => {
-    try {
-      if (typeof player.play === 'function') player.play();
-    } catch {
-      /* ignore */
-    }
-  });
-}
-
-function mountMagnifierFallback(welcome) {
-  const media = welcome.querySelector('.lp-welcome__icon-media');
-  if (media) media.innerHTML = MAGNIFIER_SVG;
 }
 
 /** Preload Lottie during the greeting preloader. */
@@ -148,18 +177,7 @@ export async function runLandingWelcome() {
     requestAnimationFrame(() => welcome.classList.remove('is-entering'));
   });
 
-  loadDotLottie().then((ok) => {
-    if (!welcome.isConnected) return;
-    if (!ok) {
-      mountMagnifierFallback(welcome);
-      return;
-    }
-    const media = welcome.querySelector('.lp-welcome__icon-media');
-    if (media && !media.querySelector('dotlottie-player')) {
-      media.innerHTML = LOTTIE_MARKUP;
-    }
-    playLottie(welcome.querySelector('dotlottie-player'));
-  });
+  await mountWelcomeLottie(welcome);
 
   await delay(WELCOME_MS);
 

@@ -272,24 +272,34 @@ body.lp-page-hidden > #lp-welcome {
   color: transparent;
 }
 
-/* Magnifier — overlaps text, sweeps left → right */
-.lp-welcome__icon {
+/* Magnifier track sweeps; inner icon holds Lottie (no transform on player parent) */
+.lp-welcome__icon-track {
+  --lp-search-travel: min(34vw, 360px);
   position: absolute;
   z-index: 2;
   top: 50%;
   left: 50%;
+  width: clamp(6rem, 18vw, 9rem);
+  height: clamp(6rem, 18vw, 9rem);
+  pointer-events: none;
+  transform: translate(calc(-50% - var(--lp-search-travel)), -50%);
+  animation: lp-welcome-search-sweep 4.2s ease-in-out 0.55s infinite backwards;
+}
+
+.lp-welcome.is-entering .lp-welcome__icon-track {
+  animation: none;
+  transform: translate(calc(-50% - var(--lp-search-travel)), -50%);
+}
+
+.lp-welcome__icon {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: clamp(6rem, 18vw, 9rem);
-  height: clamp(6rem, 18vw, 9rem);
-  margin: 0;
-  pointer-events: none;
+  width: 100%;
+  height: 100%;
   opacity: 0;
-  transform: translate(-50%, -50%);
-  animation:
-    lp-welcome-icon-in 0.85s var(--lp-cine-ease) 0.55s forwards,
-    lp-welcome-search-sweep 4.2s ease-in-out 1.35s infinite;
+  animation: lp-welcome-icon-in 0.85s var(--lp-cine-ease) 0.55s forwards;
 }
 
 .lp-welcome__icon-glow {
@@ -321,6 +331,7 @@ body.lp-page-hidden > #lp-welcome {
   width: 100%;
   height: 100%;
   background: transparent !important;
+  --lottie-player-background: transparent;
 }
 
 .lp-welcome__magnifier {
@@ -369,10 +380,10 @@ body.lp-page-hidden > #lp-welcome {
 
 @keyframes lp-welcome-search-sweep {
   0%, 100% {
-    left: 12%;
+    transform: translate(calc(-50% - var(--lp-search-travel, min(34vw, 360px))), -50%);
   }
   50% {
-    left: 88%;
+    transform: translate(calc(-50% + var(--lp-search-travel, min(34vw, 360px))), -50%);
   }
 }
 
@@ -390,7 +401,7 @@ body.lp-page-hidden > #lp-welcome {
     letter-spacing: 0.22em;
   }
 
-  .lp-welcome__icon {
+  .lp-welcome__icon-track {
     width: clamp(5rem, 20vw, 6.5rem);
     height: clamp(5rem, 20vw, 6.5rem);
   }
@@ -416,6 +427,7 @@ body.lp-page-hidden > #lp-welcome {
   .lp-welcome__title-line,
   .lp-welcome__apt,
   .lp-welcome__space,
+  .lp-welcome__icon-track,
   .lp-welcome__icon {
     opacity: 1;
     transform: none;
@@ -423,9 +435,8 @@ body.lp-page-hidden > #lp-welcome {
     animation: none !important;
   }
 
-  .lp-welcome__icon {
-    left: 50%;
-    transform: translate(-50%, -50%);
+  .lp-welcome__icon-track {
+    transform: translate(calc(-50% - var(--lp-search-travel, min(34vw, 360px))), -50%);
   }
 
   .lp-welcome__smoke {
