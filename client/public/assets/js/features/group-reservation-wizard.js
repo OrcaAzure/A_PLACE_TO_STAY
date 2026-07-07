@@ -641,6 +641,8 @@ export async function openGroupWizard(options = {}) {
     guestWasApproved = false,
     prefill = null,
   } = options;
+
+  try {
   state = emptyGroupWizardState();
   state.mode = mode;
   state.fromRequestId = fromRequestId;
@@ -722,6 +724,15 @@ export async function openGroupWizard(options = {}) {
 
   if (state.checkIn && state.checkOut && state.checkOut > state.checkIn) {
     await fetchRooms();
+  }
+  } catch (err) {
+    console.error('[group-wizard]', err);
+    state = emptyGroupWizardState();
+    state.error = err.message || 'Could not open this group reservation. Please try again.';
+    isOpen = true;
+    showModal();
+    renderSteps();
+    renderBody();
   }
 }
 

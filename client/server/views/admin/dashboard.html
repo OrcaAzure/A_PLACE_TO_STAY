@@ -119,6 +119,7 @@
     import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
     import { loadDashboard } from '/assets/js/features/dashboard.js';
     import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
+    import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
     initSplashIdle({ portal: 'admin' });
     if (!requireAuth()) throw new Error('Not authenticated');
@@ -143,7 +144,7 @@
       const mount = document.getElementById('page-content');
       if (mount) {
         mount.insertAdjacentHTML('afterbegin',
-          `<div class="bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-4 py-3 text-sm mb-4">${err.message || 'Failed to load dashboard data.'}</div>`);
+          `<div class="bg-rose-50 text-rose-700 border border-rose-200 rounded-lg px-4 py-3 text-sm mb-4">${escapeHtml(err.message || 'Failed to load dashboard data.')}</div>`);
       }
       console.error('Dashboard load failed:', err);
     }

@@ -9,7 +9,7 @@ function prefersReducedMotion() {
 }
 
 function clearLandingBlockers() {
-  document.body.classList.remove('lp-preloader-active', 'lp-page-hidden');
+  document.body.classList.remove('lp-preloader-active', 'lp-page-hidden', 'lp-welcome-active');
   document.body.classList.add('lp-ready');
   document.getElementById('lp-preloader')?.remove();
   document.getElementById('lp-welcome')?.remove();
@@ -33,10 +33,11 @@ function waitForIdleDismiss(idle) {
 
 async function revealLandingPage(startHeroHandoff) {
   document.body.classList.remove('lp-page-hidden');
-  if (typeof startHeroHandoff !== 'function') return;
-
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-  startHeroHandoff();
+  if (typeof startHeroHandoff === 'function') {
+    startHeroHandoff();
+  }
+  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
 async function boot() {
@@ -61,6 +62,9 @@ async function boot() {
       redirectIfLoggedIn().catch(() => {});
       const startHeroHandoff = await initLandingPage({ skipHeroEntrance: true });
       await revealLandingPage(startHeroHandoff);
+      if (window.ScrollTrigger) {
+        window.ScrollTrigger.refresh(true);
+      }
     } catch (err) {
       console.error('[landing] page init failed:', err);
       document.body.classList.remove('lp-page-hidden');
@@ -87,7 +91,7 @@ async function boot() {
 
     await runLandingPreloader({
       onBeforeExit: () => {
-        if (!reduced) welcomeMod.mountLandingWelcome();
+        if (!reduced) welcomeMod.beginLandingWelcomeHandoff?.();
       },
     });
   } catch (err) {
@@ -97,16 +101,18 @@ async function boot() {
 
   try {
     const welcomeMod = await welcomeModPromise;
-    await welcomeMod.runLandingWelcome();
+    if (!reduced) {
+      await welcomeMod.runLandingWelcome();
+    }
   } catch (err) {
     console.error('[landing] welcome failed:', err);
     document.getElementById('lp-welcome')?.remove();
+    document.body.classList.remove('lp-welcome-active');
   }
 
   window.clearTimeout(failsafe);
 
-  document.body.classList.remove('lp-preloader-active');
-  document.getElementById('lp-welcome')?.remove();
+  document.body.classList.remove('lp-preloader-active', 'lp-welcome-active');
   document.getElementById('lp-preloader')?.remove();
   document.body.classList.add('lp-ready');
 
@@ -116,6 +122,9 @@ async function boot() {
     redirectIfLoggedIn().catch(() => {});
     const startHeroHandoff = await initLandingPage({ skipHeroEntrance: !reduced });
     await revealLandingPage(startHeroHandoff);
+    if (window.ScrollTrigger) {
+      window.ScrollTrigger.refresh(true);
+    }
   } catch (err) {
     console.error('[landing] page init failed:', err);
     document.body.classList.remove('lp-page-hidden');

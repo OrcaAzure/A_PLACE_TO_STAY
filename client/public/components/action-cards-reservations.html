@@ -1,5 +1,5 @@
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-  <button type="button" data-open-manage-requests class="res-action-card">
+  <a href="/admin/reservations.html?tab=pending" class="res-action-card no-underline">
     <div class="res-action-card-icon res-action-card-icon--amber">
       <span class="material-symbols-outlined">inbox</span>
     </div>
@@ -11,8 +11,8 @@
       <span id="pending-count" class="res-action-badge res-action-badge--warn">0 PENDING</span>
       <span class="material-symbols-outlined">arrow_forward</span>
     </div>
-  </button>
-  <button type="button" data-open-manage-reservations class="res-action-card">
+  </a>
+  <a href="/admin/reservations.html?tab=rooms" class="res-action-card no-underline">
     <div class="res-action-card-icon res-action-card-icon--navy">
       <span class="material-symbols-outlined">hotel</span>
     </div>
@@ -24,8 +24,8 @@
       <span class="res-action-badge">MANAGE</span>
       <span class="material-symbols-outlined">arrow_forward</span>
     </div>
-  </button>
-  <button type="button" data-open-manage-venue-bookings class="res-action-card">
+  </a>
+  <a href="/admin/reservations.html?tab=venues" class="res-action-card no-underline">
     <div class="res-action-card-icon res-action-card-icon--teal">
       <span class="material-symbols-outlined">church</span>
     </div>
@@ -38,5 +38,5 @@
       <span class="res-action-badge">MANAGE</span>
       <span class="material-symbols-outlined">arrow_forward</span>
     </div>
-  </button>
+  </a>
 </div>

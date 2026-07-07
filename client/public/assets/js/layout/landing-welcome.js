@@ -5,8 +5,9 @@
 
 const IDLE_LOTTIE_SRC = '/assets/animations/idle-magnifier-animation.lottie';
 const DOTLOTTIE_CDN = 'https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs';
-const WELCOME_MS = 2500;
+const WELCOME_MS = 2000;
 const EXIT_MS = 520;
+const LOTTIE_MAX_MS = 1200;
 
 let dotLottiePromise = null;
 
@@ -144,6 +145,26 @@ function buildWelcomeOverlay() {
   return el;
 }
 
+/**
+ * Kick off welcome visuals during the preloader wipe (seamless handoff).
+ * @returns {HTMLElement | null}
+ */
+export function beginLandingWelcomeHandoff() {
+  if (prefersReducedMotion()) return null;
+
+  const welcome = document.getElementById('lp-welcome') || mountLandingWelcome();
+  if (!welcome) return null;
+
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      welcome.classList.remove('is-entering');
+    });
+  });
+
+  void mountWelcomeLottie(welcome);
+  return welcome;
+}
+
 /** Preload Lottie during the greeting preloader. */
 export function preloadWelcomeAssets() {
   return loadDotLottie();
@@ -160,7 +181,7 @@ export function mountLandingWelcome() {
 
   const welcome = buildWelcomeOverlay();
   document.body.appendChild(welcome);
-  document.body.classList.add('lp-page-hidden');
+  document.body.classList.add('lp-welcome-active', 'lp-page-hidden');
   return welcome;
 }
 
@@ -173,12 +194,18 @@ export async function runLandingWelcome() {
   const welcome = document.getElementById('lp-welcome') || mountLandingWelcome();
   if (!welcome) return;
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => welcome.classList.remove('is-entering'));
-  });
+  if (welcome.classList.contains('is-entering')) {
+    await new Promise((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          welcome.classList.remove('is-entering');
+          resolve();
+        });
+      });
+    });
+  }
 
-  await mountWelcomeLottie(welcome);
-
+  await Promise.race([mountWelcomeLottie(welcome), delay(LOTTIE_MAX_MS)]);
   await delay(WELCOME_MS);
 
   const exit = prefersReducedMotion() ? 100 : EXIT_MS;
@@ -186,6 +213,7 @@ export async function runLandingWelcome() {
   await delay(exit);
 
   welcome.remove();
+  document.body.classList.remove('lp-welcome-active');
 }
 
 /** @deprecated Use runLandingWelcome */

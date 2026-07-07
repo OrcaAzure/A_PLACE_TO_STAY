@@ -8,7 +8,7 @@ import {
 import {
   cancelRoomReservation, confirmAdminCancelReservation,
 } from '/assets/js/features/booking-actions.js';
-import { confirmModal } from '/assets/js/layout/ui.js';
+import { confirmModal, showAlertModal } from '/assets/js/layout/ui.js';
 
 let initialized = false;
 let isOpen = false;
@@ -184,7 +184,7 @@ async function cancel(key) {
     window.dispatchEvent(new CustomEvent('booking:updated'));
     await load();
   } catch (err) {
-    alert(err.message || 'Could not cancel this reservation.');
+    await showAlertModal('Could not cancel reservation', err.message || 'Could not cancel this reservation.');
   }
 }
 

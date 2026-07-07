@@ -161,14 +161,22 @@ function renderStep3() {
   const recommended = recommendRooms(state.availableRooms, state.guestCount, 3);
   const filtered = getFilteredAvailableRooms();
 
-  const conflictBanner = (requestedUnavailable || (state.modifyRequest && state.originalRoomLabel)) ? `
+  const conflictBanner = (requestedUnavailable || ((state.modifyRequest || state.guestModify) && state.originalRoomLabel)) ? `
     <div class="res-banner res-banner--warn">
       ${requestedUnavailable
-    ? `<strong>Room conflict:</strong> The guest requested <strong>${escapeHtml(state.originalRoomLabel || 'this room')}</strong>, but it is already booked on these dates. Choose another room and explain the change on the last step.`
-    : state.modifyRequest
-      ? `Guest originally requested <strong>${escapeHtml(state.originalRoomLabel || 'a room')}</strong>. You can change the room, dates, or details before approving.`
-      : ''}
+    ? state.guestModify
+      ? `<strong>Room unavailable:</strong> <strong>${escapeHtml(state.originalRoomLabel || 'your room')}</strong> is already booked on these dates. Choose another room${state.guestWasApproved ? ' and explain the change on the last step' : ''}.`
+      : `<strong>Room conflict:</strong> The guest requested <strong>${escapeHtml(state.originalRoomLabel || 'this room')}</strong>, but it is already booked on these dates. Choose another room and explain the change on the last step.`
+    : state.guestModify
+      ? `You originally selected <strong>${escapeHtml(state.originalRoomLabel || 'a room')}</strong>. You can change the room or dates before submitting.`
+      : state.modifyRequest
+        ? `Guest originally requested <strong>${escapeHtml(state.originalRoomLabel || 'a room')}</strong>. You can change the room, dates, or details before approving.`
+        : ''}
     </div>` : '';
+
+  const lead = state.guestModify
+    ? 'Search and pick a room. Tap suggested rooms if you want recommendations.'
+    : 'Search and pick a room. Use <strong>Show suggested rooms</strong> if you want help finding a good fit.';
 
   const recToggle = recommended.length ? `
     <button type="button" id="wiz-toggle-rec" class="res-btn res-btn--secondary res-rec-toggle">
@@ -190,7 +198,7 @@ function renderStep3() {
       : '');
 
   return `
-    <p class="res-lead">Search and pick a room. Use <strong>Show suggested rooms</strong> if you want help finding a good fit.</p>
+    <p class="res-lead">${lead}</p>
     ${conflictBanner}
     ${state.loadingRooms ? '<p class="res-hint">Loading rooms…</p>' : ''}
     <div class="res-room-toolbar">
@@ -611,6 +619,8 @@ export async function openReservationWizard(options = {}) {
     prefill = null,
     originalRequest = null,
   } = options;
+
+  try {
   state = emptyWizardState();
   state.mode = mode;
   state.fromRequestId = fromRequestId;
@@ -697,6 +707,15 @@ export async function openReservationWizard(options = {}) {
 
   if (state.checkIn && state.checkOut && state.checkOut > state.checkIn) {
     await fetchRooms();
+  }
+  } catch (err) {
+    console.error('[reservation-wizard]', err);
+    state = emptyWizardState();
+    state.error = err.message || 'Could not open this reservation. Please try again.';
+    isOpen = true;
+    showModal();
+    renderSteps();
+    renderBody();
   }
 }
 

@@ -163,53 +163,6 @@ export function initMobileMenu() {
   });
 }
 
-function initLandingSearch() {
-  const inputs = [
-    document.getElementById('landing-search'),
-    document.getElementById('landing-search-mobile'),
-  ].filter(Boolean);
-
-  if (!inputs.length) return;
-
-  const cards = () => document.querySelectorAll('.lp-facility-card');
-  const emptyEl = document.getElementById('lp-facilities-empty');
-  const gridEl = document.querySelector('.lp-facilities-grid');
-
-  const applyFilter = (query) => {
-    const q = query.trim().toLowerCase();
-    let visible = 0;
-    cards().forEach((card) => {
-      const hay = `${card.dataset.facilityName || ''} ${card.textContent}`.toLowerCase();
-      const match = !q || hay.includes(q);
-      card.classList.toggle('hidden', !match);
-      card.style.removeProperty('opacity');
-      if (match) visible += 1;
-    });
-    const noResults = Boolean(q) && visible === 0;
-    emptyEl?.classList.toggle('hidden', !noResults);
-    gridEl?.classList.toggle('hidden', noResults);
-  };
-
-  const syncAndFilter = (value, source) => {
-    inputs.forEach((el) => {
-      if (el !== source) el.value = value;
-    });
-    applyFilter(value);
-  };
-
-  inputs.forEach((input) => {
-    input.addEventListener('input', () => syncAndFilter(input.value, input));
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        document.getElementById('facilities')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        syncAndFilter(input.value, input);
-        document.getElementById('lp-mobile-menu')?.classList.add('hidden');
-      }
-    });
-  });
-}
-
 export function initNavScroll(nav) {
   if (!nav) return;
 
@@ -223,7 +176,7 @@ export function initNavScroll(nav) {
 }
 
 function initNavSpy() {
-  const sectionIds = ['hero', 'facilities', 'how-it-works', 'contact'];
+  const sectionIds = ['hero', 'facilities', 'contact'];
   const links = document.querySelectorAll('[data-nav-section]');
   const scroller = document.querySelector('.lp-section-scroller');
   if (!links.length) return;
@@ -418,15 +371,17 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return;
   }
 
-  const SNAP_MS = 0.65;
-  const WHEEL_STEP = 32;
-  const WHEEL_RESET_MS = 140;
+  const SNAP_MS = 0.58;
+  const WHEEL_STEP = 48;
+  const WHEEL_RESET_MS = 160;
+  const WHEEL_COOLDOWN_MS = 420;
 
   let currentIndex = 0;
   let isAnimating = false;
   let activeTween = null;
   let wheelAccum = 0;
   let wheelTimer = null;
+  let lastWheelNavAt = 0;
 
   function setSnapActive(active) {
     document.body.classList.toggle('lp-scroll-snap-active', active);
@@ -512,9 +467,16 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     wheelTimer = window.setTimeout(resetWheelAccum, WHEEL_RESET_MS);
   }
 
-  function goToSlide(nextIndex) {
+  function applySlideVisuals(index, { animateChars = false } = {}) {
+    currentIndex = showSlide(index, { animateChars });
+    return currentIndex;
+  }
+
+  function goToSlide(nextIndex, { fromWheel = false } = {}) {
     if (nextIndex < 0 || nextIndex >= count || isAnimating) return false;
     if (nextIndex === currentIndex) return true;
+
+    if (fromWheel && Date.now() - lastWheelNavAt < WHEEL_COOLDOWN_MS) return false;
 
     activeTween?.kill();
     isAnimating = true;
@@ -522,16 +484,14 @@ function initScrollShowcase(gsap, ScrollTrigger) {
 
     const fromIdx = currentIndex;
     const targetY = scrollYForIndex(nextIndex);
-    currentIndex = nextIndex;
 
     activeTween = gsap.timeline({
       onComplete: () => {
-        window.scrollTo(0, targetY);
-        ScrollTrigger.update();
-        showSlide(nextIndex);
+        applySlideVisuals(nextIndex);
         playSettle(nextIndex);
         isAnimating = false;
         activeTween = null;
+        ScrollTrigger.update();
       },
     });
 
@@ -542,6 +502,8 @@ function initScrollShowcase(gsap, ScrollTrigger) {
       ease: 'power3.inOut',
     }, 0);
 
+    currentIndex = nextIndex;
+    if (fromWheel) lastWheelNavAt = Date.now();
     return true;
   }
 
@@ -553,28 +515,39 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     pinSpacing: true,
     anticipatePin: 1,
     invalidateOnRefresh: true,
+    fastScrollEnd: true,
     onToggle: (self) => setSnapActive(self.isActive),
     onEnter(self) {
       resetWheelAccum();
       if (!isAnimating) {
-        currentIndex = showSlide(progressToIndex(self.progress));
+        applySlideVisuals(progressToIndex(self.progress));
       }
     },
     onEnterBack(self) {
       resetWheelAccum();
       if (!isAnimating) {
-        currentIndex = showSlide(progressToIndex(self.progress));
+        applySlideVisuals(progressToIndex(self.progress));
+      }
+    },
+    onUpdate(self) {
+      if (isAnimating || !self.isActive) return;
+      if (Date.now() - lastWheelNavAt < WHEEL_COOLDOWN_MS) return;
+      const idx = progressToIndex(self.progress);
+      if (idx !== currentIndex) {
+        applySlideVisuals(idx);
       }
     },
     onLeave: () => {
       activeTween?.kill();
       isAnimating = false;
       resetWheelAccum();
+      setSnapActive(false);
     },
     onLeaveBack: () => {
       activeTween?.kill();
       isAnimating = false;
       resetWheelAccum();
+      setSnapActive(false);
     },
   });
 
@@ -604,7 +577,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
 
     const direction = wheelAccum > 0 ? 1 : -1;
     resetWheelAccum();
-    goToSlide(currentIndex + direction);
+    goToSlide(currentIndex + direction, { fromWheel: true });
   }
 
   let touchStartY = 0;
@@ -622,18 +595,20 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     const dx = touchStartX - e.changedTouches[0].clientX;
     if (Math.abs(dy) < 44 || Math.abs(dy) < Math.abs(dx)) return;
 
-    if (dy > 0 && currentIndex < count - 1) goToSlide(currentIndex + 1);
-    else if (dy < 0 && currentIndex > 0) goToSlide(currentIndex - 1);
+    if (dy > 0 && currentIndex < count - 1) goToSlide(currentIndex + 1, { fromWheel: true });
+    else if (dy < 0 && currentIndex > 0) goToSlide(currentIndex - 1, { fromWheel: true });
   }
 
   function onKeyDown(e) {
     if (!st.isActive || isAnimating) return;
     if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+      if (currentIndex >= count - 1) return;
       e.preventDefault();
-      if (currentIndex < count - 1) goToSlide(currentIndex + 1);
+      goToSlide(currentIndex + 1, { fromWheel: true });
     } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+      if (currentIndex <= 0) return;
       e.preventDefault();
-      if (currentIndex > 0) goToSlide(currentIndex - 1);
+      goToSlide(currentIndex - 1, { fromWheel: true });
     }
   }
 
@@ -642,12 +617,15 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   pin.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('keydown', onKeyDown);
 
-  currentIndex = showSlide(0);
+  applySlideVisuals(0);
 
   window.addEventListener('resize', () => {
     ScrollTrigger.refresh();
     if (st.isActive && !isAnimating) {
-      window.scrollTo(0, scrollYForIndex(currentIndex));
+      const y = scrollYForIndex(currentIndex);
+      if (Math.abs(window.scrollY - y) > 4) {
+        window.scrollTo(0, y);
+      }
     }
   }, { passive: true });
 
@@ -765,8 +743,10 @@ function mountScrollShowcase(gsap, ScrollTrigger) {
   if (scrollShowcaseMounted) return;
   scrollShowcaseMounted = true;
   initScrollShowcase(gsap, ScrollTrigger);
-  ScrollTrigger?.refresh();
-  window.addEventListener('load', () => ScrollTrigger?.refresh(), { once: true });
+  requestAnimationFrame(() => {
+    ScrollTrigger?.refresh(true);
+    window.addEventListener('load', () => ScrollTrigger?.refresh(true), { once: true });
+  });
 }
 
 function buildLandingReveal(startHeroHandoff, finalize) {
@@ -787,7 +767,6 @@ export async function initLandingPage(options = {}) {
   initNavScroll(document.querySelector('.lp-nav'));
   initNavSpy();
   initMobileMenu();
-  initLandingSearch();
   initHeroTypewriter();
   initHeroImageFallbacks();
 
@@ -906,23 +885,6 @@ export async function initLandingPage(options = {}) {
     duration: 0.75,
     ease: 'power3.out',
     scrollTrigger: { trigger: '.lp-facilities-grid', start: 'top 82%' },
-  });
-
-  gsap.from('.lp-step-card', {
-    y: 40,
-    autoAlpha: 0,
-    stagger: 0.15,
-    duration: 0.65,
-    ease: 'power3.out',
-    scrollTrigger: { trigger: '.lp-steps', start: 'top 82%' },
-  });
-
-  gsap.utils.toArray('.lp-step-card').forEach((card) => {
-    ST?.create({
-      trigger: card,
-      start: 'top 88%',
-      onEnter: () => card.classList.add('is-active'),
-    });
   });
 
   gsap.from('.lp-audience-card', {

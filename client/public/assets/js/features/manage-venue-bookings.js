@@ -9,6 +9,7 @@ import {
 } from '/assets/js/features/reservation-shared.js';
 import { closeVenueBookingWizard, openVenueBookingWizard } from '/assets/js/features/venue-booking-wizard.js';
 import { openAdminEditVenueWizard, openModifyVenueWizard, confirmAdminCancelReservation, confirmDeclineRequest } from '/assets/js/features/booking-actions.js';
+import { showAlertModal } from '/assets/js/layout/ui.js';
 
 let initialized = false;
 let isOpen = false;
@@ -175,7 +176,7 @@ async function setStatus(id, status) {
     window.dispatchEvent(new CustomEvent('booking:updated'));
     await load();
   } catch (err) {
-    alert(err.message || 'Could not update this booking.');
+    await showAlertModal('Could not update booking', err.message || 'Could not update this booking.');
   }
 }
 

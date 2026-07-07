@@ -12,6 +12,7 @@ import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/asset
 import { initGuestPortalChrome } from '/assets/js/layout/guest-portal.js';
 import { initSplashIdle, dismissAptSplash } from '/assets/js/layout/splash-idle.js';
 import { formatRoleLabel } from '/assets/js/services/auth.js';
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 import {
   isDesktopSidebar,
   closeMobileSidebar,
@@ -449,12 +450,6 @@ const GUEST_SECTION_SCROLLER = `
         </a>
       </li>
       <li>
-        <a href="#how-it-works" class="lp-section-scroller-item" data-nav-section="how-it-works">
-          <span class="lp-section-scroller-label">How it works</span>
-          <span class="lp-section-scroller-dot" aria-hidden="true"></span>
-        </a>
-      </li>
-      <li>
         <a href="#contact" class="lp-section-scroller-item" data-nav-section="contact">
           <span class="lp-section-scroller-label">Contact</span>
           <span class="lp-section-scroller-dot" aria-hidden="true"></span>
@@ -877,7 +872,7 @@ function bindLayoutEvents({ isGuest = false } = {}) {
       try {
         if (isGuest) {
           const items = [
-            { icon: 'event_available', text: 'Reservation updates', sub: 'Check My Reservations for status changes' },
+            { icon: 'event_available', text: 'Reservation updates', sub: 'Check My Stays for status changes' },
             { icon: 'info', text: 'Need help?', sub: 'Contact facility staff from your dashboard' },
             { icon: 'wifi', text: 'Portal status: Live', sub: 'Guest services are available' },
           ];
@@ -913,11 +908,19 @@ function bindLayoutEvents({ isGuest = false } = {}) {
               <p class="text-[11px] text-on-surface-variant mt-0.5">${item.sub}</p>
             </div>
           </div>`).join('');
+
+        const dot = document.querySelector('.admin-notif-dot');
+        dot?.classList.toggle('hidden', pending <= 0);
       } catch {
         list.innerHTML = '<div class="p-4 text-body-sm text-error text-center">Could not load notifications.</div>';
       }
     }
   });
+
+  if (!isGuest) {
+    syncAdminNotificationDot();
+    window.addEventListener('booking:updated', syncAdminNotificationDot);
+  }
 
   document.getElementById('close-notifications')?.addEventListener('click', () => {
     const panel = document.getElementById('notifications-panel');
@@ -1094,6 +1097,84 @@ export function confirmModal({
       document.getElementById('modal-overlay')?.addEventListener('click', () => finish(false), { once: true });
     });
   })).catch(() => false);
+}
+
+/** Single-action alert dialog. `message` is escaped unless `escape: false`. */
+export function showAlertModal(title, message, { confirmLabel = 'OK', escape = true } = {}) {
+  const body = escape && typeof message === 'string' ? escapeHtml(message) : message;
+  return confirmModal({
+    title,
+    message: body,
+    confirmLabel,
+    cancelLabel: 'Dismiss',
+  });
+}
+
+/**
+ * Modal with optional text input. Returns trimmed string on confirm, null on cancel.
+ */
+export function promptModal({
+  title = 'Add a note',
+  message = '',
+  placeholder = '',
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  danger = false,
+  optional = true,
+} = {}) {
+  return ensureConfirmModalMounted().then(() => new Promise((resolve) => {
+    let settled = false;
+    const finish = (value) => {
+      if (settled) return;
+      settled = true;
+      closeModal();
+      resolve(value);
+    };
+
+    const confirmBtn = danger
+      ? `<button type="button" class="px-5 py-2.5 min-h-[2.75rem] rounded-lg font-semibold text-sm text-white" style="background:#dc2626" data-action="confirm">${confirmLabel}</button>`
+      : `<button type="button" class="btn-primary px-5 py-2.5 min-h-[2.75rem]" data-action="confirm">${confirmLabel}</button>`;
+
+    const body = `
+      <p class="text-[0.9375rem] text-on-surface-variant leading-relaxed m-0">${message}</p>
+      <label class="block mt-4 text-label-sm font-medium text-on-surface" for="prompt-modal-input">Note${optional ? ' (optional)' : ''}</label>
+      <textarea id="prompt-modal-input" class="res-input w-full mt-1.5" rows="3" placeholder="${escapeHtml(placeholder)}"></textarea>
+      <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-outline-variant">
+        <button type="button" class="px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant font-semibold text-sm hover:bg-surface-variant/30 transition-colors min-h-[2.75rem]" data-action="cancel">${cancelLabel}</button>
+        ${confirmBtn}
+      </div>`;
+
+    requestAnimationFrame(() => {
+      openModal(title, body);
+      const input = document.getElementById('prompt-modal-input');
+      input?.focus();
+      const bodyEl = document.getElementById('modalBody');
+      bodyEl?.querySelector('[data-action="cancel"]')?.addEventListener('click', () => finish(null), { once: true });
+      bodyEl?.querySelector('[data-action="confirm"]')?.addEventListener('click', () => {
+        const value = input?.value?.trim() || '';
+        if (!optional && !value) {
+          input?.focus();
+          return;
+        }
+        finish(value);
+      }, { once: true });
+      document.getElementById('modal-close')?.addEventListener('click', () => finish(null), { once: true });
+      document.getElementById('modal-overlay')?.addEventListener('click', () => finish(null), { once: true });
+    });
+  })).catch(() => null);
+}
+
+async function syncAdminNotificationDot() {
+  const dot = document.querySelector('.admin-notif-dot');
+  if (!dot) return;
+  try {
+    const { getAdminSummary } = await import('/assets/js/services/api.js');
+    const summary = await getAdminSummary();
+    const pending = Number(summary?.kpis?.pending || 0);
+    dot.classList.toggle('hidden', pending <= 0);
+  } catch {
+    dot.classList.add('hidden');
+  }
 }
 
 export function switchDrawerTab(tabId) {

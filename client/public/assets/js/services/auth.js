@@ -34,7 +34,7 @@ export async function redirectIfLoggedIn() {
   if (!token) return;
 
   try {
-    const { user } = await getProfile();
+    const { user } = await getProfile({ skipAuthRedirect: true });
     const params = new URLSearchParams(window.location.search);
     const next = params.get('next');
     const role = user?.role || '';

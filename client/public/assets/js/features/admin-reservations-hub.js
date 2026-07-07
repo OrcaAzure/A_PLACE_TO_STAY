@@ -14,7 +14,7 @@ import {
   confirmAdminCancelReservation, confirmDeclineRequest,
   notifyBookingUpdated,
 } from '/assets/js/features/booking-actions.js';
-import { confirmModal } from '/assets/js/layout/ui.js';
+import { confirmModal, promptModal, showAlertModal } from '/assets/js/layout/ui.js';
 import {
   escapeHtml, formatDateLong, formatMoney, formatSubmittedAt, statusBadge, debounce,
   normStatus, stayNights, getReservationCategory, lifecyclePhaseForBooking, lifecyclePhaseBadge,
@@ -50,6 +50,7 @@ const state = {
   venueBookings: [],
   approvingKey: null,
   saving: false,
+  loadError: null,
   expandedKeys: new Set(),
 };
 
@@ -671,7 +672,10 @@ function renderActivePanel() {
     countLabel = `${items.length} venue booking${items.length === 1 ? '' : 's'}`;
   }
 
-  mount.innerHTML = guestFilterBannerHtml() + html;
+  const errorBanner = state.loadError
+    ? `<div class="error-banner mb-4" role="alert">${escapeHtml(state.loadError)}</div>`
+    : '';
+  mount.innerHTML = errorBanner + guestFilterBannerHtml() + html;
   if (countEl) {
     const guestSuffix = state.guestUserId && state.guestName
       ? ` for ${state.guestName}`
@@ -738,6 +742,16 @@ async function loadAll({ background = false } = {}) {
       n._category = venueCategory(n);
       return n;
     }).sort((a, b) => `${a.eventDate}${a.startTime}`.localeCompare(`${b.eventDate}${b.startTime}`));
+    state.loadError = null;
+  } catch (err) {
+    state.loadError = err.message || 'Could not load reservations. Refresh and try again.';
+    if (!background) {
+      state.roomRequests = [];
+      state.groupRequests = [];
+      state.roomStays = [];
+      state.groupStays = [];
+      state.venueBookings = [];
+    }
   } finally {
     state.loading = false;
     renderActivePanel();
@@ -755,7 +769,7 @@ async function approvePending(key) {
     notifyBookingUpdated();
     await loadAll();
   } catch (err) {
-    alert(err.message || 'Could not approve this request.');
+    await showAlertModal('Could not approve request', err.message || 'Could not approve this request.');
     state.approvingKey = null;
     renderActivePanel();
   } finally {
@@ -772,7 +786,15 @@ async function rejectPending(key) {
     : (r.requester?.name || 'this guest');
   const confirmed = await confirmDeclineRequest(name);
   if (!confirmed) return;
-  const note = window.prompt(`Optional reason for ${name} (saved in notes):`, '');
+  const note = await promptModal({
+    title: 'Decline request',
+    message: `Optional reason for <strong>${escapeHtml(name)}</strong> (saved in notes):`,
+    placeholder: 'e.g. Dates unavailable, at capacity…',
+    confirmLabel: 'Decline request',
+    cancelLabel: 'Keep request',
+    danger: true,
+    optional: true,
+  });
   if (note === null) return;
   state.saving = true;
   renderActivePanel();
@@ -781,7 +803,7 @@ async function rejectPending(key) {
     notifyBookingUpdated();
     await loadAll();
   } catch (err) {
-    alert(err.message || 'Could not decline this request.');
+    await showAlertModal('Could not decline request', err.message || 'Could not decline this request.');
   } finally {
     state.saving = false;
     renderActivePanel();
@@ -823,7 +845,7 @@ async function cancelStay(key) {
     notifyBookingUpdated();
     await loadAll();
   } catch (err) {
-    alert(err.message || 'Could not cancel this reservation.');
+    await showAlertModal('Could not cancel reservation', err.message || 'Could not cancel this reservation.');
   }
 }
 
@@ -841,10 +863,14 @@ async function deleteStay(key) {
     danger: true,
   });
   if (!confirmed) return;
-  if (kind === 'group') await deleteGroup(id);
-  else await deleteBooking(id);
-  notifyBookingUpdated();
-  await loadAll();
+  try {
+    if (kind === 'group') await deleteGroup(id);
+    else await deleteBooking(id);
+    notifyBookingUpdated();
+    await loadAll();
+  } catch (err) {
+    await showAlertModal('Could not delete record', err.message || 'Could not delete this reservation record.');
+  }
 }
 
 function modifyVenuePending(id) {
@@ -872,7 +898,7 @@ async function setVenueStatus(id, status, { label = 'this venue booking', pendin
     notifyBookingUpdated();
     await loadAll();
   } catch (err) {
-    alert(err.message || 'Could not update this booking.');
+    await showAlertModal('Could not update booking', err.message || 'Could not update this booking.');
   }
 }
 

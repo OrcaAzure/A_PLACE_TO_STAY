@@ -7,6 +7,7 @@ import {
   normalizeBooking, normalizeManageRequest, normalizeManageGroupRequest,
 } from '/assets/js/services/api.js';
 import { approveRequest, rejectRequest } from '/assets/js/features/booking-actions.js';
+import { showAlertModal } from '/assets/js/layout/ui.js';
 import { normStatus, escapeHtml, stayNights, formatDateLong } from '/assets/js/features/reservation-shared.js';
 import { animateStatCards, animateChartBars, staggerReveal, animateCountUp, revealPageContent } from '/assets/js/layout/animations.js';
 
@@ -406,7 +407,7 @@ async function handleQueueApprove(item) {
     await loadDashboard();
     window.dispatchEvent(new CustomEvent('booking:updated'));
   } catch (err) {
-    alert(err.message || 'Could not approve this request.');
+    await showAlertModal('Could not approve request', err.message || 'Could not approve this request.');
   }
 }
 
@@ -422,6 +423,6 @@ async function handleQueueReject(item) {
     await loadDashboard();
     window.dispatchEvent(new CustomEvent('booking:updated'));
   } catch (err) {
-    alert(err.message || 'Could not decline this request.');
+    await showAlertModal('Could not decline request', err.message || 'Could not decline this request.');
   }
 }

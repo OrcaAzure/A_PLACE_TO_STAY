@@ -88,6 +88,7 @@ async function bootFacilities() {
     setCatalogToolbarTab,
   } = await import('/assets/js/features/admin-facility-catalog.js');
   const { bootstrapRoomRates } = await import('/assets/js/features/admin-room-rates.js');
+  const { bootstrapVenueRates } = await import('/assets/js/features/admin-venue-rates.js');
 
   let activeFacTab = 'rooms';
 
@@ -105,6 +106,7 @@ async function bootFacilities() {
     document.getElementById('fac-panel-rooms')?.classList.toggle('hidden', tab !== 'rooms');
     document.getElementById('fac-panel-room-prices')?.classList.toggle('hidden', tab !== 'room-prices');
     document.getElementById('fac-panel-venue-spaces')?.classList.toggle('hidden', tab !== 'venue-spaces');
+    document.getElementById('fac-panel-venue-prices')?.classList.toggle('hidden', tab !== 'venue-prices');
     document.getElementById('fac-panel-meals')?.classList.toggle('hidden', tab !== 'meals');
     document.getElementById('fac-panel-extras')?.classList.toggle('hidden', tab !== 'extras');
     if (activeFacTab === 'venue-spaces') {
@@ -120,7 +122,7 @@ async function bootFacilities() {
   function applyFacDeepLinks() {
     const params = new URLSearchParams(window.location.search);
     const tab = params.get('tab');
-    if (tab && ['rooms', 'room-prices', 'venue-spaces', 'meals', 'extras'].includes(tab)) {
+    if (tab && ['rooms', 'room-prices', 'venue-spaces', 'venue-prices', 'meals', 'extras'].includes(tab)) {
       switchFacTab(tab);
     }
     const date = params.get('date');
@@ -140,6 +142,7 @@ async function bootFacilities() {
   await bootstrapRoomsBoard();
   await bootstrapVenueScheduleBoard();
   await bootstrapRoomRates();
+  await bootstrapVenueRates();
 
   document.querySelectorAll('[data-fac-tab]').forEach((btn) => {
     btn.addEventListener('click', () => switchFacTab(btn.getAttribute('data-fac-tab')));

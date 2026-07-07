@@ -6,6 +6,10 @@
   box-shadow: 0 1px 3px rgba(26,54,93,.06); transition: border-color .15s, box-shadow .15s;
   width: 100%; cursor: pointer;
 }
+a.res-action-card {
+  text-decoration: none;
+  color: inherit;
+}
 .res-action-card:hover { border-color: #1A365D; box-shadow: 0 4px 12px rgba(26,54,93,.1); }
 .res-action-card-icon { width: 3rem; height: 3rem; border-radius: 0.625rem; display: flex; align-items: center; justify-content: center; }
 .res-action-card-icon--amber { background: #FFFBEB; color: #92400E; }

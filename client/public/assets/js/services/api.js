@@ -8,9 +8,10 @@ function getToken() {
 }
 
 export async function apiRequest(endpoint, options = {}) {
+  const { skipAuthRedirect = false, ...fetchOptions } = options;
   const headers = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...fetchOptions.headers,
   };
 
   const token = getToken();
@@ -19,7 +20,7 @@ export async function apiRequest(endpoint, options = {}) {
   let response;
   try {
     response = await fetch(`${API_URL}${endpoint}`, {
-      ...options,
+      ...fetchOptions,
       headers,
       credentials: 'include',
     });
@@ -42,7 +43,7 @@ export async function apiRequest(endpoint, options = {}) {
     if (response.status === 401 && token) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      if (!window.location.pathname.includes('login.html')) {
+      if (!skipAuthRedirect && !window.location.pathname.includes('login.html')) {
         window.location.href = '/login.html?reason=session';
       }
     }
@@ -75,8 +76,8 @@ export async function logout() {
   }
 }
 
-export async function getProfile() {
-  return apiRequest('/auth/me');
+export async function getProfile(options = {}) {
+  return apiRequest('/auth/me', options);
 }
 
 export async function getSupportContact() {
