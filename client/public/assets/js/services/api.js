@@ -320,6 +320,11 @@ export async function createMealRate(payload) {
   });
 }
 
+export async function getMealRatesCatalog() {
+  const data = await apiRequest('/catalog/meal-rates');
+  return data.meals || [];
+}
+
 export async function updateMealRate(id, payload) {
   return apiRequest(`/catalog/meal-rates/${id}`, {
     method: 'PATCH',
@@ -336,6 +341,11 @@ export async function createExtraServiceRate(payload) {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+}
+
+export async function getExtraServicesCatalog() {
+  const data = await apiRequest('/catalog/extra-services');
+  return data.services || [];
 }
 
 export async function updateExtraServiceRate(id, payload) {

@@ -3,8 +3,8 @@ import { isEmpty } from '../utils/helpers.js';
 import {
   fetchExtraServiceRows,
   fetchMealRateRows,
-  groupMealRows,
-  groupServiceRows,
+  groupDefaultMealRows,
+  groupDefaultServiceRows,
 } from '../services/ancillary.service.js';
 import {
   fetchFacilitiesWithRates,
@@ -17,6 +17,10 @@ import {
   resolveVenueFacilityRowByFacilityId,
   venueRateMeta,
 } from '../services/facility.service.js';
+import {
+  DEFAULT_FACILITY_BILLING_UNIT,
+  normalizeRateVariant,
+} from '../constants/rateVariants.js';
 import {
   listAdminVenues,
   saveAdminVenue,
@@ -42,8 +46,8 @@ export const getFacilitiesOverview = async (req, res) => {
     res.status(200).json({
       venues: groupFacilitiesForOverview(facilities),
       facilities,
-      meals: groupMealRows(mealRows),
-      services: groupServiceRows(extraRows),
+      meals: groupDefaultMealRows(mealRows),
+      services: groupDefaultServiceRows(extraRows),
       active_lodging_season,
     });
   } catch (error) {
@@ -192,6 +196,7 @@ export const getFacilityById = async (req, res) => {
 export const createFacility = async (req, res) => {
   try {
     let { facility_id, category, item, season, rate } = req.body;
+    const variant = normalizeRateVariant(req.body, { billing_unit: DEFAULT_FACILITY_BILLING_UNIT });
 
     if (isEmpty(facility_id) && !isEmpty(category) && !isEmpty(item)) {
       const facility = await getFacilityByLegacyKeys(category, item);
@@ -217,9 +222,9 @@ export const createFacility = async (req, res) => {
     }
 
     const [result] = await pool.query(
-      `INSERT INTO rates_facilities (facility_id, season, rate)
-       VALUES (?, ?, ?)`,
-      [facility_id, finalSeason, rate]
+      `INSERT INTO rates_facilities (facility_id, season, rate, audience, age_band, currency, billing_unit, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [facility_id, finalSeason, rate, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes]
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_facilities WHERE id = ?', [result.insertId]);
@@ -241,6 +246,7 @@ export const updateFacility = async (req, res) => {
     }
 
     const { season, rate } = req.body;
+    const variant = normalizeRateVariant(req.body, { billing_unit: DEFAULT_FACILITY_BILLING_UNIT });
 
     if (!isEmpty(season) && !VALID_SEASONS.includes(season)) {
       return res.status(400).json({ message: 'Invalid season value' });
@@ -253,9 +259,14 @@ export const updateFacility = async (req, res) => {
     await pool.query(
       `UPDATE rates_facilities SET
         season = COALESCE(?, season),
-        rate = COALESCE(?, rate)
+        rate = COALESCE(?, rate),
+        audience = COALESCE(?, audience),
+        age_band = COALESCE(?, age_band),
+        currency = COALESCE(?, currency),
+        billing_unit = COALESCE(?, billing_unit),
+        notes = ?
        WHERE id = ?`,
-      [season, rate, req.params.id]
+      [season, rate, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes, req.params.id]
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_facilities WHERE id = ?', [req.params.id]);

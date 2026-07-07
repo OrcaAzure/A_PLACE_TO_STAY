@@ -16,10 +16,21 @@ import {
   roomRateTierLabel,
   collectRoomRateItemsForTier,
 } from '../constants/rooms.js';
+import {
+  DEFAULT_EXTRA_BILLING_UNIT,
+  DEFAULT_MEAL_BILLING_UNIT,
+  DEFAULT_RATE_AUDIENCE,
+  DEFAULT_RATE_AGE_BAND,
+  DEFAULT_RATE_CURRENCY,
+  DEFAULT_ROOM_BILLING_UNIT,
+  normalizeRateVariant,
+  rateVariantKey,
+  matchesDefaultRateVariant,
+} from '../constants/rateVariants.js';
 
 export async function fetchMealRateRows() {
   const [rows] = await pool.query(
-    `SELECT id, meal_type AS item, rate
+    `SELECT id, meal_type AS item, rate, audience, age_band, currency, billing_unit, notes
      FROM rates_meals
      ORDER BY FIELD(meal_type, 'Breakfast', 'Lunch', 'Dinner', 'Snack')`
   );
@@ -28,7 +39,7 @@ export async function fetchMealRateRows() {
 
 export async function fetchExtraServiceRows() {
   const [rows] = await pool.query(
-    `SELECT id, category, item, season, rate
+    `SELECT id, category, item, season, rate, audience, age_band, currency, billing_unit, notes
      FROM rates_extra_services
      ORDER BY category ASC, item ASC, FIELD(season, 'Regular', 'Peak', 'Super Peak', 'N/A')`
   );
@@ -40,17 +51,20 @@ export function groupMealRows(rows) {
 
   for (const row of rows) {
     const item = row.item || row.meal_type;
-    if (!byItem.has(item)) {
-      byItem.set(item, {
-        id: row.id,
-        item,
-        icon: MEAL_ICONS[item] || 'restaurant',
-        rate: Number(row.rate),
-      });
-    }
+    const variant = normalizeRateVariant(row, { billing_unit: DEFAULT_MEAL_BILLING_UNIT });
+    const key = `${item}|${rateVariantKey(row, { billing_unit: DEFAULT_MEAL_BILLING_UNIT })}`;
+    if (byItem.has(key)) continue;
+    byItem.set(key, {
+      id: row.id,
+      item,
+      icon: MEAL_ICONS[item] || 'restaurant',
+      rate: Number(row.rate),
+      ...variant,
+    });
   }
 
-  return MEAL_TYPES.filter((name) => byItem.has(name)).map((name) => byItem.get(name));
+  return [...byItem.values()].sort((a, b) =>
+    `${a.item} ${a.audience} ${a.age_band} ${a.currency}`.localeCompare(`${b.item} ${b.audience} ${b.age_band} ${b.currency}`));
 }
 
 export function groupServiceRows(rows) {
@@ -64,15 +78,33 @@ export function groupServiceRows(rows) {
         items: [],
       });
     }
+    const variant = normalizeRateVariant(row, {
+      billing_unit: row.category === ACCOMMODATION_EXTRAS_CATEGORY ? 'per night' : DEFAULT_EXTRA_BILLING_UNIT,
+    });
     byCategory.get(row.category).items.push({
       id: row.id,
       item: row.item,
       season: row.season || 'N/A',
       rate: Number(row.rate),
+      ...variant,
     });
   }
 
   return [...byCategory.values()];
+}
+
+export function groupDefaultMealRows(rows) {
+  return groupMealRows(rows).filter((row) => matchesDefaultRateVariant(row, { billing_unit: DEFAULT_MEAL_BILLING_UNIT }));
+}
+
+export function groupDefaultServiceRows(rows) {
+  const grouped = groupServiceRows(rows);
+  return grouped.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => matchesDefaultRateVariant(item, {
+      billing_unit: group.category === ACCOMMODATION_EXTRAS_CATEGORY ? 'per night' : DEFAULT_EXTRA_BILLING_UNIT,
+    })),
+  })).filter((group) => group.items.length);
 }
 
 function feeKey(name, amount) {
@@ -95,7 +127,7 @@ export function sanitizeGuestSubmittedFees(submitted = [], catalogRows = [], ori
 
 export async function fetchRoomRateRows() {
   const [rows] = await pool.query(
-    `SELECT id, room_type, item, season, rate FROM rates_rooms`
+    `SELECT id, room_type, item, season, rate, audience, age_band, currency, billing_unit, notes FROM rates_rooms`
   );
   return rows;
 }
@@ -112,10 +144,14 @@ export async function fetchRoomRateRows() {
  */
 async function getDormRateGroup() {
   const [rows] = await pool.query(
-    'SELECT season, rate FROM rates_extra_services WHERE category = ? AND item = ?',
+    `SELECT season, rate, audience, age_band, currency, billing_unit, notes
+     FROM rates_extra_services
+     WHERE category = ? AND item = ?`,
     [ACCOMMODATION_EXTRAS_CATEGORY, PER_PERSON_NIGHT_ITEM]
   );
-  const bySeason = new Map(rows.map((r) => [r.season, Number(r.rate)]));
+  const defaults = { billing_unit: 'per night' };
+  const defaultRows = rows.filter((r) => matchesDefaultRateVariant(r, defaults));
+  const bySeason = new Map(defaultRows.map((r) => [r.season, Number(r.rate)]));
   return {
     room_type: 'Dorm',
     label: 'Dorm (per person / night)',
@@ -124,6 +160,7 @@ async function getDormRateGroup() {
     items: [
       {
         item: PER_PERSON_NIGHT_ITEM,
+        ...normalizeRateVariant(defaultRows[0] || {}, defaults),
         cells: ROOM_RATE_SEASONS.map((season) => ({
           season,
           rate: bySeason.has(season) ? bySeason.get(season) : null,
@@ -157,22 +194,53 @@ export async function getRoomRateGroups() {
 
   const rateMap = new Map();
   for (const row of rateRows) {
-    rateMap.set(`${row.room_type}|${row.item}|${row.season}`, Number(row.rate));
+    rateMap.set(`${row.room_type}|${rateVariantKey(row, { billing_unit: DEFAULT_ROOM_BILLING_UNIT })}|${row.item}|${row.season}`, Number(row.rate));
   }
 
   const dormGroup = await getDormRateGroup();
 
   const roomGroups = tiers.map((tier) => {
-    const items = collectRoomRateItemsForTier(tier, rateRows);
+    const tierRows = rateRows.filter((row) => row.room_type === tier);
+    const variantMap = new Map();
+    for (const row of tierRows) {
+      const key = `${row.item}|${rateVariantKey(row, { billing_unit: DEFAULT_ROOM_BILLING_UNIT })}`;
+      if (!variantMap.has(key)) {
+        variantMap.set(key, {
+          item: row.item,
+          ...normalizeRateVariant(row, { billing_unit: DEFAULT_ROOM_BILLING_UNIT }),
+        });
+      }
+    }
+
+    if (!variantMap.size) {
+      for (const item of collectRoomRateItemsForTier(tier, rateRows)) {
+        const key = `${item}|${rateVariantKey({}, { billing_unit: DEFAULT_ROOM_BILLING_UNIT })}`;
+        variantMap.set(key, {
+          item,
+          audience: DEFAULT_RATE_AUDIENCE,
+          age_band: DEFAULT_RATE_AGE_BAND,
+          currency: DEFAULT_RATE_CURRENCY,
+          billing_unit: DEFAULT_ROOM_BILLING_UNIT,
+          notes: null,
+        });
+      }
+    }
+
+    const items = [...variantMap.values()];
     return {
       room_type: tier,
       label: roomRateTierLabel(tier),
       icon: ROOM_RATE_TIER_ICONS[tier] || 'meeting_room',
       custom: !ROOM_RATE_BASE_TIERS.includes(tier),
       items: items.map((item) => ({
-        item,
+        item: item.item,
+        audience: item.audience,
+        age_band: item.age_band,
+        currency: item.currency,
+        billing_unit: item.billing_unit,
+        notes: item.notes,
         cells: ROOM_RATE_SEASONS.map((season) => {
-          const rate = rateMap.get(`${tier}|${item}|${season}`);
+          const rate = rateMap.get(`${tier}|${rateVariantKey(item, { billing_unit: DEFAULT_ROOM_BILLING_UNIT })}|${item.item}|${season}`);
           return { season, rate: rate != null ? rate : null };
         }),
       })),
@@ -186,10 +254,13 @@ export async function getMealRatesMap() {
   try {
     const rows = await fetchMealRateRows();
     const rates = { ...DEFAULT_MEAL_RATES };
-    rows.forEach((r) => {
+    // Live bookings: Guest · Adult · PHP only (see BOOKING_USES_DEFAULT_VARIANT_ONLY).
+    rows
+      .filter((r) => matchesDefaultRateVariant(r, { billing_unit: DEFAULT_MEAL_BILLING_UNIT }))
+      .forEach((r) => {
       const type = r.item || r.meal_type;
       rates[type] = Number(r.rate);
-    });
+      });
     return rates;
   } catch {
     return { ...DEFAULT_MEAL_RATES };

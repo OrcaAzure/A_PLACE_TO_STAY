@@ -1,6 +1,11 @@
 import { pool } from '../config/db.js';
 import { resolveLodgingSeasonForDate, mapLodgingSeasonToFacilitySeason } from './season.service.js';
 import {
+  DEFAULT_FACILITY_BILLING_UNIT,
+  normalizeRateVariant,
+  pickBookingRateRow,
+} from '../constants/rateVariants.js';
+import {
   getFacilityById,
   getFacilityByLegacyKeys,
   getFacilityByRoomCode,
@@ -29,12 +34,14 @@ export function normalizeFacilityBookingSeason(season) {
 
 function enrichRateRow(rateRow, facility, calendarSeason) {
   const label = facility ? formatFacilityLabel(facility) : null;
+  const variant = normalizeRateVariant(rateRow, { billing_unit: DEFAULT_FACILITY_BILLING_UNIT });
   return {
     rate_id: rateRow.id,
     id: rateRow.id,
     facility_id: facility?.id ?? rateRow.facility_id,
     season: rateRow.season,
     rate: Number(rateRow.rate),
+    ...variant,
     name: facility?.name ?? null,
     room_code: facility?.room_code ?? null,
     description: facility?.description ?? null,
@@ -63,14 +70,15 @@ async function pickRateRowForFacility(facilityId, eventDate) {
 
   for (const season of fallbacks) {
     const [rows] = await pool.query(
-      `SELECT rf.id, rf.facility_id, rf.season, rf.rate
+      `SELECT rf.id, rf.facility_id, rf.season, rf.rate, rf.audience, rf.age_band, rf.currency, rf.billing_unit, rf.notes
        FROM rates_facilities rf
        WHERE rf.facility_id = ? AND rf.season = ?
-       LIMIT 1`,
+       LIMIT 10`,
       [facilityId, season]
     );
-    if (rows.length) {
-      return enrichRateRow(rows[0], facility, lodgingSeason);
+    const match = pickBookingRateRow(rows, { billing_unit: DEFAULT_FACILITY_BILLING_UNIT });
+    if (match) {
+      return enrichRateRow(match, facility, lodgingSeason);
     }
   }
   return null;
@@ -152,19 +160,21 @@ export async function resolveFacilityIdentity({
     if (!facility) return null;
     if (!event_date) {
       const [rows] = await pool.query(
-        `SELECT rf.id, rf.facility_id, rf.season, rf.rate
+        `SELECT rf.id, rf.facility_id, rf.season, rf.rate, rf.audience, rf.age_band, rf.currency, rf.billing_unit, rf.notes
          FROM rates_facilities rf
          WHERE rf.facility_id = ?
-         ORDER BY FIELD(rf.season, 'Regular', 'Peak') LIMIT 1`,
+         ORDER BY FIELD(rf.season, 'Regular', 'Peak')
+         LIMIT 10`,
         [catalogId]
       );
-      if (!rows.length) return null;
+      const match = pickBookingRateRow(rows, { billing_unit: DEFAULT_FACILITY_BILLING_UNIT });
+      if (!match) return null;
       return {
         facility_id: catalogId,
         category: facility.facility_group || 'Facility',
         item: facility.room_code || facility.package_name || facility.name,
         facility,
-        row: enrichRateRow(rows[0], facility, null),
+        row: enrichRateRow(match, facility, null),
       };
     }
     const row = await pickRateRowForFacility(catalogId, event_date);

@@ -13,6 +13,14 @@ import { pool } from '../config/db.js';
 import { fetchFacilitiesWithRates } from './facilityCatalog.service.js';
 import { FACILITY_GROUP_ICONS } from '../constants/facilities.js';
 import { bustCatalogAndFacilities } from '../utils/cache.js';
+import {
+  DEFAULT_FACILITY_BILLING_UNIT,
+  DEFAULT_RATE_AUDIENCE,
+  DEFAULT_RATE_AGE_BAND,
+  DEFAULT_RATE_CURRENCY,
+  matchesDefaultRateVariant,
+  normalizeRateVariant,
+} from '../constants/rateVariants.js';
 
 function httpError(status, message) {
   const err = new Error(message);
@@ -38,8 +46,21 @@ function toIntOrNull(value) {
 }
 
 function seasonRate(rates, season) {
-  const hit = (rates || []).find((r) => r.season === season);
+  return seasonRateForAudience(rates, season, DEFAULT_RATE_AUDIENCE);
+}
+
+function seasonRateForAudience(rates, season, audience) {
+  const key = String(audience ?? DEFAULT_RATE_AUDIENCE).trim() || DEFAULT_RATE_AUDIENCE;
+  const matches = (rates || []).filter((r) => r.season === season && String(r.audience || DEFAULT_RATE_AUDIENCE).trim() === key);
+  const hit = matches.find((r) => matchesDefaultRateVariant(r, { billing_unit: DEFAULT_FACILITY_BILLING_UNIT })) || matches[0];
   return hit ? Number(hit.rate) : null;
+}
+
+function facilityVariant(rates = []) {
+  const hit = rates.find((r) => matchesDefaultRateVariant(r, { billing_unit: DEFAULT_FACILITY_BILLING_UNIT }))
+    || rates.find((r) => r.season === 'Regular')
+    || rates[0];
+  return normalizeRateVariant(hit || {}, { billing_unit: DEFAULT_FACILITY_BILLING_UNIT });
 }
 
 /** Grouped venue catalog for the admin "Manage venues" screen. */
@@ -74,13 +95,29 @@ export async function listAdminVenues() {
       });
     }
     const venue = byVenue.get(key);
+    const variant = facilityVariant(f.rates);
     venue.functions.push({
       facility_id: f.id,
       function_name: f.package_name,
       inclusions: f.inclusions || '',
       policies: f.policies || '',
-      regular_rate: seasonRate(f.rates, 'Regular'),
-      peak_rate: seasonRate(f.rates, 'Peak'),
+      rates: (f.rates || []).map((r) => ({
+        id: r.id,
+        season: r.season,
+        rate: Number(r.rate),
+        audience: r.audience,
+        age_band: r.age_band,
+        currency: r.currency,
+        billing_unit: r.billing_unit,
+        notes: r.notes,
+      })),
+      regular_rate: seasonRateForAudience(f.rates, 'Regular', DEFAULT_RATE_AUDIENCE),
+      peak_rate: seasonRateForAudience(f.rates, 'Peak', DEFAULT_RATE_AUDIENCE),
+      audience: variant.audience,
+      age_band: variant.age_band,
+      currency: variant.currency,
+      billing_unit: variant.billing_unit,
+      notes: variant.notes,
       booking_count: bookingCounts.get(f.id) || 0,
     });
   }
@@ -91,12 +128,27 @@ export async function listAdminVenues() {
   });
 }
 
-async function upsertRate(conn, facilityId, season, rate) {
+async function upsertRate(conn, facilityId, season, rate, variant) {
   await conn.query(
-    `INSERT INTO rates_facilities (facility_id, season, rate)
-     VALUES (?, ?, ?)
-     ON DUPLICATE KEY UPDATE rate = VALUES(rate)`,
-    [facilityId, season, rate]
+    `INSERT INTO rates_facilities (facility_id, season, rate, audience, age_band, currency, billing_unit, notes)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       rate = VALUES(rate),
+       audience = VALUES(audience),
+       age_band = VALUES(age_band),
+       currency = VALUES(currency),
+       billing_unit = VALUES(billing_unit),
+       notes = VALUES(notes)`,
+    [
+      facilityId,
+      season,
+      rate,
+      variant.audience,
+      variant.age_band,
+      variant.currency,
+      variant.billing_unit,
+      variant.notes,
+    ]
   );
 }
 
@@ -120,7 +172,12 @@ export async function saveAdminVenue(payload = {}) {
     name, facility_group, room_code, description,
     capacity_min, capacity_max, min_hours, hourly_rate, inclusions, policies,
     functions = [], removed_function_ids = [],
+    audience: audienceScopeRaw,
   } = payload;
+
+  const audienceScope = audienceScopeRaw
+    ? String(audienceScopeRaw).trim() || null
+    : null;
 
   const venueName = String(name || '').trim();
   const group = String(facility_group || '').trim();
@@ -132,16 +189,23 @@ export async function saveAdminVenue(payload = {}) {
   // `undefined` = caller didn't send per-use text, so fall back to the venue-level
   // value; an explicit "" clears that use's inclusions/policies.
   const cleanText = (v) => (String(v).trim() || null);
-  const cleanFns = (Array.isArray(functions) ? functions : []).map((f) => ({
-    facility_id: f.facility_id ? Number(f.facility_id) : null,
-    function_name: f.function_name != null && String(f.function_name).trim() !== ''
-      ? String(f.function_name).trim()
-      : null,
-    inclusions: f.inclusions === undefined ? undefined : cleanText(f.inclusions),
-    policies: f.policies === undefined ? undefined : cleanText(f.policies),
-    regular_rate: toRate(f.regular_rate),
-    peak_rate: toRate(f.peak_rate),
-  }));
+  const cleanFns = (Array.isArray(functions) ? functions : []).map((f) => {
+    const variant = normalizeRateVariant(
+      { ...f, audience: audienceScope || f.audience },
+      { billing_unit: DEFAULT_FACILITY_BILLING_UNIT },
+    );
+    return {
+      facility_id: f.facility_id ? Number(f.facility_id) : null,
+      function_name: f.function_name != null && String(f.function_name).trim() !== ''
+        ? String(f.function_name).trim()
+        : null,
+      inclusions: f.inclusions === undefined ? undefined : cleanText(f.inclusions),
+      policies: f.policies === undefined ? undefined : cleanText(f.policies),
+      regular_rate: toRate(f.regular_rate),
+      peak_rate: toRate(f.peak_rate),
+      ...variant,
+    };
+  });
 
   if (!cleanFns.length) throw badRequest('Add at least one use for this venue.');
   if (cleanFns.length > 1) {
@@ -219,14 +283,20 @@ export async function saveAdminVenue(payload = {}) {
       // A use may be created without a price yet; it simply has no rate row and
       // stays hidden from guests until a Regular price is set (via Venue prices).
       if (fn.regular_rate > 0) {
-        await upsertRate(conn, facilityId, 'Regular', fn.regular_rate);
+        await upsertRate(conn, facilityId, 'Regular', fn.regular_rate, fn);
       } else {
-        await conn.query(`DELETE FROM rates_facilities WHERE facility_id = ? AND season = 'Regular'`, [facilityId]);
+        await conn.query(
+          `DELETE FROM rates_facilities WHERE facility_id = ? AND season = 'Regular' AND audience = ?`,
+          [facilityId, fn.audience]
+        );
       }
       if (fn.peak_rate > 0) {
-        await upsertRate(conn, facilityId, 'Peak', fn.peak_rate);
+        await upsertRate(conn, facilityId, 'Peak', fn.peak_rate, fn);
       } else {
-        await conn.query(`DELETE FROM rates_facilities WHERE facility_id = ? AND season = 'Peak'`, [facilityId]);
+        await conn.query(
+          `DELETE FROM rates_facilities WHERE facility_id = ? AND season = 'Peak' AND audience = ?`,
+          [facilityId, fn.audience]
+        );
       }
     }
 

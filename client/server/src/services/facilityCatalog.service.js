@@ -4,6 +4,11 @@ import {
   FACILITY_GROUP_ICONS,
   formatFacilityLabel,
 } from '../constants/facilities.js';
+import {
+  DEFAULT_FACILITY_BILLING_UNIT,
+  matchesDefaultRateVariant,
+  normalizeRateVariant,
+} from '../constants/rateVariants.js';
 
 export { formatFacilityLabel, FACILITY_GROUP_ICONS };
 
@@ -68,7 +73,12 @@ export async function fetchFacilitiesWithRates() {
        f.policies,
        rf.id AS rate_id,
        rf.season,
-       rf.rate
+      rf.rate,
+      rf.audience,
+      rf.age_band,
+      rf.currency,
+      rf.billing_unit,
+      rf.notes
      FROM facilities f
      LEFT JOIN rates_facilities rf ON rf.facility_id = f.id
      ORDER BY f.facility_group ASC, f.room_code ASC, f.name ASC,
@@ -104,6 +114,7 @@ export async function fetchFacilitiesWithRates() {
         id: row.rate_id,
         season: row.season,
         rate: Number(row.rate),
+        ...normalizeRateVariant(row, { billing_unit: DEFAULT_FACILITY_BILLING_UNIT }),
       });
     }
   }
@@ -115,9 +126,12 @@ export function groupFacilitiesForOverview(facilities) {
   const byGroup = new Map();
 
   for (const facility of facilities) {
+    const defaultRates = (facility.rates || []).filter((r) => matchesDefaultRateVariant(r, {
+      billing_unit: DEFAULT_FACILITY_BILLING_UNIT,
+    }));
     // A use with no Regular price isn't bookable yet — keep it out of guest and
     // booking-wizard listings until an admin prices it under "Venue prices".
-    const hasRegular = (facility.rates || []).some((r) => r.season === 'Regular' && Number(r.rate) > 0);
+    const hasRegular = defaultRates.some((r) => r.season === 'Regular' && Number(r.rate) > 0);
     if (!hasRegular) continue;
 
     const groupKey = facility.facility_group || 'Facilities';
@@ -143,7 +157,7 @@ export function groupFacilitiesForOverview(facilities) {
       hourly_rate: facility.hourly_rate,
       inclusions: facility.inclusions,
       policies: facility.policies,
-      rates: facility.rates,
+      rates: defaultRates,
     });
   }
 

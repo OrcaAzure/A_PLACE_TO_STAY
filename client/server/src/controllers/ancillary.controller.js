@@ -13,6 +13,13 @@ import {
   ROOM_RATE_ITEM_MAX_LENGTH,
 } from '../constants/rooms.js';
 import {
+  DEFAULT_EXTRA_BILLING_UNIT,
+  DEFAULT_MEAL_BILLING_UNIT,
+  DEFAULT_ROOM_BILLING_UNIT,
+  normalizeRateVariant,
+  DEFAULT_FACILITY_BILLING_UNIT,
+} from '../constants/rateVariants.js';
+import {
   fetchExtraServiceRows,
   fetchMealRateRows,
   groupMealRows,
@@ -52,6 +59,7 @@ function parseRoomRateRows(body = {}) {
     return body.rows.map((row) => ({
       item: normalizeRoomRateItemName(row.item),
       rates: Array.isArray(row.rates) ? row.rates : [],
+      ...normalizeRateVariant(row, { billing_unit: DEFAULT_ROOM_BILLING_UNIT }),
     }));
   }
 
@@ -66,7 +74,11 @@ function parseRoomRateRows(body = {}) {
     grouped.get(item).push({ season, rate: entry.rate });
   }
 
-  return [...grouped.entries()].map(([item, rates]) => ({ item, rates }));
+  return [...grouped.entries()].map(([item, rates]) => ({
+    item,
+    rates,
+    ...normalizeRateVariant({}, { billing_unit: DEFAULT_ROOM_BILLING_UNIT }),
+  }));
 }
 
 /** Bulk save the season x item price matrix for one room tier. */
@@ -79,9 +91,19 @@ export const saveRoomRates = async (req, res) => {
     if (roomType.length > 100) return res.status(400).json({ message: 'Room type name is too long.' });
 
     const isDorm = roomType === 'Dorm';
+    const audienceScope = String(req.body.audience || '').trim() || null;
 
     if (isDorm) {
-      const dormRow = rowDefs[0] || { item: PER_PERSON_NIGHT_ITEM, rates: [] };
+      const dormRow = rowDefs[0] || {
+        item: PER_PERSON_NIGHT_ITEM,
+        rates: [],
+        audience: audienceScope || 'Guest',
+        age_band: 'Adult',
+        currency: 'PHP',
+        billing_unit: 'per night',
+        notes: null,
+      };
+      if (audienceScope) dormRow.audience = audienceScope;
       if (normalizeRoomRateItemName(dormRow.item) !== PER_PERSON_NIGHT_ITEM) {
         return res.status(400).json({ message: `Dorm pricing must use "${PER_PERSON_NIGHT_ITEM}".` });
       }
@@ -96,15 +118,32 @@ export const saveRoomRates = async (req, res) => {
 
         if (hasRate) {
           await pool.query(
-            `INSERT INTO rates_extra_services (category, item, season, rate)
-             VALUES (?, ?, ?, ?)
-             ON DUPLICATE KEY UPDATE rate = VALUES(rate)`,
-            [ACCOMMODATION_EXTRAS_CATEGORY, PER_PERSON_NIGHT_ITEM, season, rate]
+            `INSERT INTO rates_extra_services (category, item, season, rate, audience, age_band, currency, billing_unit, notes)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             ON DUPLICATE KEY UPDATE
+               rate = VALUES(rate),
+               audience = VALUES(audience),
+               age_band = VALUES(age_band),
+               currency = VALUES(currency),
+               billing_unit = VALUES(billing_unit),
+               notes = VALUES(notes)`,
+            [
+              ACCOMMODATION_EXTRAS_CATEGORY,
+              PER_PERSON_NIGHT_ITEM,
+              season,
+              rate,
+              dormRow.audience,
+              dormRow.age_band,
+              dormRow.currency,
+              dormRow.billing_unit,
+              dormRow.notes,
+            ]
           );
         } else {
           await pool.query(
-            'DELETE FROM rates_extra_services WHERE category = ? AND item = ? AND season = ?',
-            [ACCOMMODATION_EXTRAS_CATEGORY, PER_PERSON_NIGHT_ITEM, season]
+            `DELETE FROM rates_extra_services
+             WHERE category = ? AND item = ? AND season = ? AND audience = ?`,
+            [ACCOMMODATION_EXTRAS_CATEGORY, PER_PERSON_NIGHT_ITEM, season, dormRow.audience]
           );
         }
       }
@@ -114,6 +153,11 @@ export const saveRoomRates = async (req, res) => {
     }
 
     if (!rowDefs.length) {
+      if (audienceScope) {
+        await pool.query('DELETE FROM rates_rooms WHERE room_type = ? AND audience = ?', [roomType, audienceScope]);
+        bustCatalogAndFacilities();
+        return res.status(200).json({ message: 'Room prices saved', room_rates: await getRoomRateGroups() });
+      }
       return res.status(400).json({ message: 'Add at least one price row.' });
     }
 
@@ -128,10 +172,11 @@ export const saveRoomRates = async (req, res) => {
       if (item.length > ROOM_RATE_ITEM_MAX_LENGTH) {
         return res.status(400).json({ message: `Price row names must be ${ROOM_RATE_ITEM_MAX_LENGTH} characters or fewer.` });
       }
-      if (seenItems.has(item)) {
-        return res.status(400).json({ message: `Duplicate price row: "${item}".` });
+      const variantKey = [item, row.audience, row.age_band, row.currency, row.billing_unit].join('\x1f');
+      if (seenItems.has(variantKey)) {
+        return res.status(400).json({ message: `Duplicate price row: "${item}" with the same variant details.` });
       }
-      seenItems.add(item);
+      seenItems.add(variantKey);
 
       const cells = [];
       for (const season of ROOM_RATE_SEASONS) {
@@ -148,19 +193,39 @@ export const saveRoomRates = async (req, res) => {
         return res.status(400).json({ message: `Add at least one price for "${item}", or remove the row.` });
       }
 
-      normalizedRows.push({ item, cells });
+      normalizedRows.push({
+        item,
+        cells,
+        audience: row.audience,
+        age_band: row.age_band,
+        currency: row.currency,
+        billing_unit: row.billing_unit,
+        notes: row.notes,
+      });
     }
 
-    await pool.query('DELETE FROM rates_rooms WHERE room_type = ?', [roomType]);
+    const audiencesToReplace = audienceScope
+      ? [audienceScope]
+      : [...new Set(normalizedRows.map((row) => row.audience))];
+
+    for (const aud of audiencesToReplace) {
+      await pool.query('DELETE FROM rates_rooms WHERE room_type = ? AND audience = ?', [roomType, aud]);
+    }
 
     for (const row of normalizedRows) {
       for (const { season, rate } of row.cells) {
         if (rate == null) continue;
         await pool.query(
-          `INSERT INTO rates_rooms (room_type, item, season, rate)
-           VALUES (?, ?, ?, ?)
-           ON DUPLICATE KEY UPDATE rate = VALUES(rate)`,
-          [roomType, row.item, season, rate]
+          `INSERT INTO rates_rooms (room_type, item, season, rate, audience, age_band, currency, billing_unit, notes)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+           ON DUPLICATE KEY UPDATE
+             rate = VALUES(rate),
+             audience = VALUES(audience),
+             age_band = VALUES(age_band),
+             currency = VALUES(currency),
+             billing_unit = VALUES(billing_unit),
+             notes = VALUES(notes)`,
+          [roomType, row.item, season, rate, row.audience, row.age_band, row.currency, row.billing_unit, row.notes]
         );
       }
     }
@@ -176,6 +241,7 @@ export const createMealRate = async (req, res) => {
   try {
     const mealType = (req.body.item || req.body.meal_type || '').trim();
     const rate = Number(req.body.rate);
+    const variant = normalizeRateVariant(req.body, { billing_unit: DEFAULT_MEAL_BILLING_UNIT });
 
     if (!MEAL_TYPES.includes(mealType)) {
       return res.status(400).json({ message: 'Invalid meal type' });
@@ -185,16 +251,17 @@ export const createMealRate = async (req, res) => {
     }
 
     const [result] = await pool.query(
-      'INSERT INTO rates_meals (meal_type, rate) VALUES (?, ?)',
-      [mealType, rate]
+      `INSERT INTO rates_meals (meal_type, rate, audience, age_band, currency, billing_unit, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [mealType, rate, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes]
     );
 
-    const [rows] = await pool.query('SELECT id, meal_type, rate FROM rates_meals WHERE id = ?', [result.insertId]);
+    const [rows] = await pool.query('SELECT * FROM rates_meals WHERE id = ?', [result.insertId]);
     const row = rows[0];
     bustCatalogAndFacilities();
     res.status(201).json({
       message: 'Meal price created',
-      meal: { id: row.id, item: row.meal_type, rate: Number(row.rate) },
+      meal: row,
     });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -213,6 +280,7 @@ export const updateMealRate = async (req, res) => {
 
     const mealType = req.body.item || req.body.meal_type;
     const rate = req.body.rate != null ? Number(req.body.rate) : null;
+    const variant = normalizeRateVariant(req.body, { billing_unit: DEFAULT_MEAL_BILLING_UNIT });
 
     if (!isEmpty(mealType) && !MEAL_TYPES.includes(mealType)) {
       return res.status(400).json({ message: 'Invalid meal type' });
@@ -224,17 +292,22 @@ export const updateMealRate = async (req, res) => {
     await pool.query(
       `UPDATE rates_meals SET
         meal_type = COALESCE(?, meal_type),
-        rate = COALESCE(?, rate)
+        rate = COALESCE(?, rate),
+        audience = COALESCE(?, audience),
+        age_band = COALESCE(?, age_band),
+        currency = COALESCE(?, currency),
+        billing_unit = COALESCE(?, billing_unit),
+        notes = ?
        WHERE id = ?`,
-      [mealType || null, rate, req.params.id]
+      [mealType || null, rate, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes, req.params.id]
     );
 
-    const [rows] = await pool.query('SELECT id, meal_type, rate FROM rates_meals WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.query('SELECT * FROM rates_meals WHERE id = ?', [req.params.id]);
     const row = rows[0];
     bustCatalogAndFacilities();
     res.status(200).json({
       message: 'Meal price updated',
-      meal: { id: row.id, item: row.meal_type, rate: Number(row.rate) },
+      meal: row,
     });
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -264,6 +337,9 @@ export const createExtraService = async (req, res) => {
     const item = (req.body.item || '').trim();
     const season = (req.body.season || 'N/A').trim();
     const rate = Number(req.body.rate);
+    const variant = normalizeRateVariant(req.body, {
+      billing_unit: category === ACCOMMODATION_EXTRAS_CATEGORY ? 'per night' : DEFAULT_EXTRA_BILLING_UNIT,
+    });
 
     if (isEmpty(category) || isEmpty(item) || !rate || rate <= 0) {
       return res.status(400).json({ message: 'category, item, and rate are required' });
@@ -276,8 +352,10 @@ export const createExtraService = async (req, res) => {
     }
 
     const [result] = await pool.query(
-      'INSERT INTO rates_extra_services (category, item, season, rate) VALUES (?, ?, ?, ?)',
-      [category, item, season, rate]
+      `INSERT INTO rates_extra_services
+         (category, item, season, rate, audience, age_band, currency, billing_unit, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [category, item, season, rate, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes]
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_extra_services WHERE id = ?', [result.insertId]);
@@ -299,6 +377,9 @@ export const updateExtraService = async (req, res) => {
     }
 
     const { category, item, season, rate } = req.body;
+    const variant = normalizeRateVariant(req.body, {
+      billing_unit: req.body.category === ACCOMMODATION_EXTRAS_CATEGORY ? 'per night' : DEFAULT_EXTRA_BILLING_UNIT,
+    });
 
     if (!isEmpty(category) && !EXTRA_SERVICE_CATEGORIES.includes(category)) {
       return res.status(400).json({ message: 'Invalid service category' });
@@ -315,9 +396,14 @@ export const updateExtraService = async (req, res) => {
         category = COALESCE(?, category),
         item = COALESCE(?, item),
         season = COALESCE(?, season),
-        rate = COALESCE(?, rate)
+        rate = COALESCE(?, rate),
+        audience = COALESCE(?, audience),
+        age_band = COALESCE(?, age_band),
+        currency = COALESCE(?, currency),
+        billing_unit = COALESCE(?, billing_unit),
+        notes = ?
        WHERE id = ?`,
-      [category || null, item || null, season || null, rate ?? null, req.params.id]
+      [category || null, item || null, season || null, rate ?? null, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes, req.params.id]
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_extra_services WHERE id = ?', [req.params.id]);

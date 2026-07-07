@@ -13,6 +13,9 @@
 
 import { getAdminVenues, saveAdminVenue } from '/assets/js/services/api.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
+import { normalizeAudience, rowAudience } from '/assets/js/features/admin-pricing-audience.js';
+
+const GUEST_AUDIENCE = 'Guest';
 
 let venues = [];
 /** @type {Map<string, object>} working copy keyed by venue.key */
@@ -20,6 +23,8 @@ let drafts = new Map();
 let editMode = false;
 let initialized = false;
 let cid = 0;
+const CURRENCIES = ['PHP', 'USD'];
+const AGE_BANDS = ['Adult', 'Child', 'All Ages'];
 
 function $(id) {
   return document.getElementById(id);
@@ -28,6 +33,59 @@ function $(id) {
 function peso(n) {
   if (n == null || n === '') return null;
   return `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
+}
+
+function variantSummary(fn) {
+  const chips = [
+    fn.age_band !== 'Adult' ? fn.age_band : null,
+    fn.currency !== 'PHP' ? fn.currency : null,
+  ].filter(Boolean);
+  return chips.join(' · ');
+}
+
+function rateFor(fn, season) {
+  const hit = (fn.rate_rows || []).find((r) => r.season === season && rowAudience(r) === GUEST_AUDIENCE);
+  return hit?.rate ?? '';
+}
+
+function syncFnRates(fn, fields) {
+  fn.rate_rows = fn.rate_rows || [];
+
+  const upsert = (season, rate) => {
+    const idx = fn.rate_rows.findIndex((r) => r.season === season && rowAudience(r) === GUEST_AUDIENCE);
+    if (rate === '' || rate == null) {
+      if (idx >= 0) fn.rate_rows.splice(idx, 1);
+      return;
+    }
+    const row = {
+      season,
+      rate: Number(rate),
+      audience: GUEST_AUDIENCE,
+      age_band: fields.age_band || 'Adult',
+      currency: fields.currency || 'PHP',
+      billing_unit: 'per segment',
+      notes: fields.notes || '',
+    };
+    if (idx >= 0) fn.rate_rows[idx] = { ...fn.rate_rows[idx], ...row };
+    else fn.rate_rows.push(row);
+  };
+
+  upsert('Regular', fields.regular_rate);
+  upsert('Peak', fields.peak_rate);
+}
+
+function decorateFn(fn) {
+  const variantRow = (fn.rate_rows || []).find((r) => rowAudience(r) === GUEST_AUDIENCE);
+  return {
+    ...fn,
+    regular_rate: rateFor(fn, 'Regular'),
+    peak_rate: rateFor(fn, 'Peak'),
+    audience: GUEST_AUDIENCE,
+    age_band: variantRow?.age_band || 'Adult',
+    currency: variantRow?.currency || 'PHP',
+    billing_unit: variantRow?.billing_unit || 'per segment',
+    notes: variantRow?.notes || '',
+  };
 }
 
 function escapeHtml(value) {
@@ -59,8 +117,16 @@ function buildDrafts() {
       functions: (v.functions || []).map((f) => ({
         facility_id: f.facility_id,
         function_name: f.function_name || '',
-        regular_rate: f.regular_rate ?? '',
-        peak_rate: f.peak_rate ?? '',
+        rate_rows: (f.rates || []).map((r) => ({
+          id: r.id,
+          season: r.season,
+          rate: r.rate,
+          audience: normalizeAudience(r.audience),
+          age_band: r.age_band,
+          currency: r.currency,
+          billing_unit: r.billing_unit,
+          notes: r.notes,
+        })),
         booking_count: f.booking_count || 0,
         _cid: `c${cid++}`,
       })),
@@ -70,7 +136,13 @@ function buildDrafts() {
 }
 
 function blankFunction() {
-  return { facility_id: null, function_name: '', regular_rate: '', peak_rate: '', booking_count: 0, _cid: `c${cid++}` };
+  return {
+    facility_id: null,
+    function_name: '',
+    rate_rows: [],
+    booking_count: 0,
+    _cid: `c${cid++}`,
+  };
 }
 
 /** Read the live inputs from every card back into their drafts (before a re-render). */
@@ -83,38 +155,50 @@ function captureAllCards() {
     card.querySelectorAll('[data-use-cid]').forEach((row) => {
       const fn = draft.functions.find((f) => f._cid === row.getAttribute('data-use-cid'));
       if (!fn) return;
+      const fields = { function_name: fn.function_name };
       row.querySelectorAll('[data-use-field]').forEach((input) => {
-        fn[input.getAttribute('data-use-field')] = input.value;
+        fields[input.getAttribute('data-use-field')] = input.value;
       });
+      fn.function_name = fields.function_name;
+      syncFnRates(fn, fields);
     });
   });
 }
 
 /* ---------- render ---------- */
 
-function renderUseRow(draft, fn) {
-  const hasBookings = fn.booking_count > 0;
+function renderUseRow(draft, fnView) {
+  const hasBookings = fnView.booking_count > 0;
   const single = draft.functions.length <= 1;
-  const name = String(fn.function_name || '').trim();
-  const unpriced = fn.regular_rate === '' || fn.regular_rate == null;
+  const name = String(fnView.function_name || '').trim();
+  const unpriced = fnView.regular_rate === '' || fnView.regular_rate == null;
+  const showVariant = fnView.age_band !== 'Adult' || fnView.currency !== 'PHP';
 
   if (editMode) {
     return `
-      <tr class="venue-rate-row${unpriced ? ' is-unpriced' : ''}" data-use-cid="${fn._cid}">
+      <tr class="venue-rate-row${unpriced ? ' is-unpriced' : ''}" data-use-cid="${fnView._cid}">
         <td class="venue-rate-cell-name">
           <input type="text" class="fac-rate-input venue-rate-name-input" data-use-field="function_name"
-            value="${escapeHtml(fn.function_name)}" placeholder="${single ? 'Use name (optional)' : 'Use name'}" aria-label="Use name" />
+            value="${escapeHtml(fnView.function_name)}" placeholder="${single ? 'Use name (optional)' : 'Use name'}" aria-label="Use name" />
+          <div class="fac-rate-variant-grid fac-rate-variant-grid--compact mt-2">
+            <select class="fac-rate-meta-input" data-use-field="age_band" aria-label="Age band">
+              ${AGE_BANDS.map((v) => `<option value="${escapeHtml(v)}"${fnView.age_band === v ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('')}
+            </select>
+            <select class="fac-rate-meta-input" data-use-field="currency" aria-label="Currency">
+              ${CURRENCIES.map((v) => `<option value="${escapeHtml(v)}"${fnView.currency === v ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('')}
+            </select>
+          </div>
         </td>
         <td class="fac-rate-cell">
           <input type="number" min="1" step="1" inputmode="numeric" class="fac-rate-input" data-use-field="regular_rate"
-            value="${escapeHtml(fn.regular_rate)}" placeholder="—" aria-label="Regular price" />
+            value="${escapeHtml(fnView.regular_rate)}" placeholder="—" aria-label="Regular price" />
         </td>
         <td class="fac-rate-cell">
           <input type="number" min="1" step="1" inputmode="numeric" class="fac-rate-input" data-use-field="peak_rate"
-            value="${escapeHtml(fn.peak_rate)}" placeholder="—" aria-label="Peak price" />
+            value="${escapeHtml(fnView.peak_rate)}" placeholder="—" aria-label="Peak price" />
         </td>
         <td class="venue-rate-cell-action">
-          <button type="button" class="venue-rate-remove" data-remove-use="${fn._cid}"
+          <button type="button" class="venue-rate-remove" data-remove-use="${fnView._cid}"
             aria-label="Remove this use" title="${hasBookings ? 'Has bookings — cannot remove' : 'Remove this use'}"
             ${single || hasBookings ? 'disabled' : ''}>
             <span class="material-symbols-outlined">delete</span>
@@ -123,13 +207,14 @@ function renderUseRow(draft, fn) {
       </tr>`;
   }
 
-  const reg = peso(fn.regular_rate);
-  const peak = peso(fn.peak_rate);
+  const reg = peso(fnView.regular_rate);
+  const peak = peso(fnView.peak_rate);
   return `
-    <tr class="venue-rate-row${unpriced ? ' is-unpriced' : ''}" data-use-cid="${fn._cid}">
+    <tr class="venue-rate-row${unpriced ? ' is-unpriced' : ''}" data-use-cid="${fnView._cid}">
       <th scope="row" class="fac-rate-row-label">
         <span class="fac-rate-row-title">${escapeHtml(name || 'Unnamed use')}</span>
         ${unpriced ? '<span class="venue-rate-flag">Set a price to make bookable</span>' : ''}
+        ${showVariant ? `<span class="fac-rate-row-sub">${escapeHtml(variantSummary(fnView))}</span>` : ''}
       </th>
       <td class="fac-rate-cell">${reg ? `<span class="fac-rate-price">${reg}</span>` : '<span class="fac-rate-empty">—</span>'}</td>
       <td class="fac-rate-cell">${peak ? `<span class="fac-rate-price">${peak}</span>` : '<span class="fac-rate-empty">—</span>'}</td>
@@ -142,7 +227,7 @@ function renderCard(draft) {
     ? `<th class="fac-rate-row-label">Use</th><th class="fac-rate-season">Regular</th><th class="fac-rate-season">Peak</th><th class="venue-rate-cell-action"></th>`
     : `<th class="fac-rate-corner"></th><th class="fac-rate-season">Regular</th><th class="fac-rate-season">Peak</th>`;
 
-  const rows = draft.functions.map((fn) => renderUseRow(draft, fn)).join('');
+  const rows = draft.functions.map((fn) => renderUseRow(draft, decorateFn(fn))).join('');
 
   return `
     <article class="fac-rate-card" data-venue-key="${escapeHtml(draft.key)}">
@@ -177,6 +262,8 @@ function renderCard(draft) {
 }
 
 function paint() {
+  captureAllCards();
+
   const mount = $('venue-rates-grid-mount');
   if (!mount) return;
 
@@ -250,14 +337,15 @@ async function removeUse(key, cidToRemove) {
 }
 
 function validate(draft) {
-  if (!draft.functions.length) return 'Add at least one use.';
-  const names = draft.functions.map((f) => String(f.function_name || '').trim());
-  if (draft.functions.length > 1) {
+  const fns = draft.functions.map(decorateFn);
+  if (!fns.length) return 'Add at least one use.';
+  const names = fns.map((f) => String(f.function_name || '').trim());
+  if (fns.length > 1) {
     if (names.some((n) => !n)) return 'Give every use a name (e.g. Wedding, Meeting).';
     const lower = names.map((n) => n.toLowerCase());
     if (new Set(lower).size !== lower.length) return 'Two uses have the same name.';
   }
-  for (const f of draft.functions) {
+  for (const f of fns) {
     if (f.regular_rate === '' || f.regular_rate == null) {
       return 'Set a Regular price for every use (or remove the use).';
     }
@@ -284,11 +372,17 @@ function payloadFor(draft) {
     hourly_rate: draft.hourly_rate,
     inclusions: draft.inclusions,
     policies: draft.policies,
-    functions: draft.functions.map((f) => ({
+    audience: GUEST_AUDIENCE,
+    functions: draft.functions.map(decorateFn).map((f) => ({
       facility_id: f.facility_id,
       function_name: f.function_name,
       regular_rate: f.regular_rate,
       peak_rate: f.peak_rate,
+      audience: GUEST_AUDIENCE,
+      age_band: f.age_band,
+      currency: f.currency,
+      billing_unit: f.billing_unit,
+      notes: f.notes,
     })),
     removed_function_ids: removed,
   };
@@ -315,10 +409,8 @@ async function saveVenue(key) {
   setFeedback(card, 'Saving…', true);
 
   try {
-    const res = await saveAdminVenue(payloadFor(draft));
-    venues = res.venues || venues;
-    buildDrafts();
-    paint();
+    await saveAdminVenue(payloadFor(draft));
+    await reload();
     setFeedback(findCard(key), 'Saved!', true);
     window.dispatchEvent(new CustomEvent('venues:changed', { detail: { source: 'venue-prices' } }));
   } catch (e) {
@@ -365,7 +457,6 @@ function init() {
     if (rm && !rm.disabled) { removeUse(key, rm.getAttribute('data-remove-use')); }
   });
 
-  // Keep this tab in sync when venues are created/deleted via the modal.
   window.addEventListener('venues:changed', (e) => {
     if (e.detail?.source === 'venue-prices') return;
     reload();

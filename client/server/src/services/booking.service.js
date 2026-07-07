@@ -12,6 +12,13 @@ import { DEFAULT_MEAL_RATES } from '../constants/ancillary.js';
 import { getMealRatesMap } from './ancillary.service.js';
 import { resolveRateRoomType, formatRoomTypeLabel, DORM_MIN_GUEST_COUNT, SINGLE_DOUBLE_OCCUPANCY_ITEM, DAILY_MAXIMUM_ITEM, SINGLE_DOUBLE_MAX_GUESTS } from '../constants/rooms.js';
 import {
+  BOOKING_RATE_VARIANT,
+  DEFAULT_RATE_AGE_BAND,
+  DEFAULT_RATE_CURRENCY,
+  DEFAULT_ROOM_BILLING_UNIT,
+  pickBookingRateRow,
+} from '../constants/rateVariants.js';
+import {
   resolveLodgingSeasonForDate,
   addDaysISO,
   resolveStaySeasons,
@@ -67,19 +74,23 @@ export async function calculateStayTotalAmount({
 
 export async function getRate(roomType, occupancyItem, season) {
   const [rows] = await pool.query(
-    `SELECT rate FROM rates_rooms
+    `SELECT rate, audience, age_band, currency, billing_unit, notes FROM rates_rooms
      WHERE room_type = ? AND item = ? AND season = ?
-     LIMIT 1`,
+     LIMIT 10`,
     [roomType, occupancyItem, season]
   );
-  return rows.length ? Number(rows[0].rate) : null;
+  const match = pickBookingRateRow(rows, { billing_unit: DEFAULT_ROOM_BILLING_UNIT });
+  return match ? Number(match.rate) : null;
 }
 
 export async function roomHasRateItem(roomType, item) {
   if (!roomType || !item) return false;
   const [rows] = await pool.query(
-    'SELECT 1 FROM rates_rooms WHERE room_type = ? AND item = ? LIMIT 1',
-    [roomType, item],
+    `SELECT 1 FROM rates_rooms
+     WHERE room_type = ? AND item = ?
+       AND audience = ? AND age_band = ? AND currency = ? AND billing_unit = ?
+     LIMIT 1`,
+    [roomType, item, BOOKING_RATE_VARIANT.audience, BOOKING_RATE_VARIANT.age_band, BOOKING_RATE_VARIANT.currency, DEFAULT_ROOM_BILLING_UNIT],
   );
   return rows.length > 0;
 }

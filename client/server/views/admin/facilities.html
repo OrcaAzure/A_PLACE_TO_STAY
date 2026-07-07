@@ -107,6 +107,14 @@
 
     <div id="fac-panel-room-prices" class="fac-panel hidden">
       <section class="res-hub-panel res-hub-panel--flush">
+        <div class="admin-notice admin-notice--inline admin-notice--pricing-lock" role="note">
+          <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">info</span>
+          <div class="admin-notice__body">
+            <p><strong>Guest tab = live booking rates.</strong> Other category tabs store internal prices for later — they do not change totals until housing confirms the rules.</p>
+          </div>
+        </div>
+        <nav id="room-rates-audience-tabs" class="fac-pricing-subtabs" aria-label="Room rate category"></nav>
+        <p id="room-rates-audience-hint" class="fac-pricing-subtabs__hint"></p>
         <div class="res-hub-toolbar res-hub-toolbar--actions-only">
           <div class="res-hub-toolbar__actions">
             <button type="button" data-room-rates-edit-toggle class="res-btn" aria-pressed="false">
@@ -118,7 +126,7 @@
         <div class="admin-notice admin-notice--inline hidden" data-room-rates-hint role="note">
           <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
           <div class="admin-notice__body">
-            <p>Editing mode — rename price rows, add more rows, and type nightly prices for each season. Tap <strong>Save</strong> on each room type when done. Leave a box blank to skip that season. Dorm keeps a single per-person row; extra-person charges stay under <strong>Extra fees</strong>.</p>
+            <p>Editing mode — set prices for the selected category tab, then tap <strong>Save</strong> on each room type. Leave a season blank to skip it.</p>
           </div>
         </div>
         <div id="room-rates-grid-mount" class="fac-catalog-grid fac-catalog-grid--room-rates">
@@ -213,6 +221,14 @@
 
     <div id="fac-panel-meals" class="fac-panel hidden">
       <section class="res-hub-panel res-hub-panel--flush">
+        <div class="admin-notice admin-notice--inline admin-notice--pricing-lock" role="note">
+          <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">info</span>
+          <div class="admin-notice__body">
+            <p><strong>Guest tab = live booking rates.</strong> Use other tabs to prepare internal meal prices.</p>
+          </div>
+        </div>
+        <nav id="meals-audience-tabs" class="fac-pricing-subtabs" aria-label="Meal rate category"></nav>
+        <p id="meals-audience-hint" class="fac-pricing-subtabs__hint"></p>
         <div class="res-hub-toolbar res-hub-toolbar--actions-only">
           <div class="res-hub-toolbar__actions">
             <button type="button" data-catalog-edit-toggle data-catalog-for="meals" class="res-btn" aria-pressed="false">
@@ -228,7 +244,7 @@
         <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="meals" role="note">
           <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
           <div class="admin-notice__body">
-            <p>Editing mode — tap <strong>Edit</strong> on a meal card to change its price.</p>
+            <p>Editing mode — tap <strong>Edit</strong> on a card, or <strong>Add meal</strong> for the selected category tab.</p>
           </div>
         </div>
         <div id="meals-grid-mount" class="fac-catalog-grid fac-catalog-grid--meals">
@@ -254,7 +270,7 @@
         <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="extras" role="note">
           <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
           <div class="admin-notice__body">
-            <p>Editing mode — tap <strong>Edit</strong> on any fee to change it.</p>
+            <p>Editing mode — tap <strong>Edit</strong> on any fee, or use <strong>Add extra</strong> to create a new one.</p>
           </div>
         </div>
         <div id="extras-grid-mount" class="fac-catalog-grid fac-catalog-grid--extras">
@@ -269,7 +285,7 @@
     import { requireAuth } from '/assets/js/services/auth.js';
     import { initAppLayout } from '/assets/js/layout/ui.js';
     import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
-    import { getFacilitiesOverview } from '/assets/js/services/api.js';
+    import { getFacilitiesOverview, getMealRatesCatalog, getExtraServicesCatalog } from '/assets/js/services/api.js';
     import { bootstrapRoomsBoard } from '/assets/js/features/admin-rooms-board.js';
     import { bootstrapVenueScheduleBoard } from '/assets/js/features/admin-venue-board.js';
     import {
@@ -298,9 +314,12 @@
     let activeFacTab = 'rooms';
 
     async function reloadCatalog() {
-      const catalog = await getFacilitiesOverview();
-      allMeals = catalog.meals || [];
-      allExtras = catalog.services || [];
+      const [meals, extras] = await Promise.all([
+        getMealRatesCatalog(),
+        getExtraServicesCatalog(),
+      ]);
+      allMeals = meals || [];
+      allExtras = extras || [];
       renderMealsCatalog(allMeals);
       renderExtrasCatalog(allExtras);
     }
@@ -339,12 +358,16 @@
       }
     }
 
-    initFacilityCatalog({ refresh: reloadCatalog });
+    await initFacilityCatalog({ refresh: reloadCatalog });
 
     try {
-      const catalog = await getFacilitiesOverview();
-      allMeals = catalog.meals || [];
-      allExtras = catalog.services || [];
+      const [catalog, meals, extras] = await Promise.all([
+        getFacilitiesOverview(),
+        getMealRatesCatalog(),
+        getExtraServicesCatalog(),
+      ]);
+      allMeals = meals || [];
+      allExtras = extras || [];
       renderMealsCatalog(allMeals);
       renderExtrasCatalog(allExtras);
       setCatalogToolbarTab(activeFacTab);

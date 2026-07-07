@@ -18,17 +18,17 @@ import { cacheResponse } from '../middleware/cache.middleware.js';
 const router = Router();
 const adminOnly = requireRole('Super Admin', 'Admin');
 
-router.get('/meal-rates', requireAuth, cacheResponse('catalog:meal-rates'), getMealRatesCatalog);
+router.get('/meal-rates', requireAuth, adminOnly, cacheResponse('catalog:meal-rates'), getMealRatesCatalog);
 router.post('/meal-rates', requireAuth, adminOnly, createMealRate);
 router.patch('/meal-rates/:id', requireAuth, adminOnly, updateMealRate);
 router.delete('/meal-rates/:id', requireAuth, adminOnly, deleteMealRate);
 
-router.get('/extra-services', requireAuth, cacheResponse('catalog:extra-services'), getExtraServicesCatalog);
+router.get('/extra-services', requireAuth, adminOnly, cacheResponse('catalog:extra-services'), getExtraServicesCatalog);
 router.post('/extra-services', requireAuth, adminOnly, createExtraService);
 router.patch('/extra-services/:id', requireAuth, adminOnly, updateExtraService);
 router.delete('/extra-services/:id', requireAuth, adminOnly, deleteExtraService);
 
-router.get('/room-rates', requireAuth, cacheResponse('catalog:room-rates'), getRoomRatesCatalog);
+router.get('/room-rates', requireAuth, adminOnly, cacheResponse('catalog:room-rates'), getRoomRatesCatalog);
 router.put('/room-rates', requireAuth, adminOnly, saveRoomRates);
 
 export default router;

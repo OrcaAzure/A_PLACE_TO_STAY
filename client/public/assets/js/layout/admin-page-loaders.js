@@ -78,7 +78,7 @@ async function bootReservations() {
 }
 
 async function bootFacilities() {
-  const { getFacilitiesOverview } = await import('/assets/js/services/api.js');
+  const { getMealRatesCatalog, getExtraServicesCatalog } = await import('/assets/js/services/api.js');
   const { bootstrapRoomsBoard, teardownRoomsBoard } = await import('/assets/js/features/admin-rooms-board.js');
   const { bootstrapVenueScheduleBoard, teardownVenueScheduleBoard } = await import('/assets/js/features/admin-venue-board.js');
   const {
@@ -93,9 +93,12 @@ async function bootFacilities() {
   let activeFacTab = 'rooms';
 
   async function reloadCatalog() {
-    const catalog = await getFacilitiesOverview();
-    renderMealsCatalog(catalog.meals || []);
-    renderExtrasCatalog(catalog.services || []);
+    const [meals, extras] = await Promise.all([
+      getMealRatesCatalog(),
+      getExtraServicesCatalog(),
+    ]);
+    renderMealsCatalog(meals || []);
+    renderExtrasCatalog(extras || []);
   }
 
   function switchFacTab(tab) {
@@ -132,11 +135,14 @@ async function bootFacilities() {
     }
   }
 
-  initFacilityCatalog({ refresh: reloadCatalog });
+  await initFacilityCatalog({ refresh: reloadCatalog });
 
-  const catalog = await getFacilitiesOverview();
-  renderMealsCatalog(catalog.meals || []);
-  renderExtrasCatalog(catalog.services || []);
+  const [meals, extras] = await Promise.all([
+    getMealRatesCatalog(),
+    getExtraServicesCatalog(),
+  ]);
+  renderMealsCatalog(meals || []);
+  renderExtrasCatalog(extras || []);
   setCatalogToolbarTab(activeFacTab);
   applyFacDeepLinks();
   await bootstrapRoomsBoard();

@@ -7,3 +7,6 @@ client/server/.env.cloud
 dist
 .DS_Store
 *.log
+
+# Local Python deps used only for one-off spreadsheet inspection (e.g. openpyxl)
+client/.tmp_py/

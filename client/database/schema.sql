@@ -65,8 +65,13 @@ CREATE TABLE IF NOT EXISTS rates_rooms (
     item      VARCHAR(120) NOT NULL,
     season    ENUM('Regular', 'Peak', 'Super Peak') NOT NULL,
     rate      DECIMAL(10,2) NOT NULL,
+    audience  VARCHAR(80)  NOT NULL DEFAULT 'Guest',
+    age_band  VARCHAR(40)  NOT NULL DEFAULT 'Adult',
+    currency  VARCHAR(8)   NOT NULL DEFAULT 'PHP',
+    billing_unit VARCHAR(40) NOT NULL DEFAULT 'per night',
+    notes     VARCHAR(255) DEFAULT NULL,
 
-    UNIQUE KEY uq_room_rate (room_type, item, season),
+    UNIQUE KEY uq_room_rate (room_type, item, season, audience, age_band, currency, billing_unit),
     CONSTRAINT chk_rate CHECK (rate > 0),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -117,8 +122,13 @@ CREATE TABLE IF NOT EXISTS rates_facilities (
     facility_id INT NOT NULL,
     season      ENUM('Regular', 'Peak', 'N/A') NOT NULL DEFAULT 'Regular',
     rate        DECIMAL(10,2) NOT NULL,
+    audience    VARCHAR(80)  NOT NULL DEFAULT 'Guest',
+    age_band    VARCHAR(40)  NOT NULL DEFAULT 'Adult',
+    currency    VARCHAR(8)   NOT NULL DEFAULT 'PHP',
+    billing_unit VARCHAR(40) NOT NULL DEFAULT 'per segment',
+    notes       VARCHAR(255) DEFAULT NULL,
 
-    UNIQUE KEY uq_facility_rate (facility_id, season),
+    UNIQUE KEY uq_facility_rate (facility_id, season, audience, age_band, currency, billing_unit),
     CONSTRAINT chk_facility_rate CHECK (rate > 0),
 
     CONSTRAINT fk_rates_facility
@@ -351,8 +361,13 @@ CREATE TABLE IF NOT EXISTS rates_meals (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     meal_type  ENUM('Breakfast', 'Lunch', 'Dinner', 'Snack') NOT NULL,
     rate       DECIMAL(10,2) NOT NULL,
+    audience   VARCHAR(80)  NOT NULL DEFAULT 'Guest',
+    age_band   VARCHAR(40)  NOT NULL DEFAULT 'Adult',
+    currency   VARCHAR(8)   NOT NULL DEFAULT 'PHP',
+    billing_unit VARCHAR(40) NOT NULL DEFAULT 'per meal',
+    notes      VARCHAR(255) DEFAULT NULL,
 
-    UNIQUE KEY uq_meal_type (meal_type),
+    UNIQUE KEY uq_meal_type (meal_type, audience, age_band, currency, billing_unit),
     CONSTRAINT chk_meal_rate CHECK (rate > 0),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -369,8 +384,13 @@ CREATE TABLE IF NOT EXISTS rates_extra_services (
     item     VARCHAR(100) NOT NULL,
     season   ENUM('Regular', 'Peak', 'Super Peak', 'N/A') NOT NULL DEFAULT 'N/A',
     rate     DECIMAL(10,2) NOT NULL,
+    audience VARCHAR(80)  NOT NULL DEFAULT 'Guest',
+    age_band VARCHAR(40)  NOT NULL DEFAULT 'Adult',
+    currency VARCHAR(8)   NOT NULL DEFAULT 'PHP',
+    billing_unit VARCHAR(40) NOT NULL DEFAULT 'per item',
+    notes    VARCHAR(255) DEFAULT NULL,
 
-    UNIQUE KEY uq_extra_service (category, item, season),
+    UNIQUE KEY uq_extra_service (category, item, season, audience, age_band, currency, billing_unit),
     CONSTRAINT chk_extra_service_rate CHECK (rate > 0),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
