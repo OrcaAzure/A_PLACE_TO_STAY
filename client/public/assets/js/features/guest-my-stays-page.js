@@ -90,7 +90,7 @@ export async function bootstrapGuestMyStaysPage() {
     document.getElementById('current-month-label').textContent =
       now.toLocaleString('default', { month: 'long', year: 'numeric' });
   
-    const peso = (n) => `â‚±${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+    const peso = (n) => `\u20B1${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
     const fmtDate = (d) => {
       if (!d) return '—';
       const raw = String(d).slice(0, 10);
@@ -153,7 +153,7 @@ export async function bootstrapGuestMyStaysPage() {
               <span class="material-symbols-outlined text-[18px]">confirmation_number</span>${idLabel}
             </p>
             <p class="text-body-sm text-white/80 flex items-center gap-1 mt-1">
-              <span class="material-symbols-outlined text-[18px]">calendar_month</span>${fmtDate(feat.startDate)} â†’ ${fmtDate(feat.endDate)}
+              <span class="material-symbols-outlined text-[18px]">calendar_month</span>${fmtDate(feat.startDate)} \u2192 ${fmtDate(feat.endDate)}
             </p>
           </div>
           <div class="text-right shrink-0">
@@ -761,7 +761,7 @@ export async function bootstrapGuestMyStaysPage() {
         ? `${room.building_name} Room ${room.room_number}`
         : 'Your room';
       document.getElementById('booking-success-msg').textContent =
-        `${label} for ${fmtDate(checkIn)} â†’ ${fmtDate(checkOut)} is pending approval.`;
+        `${label} for ${fmtDate(checkIn)} \u2192 ${fmtDate(checkOut)} is pending approval.`;
       formFields.classList.add('hidden');
       successPanel.classList.remove('hidden');
       setModalCopy({

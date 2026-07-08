@@ -19,7 +19,7 @@ const HERO_TYPE_PHRASES = [
 ];
 
 function initHeroImageFallbacks() {
-  const fallback = 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=900&q=80';
+  const fallback = '/images/Garden.jpg';
   document.querySelectorAll('.lp-hero-visual img, .lp-hero-float img, .lp-hero-mobile-visual img').forEach((img) => {
     img.addEventListener('error', () => {
       if (img.dataset.fallbackApplied) return;
@@ -402,7 +402,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   function isNearSnapProgress(progress) {
     if (count <= 1) return true;
     const snapped = snapProgressForIndex(progressToIndex(progress));
-    return Math.abs(progress - snapped) < 0.04;
+    return Math.abs(progress - snapped) < 0.03;
   }
 
   function scrollYForIndex(index) {
@@ -527,7 +527,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   const st = ScrollTrigger.create({
     trigger: section,
     start: 'top top',
-    end: () => `+=${Math.round(window.innerHeight * Math.max(count - 1, 1) + 12)}`,
+    end: () => `+=${Math.round(window.innerHeight * Math.max(count - 1, 1) + 24)}`,
     pin,
     pinSpacing: true,
     anticipatePin: 1,
@@ -535,9 +535,10 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     fastScrollEnd: false,
     snap: count > 1 ? {
       snapTo: (value) => snapProgressForIndex(progressToIndex(value)),
-      duration: { min: 0.18, max: 0.45 },
-      delay: 0.06,
+      duration: { min: 0.22, max: 0.5 },
+      delay: 0.08,
       ease: 'power2.inOut',
+      inertia: false,
     } : false,
     onToggle: (self) => setSnapActive(self.isActive),
     onEnter(self) {

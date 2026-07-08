@@ -58,7 +58,7 @@ export const GUEST_NEW_RESERVATION_FOOTER = `
   </div>`;
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v17';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v18';
 const COMPONENT_FETCH_MS = 10000;
 const BOOT_LOADER_ID = 'apt-boot-loader';
 const SHELL_BOOT_TIMEOUT_MS = 8000;
