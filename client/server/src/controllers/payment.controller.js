@@ -12,6 +12,7 @@ import {
   recordPaymentTransaction,
   deletePaidInvoice,
   clearAllPaidInvoices,
+  convertPaymentReservationKind,
 } from '../services/payment.service.js';
 import { isEmailDevMode } from '../services/email.service.js';
 
@@ -120,14 +121,14 @@ export const updatePayment = async (req, res) => {
     const paymentId = parsePaymentId(req.params.id);
     if (!paymentId) return res.status(400).json({ message: 'Invalid invoice id' });
 
-    const { status, method, discount_amount, discount_note } = req.body;
+    const { status, method, discount_amount, discount_note, subtotal } = req.body;
     const existing = await loadPaymentDetail(paymentId);
     if (!existing) return res.status(404).json({ message: 'Invoice not found' });
 
     let payment = existing;
 
-    if (discount_amount != null || discount_note != undefined) {
-      payment = await updateInvoiceBilling(paymentId, { discount_amount, discount_note });
+    if (discount_amount != null || discount_note !== undefined || subtotal != null) {
+      payment = await updateInvoiceBilling(paymentId, { discount_amount, discount_note, subtotal });
     }
 
     if (status === 'Paid') {
@@ -220,6 +221,24 @@ export const deletePaidPayment = async (req, res) => {
     res.status(200).json({
       message: `Invoice #${cleared.id} for ${cleared.guest_name} cleared from billing records.`,
       cleared,
+    });
+  } catch (error) {
+    res.status(paymentErrorStatus(error)).json({ message: paymentErrorMessage(error) });
+  }
+};
+
+export const convertPaymentReservation = async (req, res) => {
+  try {
+    const paymentId = parsePaymentId(req.params.id);
+    if (!paymentId) return res.status(400).json({ message: 'Invalid invoice id' });
+
+    const existing = await loadPaymentDetail(paymentId);
+    if (!existing) return res.status(404).json({ message: 'Invoice not found' });
+
+    const payment = await convertPaymentReservationKind(paymentId, req.body);
+    res.status(200).json({
+      message: 'Reservation converted and invoice re-linked. Totals were recalculated.',
+      payment,
     });
   } catch (error) {
     res.status(paymentErrorStatus(error)).json({ message: paymentErrorMessage(error) });

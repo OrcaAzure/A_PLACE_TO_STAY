@@ -310,17 +310,26 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
   const capacityError = validateGuestCapacity(room, guestCount);
   if (capacityError) throw new Error(capacityError);
 
+  const venueStay = existing.occupancy_item === 'Venue stay'
+    || /\[Venue stay:/i.test(String(existing.notes || ''));
+
   const nextStatus = body.status ?? existing.status;
-  if (ACTIVE_STATUSES.includes(nextStatus)) {
+  const skipOverlap = room.room_number === 'VENUE-STAY' || venueStay;
+  if (ACTIVE_STATUSES.includes(nextStatus) && !skipOverlap) {
     const overlap = await hasOverlappingBooking(roomId, checkIn, checkOut, existing.id);
     if (overlap) throw new Error('This room is already reserved for the selected dates.');
   }
 
   let season = body.season ?? existing.season;
   let occupancyItem = body.occupancy_item ?? existing.occupancy_item;
-  let totalAmount = body.total_amount ?? existing.total_amount;
+  let totalAmount = body.total_amount != null ? Number(body.total_amount) : Number(existing.total_amount);
 
-  if (!isEmpty(body.check_in) || !isEmpty(body.check_out) || body.guest_count != null || body.room_id != null) {
+  const datesChanged = (body.check_in != null && body.check_in !== existing.check_in)
+    || (body.check_out != null && body.check_out !== existing.check_out);
+  const guestsChanged = body.guest_count != null && Number(body.guest_count) !== Number(existing.guest_count);
+  const roomChanged = body.room_id != null && Number(body.room_id) !== Number(existing.room_id);
+
+  if (!venueStay && (datesChanged || guestsChanged || roomChanged)) {
     const rateRoomType = resolveRateRoomType(room);
     season = await resolveSeason(checkIn);
     occupancyItem = await resolveOccupancyItem({
@@ -360,6 +369,50 @@ export function calcMealsTotal(meals = {}, rates = DEFAULT_MEAL_RATES) {
 
 export function calcFeesTotal(fees = []) {
   return Math.round((fees || []).reduce((s, f) => s + Number(f.amount || 0), 0) * 100) / 100;
+}
+
+export function mealsPayloadFromRows(rows = []) {
+  const out = Object.fromEntries(MEAL_TYPES.map((type) => [type, 0]));
+  for (const row of rows || []) {
+    if (row.meal_type && out[row.meal_type] != null) {
+      out[row.meal_type] = Number(row.quantity) || 0;
+    }
+  }
+  return out;
+}
+
+/** Recompute booking total when meals/fees change without double-counting existing add-ons. */
+export async function computeUpdatedBookingGrandTotal(existing, validated, { meals, fees, mealRates } = {}) {
+  if (meals == null && fees == null) {
+    return validated.totalAmount;
+  }
+
+  const rates = mealRates || (await getMealRates());
+  const [existingMealRows, existingFeeRows] = await Promise.all([
+    getBookingMeals(existing.id),
+    getBookingFees(existing.id),
+  ]);
+  const oldMealTotal = existingMealRows.reduce((s, m) => s + Number(m.subtotal || 0), 0);
+  const oldFeeTotal = calcFeesTotal(existingFeeRows);
+  const lodgingBase = Math.max(
+    0,
+    Math.round((Number(existing.total_amount) - oldMealTotal - oldFeeTotal) * 100) / 100,
+  );
+
+  const mealPayload = meals != null ? meals : mealsPayloadFromRows(existingMealRows);
+  const feePayload = fees != null
+    ? fees
+    : existingFeeRows.map((f) => ({
+      fee_name: f.fee_name || f.service_name || 'Extra service',
+      amount: Number(f.amount || 0),
+    }));
+
+  return computeGrandTotal({
+    roomTotal: lodgingBase,
+    meals: mealPayload,
+    fees: feePayload,
+    mealRates: rates,
+  });
 }
 
 export async function getBookingMeals(bookingId) {

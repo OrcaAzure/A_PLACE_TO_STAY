@@ -6,7 +6,25 @@ import {
   getLastEmailError,
   isVenuePayment,
 } from './email.service.js';
-import { getBookingMeals, getBookingFees } from './booking.service.js';
+import {
+  getBookingMeals,
+  getBookingFees,
+  getMealRates,
+  computeGrandTotal,
+  saveBookingMeals,
+  saveBookingFees,
+  resolveSeason,
+} from './booking.service.js';
+import { validateReservationDates } from './fiscalYear.service.js';
+import {
+  resolveFacilityIdentity,
+  computeVenueTotal,
+  validateVenueDuration,
+  validateVenueCapacity,
+  findVenueBookingOverlap,
+  normalizeFacilityBookingSeason,
+  normalizeTimeValue,
+} from './facility.service.js';
 
 export const paymentRoomDetailSelect = `
   SELECT p.id, p.bookings_room_id AS booking_id, p.bookings_facility_id AS facility_booking_id,
@@ -21,6 +39,7 @@ export const paymentRoomDetailSelect = `
          bl.name AS building_name,
          rg.group_name,
          NULL AS event_date, NULL AS start_time, NULL AS end_time,
+         NULL AS facility_id,
          NULL AS facility_category, NULL AS facility_name,
          NULL AS facility_room_code, NULL AS facility_package
   FROM payments p
@@ -43,6 +62,7 @@ export const paymentVenueDetailSelect = `
          NULL AS room_id, NULL AS room_number, NULL AS room_type, NULL AS room_status, NULL AS building_name,
          NULL AS group_name,
          fb.event_date, fb.start_time, fb.end_time,
+         fb.facility_id,
          f.facility_group AS facility_category, f.name AS facility_name,
          f.room_code AS facility_room_code, f.package_name AS facility_package,
          rf.rate AS facility_rate
@@ -480,12 +500,18 @@ export async function sendInvoiceEmail(paymentId) {
   return loadPaymentDetail(paymentId);
 }
 
-export async function updateInvoiceBilling(paymentId, { discount_amount, discount_note } = {}) {
+export async function updateInvoiceBilling(paymentId, { discount_amount, discount_note, subtotal: nextSubtotal } = {}) {
   const payment = await loadPaymentDetail(paymentId);
   if (!payment) throw new Error('Invoice not found');
   if (payment.status === 'Paid') throw new Error('Cannot change billing on a paid invoice');
 
-  const subtotal = Number(payment.subtotal ?? payment.booking_total ?? payment.amount);
+  let subtotal = nextSubtotal != null
+    ? Math.round(Number(nextSubtotal) * 100) / 100
+    : Number(payment.subtotal ?? payment.booking_total ?? payment.amount);
+  if (!Number.isFinite(subtotal) || subtotal <= 0) {
+    throw new Error('Invoice subtotal must be greater than zero');
+  }
+
   const discount = Math.max(0, Number(discount_amount ?? payment.discount_amount ?? 0));
   if (discount > subtotal) throw new Error('Discount cannot be greater than the subtotal');
 
@@ -496,6 +522,18 @@ export async function updateInvoiceBilling(paymentId, { discount_amount, discoun
     `UPDATE payments SET subtotal = ?, discount_amount = ?, discount_note = ?, amount = ? WHERE id = ?`,
     [subtotal, discount, note, amount, paymentId]
   );
+
+  if (payment.booking_id) {
+    await pool.query(
+      'UPDATE bookings_rooms SET total_amount = ? WHERE id = ?',
+      [subtotal, payment.booking_id]
+    );
+  } else if (payment.facility_booking_id) {
+    await pool.query(
+      'UPDATE bookings_facilities SET total_amount = ? WHERE id = ?',
+      [subtotal, payment.facility_booking_id]
+    );
+  }
 
   await syncPaymentStatus(paymentId);
   return loadPaymentDetail(paymentId);
@@ -667,4 +705,238 @@ export async function clearAllPaidInvoices(actorUserId = null) {
   }
 
   return { deleted };
+}
+
+function appendAdminModificationNote(existingNotes, modificationMessage, fallback) {
+  const modLine = modificationMessage?.trim()
+    ? `[Modified by admin] ${modificationMessage.trim()}`
+    : fallback;
+  if (!modLine) return existingNotes || null;
+  return [existingNotes, modLine].filter((n) => n != null && String(n).trim()).join('\n') || null;
+}
+
+function mealsPayloadForBooking(meals) {
+  if (!meals) return {};
+  if (!Array.isArray(meals)) return meals;
+  const out = {};
+  meals.forEach((m) => {
+    if (m?.meal_type) out[m.meal_type] = Number(m.quantity) || 0;
+  });
+  return out;
+}
+
+function feesPayloadForBooking(fees) {
+  if (!fees) return [];
+  return fees.map((f) => ({
+    fee_name: f.fee_name || f.service_name || 'Extra service',
+    amount: Number(f.amount || 0),
+  }));
+}
+
+async function resolveVenueStayPlaceholderRoom(conn) {
+  const [rows] = await conn.query(
+    `SELECT r.id FROM rooms r
+     JOIN buildings b ON b.id = r.building_id
+     WHERE r.room_number = 'VENUE-STAY'
+     LIMIT 1`
+  );
+  if (rows[0]?.id) return rows[0].id;
+
+  const [buildings] = await conn.query(
+    `SELECT id FROM buildings WHERE name = 'Global Missions Center' LIMIT 1`
+  );
+  const buildingId = buildings[0]?.id;
+  if (!buildingId) {
+    throw new Error('Could not set up venue stay conversion. Contact support.');
+  }
+
+  const [result] = await conn.query(
+    `INSERT INTO rooms (building_id, room_number, room_type, status, capacity_min, capacity_max)
+     VALUES (?, 'VENUE-STAY', 'Venue conversion', 'Available', 1, 99)`,
+    [buildingId]
+  );
+  return result.insertId;
+}
+
+/**
+ * Admin flow: convert a venue/event invoice into an overnight room stay.
+ * Room stays cannot be converted to venues — use additional fees for mattress/extras.
+ */
+export async function convertPaymentReservationKind(paymentId, payload = {}) {
+  const payment = await loadPaymentDetail(paymentId);
+  if (!payment) throw new Error('Invoice not found');
+  if (payment.status === 'Paid') {
+    throw new Error('Cannot convert reservation on a paid invoice');
+  }
+
+  const targetKind = payload.invoice_kind === 'venue' ? 'venue' : 'room';
+  const currentKind = isVenuePayment(payment) ? 'venue' : 'room';
+  if (targetKind === currentKind) {
+    throw new Error('Booking type is unchanged');
+  }
+  if (currentKind === 'room' && targetKind === 'venue') {
+    throw new Error('Room stays cannot be converted to venue bookings. Only venue bookings can convert to overnight stays.');
+  }
+  if (targetKind === 'room' && currentKind === 'venue') {
+    if (payment.facility_category === 'Recreation') {
+      throw new Error('Recreation venues cannot convert to overnight stays.');
+    }
+    if (!payment.facility_room_code) {
+      throw new Error('Only coded venue rooms (conference/classroom spaces) can convert to overnight stays.');
+    }
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    if (targetKind === 'room') {
+      const {
+        check_in, check_out, guest_count, contact_phone, notes, meal_allergen_notes,
+        modification_message, meals, fees, stay_total, room_total,
+      } = payload;
+      if (!check_in || !check_out) {
+        throw new Error('check_in and check_out are required for a room stay');
+      }
+
+      await validateReservationDates(check_in, check_out, { bypassAdvanceLimit: true });
+
+      const manualStayTotal = Math.round(Number(stay_total ?? room_total) * 100) / 100;
+      if (!Number.isFinite(manualStayTotal) || manualStayTotal <= 0) {
+        throw new Error('Enter a stay total for the overnight conversion.');
+      }
+
+      const placeholderRoomId = await resolveVenueStayPlaceholderRoom(conn);
+      const season = await resolveSeason(check_in);
+
+      const mealRates = await getMealRates();
+      const mealPayload = meals != null
+        ? mealsPayloadForBooking(meals)
+        : (currentKind === 'venue' ? {} : mealsPayloadForBooking(payment.meals));
+      const feePayload = fees != null
+        ? feesPayloadForBooking(fees)
+        : (currentKind === 'venue' ? [] : feesPayloadForBooking(payment.fees));
+      const grandTotal = await computeGrandTotal({
+        roomTotal: manualStayTotal,
+        meals: mealPayload,
+        fees: feePayload,
+        mealRates,
+      });
+
+      const venueLabel = payment.facility_room_code || payment.facility_name || 'venue space';
+      const venueTag = `[Venue stay: ${venueLabel}]`;
+      const combinedNotes = appendAdminModificationNote(
+        notes != null ? notes : payment.notes,
+        modification_message,
+        `[Modified by admin] Converted from venue booking to room stay in billing\n${venueTag}`
+      );
+
+      const [insertResult] = await conn.query(
+        `INSERT INTO bookings_rooms
+           (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes)
+         VALUES (?, ?, ?, ?, ?, ?, 'Venue stay', ?, 'Approved', ?, ?, ?)`,
+        [
+          payment.user_id,
+          placeholderRoomId,
+          check_in,
+          check_out,
+          guest_count || payment.guest_count || 1,
+          season,
+          grandTotal,
+          combinedNotes,
+          contact_phone ?? payment.contact_phone ?? null,
+          meal_allergen_notes ?? payment.meal_allergen_notes ?? null,
+        ]
+      );
+
+      const newBookingId = insertResult.insertId;
+      await saveBookingMeals(newBookingId, mealPayload, mealRates);
+      await saveBookingFees(newBookingId, feePayload);
+
+      await conn.query(
+        'UPDATE bookings_facilities SET status = ? WHERE id = ?',
+        ['Cancelled', payment.facility_booking_id]
+      );
+      await conn.query(
+        `UPDATE payments
+         SET bookings_room_id = ?, bookings_facility_id = NULL, subtotal = ?, amount = ?
+         WHERE id = ?`,
+        [newBookingId, grandTotal, computeDueAmount(grandTotal, payment.discount_amount), paymentId]
+      );
+    } else {
+      const {
+        facility_id, event_date, start_time, end_time, guest_count, notes, modification_message,
+      } = payload;
+      if (!facility_id || !event_date || !start_time || !end_time) {
+        throw new Error('facility_id, event_date, start_time, and end_time are required for a venue booking');
+      }
+
+      const startTime = normalizeTimeValue(start_time);
+      const endTime = normalizeTimeValue(end_time);
+      const identity = await resolveFacilityIdentity({ facility_id, event_date });
+      if (!identity) throw new Error('Venue space not found');
+
+      const { row: rateRow } = identity;
+      const durationError = validateVenueDuration(rateRow, startTime, endTime);
+      if (durationError) throw new Error(durationError);
+
+      const capacityError = validateVenueCapacity(rateRow, guest_count || payment.guest_count || 1);
+      if (capacityError) throw new Error(capacityError);
+
+      const overlap = await findVenueBookingOverlap({
+        facility_id,
+        eventDate: event_date,
+        startTime,
+        endTime,
+      });
+      if (overlap) throw new Error('This venue is already booked for the selected time slot.');
+
+      const season = normalizeFacilityBookingSeason(rateRow.season);
+      const totalAmount = computeVenueTotal(rateRow, startTime, endTime);
+      const combinedNotes = appendAdminModificationNote(
+        notes != null ? notes : payment.notes,
+        modification_message,
+        '[Modified by admin] Converted from room stay to venue booking in billing'
+      );
+
+      const [insertResult] = await conn.query(
+        `INSERT INTO bookings_facilities
+           (user_id, facility_id, event_date, start_time, end_time, guest_count, season, total_amount, status, notes)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Approved', ?)`,
+        [
+          payment.user_id,
+          facility_id,
+          event_date,
+          startTime,
+          endTime,
+          guest_count || payment.guest_count || 1,
+          season,
+          totalAmount,
+          combinedNotes,
+        ]
+      );
+
+      const newFacilityBookingId = insertResult.insertId;
+      await conn.query(
+        'UPDATE bookings_rooms SET status = ? WHERE id = ?',
+        ['Cancelled', payment.booking_id]
+      );
+      await conn.query(
+        `UPDATE payments
+         SET bookings_room_id = NULL, bookings_facility_id = ?, subtotal = ?, amount = ?
+         WHERE id = ?`,
+        [newFacilityBookingId, totalAmount, computeDueAmount(totalAmount, payment.discount_amount), paymentId]
+      );
+    }
+
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw err;
+  } finally {
+    conn.release();
+  }
+
+  await syncPaymentStatus(paymentId);
+  return loadPaymentDetail(paymentId);
 }

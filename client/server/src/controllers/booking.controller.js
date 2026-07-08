@@ -8,6 +8,7 @@ import {
   saveBookingMeals,
   saveBookingFees,
   computeGrandTotal,
+  computeUpdatedBookingGrandTotal,
   getAvailableRooms,
   getBookingMeals,
   getBookingFees,
@@ -249,9 +250,11 @@ export const updateBooking = async (req, res) => {
         const existingFees = await getBookingFees(req.params.id);
         feesToSave = sanitizeGuestSubmittedFees(fees, catalogRows, existingFees);
       }
-      const grandTotal = meals != null || feesToSave != null
-        ? await computeGrandTotal({ roomTotal: validated.totalAmount, meals, fees: feesToSave, mealRates })
-        : validated.totalAmount;
+      const grandTotal = await computeUpdatedBookingGrandTotal(existing, validated, {
+        meals: meals != null ? meals : null,
+        fees: feesToSave != null ? feesToSave : null,
+        mealRates,
+      });
 
       const nextStatus = wasApproved ? 'Pending' : 'Pending';
       const modNote = wasApproved
@@ -315,9 +318,11 @@ export const updateBooking = async (req, res) => {
     const { check_in, check_out, guest_count, status, notes, contact_phone, room_id, meals, fees, guest_name, email,
       notify_guest, notify_modification, modification_message, meal_allergen_notes } = req.body;
     const mealRates = await getMealRates();
-    const grandTotal = meals != null || fees != null
-      ? await computeGrandTotal({ roomTotal: validated.totalAmount, meals, fees, mealRates })
-      : validated.totalAmount;
+    const grandTotal = await computeUpdatedBookingGrandTotal(existing, validated, {
+      meals: meals != null ? meals : null,
+      fees: fees != null ? fees : null,
+      mealRates,
+    });
 
     let resolvedUserId = req.body.user_id;
     if (guest_name || email || req.body.user_id) {

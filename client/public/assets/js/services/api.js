@@ -525,6 +525,14 @@ export async function updatePayment(id, payload) {
   });
 }
 
+export async function convertPaymentReservation(id, payload) {
+  const data = await apiRequest(`/payments/${id}/convert-reservation`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return data.payment;
+}
+
 export async function sendPaymentInvoice(id) {
   return apiRequest(`/payments/${id}/send-invoice`, { method: 'POST' });
 }

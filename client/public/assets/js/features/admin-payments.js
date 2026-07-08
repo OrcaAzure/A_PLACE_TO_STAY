@@ -5,6 +5,7 @@
 import {
   getPayments, getPaymentById, updatePayment, sendPaymentInvoice, recordPaymentTransaction,
   deletePayment, clearPaidPayments, getExtraServicesCatalog, updateBooking,
+  updateFacilityBooking, convertPaymentReservation, getFacilitiesOverview,
 } from '/assets/js/services/api.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
@@ -86,12 +87,23 @@ function invoiceEmailHint(p) {
 }
 
 function roomShort(p) {
+  const venueStay = venueStayCodeFromNotes(p.notes);
+  if (venueStay) return `Venue ${venueStay} · overnight`;
   const room = p.room_number ? `Rm ${p.room_number}` : 'Room';
   const building = p.building_name || 'Building';
   return `${building} · ${room}`;
 }
 
+function venueStayCodeFromNotes(notes) {
+  const match = String(notes || '').match(/\[Venue stay:\s*([^\]]+)\]/i);
+  return match ? match[1].trim() : '';
+}
+
 function roomLabel(p) {
+  const venueStay = venueStayCodeFromNotes(p.notes);
+  if (venueStay) {
+    return `Venue room ${venueStay} · overnight stay`;
+  }
   const building = p.building_name || 'Building';
   const room = p.room_number ? `Room ${p.room_number}` : 'Room';
   const type = p.room_type ? ` (${p.room_type})` : '';
@@ -403,12 +415,14 @@ function inferDiscountMode(subtotal, discountAmount) {
 }
 
 function readBillingFormValues(form, subtotal = 0) {
-  if (!form) return { discount_amount: 0, discount_note: '' };
+  if (!form) return { discount_amount: 0, discount_note: '', subtotal };
   const mode = getDiscountMode(form);
+  const parsedSubtotal = Math.round(Number(getFormSubtotal(form) || subtotal) * 100) / 100;
   const discount_amount = mode === 'fixed'
-    ? Math.max(0, Math.min(subtotal, Number(form.querySelector('[name="discount_amount"]')?.value || 0)))
-    : discountFromPercent(subtotal, form.querySelector('[name="discount_percent"]')?.value);
+    ? Math.max(0, Math.min(parsedSubtotal, Number(form.querySelector('[name="discount_amount"]')?.value || 0)))
+    : discountFromPercent(parsedSubtotal, form.querySelector('[name="discount_percent"]')?.value);
   return {
+    subtotal: parsedSubtotal,
     discount_amount,
     discount_note: String(form.querySelector('[name="discount_note"]')?.value || '').trim(),
   };
@@ -449,11 +463,13 @@ function syncDiscountPanels(form, { seedOnModeChange = false } = {}) {
 
 function hasUnsavedBillingChanges(p, form) {
   if (!form) return false;
-  const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
-  const { discount_amount, discount_note } = readBillingFormValues(form, subtotal);
+  const savedSubtotal = Math.round(Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0) * 100) / 100;
+  const { subtotal, discount_amount, discount_note } = readBillingFormValues(form, savedSubtotal);
   const savedDiscount = Number(p.discount_amount || 0);
   const savedNote = String(p.discount_note || '').trim();
-  return discount_amount !== savedDiscount || discount_note !== savedNote;
+  return subtotal !== savedSubtotal
+    || discount_amount !== savedDiscount
+    || discount_note !== savedNote;
 }
 
 const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
@@ -655,7 +671,7 @@ function bindBillingFeeEditorEvents(p, detailEl, feeEditor) {
     const detailFeedback = document.getElementById('billing-detail-feedback');
     const billingForm = getBillingForm(detailEl);
     if (hasUnsavedBillingChanges(p, billingForm)) {
-      showFeedback(detailFeedback, 'Save discount changes before updating fees.', 'error');
+      showFeedback(detailFeedback, 'Save invoice changes before updating fees.', 'error');
       return;
     }
     if (feesEqual(feeEditor.fees, feeEditor.originalFees)) return;
@@ -664,14 +680,7 @@ function bindBillingFeeEditorEvents(p, detailEl, feeEditor) {
     const label = btn.textContent;
     btn.textContent = 'Saving…';
     try {
-      await updateBooking(p.booking_id, {
-        check_in: p.check_in,
-        check_out: p.check_out,
-        guest_count: p.guest_count,
-        room_id: p.room_id,
-        meals: mealsFromPaymentRows(p.meals),
-        fees: feeEditor.fees,
-      });
+      await updateBooking(p.booking_id, { fees: feeEditor.fees });
       await reload({ keepSelection: true, keepModalOpen: true });
       showFeedback(detailFeedback, 'Additional fees saved. Invoice subtotal updated.', 'ok');
       window.dispatchEvent(new CustomEvent('booking:updated'));
@@ -1119,21 +1128,655 @@ function renderVenueDetailsCard(p, parsedNotes) {
     </div>`;
 }
 
+function reservationKind(p) {
+  return isVenueInvoice(p) ? 'venue' : 'room';
+}
+
+function canEditReservationDetails(p) {
+  return p.status !== 'Paid' && Boolean(p.booking_id || p.facility_booking_id);
+}
+
+function sliceDate(value) {
+  if (!value) return '';
+  return String(value).slice(0, 10);
+}
+
+function sliceTime(value) {
+  if (!value) return '';
+  return String(value).slice(0, 5);
+}
+
+function buildVenueCatalogRows(catalog) {
+  const rows = [];
+  for (const group of catalog?.venues || []) {
+    if (group.category === 'Recreation') continue;
+    for (const item of group.items || []) {
+      const facilityId = item.facility_id ?? item.id;
+      rows.push({
+        facility_id: facilityId,
+        facility_group: group.category,
+        room_code: item.room_code || null,
+        label: item.label || `${group.category} — ${item.item}`,
+      });
+    }
+  }
+  return rows.sort((a, b) => a.label.localeCompare(b.label));
+}
+
+async function loadReservationCatalogs() {
+  const overview = await getFacilitiesOverview().catch(() => ({ venues: [] }));
+  return { venues: buildVenueCatalogRows(overview) };
+}
+
+function renderReservationPanelHead(title, icon, { editable, editLabel = 'Edit' }) {
+  return `
+    <div class="billing-panel__head">
+      <h4 class="billing-section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>
+        ${escapeHtml(title)}
+      </h4>
+      ${editable ? `
+        <button type="button" class="billing-res-edit-btn" data-res-edit-open>
+          <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+          ${escapeHtml(editLabel)}
+        </button>` : ''}
+    </div>`;
+}
+
+function isRecreationVenue(p) {
+  return String(p.facility_category || '').trim() === 'Recreation';
+}
+
+/** Coded GMC conference/classroom spaces — not recreation courts or outdoor venues. */
+function isVenueRoomInvoice(p) {
+  return isVenueInvoice(p) && Boolean(String(p.facility_room_code || '').trim());
+}
+
+function canConvertVenueToStay(p) {
+  return isVenueRoomInvoice(p) && !isRecreationVenue(p);
+}
+
+function isConferenceStyleVenue(p) {
+  if (!isVenueInvoice(p)) return false;
+  const cat = String(p.facility_category || '').toLowerCase();
+  const name = String(p.facility_name || p.facility_room_code || '').toLowerCase();
+  return cat.includes('conference') || cat.includes('classroom') || name.includes('conference') || name.includes('classroom');
+}
+
+function venueSpaceLabel(p) {
+  const code = String(p.facility_room_code || '').trim();
+  const name = String(p.facility_name || '').trim();
+  if (code && name) return `${code} — ${name}`;
+  if (code) return code;
+  return venueLabel(p);
+}
+
+function renderVenueSelectOptions(venues, selectedId) {
+  const selected = String(selectedId || '');
+  return (venues || [])
+    .filter((v) => v.facility_group !== 'Recreation' || String(v.facility_id) === selected)
+    .map((v) => {
+      const sel = String(v.facility_id) === selected ? ' selected' : '';
+      return `<option value="${v.facility_id}"${sel}>${escapeHtml(v.label)}</option>`;
+    }).join('');
+}
+
+function addDays(dateStr, days) {
+  if (!dateStr) return '';
+  const d = new Date(`${dateStr}T12:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+function renderRoomStayEditForm(p) {
+  const parsedNotes = parseBookingNotes(p.notes);
+  const guestNotes = parsedNotes.guestNotes || '';
+  return `
+    <form class="billing-res-edit-form hidden" data-res-edit-form="${p.id}" data-res-orig-kind="room" hidden>
+      <p class="billing-res-edit-form__intro">Update stay dates and notes here. For <strong>extra mattress, laundry, corkage</strong>, and other add-ons, use <strong>Additional fees</strong> below — room stays are not converted to venue bookings.</p>
+      <div class="billing-res-edit-form__grid">
+        <label class="billing-res-edit-field">
+          <span>Check-in</span>
+          <input type="date" class="billing-edit-form__input" name="check_in" value="${escapeHtml(sliceDate(p.check_in))}" />
+        </label>
+        <label class="billing-res-edit-field">
+          <span>Check-out</span>
+          <input type="date" class="billing-edit-form__input" name="check_out" value="${escapeHtml(sliceDate(p.check_out))}" />
+        </label>
+        <label class="billing-res-edit-field">
+          <span>Guests in room</span>
+          <input type="number" min="1" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" />
+        </label>
+        <label class="billing-res-edit-field">
+          <span>Contact phone</span>
+          <input type="tel" class="billing-edit-form__input" name="contact_phone" value="${escapeHtml(p.contact_phone || '')}" />
+        </label>
+        <label class="billing-res-edit-field billing-res-edit-field--wide">
+          <span>Allergen notes</span>
+          <input type="text" class="billing-edit-form__input" name="meal_allergen_notes" value="${escapeHtml(p.meal_allergen_notes || '')}" />
+        </label>
+        <label class="billing-res-edit-field billing-res-edit-field--wide">
+          <span>Booking notes</span>
+          <textarea class="billing-edit-form__input billing-res-edit-textarea" name="notes" rows="3" placeholder="General notes for staff">${escapeHtml(guestNotes)}</textarea>
+        </label>
+        <label class="billing-res-edit-field billing-res-edit-field--wide">
+          <span>Admin change note</span>
+          <textarea class="billing-edit-form__input billing-res-edit-textarea" name="modification_message" rows="2" placeholder="Optional — logged as “Modified by admin”"></textarea>
+        </label>
+      </div>
+      <div class="billing-res-edit-form__actions">
+        <button type="button" class="invoice-btn-secondary" data-res-edit-cancel>Cancel</button>
+        <button type="submit" class="invoice-btn-confirm">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>
+          Save stay details
+        </button>
+      </div>
+    </form>`;
+}
+
+function renderVenueReservationEditForm(p, catalogs = {}) {
+  const parsedNotes = parseBookingNotes(p.notes);
+  const guestNotes = parsedNotes.guestNotes || '';
+  const { venues = [] } = catalogs;
+  const venuePrefillDate = sliceDate(p.event_date);
+  const roomPrefillIn = venuePrefillDate;
+  const roomPrefillOut = roomPrefillIn ? addDays(roomPrefillIn, 1) : '';
+  const venueCode = p.facility_room_code || '';
+  const defaultStayTotal = Number(p.booking_total || p.subtotal || 0) || '';
+  const conferenceVenue = isConferenceStyleVenue(p);
+  const convertAllowed = canConvertVenueToStay(p);
+  const conversionIntro = convertAllowed
+    ? (conferenceVenue
+      ? `This <strong>conference room</strong> (${escapeHtml(venueSpaceLabel(p))}) is booked for a timed event. Check <strong>Use as overnight stay</strong>, set dates, and enter the <strong>stay total</strong> manually — no housing room lookup required.`
+      : `This coded venue room (${escapeHtml(venueSpaceLabel(p))}) can convert to an overnight stay. Set dates and enter the <strong>stay total</strong> below.`)
+    : `Update event date, times, and venue. Overnight conversion is only for coded conference/classroom venue rooms — not recreation courts, chapels, or outdoor spaces.`;
+
+  const convertToggle = convertAllowed ? `
+      <label class="billing-res-convert-toggle">
+        <input type="checkbox" name="convert_to_stay" data-res-convert-stay />
+        <span class="billing-res-convert-toggle__label">
+          <strong>Use as overnight stay</strong>
+          <small>Event booking becomes a housing room stay. The venue reservation is cancelled.</small>
+        </span>
+      </label>` : '';
+
+  return `
+    <form class="billing-res-edit-form hidden" data-res-edit-form="${p.id}" data-res-orig-kind="venue" hidden>
+      <p class="billing-res-edit-form__intro">${conversionIntro}</p>
+      <div class="billing-res-convert-notice hidden" data-res-convert-notice hidden role="status"></div>
+      <div class="billing-res-current-space">
+        <span class="billing-res-current-space__eyebrow">Currently booked as</span>
+        <strong class="billing-res-current-space__title">${escapeHtml(venueSpaceLabel(p))}</strong>
+        <p class="billing-res-current-space__meta">${escapeHtml(formatVenueWhen(p))} · ${p.guest_count || 1} guest${Number(p.guest_count) === 1 ? '' : 's'}</p>
+      </div>
+      ${convertToggle}
+      <input type="hidden" name="invoice_kind" value="venue" data-res-kind-input />
+      <div class="billing-res-edit-form__grid">
+        <fieldset class="billing-res-edit-kind-panel hidden" data-res-kind-panel="room" hidden>
+          <legend class="billing-section-title billing-section-title--sub billing-res-edit-legend">Overnight stay</legend>
+          <div class="billing-res-edit-form__grid billing-res-edit-form__grid--inner">
+            <label class="billing-res-edit-field">
+              <span>Check-in</span>
+              <input type="date" class="billing-edit-form__input" name="check_in" value="${escapeHtml(roomPrefillIn)}" data-res-field="check_in" />
+            </label>
+            <label class="billing-res-edit-field">
+              <span>Check-out</span>
+              <input type="date" class="billing-edit-form__input" name="check_out" value="${escapeHtml(roomPrefillOut)}" data-res-field="check_out" />
+            </label>
+            <label class="billing-res-edit-field">
+              <span>Stay total (₱)</span>
+              <input type="number" min="0.01" step="0.01" class="billing-edit-form__input" name="stay_total" value="${defaultStayTotal}" data-res-field="stay_total" placeholder="Lodging charge for this stay" />
+            </label>
+            ${venueCode ? `<p class="billing-res-edit-hint billing-res-edit-hint--inline">Space: <strong>${escapeHtml(venueSpaceLabel(p))}</strong>. Enter the overnight rate manually — extras like mattress go in Additional fees after conversion.</p>` : ''}
+          </div>
+        </fieldset>
+
+        <fieldset class="billing-res-edit-kind-panel" data-res-kind-panel="venue">
+          <legend class="billing-section-title billing-section-title--sub billing-res-edit-legend">Event / venue booking</legend>
+          <div class="billing-res-edit-form__grid billing-res-edit-form__grid--inner">
+            <label class="billing-res-edit-field">
+              <span>Event date</span>
+              <input type="date" class="billing-edit-form__input" name="event_date" value="${escapeHtml(venuePrefillDate)}" data-res-field="event_date" />
+            </label>
+            <label class="billing-res-edit-field">
+              <span>Start time</span>
+              <input type="time" class="billing-edit-form__input" name="start_time" value="${escapeHtml(sliceTime(p.start_time) || '09:00')}" data-res-field="start_time" />
+            </label>
+            <label class="billing-res-edit-field">
+              <span>End time</span>
+              <input type="time" class="billing-edit-form__input" name="end_time" value="${escapeHtml(sliceTime(p.end_time) || '17:00')}" data-res-field="end_time" />
+            </label>
+            <label class="billing-res-edit-field billing-res-edit-field--wide">
+              <span>Venue space</span>
+              <select class="billing-edit-form__input" name="facility_id">
+                <option value="">Select venue…</option>
+                ${renderVenueSelectOptions(venues, p.facility_id)}
+              </select>
+            </label>
+          </div>
+        </fieldset>
+
+        <label class="billing-res-edit-field">
+          <span>Guest count</span>
+          <input type="number" min="1" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" />
+        </label>
+
+        <label class="billing-res-edit-field billing-res-edit-field--wide">
+          <span>Booking notes</span>
+          <textarea class="billing-edit-form__input billing-res-edit-textarea" name="notes" rows="3" placeholder="General notes for staff">${escapeHtml(guestNotes)}</textarea>
+        </label>
+
+        <label class="billing-res-edit-field billing-res-edit-field--wide">
+          <span>Admin change note <span class="billing-res-edit-required hidden" data-res-mod-required hidden>(required for conversion)</span></span>
+          <textarea class="billing-edit-form__input billing-res-edit-textarea" name="modification_message" rows="2" placeholder="Required when converting — e.g. A-506 conference room now used as overnight stay"></textarea>
+        </label>
+      </div>
+
+      <div class="billing-res-edit-form__actions">
+        <button type="button" class="invoice-btn-secondary" data-res-edit-cancel>Cancel</button>
+        <button type="submit" class="invoice-btn-confirm">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>
+          Save reservation
+        </button>
+      </div>
+    </form>`;
+}
+
+function renderReservationEditForm(p, catalogs = {}) {
+  return isVenueInvoice(p) ? renderVenueReservationEditForm(p, catalogs) : renderRoomStayEditForm(p);
+}
+
+function renderReservationConfirmDialog() {
+  return `
+    <div class="billing-res-confirm hidden" data-res-confirm hidden aria-hidden="true">
+      <div class="billing-res-confirm__card" role="dialog" aria-modal="true" aria-labelledby="billing-res-confirm-title">
+        <h3 id="billing-res-confirm-title" class="billing-res-confirm__title">Confirm reservation changes</h3>
+        <p class="billing-res-confirm__lead">These updates apply to the linked booking and may recalculate the invoice subtotal in billing.</p>
+        <ul class="billing-res-confirm__list" data-res-confirm-list></ul>
+        <label class="billing-res-confirm__check">
+          <input type="checkbox" data-res-confirm-check />
+          <span>I understand these changes update the reservation and billing totals.</span>
+        </label>
+        <div class="billing-res-confirm__actions">
+          <button type="button" class="invoice-btn-secondary" data-res-confirm-cancel>Go back</button>
+          <button type="button" class="invoice-btn-confirm" data-res-confirm-apply disabled>Apply changes</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function readReservationEditForm(form) {
+  const origKind = form.getAttribute('data-res-orig-kind') || 'room';
+  const convertStay = Boolean(form.querySelector('[data-res-convert-stay]')?.checked);
+  const kind = origKind === 'venue' && convertStay ? 'room' : origKind;
+  const kindInput = form.querySelector('[data-res-kind-input]');
+  if (kindInput) kindInput.value = kind;
+
+  const guestCount = Number(form.querySelector('[name="guest_count"]')?.value || 1);
+  const base = {
+    invoice_kind: kind,
+    guest_count: guestCount,
+    notes: form.querySelector('[name="notes"]')?.value?.trim() || undefined,
+    modification_message: form.querySelector('[name="modification_message"]')?.value?.trim() || undefined,
+  };
+  if (kind === 'venue') {
+    return {
+      ...base,
+      facility_id: Number(form.querySelector('[name="facility_id"]')?.value),
+      event_date: form.querySelector('[name="event_date"]')?.value,
+      start_time: form.querySelector('[name="start_time"]')?.value,
+      end_time: form.querySelector('[name="end_time"]')?.value,
+    };
+  }
+  return {
+    ...base,
+    check_in: form.querySelector('[name="check_in"]')?.value,
+    check_out: form.querySelector('[name="check_out"]')?.value,
+    stay_total: Number(form.querySelector('[name="stay_total"]')?.value || 0),
+    contact_phone: form.querySelector('[name="contact_phone"]')?.value?.trim() || undefined,
+    meal_allergen_notes: form.querySelector('[name="meal_allergen_notes"]')?.value?.trim() || undefined,
+  };
+}
+
+function buildReservationChangeSummary(p, draft) {
+  const lines = [];
+  const origKind = reservationKind(p);
+  if (draft.invoice_kind !== origKind && origKind === 'venue' && draft.invoice_kind === 'room' && canConvertVenueToStay(p)) {
+    lines.push({
+      level: 'critical',
+      text: `Convert ${venueSpaceLabel(p)} from an event booking into an overnight stay at ${fmt(draft.stay_total || p.booking_total || 0)}. The venue reservation will be cancelled.`,
+    });
+  }
+  if (draft.invoice_kind === 'room') {
+    if (draft.check_in !== sliceDate(p.check_in) || draft.check_out !== sliceDate(p.check_out)) {
+      lines.push({ level: 'warn', text: 'Stay dates change — nights and room rate may recalculate.' });
+    }
+    if (draft.stay_total && Number(draft.stay_total) !== Number(p.booking_total || 0)) {
+      lines.push({ level: 'warn', text: `Stay total set to ${fmt(draft.stay_total)} — invoice subtotal will update.` });
+    }
+  }
+  if (draft.invoice_kind === 'venue') {
+    if (String(draft.facility_id) !== String(p.facility_id)) lines.push({ level: 'warn', text: 'Venue space changes.' });
+    if (draft.event_date !== sliceDate(p.event_date)
+      || draft.start_time !== sliceTime(p.start_time)
+      || draft.end_time !== sliceTime(p.end_time)) {
+      lines.push({ level: 'warn', text: 'Event schedule changes — venue total may recalculate.' });
+    }
+  }
+  if ((draft.notes || '') !== (parseBookingNotes(p.notes).guestNotes || '')) {
+    lines.push({ level: 'info', text: 'Booking notes update.' });
+  }
+  if (draft.modification_message) {
+    lines.push({ level: 'info', text: 'Admin change note will be logged for fast tracking.' });
+  }
+  if (!lines.length) lines.push({ level: 'info', text: 'Save reservation details as entered.' });
+  return lines;
+}
+
+function syncReservationKindPanels(form, p) {
+  const origKind = form.getAttribute('data-res-orig-kind') || reservationKind(p);
+  if (origKind !== 'venue') return;
+
+  const convertStay = Boolean(form.querySelector('[data-res-convert-stay]')?.checked);
+  const kind = convertStay ? 'room' : 'venue';
+  const converting = convertStay;
+
+  const kindInput = form.querySelector('[data-res-kind-input]');
+  if (kindInput) kindInput.value = kind;
+
+  form.querySelectorAll('[data-res-kind-panel]').forEach((panel) => {
+    const show = panel.getAttribute('data-res-kind-panel') === kind;
+    panel.classList.toggle('hidden', !show);
+    panel.hidden = !show;
+  });
+
+  const notice = form.querySelector('[data-res-convert-notice]');
+  const modRequired = form.querySelector('[data-res-mod-required]');
+  if (notice) {
+    if (converting) {
+      notice.innerHTML = `
+        <span class="material-symbols-outlined" aria-hidden="true">night_shelter</span>
+        <div>
+          <strong>${escapeHtml(venueSpaceLabel(p))} → overnight stay</strong>
+          <p>Set check-in / check-out and enter the <strong>stay total</strong> manually. The venue code (${escapeHtml(p.facility_room_code || 'see above')}) is recorded on the booking — no housing room match needed.</p>
+        </div>`;
+      notice.classList.remove('hidden');
+      notice.hidden = false;
+    } else {
+      notice.classList.add('hidden');
+      notice.hidden = true;
+      notice.innerHTML = '';
+    }
+  }
+  modRequired?.classList.toggle('hidden', !converting);
+  if (modRequired) modRequired.hidden = !converting;
+
+  if (converting && kind === 'room') {
+    const eventDate = form.querySelector('[name="event_date"]')?.value;
+    const checkIn = form.querySelector('[name="check_in"]');
+    const checkOut = form.querySelector('[name="check_out"]');
+    if (checkIn && !checkIn.value && eventDate) checkIn.value = eventDate;
+    if (checkOut && !checkOut.value && (checkIn?.value || eventDate)) {
+      checkOut.value = addDays(checkIn?.value || eventDate, 1);
+    }
+    const stayTotal = form.querySelector('[name="stay_total"]');
+    if (stayTotal && !stayTotal.value && Number(p.booking_total) > 0) {
+      stayTotal.value = String(Number(p.booking_total));
+    }
+  }
+}
+
+function setReservationEditMode(detailEl, editing) {
+  const view = detailEl?.querySelector('[data-res-view]');
+  const form = detailEl?.querySelector('[data-res-edit-form]');
+  const openBtn = detailEl?.querySelector('[data-res-edit-open]');
+  if (!view || !form) return;
+  view.classList.toggle('hidden', editing);
+  view.hidden = editing;
+  form.classList.toggle('hidden', !editing);
+  form.hidden = !editing;
+  if (openBtn) openBtn.hidden = editing;
+}
+
+function showReservationConfirmDialog(detailEl, summaryLines, { converting = false } = {}) {
+  const overlay = detailEl?.querySelector('[data-res-confirm]');
+  const titleEl = overlay?.querySelector('#billing-res-confirm-title');
+  const listEl = overlay?.querySelector('[data-res-confirm-list]');
+  const check = overlay?.querySelector('[data-res-confirm-check]');
+  const applyBtn = overlay?.querySelector('[data-res-confirm-apply]');
+  const cancelBtn = overlay?.querySelector('[data-res-confirm-cancel]');
+  if (!overlay || !listEl || !check || !applyBtn || !cancelBtn) return Promise.resolve(false);
+
+  if (titleEl) {
+    titleEl.textContent = converting ? 'Confirm overnight stay conversion' : 'Confirm reservation changes';
+  }
+  applyBtn.textContent = converting ? 'Convert to overnight stay' : 'Apply changes';
+
+  listEl.innerHTML = summaryLines.map(({ level, text }) => `
+    <li class="billing-res-confirm__item billing-res-confirm__item--${level}">${escapeHtml(text)}</li>`).join('');
+  check.checked = false;
+  applyBtn.disabled = true;
+  overlay.classList.remove('hidden');
+  overlay.hidden = false;
+  overlay.setAttribute('aria-hidden', 'false');
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      overlay.classList.add('hidden');
+      overlay.hidden = true;
+      overlay.setAttribute('aria-hidden', 'true');
+      check.removeEventListener('change', onCheck);
+      applyBtn.removeEventListener('click', onApply);
+      cancelBtn.removeEventListener('click', onCancel);
+    };
+    const onCheck = () => { applyBtn.disabled = !check.checked; };
+    const onApply = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    check.addEventListener('change', onCheck);
+    applyBtn.addEventListener('click', onApply);
+    cancelBtn.addEventListener('click', onCancel);
+  });
+}
+
+async function saveReservationEdit(p, draft) {
+  const origKind = reservationKind(p);
+  const noteText = draft.notes || '';
+  const modLine = draft.modification_message
+    ? `[Modified by admin] ${draft.modification_message}`
+    : '';
+  const combinedNotes = [noteText, modLine].filter(Boolean).join('\n') || undefined;
+
+  if (draft.invoice_kind !== origKind) {
+    const convertPayload = {
+      invoice_kind: draft.invoice_kind,
+      guest_count: draft.guest_count,
+      notes: noteText || undefined,
+      modification_message: draft.modification_message,
+    };
+    if (draft.invoice_kind === 'room') {
+      Object.assign(convertPayload, {
+        check_in: draft.check_in,
+        check_out: draft.check_out,
+        stay_total: draft.stay_total,
+        meals: {},
+        fees: [],
+      });
+    } else {
+      Object.assign(convertPayload, {
+        facility_id: draft.facility_id,
+        event_date: draft.event_date,
+        start_time: draft.start_time,
+        end_time: draft.end_time,
+      });
+    }
+    await convertPaymentReservation(p.id, convertPayload);
+    return;
+  }
+
+  if (origKind === 'venue') {
+    await updateFacilityBooking(p.facility_booking_id, {
+      facility_id: draft.facility_id,
+      event_date: draft.event_date,
+      start_time: draft.start_time,
+      end_time: draft.end_time,
+      guest_count: draft.guest_count,
+      notes: noteText || undefined,
+      modification_message: draft.modification_message,
+      notify_guest: false,
+    });
+    return;
+  }
+
+  const isVenueStay = String(p.occupancy_item || '') === 'Venue stay'
+    || /\[Venue stay:/i.test(String(p.notes || ''));
+  const stayPayload = {
+    check_in: draft.check_in,
+    check_out: draft.check_out,
+    guest_count: draft.guest_count,
+    room_id: p.room_id,
+    contact_phone: draft.contact_phone,
+    meal_allergen_notes: draft.meal_allergen_notes,
+    notes: combinedNotes,
+    modification_message: draft.modification_message,
+    notify_guest: Boolean(draft.modification_message),
+    notify_modification: Boolean(draft.modification_message),
+  };
+  if (isVenueStay) {
+    stayPayload.total_amount = Number(p.subtotal ?? p.booking_total ?? draft.stay_total ?? 0) || undefined;
+  }
+  await updateBooking(p.booking_id, stayPayload);
+}
+
+function bindReservationEdit(p, detailEl) {
+  const root = detailEl?.querySelector('[data-reservation-root]');
+  const form = detailEl?.querySelector('[data-res-edit-form]');
+  if (!root || !form || root.dataset.resBound === '1') return;
+  root.dataset.resBound = '1';
+
+  form.querySelector('[data-res-convert-stay]')?.addEventListener('change', () => {
+    syncReservationKindPanels(form, p);
+  });
+
+  root.querySelector('[data-res-edit-open]')?.addEventListener('click', async () => {
+    const detailFeedback = document.getElementById('billing-detail-feedback');
+    const billingForm = getBillingForm(detailEl);
+    if (hasUnsavedBillingChanges(p, billingForm)) {
+      showFeedback(detailFeedback, 'Save invoice changes before editing the reservation.', 'error');
+      return;
+    }
+    if (hasUnsavedFeeChanges(detailEl, p.id)) {
+      showFeedback(detailFeedback, 'Save additional fees before editing the reservation.', 'error');
+      return;
+    }
+
+    root.querySelector('[data-res-catalog-loading]')?.classList.remove('hidden');
+    try {
+      if (isVenueInvoice(p)) {
+        const catalogs = await loadReservationCatalogs();
+        if (String(state.selectedId) !== String(p.id)) return;
+        const venueSelect = form.querySelector('[name="facility_id"]');
+        if (venueSelect && venueSelect.options.length <= 1) {
+          venueSelect.innerHTML = `<option value="">Select venue…</option>${renderVenueSelectOptions(catalogs.venues, p.facility_id)}`;
+        }
+      }
+    } catch {
+      showFeedback(detailFeedback, 'Could not load venue list. You can still edit notes.', 'error');
+    } finally {
+      root.querySelector('[data-res-catalog-loading]')?.classList.add('hidden');
+    }
+
+    hideFeedback(detailFeedback);
+    setReservationEditMode(detailEl, true);
+    syncReservationKindPanels(form, p);
+    form.querySelector('[name="modification_message"]')?.focus();
+  });
+
+  form.querySelector('[data-res-edit-cancel]')?.addEventListener('click', () => {
+    setReservationEditMode(detailEl, false);
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const detailFeedback = document.getElementById('billing-detail-feedback');
+    const draft = readReservationEditForm(form);
+    const origKind = reservationKind(p);
+    const converting = draft.invoice_kind !== origKind;
+
+    if (converting && origKind === 'venue' && !canConvertVenueToStay(p)) {
+      showFeedback(detailFeedback, 'This venue cannot convert to an overnight stay. Only coded conference/classroom venue rooms support conversion — not recreation or outdoor spaces.', 'error');
+      return;
+    }
+
+    if (converting && !draft.modification_message) {
+      showFeedback(detailFeedback, 'Add an admin change note explaining this conversion (e.g. conference room → overnight stay).', 'error');
+      form.querySelector('[name="modification_message"]')?.focus();
+      return;
+    }
+
+    if (draft.invoice_kind === 'room') {
+      if (!draft.check_in || !draft.check_out) {
+        showFeedback(detailFeedback, 'Check-in and check-out are required.', 'error');
+        return;
+      }
+      if (!Number.isFinite(draft.stay_total) || draft.stay_total <= 0) {
+        showFeedback(detailFeedback, 'Enter a stay total for the overnight conversion.', 'error');
+        form.querySelector('[name="stay_total"]')?.focus();
+        return;
+      }
+    } else if (!draft.facility_id || !draft.event_date || !draft.start_time || !draft.end_time) {
+      showFeedback(detailFeedback, 'Venue, date, and times are required.', 'error');
+      return;
+    }
+
+    const summary = buildReservationChangeSummary(p, draft);
+    const needsConfirm = converting || summary.some((line) => line.level === 'critical' || line.level === 'warn');
+    if (needsConfirm) {
+      const ok = await showReservationConfirmDialog(detailEl, summary, { converting });
+      if (!ok) return;
+    }
+
+    const submitBtn = form.querySelector('[type="submit"]');
+    submitBtn.disabled = true;
+    const label = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span> Saving…';
+    try {
+      await saveReservationEdit(p, draft);
+      await reload({ keepSelection: true, keepModalOpen: true });
+      showFeedback(
+        detailFeedback,
+        converting ? 'Booking converted to overnight stay. Invoice re-linked and totals refreshed.' : 'Reservation updated. Invoice totals refreshed.',
+        'ok',
+      );
+      window.dispatchEvent(new CustomEvent('booking:updated'));
+    } catch (err) {
+      showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = label;
+    }
+  });
+}
+
 function renderReservationSection(p) {
   const parsedNotes = parseBookingNotes(p.notes);
   const tracking = renderNoteTrackingCallouts(parsedNotes);
+  const editable = canEditReservationDetails(p);
+  const reservationBlock = (title, icon, cardHtml, { editLabel = 'Edit' } = {}) => `
+      <section class="billing-panel billing-panel--reservation" data-reservation-root="${p.id}">
+        ${renderReservationPanelHead(title, icon, { editable, editLabel })}
+        <p class="billing-res-catalog-loading hidden" data-res-catalog-loading>Loading venue list…</p>
+        <div class="billing-res-view" data-res-view>
+          ${tracking}
+          ${cardHtml}
+        </div>
+        ${editable ? renderReservationEditForm(p) : ''}
+      </section>`;
 
   if (isVenueInvoice(p)) {
     return `
     <div class="billing-left-stack">
-      <section class="billing-panel billing-panel--reservation">
-        <h4 class="billing-section-title">
-          <span class="material-symbols-outlined" aria-hidden="true">meeting_room</span>
-          Venue booking details
-        </h4>
-        ${tracking}
-        ${renderVenueDetailsCard(p, parsedNotes)}
-      </section>
+      ${reservationBlock('Venue booking details', 'meeting_room', renderVenueDetailsCard(p, parsedNotes), {
+        editLabel: canConvertVenueToStay(p) ? 'Edit / convert' : 'Edit',
+      })}
       <section class="billing-panel billing-panel--charges">
         <h4 class="billing-section-title">
           <span class="material-symbols-outlined" aria-hidden="true">request_quote</span>
@@ -1146,14 +1789,7 @@ function renderReservationSection(p) {
 
   return `
     <div class="billing-left-stack">
-      <section class="billing-panel billing-panel--reservation">
-        <h4 class="billing-section-title">
-          <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
-          Reservation details
-        </h4>
-        ${tracking}
-        ${renderRoomDetailsCard(p, parsedNotes)}
-      </section>
+      ${reservationBlock('Reservation details', 'event_available', renderRoomDetailsCard(p, parsedNotes), { editLabel: 'Edit stay' })}
       ${renderRoomFeesSection(p)}
       <section class="billing-panel billing-panel--charges">
         <h4 class="billing-section-title">
@@ -1278,6 +1914,16 @@ function renderBillingColumn(p, { isPending }) {
       </h4>
 
       <form class="billing-edit-form" data-detail-form="${p.id}" data-subtotal="${subtotal}">
+        <label class="billing-edit-form__field billing-edit-form__field--subtotal">
+          <span>Invoice subtotal (₱)</span>
+          <input type="number" min="0.01" step="0.01"
+            class="billing-edit-form__input billing-edit-form__input--amount"
+            name="invoice_subtotal"
+            data-subtotal-input
+            data-live-due
+            value="${subtotal}" />
+          <small class="billing-edit-form__hint">Set the full charge before discount — use for venue conversions and manual adjustments.</small>
+        </label>
         <div class="billing-discount-block">
           <span class="billing-discount-block__label">Discount</span>
           <div class="billing-discount-mode" role="radiogroup" aria-label="Discount type">
@@ -1418,6 +2064,7 @@ function renderDetailPanel(p) {
         </div>
       </div>
       <div id="billing-detail-feedback" class="billing-detail-feedback hidden" role="status"></div>
+      ${renderReservationConfirmDialog()}
     </div>`;
 }
 
@@ -1439,6 +2086,7 @@ function updateLiveDue(form) {
     dueLabel.textContent = isWaived ? 'Complimentary' : 'Amount due';
   }
   dueEl?.classList.toggle('billing-detail-total--waived', isWaived);
+  form.setAttribute('data-subtotal', String(subtotal));
 
   if (pesoHint) pesoHint.textContent = `−${fmt(discount_amount)} off subtotal`;
 
@@ -1449,8 +2097,10 @@ function updateLiveDue(form) {
   const fixedInput = form.querySelector('[name="discount_amount"]');
   if (mode === 'percent' && fixedInput) {
     fixedInput.value = String(discount_amount);
+    fixedInput.max = String(subtotal);
   } else if (mode === 'fixed' && percentInput) {
     percentInput.value = String(discountPercent(subtotal, discount_amount));
+    if (fixedInput) fixedInput.max = String(subtotal);
   }
 }
 
@@ -1549,6 +2199,7 @@ async function openInvoiceModal(id) {
     detailEl.innerHTML = renderDetailPanel(p);
     bindDetailActions(p);
     initBillingFeeEditor(p, detailEl);
+    bindReservationEdit(p, detailEl);
   } catch (err) {
     detailEl.innerHTML = renderInvoiceLoadError(id, getBillingErrorMessage(err));
     detailEl.querySelector('[data-retry-invoice]')?.addEventListener('click', () => {
@@ -1592,9 +2243,10 @@ function bindDetailActions(p) {
     const btn = form.querySelector('button[type="submit"]');
     btn.disabled = true;
     const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
-    const { discount_amount, discount_note } = readBillingFormValues(form, subtotal);
+    const { subtotal: nextSubtotal, discount_amount, discount_note } = readBillingFormValues(form, subtotal);
     try {
       await updatePayment(p.id, {
+        subtotal: nextSubtotal,
         discount_amount,
         discount_note,
       });
@@ -1670,7 +2322,7 @@ function bindDetailActions(p) {
       return;
     }
     if (hasUnsavedBillingChanges(fresh, billingForm)) {
-      showFeedback(detailFeedback, 'Save discount changes before recording payment.', 'error');
+      showFeedback(detailFeedback, 'Save invoice changes before recording payment.', 'error');
       billingForm?.querySelector('button[type="submit"]')?.focus();
       return;
     }
