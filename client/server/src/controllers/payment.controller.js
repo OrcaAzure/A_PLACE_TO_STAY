@@ -13,6 +13,7 @@ import {
   deletePaidInvoice,
   clearAllPaidInvoices,
   convertPaymentReservationKind,
+  revertVenueOvernightBilling,
 } from '../services/payment.service.js';
 import { isEmailDevMode } from '../services/email.service.js';
 
@@ -237,7 +238,25 @@ export const convertPaymentReservation = async (req, res) => {
 
     const payment = await convertPaymentReservationKind(paymentId, req.body);
     res.status(200).json({
-      message: 'Reservation converted and invoice re-linked. Totals were recalculated.',
+      message: 'Overnight billing updated for this venue reservation.',
+      payment,
+    });
+  } catch (error) {
+    res.status(paymentErrorStatus(error)).json({ message: paymentErrorMessage(error) });
+  }
+};
+
+export const revertPaymentOvernight = async (req, res) => {
+  try {
+    const paymentId = parsePaymentId(req.params.id);
+    if (!paymentId) return res.status(400).json({ message: 'Invalid invoice id' });
+
+    const existing = await loadPaymentDetail(paymentId);
+    if (!existing) return res.status(404).json({ message: 'Invoice not found' });
+
+    const payment = await revertVenueOvernightBilling(paymentId, req.body);
+    res.status(200).json({
+      message: 'Reverted to venue event booking. Invoice totals updated.',
       payment,
     });
   } catch (error) {

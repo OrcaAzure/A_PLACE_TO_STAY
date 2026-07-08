@@ -5,7 +5,7 @@
 import {
   getPayments, getPaymentById, updatePayment, sendPaymentInvoice, recordPaymentTransaction,
   deletePayment, clearPaidPayments, getExtraServicesCatalog, updateBooking,
-  updateFacilityBooking, convertPaymentReservation, getFacilitiesOverview,
+  updateFacilityBooking, convertPaymentReservation, revertPaymentOvernight, getFacilitiesOverview,
 } from '/assets/js/services/api.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
@@ -87,8 +87,16 @@ function invoiceEmailHint(p) {
 }
 
 function roomShort(p) {
+  if (showAsVenueOvernightBilling(p)) {
+    const code = venueStayCodeFromNotes(p.notes) || p.facility_room_code || venueSpaceLabel(p);
+    return `${code} · overnight`;
+  }
   const venueStay = venueStayCodeFromNotes(p.notes);
-  if (venueStay) return `Venue ${venueStay} · overnight`;
+  if (venueStay) return `${venueStay} · overnight`;
+  if (p.room_number === 'VENUE-STAY') {
+    const code = venueStayCodeFromNotes(p.notes) || 'Conference room';
+    return `${code} · overnight`;
+  }
   const room = p.room_number ? `Rm ${p.room_number}` : 'Room';
   const building = p.building_name || 'Building';
   return `${building} · ${room}`;
@@ -100,9 +108,17 @@ function venueStayCodeFromNotes(notes) {
 }
 
 function roomLabel(p) {
+  if (showAsVenueOvernightBilling(p)) {
+    const code = venueStayCodeFromNotes(p.notes) || p.facility_room_code || venueSpaceLabel(p);
+    return `${code} · overnight stay`;
+  }
   const venueStay = venueStayCodeFromNotes(p.notes);
   if (venueStay) {
-    return `Venue room ${venueStay} · overnight stay`;
+    return `${venueStay} · overnight stay`;
+  }
+  if (p.room_number === 'VENUE-STAY') {
+    const code = venueStayCodeFromNotes(p.notes) || 'Conference room';
+    return `${code} · overnight stay`;
   }
   const building = p.building_name || 'Building';
   const room = p.room_number ? `Room ${p.room_number}` : 'Room';
@@ -110,8 +126,25 @@ function roomLabel(p) {
   return `${building} · ${room}${type}`;
 }
 
+function isLegacyVenueStayRoom(p) {
+  if (!p || isVenueInvoice(p)) return false;
+  return p.room_number === 'VENUE-STAY' || /\[Venue stay:/i.test(String(p.notes || ''));
+}
+
+function showAsVenueOvernightBilling(p) {
+  return isVenueConvertedToStay(p) || isLegacyVenueStayRoom(p);
+}
+
+function isVenueConvertedToStay(p) {
+  if (!p) return false;
+  if (p.billing_overnight_converted) return true;
+  if (p.facility_booking_id != null && /\[Converted to overnight stay\]/i.test(String(p.notes || ''))) return true;
+  return false;
+}
+
 function isVenueInvoice(p) {
   if (!p) return false;
+  if (isVenueConvertedToStay(p)) return true;
   if (p.invoice_kind === 'venue') return true;
   if (p.facility_booking_id != null && p.facility_booking_id !== '') return true;
   if ((p.facility_name || p.facility_category) && !p.room_number) return true;
@@ -168,10 +201,17 @@ function formatVenueWhen(p) {
 }
 
 function bookingShort(p) {
+  if (showAsVenueOvernightBilling(p)) {
+    const code = venueStayCodeFromNotes(p.notes) || p.facility_room_code || venueSpaceLabel(p);
+    return `${code} · overnight`;
+  }
   return isVenueInvoice(p) ? venueShort(p) : roomShort(p);
 }
 
 function bookingDatesShort(p) {
+  if (showAsVenueOvernightBilling(p)) {
+    return formatDateShort(p.check_in, p.check_out);
+  }
   return isVenueInvoice(p) ? formatVenueWhen(p) : formatDateShort(p.check_in, p.check_out);
 }
 
@@ -900,6 +940,19 @@ function venueChargeLines(p) {
 function chargeLines(p) {
   const bookingTotal = Number(p.booking_total || p.subtotal || 0);
 
+  if (showAsVenueOvernightBilling(p)) {
+    const nights = stayNights(p) || 1;
+    return {
+      lines: [{
+        icon: 'night_shelter',
+        label: 'Overnight stay',
+        detail: `${venueSpaceLabel(p)} · ${nights} night${nights === 1 ? '' : 's'} · billing conversion`,
+        amount: bookingTotal,
+      }],
+      bookingTotal,
+    };
+  }
+
   if (isVenueInvoice(p)) {
     return venueChargeLines(p);
   }
@@ -997,6 +1050,17 @@ function renderChargeTable(p) {
 const ADMIN_MOD_PREFIX = '[Modified by admin]';
 const MOD_REQUESTED_PREFIX = '[Modification requested]';
 const GUEST_UPDATED_PREFIX = '[Updated by guest]';
+const VENUE_STAY_BILLING_TAG_RE = /\[(?:Converted to overnight stay|Venue stay:[^\]]*|Stay check-in:[^\]]*|Stay check-out:[^\]]*)\]/gi;
+
+function stripVenueStayBillingTagsText(text) {
+  return String(text || '')
+    .replace(VENUE_STAY_BILLING_TAG_RE, '')
+    .split(/\r?\n/)
+    .map((line) => line.replace(/\s{2,}/g, ' ').trim())
+    .filter(Boolean)
+    .join('\n')
+    .trim();
+}
 
 function parseBookingNotes(raw) {
   const result = {
@@ -1008,7 +1072,7 @@ function parseBookingNotes(raw) {
   if (!raw || typeof raw !== 'string') return result;
 
   const guestParts = [];
-  raw.split(/\r?\n/).forEach((line) => {
+  stripVenueStayBillingTagsText(raw).split(/\r?\n/).forEach((line) => {
     let remainder = line.trim();
     if (!remainder) return;
 
@@ -1067,12 +1131,38 @@ function renderNoteTrackingCallouts(parsed) {
     </div>`;
 }
 
-function renderDetailItem(label, value, { wide = false, alert = false } = {}) {
+function renderDetailItem(label, value, { wide = false, alert = false, multiline = false } = {}) {
   if (!value) return '';
+  const valueHtml = multiline
+    ? `<p class="billing-venue-details__value billing-venue-details__value--notes">${escapeHtml(value)}</p>`
+    : `<span class="billing-venue-details__value">${escapeHtml(value)}</span>`;
   return `
     <div class="billing-venue-details__item${wide ? ' billing-venue-details__item--wide' : ''}${alert ? ' billing-venue-details__item--alert' : ''}">
       <span class="billing-venue-details__label">${escapeHtml(label)}</span>
-      <span class="billing-venue-details__value">${escapeHtml(value)}</span>
+      ${valueHtml}
+    </div>`;
+}
+
+function renderVenueStayMetaChips(p) {
+  const code = p.facility_room_code || venueStayCodeFromNotes(p.notes);
+  const checkIn = sliceDate(p.check_in) || (String(p.notes || '').match(/\[Stay check-in:\s*([^\]]+)\]/i)?.[1] || '').slice(0, 10);
+  const checkOut = sliceDate(p.check_out) || (String(p.notes || '').match(/\[Stay check-out:\s*([^\]]+)\]/i)?.[1] || '').slice(0, 10);
+  const chips = [];
+  if (showAsVenueOvernightBilling(p)) {
+    chips.push({ icon: 'night_shelter', label: 'Overnight billing' });
+  }
+  if (code) chips.push({ icon: 'meeting_room', label: code });
+  if (checkIn && checkOut) {
+    chips.push({ icon: 'date_range', label: `${formatDateShort(checkIn, checkOut)}` });
+  }
+  if (!chips.length) return '';
+  return `
+    <div class="billing-stay-meta" aria-label="Stay billing details">
+      ${chips.map(({ icon, label }) => `
+        <span class="billing-stay-meta__chip">
+          <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>
+          ${escapeHtml(label)}
+        </span>`).join('')}
     </div>`;
 }
 
@@ -1097,11 +1187,41 @@ function renderRoomDetailsCard(p, parsedNotes) {
         ${renderDetailItem('Email', p.guest_email, { wide: true })}
         ${mealsSummary ? renderDetailItem('Meals ordered', mealsSummary, { wide: true }) : ''}
         ${p.meal_allergen_notes ? renderDetailItem('Allergen notes', p.meal_allergen_notes, { wide: true, alert: true }) : ''}
-        ${notes.guestNotes ? renderDetailItem('Booking notes', notes.guestNotes, { wide: true }) : ''}
+        ${notes.guestNotes ? renderDetailItem('Booking notes', notes.guestNotes, { wide: true, multiline: true }) : ''}
       </div>
       <div class="billing-venue-details__footer">
         <span class="billing-venue-details__ref">Booking ref #${escapeHtml(String(p.booking_id))}</span>
         <span class="billing-venue-details__type">Room stay</span>
+      </div>
+    </div>`;
+}
+
+function renderVenueOvernightDetailsCard(p, parsedNotes) {
+  const notes = parsedNotes ?? parseBookingNotes(p.notes);
+  const nights = stayNights(p) || 1;
+  return `
+    <div class="billing-venue-details billing-venue-details--overnight">
+      <div class="billing-res-convert-notice billing-res-convert-notice--static" role="status">
+        <span class="material-symbols-outlined" aria-hidden="true">night_shelter</span>
+        <div>
+          <strong>${escapeHtml(venueSpaceLabel(p))} — overnight stay</strong>
+          <p>Billing conversion only — the venue booking stays on file. Stay dates and totals are managed in this invoice.</p>
+          ${renderVenueStayMetaChips(p)}
+        </div>
+      </div>
+      <div class="billing-venue-details__grid billing-venue-details__grid--unified">
+        ${renderDetailItem('Space', venueLabel(p))}
+        ${renderDetailItem('Check-in', formatDateLongSingle(p.check_in))}
+        ${renderDetailItem('Check-out', formatDateLongSingle(p.check_out))}
+        ${renderDetailItem('Nights', `${nights}`)}
+        ${renderDetailItem('Guests', `${p.guest_count || 1} expected`)}
+        ${renderDetailItem('Season', p.season)}
+        ${renderDetailItem('Email', p.guest_email, { wide: true })}
+        ${notes.guestNotes ? renderDetailItem('Booking notes', notes.guestNotes, { wide: true, multiline: true }) : ''}
+      </div>
+      <div class="billing-venue-details__footer">
+        <span class="billing-venue-details__ref">Booking ref #${escapeHtml(String(p.facility_booking_id))}</span>
+        <span class="billing-venue-details__type">Overnight (billing)</span>
       </div>
     </div>`;
 }
@@ -1119,7 +1239,7 @@ function renderVenueDetailsCard(p, parsedNotes) {
         ${renderDetailItem('Season', p.season)}
         ${renderDetailItem('Package', p.facility_package)}
         ${renderDetailItem('Email', p.guest_email, { wide: true })}
-        ${notes.guestNotes ? renderDetailItem('Booking notes', notes.guestNotes, { wide: true }) : ''}
+        ${notes.guestNotes ? renderDetailItem('Booking notes', notes.guestNotes, { wide: true, multiline: true }) : ''}
       </div>
       <div class="billing-venue-details__footer">
         <span class="billing-venue-details__ref">Booking ref #${escapeHtml(String(p.facility_booking_id))}</span>
@@ -1168,18 +1288,31 @@ async function loadReservationCatalogs() {
   return { venues: buildVenueCatalogRows(overview) };
 }
 
-function renderReservationPanelHead(title, icon, { editable, editLabel = 'Edit' }) {
+function canRevertVenueOvernight(p) {
+  return showAsVenueOvernightBilling(p) && p.status !== 'Paid';
+}
+
+function renderReservationPanelHead(title, icon, { editable, editLabel = 'Edit', revertable = false } = {}) {
+  const actions = (editable || revertable) ? `
+      <div class="billing-panel__actions">
+        ${revertable ? `
+        <button type="button" class="billing-res-revert-btn" data-res-revert-open>
+          <span class="material-symbols-outlined" aria-hidden="true">undo</span>
+          Revert to venue
+        </button>` : ''}
+        ${editable ? `
+        <button type="button" class="billing-res-edit-btn" data-res-edit-open>
+          <span class="material-symbols-outlined" aria-hidden="true">edit</span>
+          ${escapeHtml(editLabel)}
+        </button>` : ''}
+      </div>` : '';
   return `
     <div class="billing-panel__head">
       <h4 class="billing-section-title">
         <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>
         ${escapeHtml(title)}
       </h4>
-      ${editable ? `
-        <button type="button" class="billing-res-edit-btn" data-res-edit-open>
-          <span class="material-symbols-outlined" aria-hidden="true">edit</span>
-          ${escapeHtml(editLabel)}
-        </button>` : ''}
+      ${actions}
     </div>`;
 }
 
@@ -1193,7 +1326,7 @@ function isVenueRoomInvoice(p) {
 }
 
 function canConvertVenueToStay(p) {
-  return isVenueRoomInvoice(p) && !isRecreationVenue(p);
+  return isVenueRoomInvoice(p) && !isRecreationVenue(p) && !isVenueConvertedToStay(p);
 }
 
 function isConferenceStyleVenue(p) {
@@ -1296,7 +1429,7 @@ function renderVenueReservationEditForm(p, catalogs = {}) {
         <input type="checkbox" name="convert_to_stay" data-res-convert-stay />
         <span class="billing-res-convert-toggle__label">
           <strong>Use as overnight stay</strong>
-          <small>Event booking becomes a housing room stay. The venue reservation is cancelled.</small>
+          <small>Billing only — records ${escapeHtml(venueSpaceLabel(p))} as an overnight stay without creating a housing room or cancelling the venue booking.</small>
         </span>
       </label>` : '';
 
@@ -1325,7 +1458,7 @@ function renderVenueReservationEditForm(p, catalogs = {}) {
             </label>
             <label class="billing-res-edit-field">
               <span>Stay total (₱)</span>
-              <input type="number" min="0.01" step="0.01" class="billing-edit-form__input" name="stay_total" value="${defaultStayTotal}" data-res-field="stay_total" placeholder="Lodging charge for this stay" />
+              <input type="number" min="1" step="1" class="billing-edit-form__input" name="stay_total" value="${defaultStayTotal}" data-res-field="stay_total" placeholder="Lodging charge for this stay" />
             </label>
             ${venueCode ? `<p class="billing-res-edit-hint billing-res-edit-hint--inline">Space: <strong>${escapeHtml(venueSpaceLabel(p))}</strong>. Enter the overnight rate manually — extras like mattress go in Additional fees after conversion.</p>` : ''}
           </div>
@@ -1382,8 +1515,103 @@ function renderVenueReservationEditForm(p, catalogs = {}) {
     </form>`;
 }
 
+function renderVenueOvernightEditForm(p) {
+  const parsedNotes = parseBookingNotes(p.notes);
+  const guestNotes = parsedNotes.guestNotes || '';
+  const defaultStayTotal = Math.round(Number(p.subtotal ?? p.booking_total ?? 0) * 100) / 100 || '';
+  return `
+    <form class="billing-res-edit-form hidden" data-res-edit-form="${p.id}" data-res-orig-kind="venue_overnight" hidden>
+      <p class="billing-res-edit-form__intro">Update overnight stay dates and the billing total for <strong>${escapeHtml(venueSpaceLabel(p))}</strong>. This updates billing only — no housing room is created.</p>
+      <div class="billing-res-edit-form__grid">
+        <label class="billing-res-edit-field">
+          <span>Check-in</span>
+          <input type="date" class="billing-edit-form__input" name="check_in" value="${escapeHtml(sliceDate(p.check_in))}" />
+        </label>
+        <label class="billing-res-edit-field">
+          <span>Check-out</span>
+          <input type="date" class="billing-edit-form__input" name="check_out" value="${escapeHtml(sliceDate(p.check_out))}" />
+        </label>
+        <label class="billing-res-edit-field">
+          <span>Stay total (₱)</span>
+          <input type="number" min="1" step="1" class="billing-edit-form__input" name="stay_total" value="${defaultStayTotal}" placeholder="Lodging charge" />
+        </label>
+        <label class="billing-res-edit-field">
+          <span>Guests</span>
+          <input type="number" min="1" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" />
+        </label>
+        <label class="billing-res-edit-field billing-res-edit-field--wide">
+          <span>Booking notes</span>
+          <textarea class="billing-edit-form__input billing-res-edit-textarea" name="notes" rows="3" placeholder="General notes for staff">${escapeHtml(guestNotes)}</textarea>
+        </label>
+        <label class="billing-res-edit-field billing-res-edit-field--wide">
+          <span>Admin change note</span>
+          <textarea class="billing-edit-form__input billing-res-edit-textarea" name="modification_message" rows="2" placeholder="Optional — logged as “Modified by admin”"></textarea>
+        </label>
+      </div>
+      <div class="billing-res-edit-form__actions">
+        <button type="button" class="invoice-btn-secondary" data-res-edit-cancel>Cancel</button>
+        <button type="submit" class="invoice-btn-confirm">
+          <span class="material-symbols-outlined" aria-hidden="true">save</span>
+          Save stay details
+        </button>
+      </div>
+    </form>`;
+}
+
 function renderReservationEditForm(p, catalogs = {}) {
+  if (isVenueConvertedToStay(p)) return renderVenueOvernightEditForm(p);
   return isVenueInvoice(p) ? renderVenueReservationEditForm(p, catalogs) : renderRoomStayEditForm(p);
+}
+
+function renderVenueOvernightRevertForm(p) {
+  const parsedNotes = parseBookingNotes(p.notes);
+  const guestNotes = parsedNotes.guestNotes || '';
+  const defaultEventDate = sliceDate(p.check_in) || sliceDate(p.event_date) || '';
+  const defaultTotal = Math.round(Number(p.subtotal ?? p.booking_total ?? 0) * 100) / 100 || '';
+  return `
+    <form class="billing-res-edit-form billing-res-revert-form hidden" data-res-revert-form="${p.id}" hidden>
+      <p class="billing-res-edit-form__intro billing-res-revert-form__intro">
+        <strong>Revert to venue event booking</strong> — use this if the overnight conversion was a mistake.
+        The invoice goes back to a timed venue reservation; overnight billing tags are removed.
+      </p>
+      <div class="billing-res-edit-form__grid">
+        <label class="billing-res-edit-field">
+          <span>Event date</span>
+          <input type="date" class="billing-edit-form__input" name="event_date" value="${escapeHtml(defaultEventDate)}" required />
+        </label>
+        <label class="billing-res-edit-field">
+          <span>Start time</span>
+          <input type="time" class="billing-edit-form__input" name="start_time" value="${escapeHtml(sliceTime(p.start_time) || '09:00')}" required />
+        </label>
+        <label class="billing-res-edit-field">
+          <span>End time</span>
+          <input type="time" class="billing-edit-form__input" name="end_time" value="${escapeHtml(sliceTime(p.end_time) || '17:00')}" required />
+        </label>
+        <label class="billing-res-edit-field">
+          <span>Event total (₱)</span>
+          <input type="number" min="1" step="1" class="billing-edit-form__input" name="event_total" value="${defaultTotal}" placeholder="Leave as venue rate or enter manually" />
+        </label>
+        <label class="billing-res-edit-field">
+          <span>Guests</span>
+          <input type="number" min="1" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" />
+        </label>
+        <label class="billing-res-edit-field billing-res-edit-field--wide">
+          <span>Booking notes</span>
+          <textarea class="billing-edit-form__input billing-res-edit-textarea" name="notes" rows="3" placeholder="General notes for staff">${escapeHtml(guestNotes)}</textarea>
+        </label>
+        <label class="billing-res-edit-field billing-res-edit-field--wide">
+          <span>Admin change note <span class="billing-res-edit-required">(required)</span></span>
+          <textarea class="billing-edit-form__input billing-res-edit-textarea" name="modification_message" rows="2" required placeholder="e.g. Miscommunication — restore as conference room event booking"></textarea>
+        </label>
+      </div>
+      <div class="billing-res-edit-form__actions">
+        <button type="button" class="invoice-btn-secondary" data-res-revert-cancel>Cancel</button>
+        <button type="submit" class="invoice-btn-confirm billing-res-revert-form__submit">
+          <span class="material-symbols-outlined" aria-hidden="true">undo</span>
+          Revert to venue booking
+        </button>
+      </div>
+    </form>`;
 }
 
 function renderReservationConfirmDialog() {
@@ -1407,6 +1635,18 @@ function renderReservationConfirmDialog() {
 
 function readReservationEditForm(form) {
   const origKind = form.getAttribute('data-res-orig-kind') || 'room';
+  if (origKind === 'venue_overnight') {
+    return {
+      invoice_kind: 'room',
+      guest_count: Number(form.querySelector('[name="guest_count"]')?.value || 1),
+      notes: form.querySelector('[name="notes"]')?.value?.trim() || undefined,
+      modification_message: form.querySelector('[name="modification_message"]')?.value?.trim() || undefined,
+      check_in: form.querySelector('[name="check_in"]')?.value,
+      check_out: form.querySelector('[name="check_out"]')?.value,
+      stay_total: Math.round(Number(form.querySelector('[name="stay_total"]')?.value || 0) * 100) / 100,
+    };
+  }
+
   const convertStay = Boolean(form.querySelector('[data-res-convert-stay]')?.checked);
   const kind = origKind === 'venue' && convertStay ? 'room' : origKind;
   const kindInput = form.querySelector('[data-res-kind-input]');
@@ -1432,7 +1672,7 @@ function readReservationEditForm(form) {
     ...base,
     check_in: form.querySelector('[name="check_in"]')?.value,
     check_out: form.querySelector('[name="check_out"]')?.value,
-    stay_total: Number(form.querySelector('[name="stay_total"]')?.value || 0),
+    stay_total: Math.round(Number(form.querySelector('[name="stay_total"]')?.value || 0) * 100) / 100,
     contact_phone: form.querySelector('[name="contact_phone"]')?.value?.trim() || undefined,
     meal_allergen_notes: form.querySelector('[name="meal_allergen_notes"]')?.value?.trim() || undefined,
   };
@@ -1444,14 +1684,22 @@ function buildReservationChangeSummary(p, draft) {
   if (draft.invoice_kind !== origKind && origKind === 'venue' && draft.invoice_kind === 'room' && canConvertVenueToStay(p)) {
     lines.push({
       level: 'critical',
-      text: `Convert ${venueSpaceLabel(p)} from an event booking into an overnight stay at ${fmt(draft.stay_total || p.booking_total || 0)}. The venue reservation will be cancelled.`,
+      text: `Convert ${venueSpaceLabel(p)} to overnight billing at ${fmt(draft.stay_total || p.booking_total || 0)}. The venue booking stays on file — only billing totals and stay dates update.`,
     });
   }
-  if (draft.invoice_kind === 'room') {
+  if (isVenueConvertedToStay(p) && draft.invoice_kind === 'room') {
     if (draft.check_in !== sliceDate(p.check_in) || draft.check_out !== sliceDate(p.check_out)) {
-      lines.push({ level: 'warn', text: 'Stay dates change — nights and room rate may recalculate.' });
+      lines.push({ level: 'warn', text: 'Stay dates will update in billing.' });
     }
-    if (draft.stay_total && Number(draft.stay_total) !== Number(p.booking_total || 0)) {
+    const currentTotal = Number(p.subtotal ?? p.booking_total ?? 0);
+    if (draft.stay_total && Number(draft.stay_total) !== currentTotal) {
+      lines.push({ level: 'warn', text: `Stay total set to ${fmt(draft.stay_total)} — invoice subtotal will update.` });
+    }
+  } else if (draft.invoice_kind === 'room') {
+    if (draft.check_in !== sliceDate(p.check_in) || draft.check_out !== sliceDate(p.check_out)) {
+      lines.push({ level: 'warn', text: 'Stay dates change — invoice subtotal may update.' });
+    }
+    if (draft.stay_total && Number(draft.stay_total) !== Number(p.subtotal ?? p.booking_total ?? 0)) {
       lines.push({ level: 'warn', text: `Stay total set to ${fmt(draft.stay_total)} — invoice subtotal will update.` });
     }
   }
@@ -1498,7 +1746,7 @@ function syncReservationKindPanels(form, p) {
         <span class="material-symbols-outlined" aria-hidden="true">night_shelter</span>
         <div>
           <strong>${escapeHtml(venueSpaceLabel(p))} → overnight stay</strong>
-          <p>Set check-in / check-out and enter the <strong>stay total</strong> manually. The venue code (${escapeHtml(p.facility_room_code || 'see above')}) is recorded on the booking — no housing room match needed.</p>
+          <p>Set check-in / check-out and enter the <strong>stay total</strong> manually. Billing updates only — ${escapeHtml(venueSpaceLabel(p))} stays as the booked space.</p>
         </div>`;
       notice.classList.remove('hidden');
       notice.hidden = false;
@@ -1529,16 +1777,42 @@ function syncReservationKindPanels(form, p) {
 function setReservationEditMode(detailEl, editing) {
   const view = detailEl?.querySelector('[data-res-view]');
   const form = detailEl?.querySelector('[data-res-edit-form]');
+  const revertForm = detailEl?.querySelector('[data-res-revert-form]');
   const openBtn = detailEl?.querySelector('[data-res-edit-open]');
+  const revertBtn = detailEl?.querySelector('[data-res-revert-open]');
   if (!view || !form) return;
   view.classList.toggle('hidden', editing);
   view.hidden = editing;
   form.classList.toggle('hidden', !editing);
   form.hidden = !editing;
   if (openBtn) openBtn.hidden = editing;
+  if (revertBtn) revertBtn.hidden = editing;
+  if (revertForm && editing) {
+    revertForm.classList.add('hidden');
+    revertForm.hidden = true;
+  }
 }
 
-function showReservationConfirmDialog(detailEl, summaryLines, { converting = false } = {}) {
+function setReservationRevertMode(detailEl, reverting) {
+  const view = detailEl?.querySelector('[data-res-view]');
+  const revertForm = detailEl?.querySelector('[data-res-revert-form]');
+  const editForm = detailEl?.querySelector('[data-res-edit-form]');
+  const editBtn = detailEl?.querySelector('[data-res-edit-open]');
+  const revertBtn = detailEl?.querySelector('[data-res-revert-open]');
+  if (!view || !revertForm) return;
+  view.classList.toggle('hidden', reverting);
+  view.hidden = reverting;
+  revertForm.classList.toggle('hidden', !reverting);
+  revertForm.hidden = !reverting;
+  if (editForm && reverting) {
+    editForm.classList.add('hidden');
+    editForm.hidden = true;
+  }
+  if (editBtn) editBtn.hidden = reverting;
+  if (revertBtn) revertBtn.hidden = reverting;
+}
+
+function showReservationConfirmDialog(detailEl, summaryLines, { converting = false, reverting = false } = {}) {
   const overlay = detailEl?.querySelector('[data-res-confirm]');
   const titleEl = overlay?.querySelector('#billing-res-confirm-title');
   const listEl = overlay?.querySelector('[data-res-confirm-list]');
@@ -1548,9 +1822,13 @@ function showReservationConfirmDialog(detailEl, summaryLines, { converting = fal
   if (!overlay || !listEl || !check || !applyBtn || !cancelBtn) return Promise.resolve(false);
 
   if (titleEl) {
-    titleEl.textContent = converting ? 'Confirm overnight stay conversion' : 'Confirm reservation changes';
+    titleEl.textContent = reverting
+      ? 'Confirm revert to venue booking'
+      : (converting ? 'Confirm overnight stay conversion' : 'Confirm reservation changes');
   }
-  applyBtn.textContent = converting ? 'Convert to overnight stay' : 'Apply changes';
+  applyBtn.textContent = reverting
+    ? 'Revert to venue booking'
+    : (converting ? 'Convert to overnight stay' : 'Apply changes');
 
   listEl.innerHTML = summaryLines.map(({ level, text }) => `
     <li class="billing-res-confirm__item billing-res-confirm__item--${level}">${escapeHtml(text)}</li>`).join('');
@@ -1581,6 +1859,20 @@ function showReservationConfirmDialog(detailEl, summaryLines, { converting = fal
 async function saveReservationEdit(p, draft) {
   const origKind = reservationKind(p);
   const noteText = draft.notes || '';
+
+  if (isVenueConvertedToStay(p) || (origKind === 'venue' && draft.invoice_kind === 'room')) {
+    await convertPaymentReservation(p.id, {
+      invoice_kind: 'room',
+      guest_count: draft.guest_count,
+      notes: noteText || undefined,
+      modification_message: draft.modification_message,
+      check_in: draft.check_in,
+      check_out: draft.check_out,
+      stay_total: draft.stay_total,
+    });
+    return;
+  }
+
   const modLine = draft.modification_message
     ? `[Modified by admin] ${draft.modification_message}`
     : '';
@@ -1598,8 +1890,6 @@ async function saveReservationEdit(p, draft) {
         check_in: draft.check_in,
         check_out: draft.check_out,
         stay_total: draft.stay_total,
-        meals: {},
-        fees: [],
       });
     } else {
       Object.assign(convertPayload, {
@@ -1613,7 +1903,7 @@ async function saveReservationEdit(p, draft) {
     return;
   }
 
-  if (origKind === 'venue') {
+  if (origKind === 'venue' && !isVenueConvertedToStay(p)) {
     await updateFacilityBooking(p.facility_booking_id, {
       facility_id: draft.facility_id,
       event_date: draft.event_date,
@@ -1647,12 +1937,38 @@ async function saveReservationEdit(p, draft) {
   await updateBooking(p.booking_id, stayPayload);
 }
 
+function readReservationRevertForm(form) {
+  return {
+    event_date: form.querySelector('[name="event_date"]')?.value,
+    start_time: form.querySelector('[name="start_time"]')?.value,
+    end_time: form.querySelector('[name="end_time"]')?.value,
+    event_total: Math.round(Number(form.querySelector('[name="event_total"]')?.value || 0) * 100) / 100,
+    guest_count: Number(form.querySelector('[name="guest_count"]')?.value || 1),
+    notes: form.querySelector('[name="notes"]')?.value?.trim() || undefined,
+    modification_message: form.querySelector('[name="modification_message"]')?.value?.trim() || undefined,
+  };
+}
+
+async function saveReservationRevert(p, draft) {
+  await revertPaymentOvernight(p.id, {
+    event_date: draft.event_date,
+    start_time: draft.start_time,
+    end_time: draft.end_time,
+    event_total: draft.event_total > 0 ? draft.event_total : undefined,
+    guest_count: draft.guest_count,
+    notes: draft.notes,
+    modification_message: draft.modification_message,
+  });
+}
+
 function bindReservationEdit(p, detailEl) {
   const root = detailEl?.querySelector('[data-reservation-root]');
   const form = detailEl?.querySelector('[data-res-edit-form]');
-  if (!root || !form || root.dataset.resBound === '1') return;
+  const revertForm = detailEl?.querySelector('[data-res-revert-form]');
+  if (!root || (!form && !revertForm) || root.dataset.resBound === '1') return;
   root.dataset.resBound = '1';
 
+  if (form) {
   form.querySelector('[data-res-convert-stay]')?.addEventListener('change', () => {
     syncReservationKindPanels(form, p);
   });
@@ -1699,10 +2015,11 @@ function bindReservationEdit(p, detailEl) {
     e.preventDefault();
     const detailFeedback = document.getElementById('billing-detail-feedback');
     const draft = readReservationEditForm(form);
-    const origKind = reservationKind(p);
-    const converting = draft.invoice_kind !== origKind;
+    const formOrigKind = form.getAttribute('data-res-orig-kind') || 'room';
+    const converting = formOrigKind === 'venue' && draft.invoice_kind === 'room' && canConvertVenueToStay(p);
+    const updatingOvernightBilling = formOrigKind === 'venue_overnight';
 
-    if (converting && origKind === 'venue' && !canConvertVenueToStay(p)) {
+    if (converting && !canConvertVenueToStay(p)) {
       showFeedback(detailFeedback, 'This venue cannot convert to an overnight stay. Only coded conference/classroom venue rooms support conversion — not recreation or outdoor spaces.', 'error');
       return;
     }
@@ -1713,13 +2030,13 @@ function bindReservationEdit(p, detailEl) {
       return;
     }
 
-    if (draft.invoice_kind === 'room') {
+    if (draft.invoice_kind === 'room' || updatingOvernightBilling) {
       if (!draft.check_in || !draft.check_out) {
         showFeedback(detailFeedback, 'Check-in and check-out are required.', 'error');
         return;
       }
       if (!Number.isFinite(draft.stay_total) || draft.stay_total <= 0) {
-        showFeedback(detailFeedback, 'Enter a stay total for the overnight conversion.', 'error');
+        showFeedback(detailFeedback, 'Enter a stay total for the overnight stay.', 'error');
         form.querySelector('[name="stay_total"]')?.focus();
         return;
       }
@@ -1729,7 +2046,8 @@ function bindReservationEdit(p, detailEl) {
     }
 
     const summary = buildReservationChangeSummary(p, draft);
-    const needsConfirm = converting || summary.some((line) => line.level === 'critical' || line.level === 'warn');
+    const needsConfirm = converting
+      || summary.some((line) => line.level === 'critical' || line.level === 'warn');
     if (needsConfirm) {
       const ok = await showReservationConfirmDialog(detailEl, summary, { converting });
       if (!ok) return;
@@ -1744,9 +2062,66 @@ function bindReservationEdit(p, detailEl) {
       await reload({ keepSelection: true, keepModalOpen: true });
       showFeedback(
         detailFeedback,
-        converting ? 'Booking converted to overnight stay. Invoice re-linked and totals refreshed.' : 'Reservation updated. Invoice totals refreshed.',
+        converting ? 'Converted to overnight billing. Invoice subtotal updated.'
+          : updatingOvernightBilling ? 'Overnight billing updated.'
+            : 'Reservation updated. Invoice totals refreshed.',
         'ok',
       );
+      window.dispatchEvent(new CustomEvent('booking:updated'));
+    } catch (err) {
+      showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = label;
+    }
+  });
+  }
+
+  root.querySelector('[data-res-revert-open]')?.addEventListener('click', () => {
+    const detailFeedback = document.getElementById('billing-detail-feedback');
+    const billingForm = getBillingForm(detailEl);
+    if (hasUnsavedBillingChanges(p, billingForm)) {
+      showFeedback(detailFeedback, 'Save invoice changes before reverting the reservation.', 'error');
+      return;
+    }
+    hideFeedback(detailFeedback);
+    setReservationRevertMode(detailEl, true);
+    revertForm?.querySelector('[name="modification_message"]')?.focus();
+  });
+
+  revertForm?.querySelector('[data-res-revert-cancel]')?.addEventListener('click', () => {
+    setReservationRevertMode(detailEl, false);
+  });
+
+  revertForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const detailFeedback = document.getElementById('billing-detail-feedback');
+    const draft = readReservationRevertForm(revertForm);
+
+    if (!draft.event_date || !draft.start_time || !draft.end_time) {
+      showFeedback(detailFeedback, 'Event date and times are required.', 'error');
+      return;
+    }
+    if (!draft.modification_message) {
+      showFeedback(detailFeedback, 'Add an admin note explaining why this revert is needed.', 'error');
+      revertForm.querySelector('[name="modification_message"]')?.focus();
+      return;
+    }
+
+    const summary = [{
+      level: 'critical',
+      text: `Revert ${venueSpaceLabel(p)} from overnight billing back to a venue event on ${draft.event_date} (${formatTime12(draft.start_time)}–${formatTime12(draft.end_time)}). Invoice subtotal will update.`,
+    }];
+    const ok = await showReservationConfirmDialog(detailEl, summary, { reverting: true });
+    if (!ok) return;
+
+    const submitBtn = revertForm.querySelector('[type="submit"]');
+    submitBtn.disabled = true;
+    const label = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span> Reverting…';
+    try {
+      await saveReservationRevert(p, draft);
+      await reload({ keepSelection: true, keepModalOpen: true });
+      showFeedback(detailFeedback, 'Reverted to venue event booking. Invoice totals updated.', 'ok');
       window.dispatchEvent(new CustomEvent('booking:updated'));
     } catch (err) {
       showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
@@ -1759,17 +2134,45 @@ function bindReservationEdit(p, detailEl) {
 function renderReservationSection(p) {
   const parsedNotes = parseBookingNotes(p.notes);
   const tracking = renderNoteTrackingCallouts(parsedNotes);
-  const editable = canEditReservationDetails(p);
-  const reservationBlock = (title, icon, cardHtml, { editLabel = 'Edit' } = {}) => `
+  const reservationBlock = (title, icon, cardHtml, { editLabel = 'Edit', revertable = false } = {}) => {
+    const editable = canEditReservationDetails(p);
+    const showRevert = revertable && canRevertVenueOvernight(p);
+    return `
       <section class="billing-panel billing-panel--reservation" data-reservation-root="${p.id}">
-        ${renderReservationPanelHead(title, icon, { editable, editLabel })}
+        ${renderReservationPanelHead(title, icon, { editable, editLabel, revertable: showRevert })}
         <p class="billing-res-catalog-loading hidden" data-res-catalog-loading>Loading venue list…</p>
         <div class="billing-res-view" data-res-view>
           ${tracking}
           ${cardHtml}
         </div>
         ${editable ? renderReservationEditForm(p) : ''}
+        ${showRevert ? renderVenueOvernightRevertForm(p) : ''}
       </section>`;
+  };
+
+  if (showAsVenueOvernightBilling(p)) {
+    const enriched = {
+      ...p,
+      facility_room_code: p.facility_room_code || venueStayCodeFromNotes(p.notes),
+      facility_name: p.facility_name || venueStayCodeFromNotes(p.notes),
+    };
+    return `
+    <div class="billing-left-stack">
+      ${reservationBlock(
+        'Overnight stay (billing)',
+        'night_shelter',
+        renderVenueOvernightDetailsCard(enriched, parsedNotes),
+        { editLabel: isVenueConvertedToStay(p) ? 'Edit stay' : 'Edit', revertable: true },
+      )}
+      <section class="billing-panel billing-panel--charges">
+        <h4 class="billing-section-title">
+          <span class="material-symbols-outlined" aria-hidden="true">request_quote</span>
+          Charge breakdown
+        </h4>
+        ${renderChargeTable(p)}
+      </section>
+    </div>`;
+  }
 
   if (isVenueInvoice(p)) {
     return `
@@ -1916,12 +2319,12 @@ function renderBillingColumn(p, { isPending }) {
       <form class="billing-edit-form" data-detail-form="${p.id}" data-subtotal="${subtotal}">
         <label class="billing-edit-form__field billing-edit-form__field--subtotal">
           <span>Invoice subtotal (₱)</span>
-          <input type="number" min="0.01" step="0.01"
+          <input type="number" min="1" step="1"
             class="billing-edit-form__input billing-edit-form__input--amount"
             name="invoice_subtotal"
             data-subtotal-input
             data-live-due
-            value="${subtotal}" />
+            value="${Math.round(subtotal)}" />
           <small class="billing-edit-form__hint">Set the full charge before discount — use for venue conversions and manual adjustments.</small>
         </label>
         <div class="billing-discount-block">
@@ -2201,11 +2604,13 @@ async function openInvoiceModal(id) {
     initBillingFeeEditor(p, detailEl);
     bindReservationEdit(p, detailEl);
   } catch (err) {
-    detailEl.innerHTML = renderInvoiceLoadError(id, getBillingErrorMessage(err));
-    detailEl.querySelector('[data-retry-invoice]')?.addEventListener('click', () => {
-      openInvoiceModal(id);
-    });
-    detailEl.querySelector('[data-close-detail]')?.addEventListener('click', closeInvoiceModal);
+    if (detailEl.innerHTML.includes('billing-detail-loading')) {
+      detailEl.innerHTML = renderInvoiceLoadError(id, getBillingErrorMessage(err));
+      detailEl.querySelector('[data-retry-invoice]')?.addEventListener('click', () => {
+        openInvoiceModal(id);
+      });
+      detailEl.querySelector('[data-close-detail]')?.addEventListener('click', closeInvoiceModal);
+    }
     showFeedback(document.getElementById('payments-feedback'), getBillingErrorMessage(err), 'error');
   }
 }
