@@ -43,7 +43,7 @@ describe('Pages smoke (public)', () => {
     assert.equal(res.status, 200);
     assert.match(res.text, /lp-hero--comfort/);
     assert.match(res.text, /lp-scroll-section/);
-    assert.match(res.text, /comfort75k/);
+    assert.match(res.text, /comfort75l/);
   });
 
   it('GET landing.css is served', async () => {
@@ -57,7 +57,7 @@ describe('Pages smoke (public)', () => {
     const res = await agent.get('/assets/js/layout/landing.js');
     assert.equal(res.status, 200);
     assert.match(res.text, /initScrollShowcase/);
-    assert.match(res.text, /isNearSnapProgress/);
+    assert.match(res.text, /scheduleScrollSync/);
   });
 
   it('GET legal pages are served', async () => {

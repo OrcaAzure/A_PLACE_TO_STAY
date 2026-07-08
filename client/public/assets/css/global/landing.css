@@ -398,13 +398,10 @@ body.lp-scroll-snap-active .lp-section-scroller {
   object-fit: cover;
   object-position: center;
   opacity: 0;
-  transform: scale(1.06);
-  will-change: opacity, transform;
 }
 
 .lp-scroll-bg-img.is-active {
   opacity: 1;
-  transform: scale(1);
 }
 
 .lp-scroll-bg-overlay {

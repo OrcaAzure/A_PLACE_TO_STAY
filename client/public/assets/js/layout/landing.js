@@ -339,10 +339,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
 
     bgImages.forEach((img, i) => {
       const on = i === idx;
-      gsap.set(img, {
-        opacity: on ? 1 : 0,
-        scale: on ? 1 : 1.05,
-      });
+      gsap.set(img, { opacity: on ? 1 : 0 });
       img.classList.toggle('is-active', on);
     });
 
@@ -371,10 +368,10 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return;
   }
 
-  const SNAP_MS = 0.58;
-  const WHEEL_STEP = 48;
-  const WHEEL_RESET_MS = 160;
-  const WHEEL_COOLDOWN_MS = 420;
+  const SNAP_MS = 0.42;
+  const WHEEL_STEP = 52;
+  const WHEEL_RESET_MS = 180;
+  const WHEEL_COOLDOWN_MS = 520;
 
   let currentIndex = 0;
   let isAnimating = false;
@@ -382,6 +379,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   let wheelAccum = 0;
   let wheelTimer = null;
   let lastWheelNavAt = 0;
+  let scrollSyncTimer = null;
 
   function setSnapActive(active) {
     document.body.classList.toggle('lp-scroll-snap-active', active);
@@ -399,10 +397,52 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return Math.min(steps, Math.max(0, Math.round(progress * steps)));
   }
 
-  function isNearSnapProgress(progress) {
-    if (count <= 1) return true;
-    const snapped = snapProgressForIndex(progressToIndex(progress));
-    return Math.abs(progress - snapped) < 0.03;
+  function crossfadeToSlide(fromIdx, toIdx, { light = false } = {}) {
+    const dur = light ? SNAP_MS * 0.85 : SNAP_MS;
+    const tl = gsap.timeline();
+
+    if (fromIdx !== toIdx && bgImages[fromIdx]) {
+      tl.to(bgImages[fromIdx], { opacity: 0, duration: dur * 0.4, ease: 'power1.in' }, 0);
+    }
+    if (bgImages[toIdx]) {
+      tl.fromTo(bgImages[toIdx],
+        { opacity: 0 },
+        { opacity: 1, duration: dur * 0.55, ease: 'power1.out' },
+        dur * 0.08);
+      bgImages.forEach((img, i) => img.classList.toggle('is-active', i === toIdx));
+    }
+
+    phraseData.forEach((phrase, i) => {
+      const on = i === toIdx;
+      if (light) {
+        gsap.set(phrase.el, {
+          opacity: on ? 1 : 0,
+          xPercent: -50,
+          yPercent: -50,
+          y: 0,
+          scale: 1,
+          pointerEvents: on ? 'auto' : 'none',
+        });
+        if (on) applyScrollCharProgress(phrase.chars, 1);
+        return;
+      }
+
+      if (i === fromIdx && fromIdx !== toIdx) {
+        tl.to(phrase.el, { opacity: 0, y: -12, duration: dur * 0.3, ease: 'power1.in' }, 0);
+      }
+    });
+
+    if (!light) {
+      const incoming = phraseData[toIdx];
+      if (incoming) {
+        gsap.set(incoming.el, { opacity: 0, xPercent: -50, yPercent: -50, y: 20, scale: 0.98 });
+        tl.to(incoming.el, { opacity: 1, y: 0, scale: 1, duration: dur * 0.5, ease: 'power2.out' }, dur * 0.12);
+        tl.call(() => applyScrollCharProgress(incoming.chars, 1), null, dur * 0.2);
+      }
+    }
+
+    if (hint) tl.to(hint, { opacity: toIdx === 0 ? 1 : 0, duration: 0.15 }, 0);
+    return tl;
   }
 
   function scrollYForIndex(index) {
@@ -411,53 +451,27 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return st.start + progress * (st.end - st.start);
   }
 
-  function playSettle(index) {
-    const line = phraseData[index]?.el?.querySelector('.lp-scroll-phrase-line');
-    if (!line) return;
-    gsap.fromTo(line,
-      { scale: 1.03, y: -3 },
-      { scale: 1, y: 0, duration: 0.32, ease: 'power3.out' });
-  }
-
-  function crossfadeToSlide(fromIdx, toIdx) {
-    const dur = SNAP_MS;
-    const tl = gsap.timeline();
-
-    if (fromIdx !== toIdx && bgImages[fromIdx]) {
-      tl.to(bgImages[fromIdx], { opacity: 0, scale: 1.04, duration: dur * 0.45, ease: 'power2.in' }, 0);
-    }
-    if (bgImages[toIdx]) {
-      tl.fromTo(bgImages[toIdx],
-        { opacity: 0, scale: 1.06 },
-        { opacity: 1, scale: 1, duration: dur * 0.7, ease: 'power2.out' },
-        dur * 0.12);
-      bgImages.forEach((img, i) => img.classList.toggle('is-active', i === toIdx));
-    }
-
-    phraseData.forEach((phrase, i) => {
-      if (i === fromIdx && fromIdx !== toIdx) {
-        tl.to(phrase.el, { opacity: 0, y: -16, scale: 0.98, duration: dur * 0.35, ease: 'power2.in' }, 0);
+  function scheduleScrollSync() {
+    if (scrollSyncTimer) return;
+    scrollSyncTimer = window.setTimeout(() => {
+      scrollSyncTimer = null;
+      if (!st.isActive || isAnimating) return;
+      if (Date.now() - lastWheelNavAt < WHEEL_COOLDOWN_MS) return;
+      const idx = progressToIndex(st.progress);
+      const y = scrollYForIndex(idx);
+      if (idx !== currentIndex) {
+        crossfadeToSlide(currentIndex, idx, { light: true });
+        currentIndex = idx;
       }
-    });
-
-    const incoming = phraseData[toIdx];
-    if (incoming) {
-      gsap.set(incoming.el, { opacity: 0, xPercent: -50, yPercent: -50, y: 28, scale: 0.96 });
-      tl.to(incoming.el, { opacity: 1, y: 0, scale: 1, duration: dur * 0.62, ease: 'power3.out' }, dur * 0.18);
-      tl.call(() => {
-        applyScrollCharProgress(incoming.chars, 0);
-        const proxy = { p: 0 };
-        gsap.to(proxy, {
-          p: 1,
-          duration: 0.42,
+      if (Math.abs(window.scrollY - y) > 6) {
+        gsap.to(window, {
+          scrollTo: { y, autoKill: false },
+          duration: 0.22,
           ease: 'power2.out',
-          onUpdate: () => applyScrollCharProgress(incoming.chars, proxy.p),
+          overwrite: true,
         });
-      }, null, dur * 0.22);
-    }
-
-    if (hint) tl.to(hint, { opacity: toIdx === 0 ? 1 : 0, duration: 0.2 }, 0);
-    return tl;
+      }
+    }, 140);
   }
 
   function normalizeWheelDelta(e) {
@@ -497,11 +511,11 @@ function initScrollShowcase(gsap, ScrollTrigger) {
 
     const fromIdx = currentIndex;
     const targetY = scrollYForIndex(nextIndex);
+    const light = fromWheel;
 
     activeTween = gsap.timeline({
       onComplete: () => {
         applySlideVisuals(nextIndex);
-        playSettle(nextIndex);
         isAnimating = false;
         activeTween = null;
         const y = scrollYForIndex(nextIndex);
@@ -512,11 +526,12 @@ function initScrollShowcase(gsap, ScrollTrigger) {
       },
     });
 
-    activeTween.add(crossfadeToSlide(fromIdx, nextIndex), 0);
+    activeTween.add(crossfadeToSlide(fromIdx, nextIndex, { light }), 0);
     activeTween.to(window, {
       scrollTo: { y: targetY, autoKill: false },
-      duration: SNAP_MS,
-      ease: 'power3.inOut',
+      duration: light ? SNAP_MS * 0.9 : SNAP_MS,
+      ease: 'power2.inOut',
+      overwrite: true,
     }, 0);
 
     currentIndex = nextIndex;
@@ -530,17 +545,10 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     end: () => `+=${Math.round(window.innerHeight * Math.max(count - 1, 1) + 24)}`,
     pin,
     pinSpacing: true,
-    pinReparent: true,
+    pinReparent: false,
     anticipatePin: 0,
     invalidateOnRefresh: true,
     fastScrollEnd: false,
-    snap: count > 1 ? {
-      snapTo: (value) => snapProgressForIndex(progressToIndex(value)),
-      duration: { min: 0.22, max: 0.5 },
-      delay: 0.08,
-      ease: 'power2.inOut',
-      inertia: false,
-    } : false,
     onToggle: (self) => setSnapActive(self.isActive),
     onEnter(self) {
       resetWheelAccum();
@@ -554,14 +562,8 @@ function initScrollShowcase(gsap, ScrollTrigger) {
         applySlideVisuals(progressToIndex(self.progress));
       }
     },
-    onUpdate(self) {
-      if (isAnimating || !self.isActive) return;
-      if (Date.now() - lastWheelNavAt < WHEEL_COOLDOWN_MS) return;
-      if (!isNearSnapProgress(self.progress)) return;
-      const idx = progressToIndex(self.progress);
-      if (idx !== currentIndex) {
-        applySlideVisuals(idx);
-      }
+    onUpdate() {
+      scheduleScrollSync();
     },
     onLeave: () => {
       activeTween?.kill();
