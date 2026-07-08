@@ -413,7 +413,17 @@
   min-width: 0;
 }
 
-.billing-res-edit-btn {
+.billing-panel__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.billing-res-edit-btn,
+.billing-res-revert-btn {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
@@ -434,7 +444,27 @@
   border-color: #94a3b8;
 }
 
-.billing-res-edit-btn .material-symbols-outlined {
+.billing-res-revert-btn {
+  color: #9a3412;
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.billing-res-revert-btn:hover {
+  background: #ffedd5;
+  border-color: #fb923c;
+}
+
+.billing-res-revert-form__intro {
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.625rem;
+  border: 1px solid #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
+
+.billing-res-edit-btn .material-symbols-outlined,
+.billing-res-revert-btn .material-symbols-outlined {
   font-size: 1rem;
 }
 
@@ -496,6 +526,43 @@
   font-size: 0.8125rem;
   line-height: 1.45;
   color: #1e40af;
+}
+
+.billing-res-convert-notice--static {
+  margin-bottom: 1rem;
+}
+
+.billing-stay-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.billing-stay-meta__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.625rem;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.billing-stay-meta__chip .material-symbols-outlined {
+  font-size: 0.95rem;
+  color: #2563eb;
+}
+
+.billing-venue-details__value--notes {
+  margin: 0.25rem 0 0;
+  white-space: pre-wrap;
+  line-height: 1.5;
+  font-weight: 500;
 }
 
 .billing-res-current-space {
