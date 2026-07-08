@@ -180,6 +180,7 @@ export async function bootstrapGuestMyStaysPage() {
       const isGroup = b.kind === 'group';
       const idLabel = isGroup ? formatGroupId(b.id) : `#APT-${b.id}`;
       const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
+      const amountLabel = normStatus(b.status) === 'pending' ? 'Estimated total' : 'Total';
       const lifecycleBadge = lifecycleGuestBadge(b);
       const canModify = !readOnly && canGuestModifyRoomBooking(b, cancelOpts);
       const canCancel = !readOnly && canGuestCancelRoomBooking(b, cancelOpts);
@@ -210,7 +211,7 @@ export async function bootstrapGuestMyStaysPage() {
                   <p class="text-[11px] font-bold text-on-surface-variant uppercase">Guests</p>
                   <p class="text-body-sm font-medium">${b.guestCount || 1}</p>
                 </div>
-                ${amount ? `<div><p class="text-[11px] font-bold text-on-surface-variant uppercase">Total</p><p class="text-body-sm font-medium">${amount}</p></div>` : ''}
+                ${amount ? `<div><p class="text-[11px] font-bold text-on-surface-variant uppercase">${amountLabel}</p><p class="text-body-sm font-medium">${amount}</p></div>` : ''}
               </div>
             </div>
           </div>

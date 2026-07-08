@@ -224,6 +224,7 @@ export async function sendBookingRequestReceivedEmail(user, booking) {
       <h2>Reservation Request Received</h2>
       <p>Hi ${escapeHtml(name)},</p>
       <p>We received your room reservation request. Housing staff will review it and email you when it is approved.</p>
+      <p style="color:#4A5568;font-size:0.95em">The total below is an <strong>estimate</strong> based on standard guest rates. Your final amount may differ once housing assigns your pricing category.</p>
       <ul>
         <li><strong>Room:</strong> ${escapeHtml(room)}</li>
         <li><strong>Check-in:</strong> ${escapeHtml(checkIn)}</li>
@@ -242,6 +243,9 @@ export async function sendBookingConfirmationEmail(user, booking) {
   const checkIn = booking.check_in;
   const checkOut = booking.check_out;
   const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
+  const category = booking.pricing_category && booking.pricing_category !== 'Guest'
+    ? `<li><strong>Pricing category:</strong> ${escapeHtml(booking.pricing_category)}</li>`
+    : '';
   const appUrl = process.env.APP_URL || 'http://localhost:3000';
 
   return sendMail({
@@ -250,15 +254,16 @@ export async function sendBookingConfirmationEmail(user, booking) {
     html: `
       <h2>Reservation Confirmed</h2>
       <p>Hi ${escapeHtml(name)},</p>
-      <p>Your room reservation has been approved. Here are the details:</p>
+      <p>Your room reservation has been approved. Below is your <strong>final</strong> total based on the pricing category assigned by housing.</p>
       <ul>
         <li><strong>Room:</strong> ${escapeHtml(room)}</li>
         <li><strong>Check-in:</strong> ${escapeHtml(checkIn)}</li>
         <li><strong>Check-out:</strong> ${escapeHtml(checkOut)}</li>
-        <li><strong>Total:</strong> ${price}</li>
+        ${category}
+        <li><strong>Total due:</strong> ${price}</li>
         <li><strong>Status:</strong> Approved</li>
       </ul>
-      <p>View your reservation: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+      <p>A detailed invoice will follow by email. View your reservation: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
     `,
   });
 }
@@ -558,6 +563,9 @@ export async function sendHousingInvoiceEmail(user, payment) {
   const discountLine = discount > 0
     ? `<li><strong>Discount:</strong> −${fmt(discount)}${payment.discount_note ? ` (${payment.discount_note})` : ''}</li>`
     : '';
+  const categoryLine = payment.pricing_category && payment.pricing_category !== 'Guest'
+    ? `<li><strong>Pricing category:</strong> ${escapeHtml(payment.pricing_category)}</li>`
+    : '';
 
   return sendMail({
     to: user.email || user.guest_email,
@@ -565,12 +573,13 @@ export async function sendHousingInvoiceEmail(user, payment) {
     html: `
       <h2>Your Housing Invoice</h2>
       <p>Hi ${name},</p>
-      <p>Your room reservation at APTS Housing has been <strong>approved</strong>. This email is your automated housing invoice — please settle the amount below with the Housing Department.</p>
+      <p>Your room reservation at APTS Housing has been <strong>approved</strong>. This email is your automated housing invoice — please settle the final amount below with the Housing Department.</p>
       <p><strong>Invoice #${payment.id}</strong></p>
       <ul>
         <li><strong>Room:</strong> ${room}</li>
         <li><strong>Check-in:</strong> ${payment.check_in}</li>
         <li><strong>Check-out:</strong> ${payment.check_out}</li>
+        ${categoryLine}
         <li><strong>Subtotal:</strong> ${fmt(subtotal)}</li>
         ${discountLine}
         <li><strong><span style="font-size:1.1em">Amount due: ${fmt(due)}</span></strong></li>
@@ -722,6 +731,12 @@ export async function sendGroupConfirmationEmail(user, group) {
   const roomLines = (group.bookings || [])
     .map((b) => `${b.building_name || ''} Room ${b.room_number || '?'}`)
     .join(', ') || 'Assigned at check-in';
+  const total = group.grand_total != null
+    ? `₱${Number(group.grand_total).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+    : null;
+  const category = group.pricing_category && group.pricing_category !== 'Guest'
+    ? `<li><strong>Pricing category:</strong> ${escapeHtml(group.pricing_category)}</li>`
+    : '';
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
@@ -729,12 +744,14 @@ export async function sendGroupConfirmationEmail(user, group) {
     html: `
       <h2>Group Reservation Confirmed</h2>
       <p>Hi ${name},</p>
-      <p>Your group reservation for <strong>${group.group_name}</strong> has been approved.</p>
+      <p>Your group reservation for <strong>${group.group_name}</strong> has been approved. Below is your <strong>final</strong> total based on the pricing category assigned by housing.</p>
       <ul>
         <li><strong>Check-in:</strong> ${group.check_in}</li>
         <li><strong>Check-out:</strong> ${group.check_out}</li>
         <li><strong>Guests:</strong> ${group.total_guests}</li>
         <li><strong>Rooms:</strong> ${roomLines}</li>
+        ${category}
+        ${total ? `<li><strong>Total due:</strong> ${total}</li>` : ''}
       </ul>
       <p>Log in to AptSpace to view details.</p>
     `,

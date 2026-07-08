@@ -16,7 +16,8 @@ import {
   DEFAULT_RATE_AGE_BAND,
   DEFAULT_RATE_CURRENCY,
   DEFAULT_ROOM_BILLING_UNIT,
-  pickBookingRateRow,
+  normalizePricingCategory,
+  pickRateRowForAudience,
 } from '../constants/rateVariants.js';
 import {
   resolveLodgingSeasonForDate,
@@ -50,6 +51,7 @@ export async function calculateStayTotalAmount({
   guestCount,
   checkIn,
   checkOut,
+  pricingCategory = 'Guest',
 }) {
   const nights = calcNights(checkIn, checkOut);
   if (!nights) return null;
@@ -64,6 +66,7 @@ export async function calculateStayTotalAmount({
       season,
       guestCount,
       nights: 1,
+      pricingCategory,
     });
     if (nightTotal == null) return null;
     total += nightTotal;
@@ -72,25 +75,26 @@ export async function calculateStayTotalAmount({
   return Math.round(total * 100) / 100;
 }
 
-export async function getRate(roomType, occupancyItem, season) {
+export async function getRate(roomType, occupancyItem, season, pricingCategory = 'Guest') {
   const [rows] = await pool.query(
     `SELECT rate, audience, age_band, currency, billing_unit, notes FROM rates_rooms
      WHERE room_type = ? AND item = ? AND season = ?
      LIMIT 10`,
     [roomType, occupancyItem, season]
   );
-  const match = pickBookingRateRow(rows, { billing_unit: DEFAULT_ROOM_BILLING_UNIT });
+  const match = pickRateRowForAudience(rows, pricingCategory, { billing_unit: DEFAULT_ROOM_BILLING_UNIT });
   return match ? Number(match.rate) : null;
 }
 
-export async function roomHasRateItem(roomType, item) {
+export async function roomHasRateItem(roomType, item, pricingCategory = 'Guest') {
   if (!roomType || !item) return false;
+  const category = normalizePricingCategory(pricingCategory);
   const [rows] = await pool.query(
     `SELECT 1 FROM rates_rooms
      WHERE room_type = ? AND item = ?
        AND audience = ? AND age_band = ? AND currency = ? AND billing_unit = ?
      LIMIT 1`,
-    [roomType, item, BOOKING_RATE_VARIANT.audience, BOOKING_RATE_VARIANT.age_band, BOOKING_RATE_VARIANT.currency, DEFAULT_ROOM_BILLING_UNIT],
+    [roomType, item, category, DEFAULT_RATE_AGE_BAND, DEFAULT_RATE_CURRENCY, DEFAULT_ROOM_BILLING_UNIT],
   );
   return rows.length > 0;
 }
@@ -108,12 +112,12 @@ export function pickOccupancyItemByGuestCount(roomType, guestCount) {
  * Honors an explicit admin override; otherwise uses the 1–2 / 3+ pricelist rule.
  * Falls back to Single/Double when Daily Maximum is not configured for the room type.
  */
-export async function resolveOccupancyItem({ roomType, guestCount, explicitItem = null } = {}) {
+export async function resolveOccupancyItem({ roomType, guestCount, explicitItem = null, pricingCategory = 'Guest' } = {}) {
   const override = String(explicitItem || '').trim();
   if (override) return override;
 
   const preferred = pickOccupancyItemByGuestCount(roomType, guestCount);
-  if (preferred === DAILY_MAXIMUM_ITEM && !(await roomHasRateItem(roomType, DAILY_MAXIMUM_ITEM))) {
+  if (preferred === DAILY_MAXIMUM_ITEM && !(await roomHasRateItem(roomType, DAILY_MAXIMUM_ITEM, pricingCategory))) {
     return SINGLE_DOUBLE_OCCUPANCY_ITEM;
   }
   return preferred;
@@ -130,20 +134,21 @@ export async function calculateTotalAmount({
   season,
   guestCount,
   nights,
+  pricingCategory = 'Guest',
 }) {
   if (occupancyItem === PER_PERSON_NIGHT_ITEM) {
-    const rate = await getAccommodationExtraRate(season, PER_PERSON_NIGHT_ITEM);
+    const rate = await getAccommodationExtraRate(season, PER_PERSON_NIGHT_ITEM, pricingCategory);
     if (rate == null) return null;
     return Math.round(rate * guestCount * nights * 100) / 100;
   }
 
   if (occupancyItem === LODGING_EXTRA_ITEM) {
-    const extraRate = await getAccommodationExtraRate(season, LODGING_EXTRA_ITEM);
+    const extraRate = await getAccommodationExtraRate(season, LODGING_EXTRA_ITEM, pricingCategory);
     if (extraRate == null) return null;
     return Math.round(extraRate * guestCount * nights * 100) / 100;
   }
 
-  const rate = await getRate(roomType, occupancyItem, season);
+  const rate = await getRate(roomType, occupancyItem, season, pricingCategory);
   if (rate == null) return null;
 
   let total = 0;
@@ -152,7 +157,7 @@ export async function calculateTotalAmount({
     case SINGLE_DOUBLE_OCCUPANCY_ITEM:
       total = rate * nights;
       if (roomType !== 'Dorm' && guestCount > SINGLE_DOUBLE_MAX_GUESTS) {
-        const extraRate = await getAccommodationExtraRate(season, LODGING_EXTRA_ITEM);
+        const extraRate = await getAccommodationExtraRate(season, LODGING_EXTRA_ITEM, pricingCategory);
         if (extraRate != null) total += extraRate * (guestCount - SINGLE_DOUBLE_MAX_GUESTS) * nights;
       }
       break;
@@ -244,6 +249,7 @@ export async function prepareBookingInsert({
   season,
   occupancyItem,
   bypassAdvanceLimit = false,
+  pricingCategory = 'Guest',
 }) {
   await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit });
 
@@ -267,6 +273,7 @@ export async function prepareBookingInsert({
     roomType: rateRoomType,
     guestCount,
     explicitItem: occupancyItem,
+    pricingCategory,
   });
   const nights = calcNights(checkIn, checkOut);
   const totalAmount = await calculateStayTotalAmount({
@@ -275,6 +282,7 @@ export async function prepareBookingInsert({
     guestCount,
     checkIn,
     checkOut,
+    pricingCategory,
   });
 
   if (totalAmount == null) {
@@ -329,13 +337,18 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
   const guestsChanged = body.guest_count != null && Number(body.guest_count) !== Number(existing.guest_count);
   const roomChanged = body.room_id != null && Number(body.room_id) !== Number(existing.room_id);
 
-  if (!venueStay && (datesChanged || guestsChanged || roomChanged)) {
+  const pricingCategory = normalizePricingCategory(body.pricing_category ?? existing.pricing_category ?? 'Guest');
+  const categoryChanged = body.pricing_category != null
+    && normalizePricingCategory(body.pricing_category) !== normalizePricingCategory(existing.pricing_category ?? 'Guest');
+
+  if (!venueStay && (datesChanged || guestsChanged || roomChanged || categoryChanged)) {
     const rateRoomType = resolveRateRoomType(room);
     season = await resolveSeason(checkIn);
     occupancyItem = await resolveOccupancyItem({
       roomType: rateRoomType,
       guestCount,
       explicitItem: body.occupancy_item != null ? body.occupancy_item : null,
+      pricingCategory,
     });
     totalAmount = await calculateStayTotalAmount({
       roomType: rateRoomType,
@@ -343,19 +356,20 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
       guestCount,
       checkIn,
       checkOut,
+      pricingCategory,
     });
     if (totalAmount == null) {
-      throw new Error('Room pricing is not configured for these dates.');
+      throw new Error(`Room pricing is not configured for ${pricingCategory} on these dates.`);
     }
   }
 
-  return { checkIn, checkOut, guestCount, season, occupancyItem, totalAmount, roomId };
+  return { checkIn, checkOut, guestCount, season, occupancyItem, totalAmount, roomId, pricingCategory };
 }
 
 export const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
-export async function getMealRates() {
-  return getMealRatesMap();
+export async function getMealRates(pricingCategory = 'Guest') {
+  return getMealRatesMap(pricingCategory);
 }
 
 export function calcMealsTotal(meals = {}, rates = DEFAULT_MEAL_RATES) {
@@ -382,33 +396,22 @@ export function mealsPayloadFromRows(rows = []) {
 }
 
 /** Recompute booking total when meals/fees change without double-counting existing add-ons. */
-export async function computeUpdatedBookingGrandTotal(existing, validated, { meals, fees, mealRates } = {}) {
-  if (meals == null && fees == null) {
-    return validated.totalAmount;
-  }
+export async function computeUpdatedBookingGrandTotal(existing, validated, { meals, fees, mealRates, pricingCategory } = {}) {
+  const category = normalizePricingCategory(pricingCategory ?? validated.pricingCategory ?? existing.pricing_category ?? 'Guest');
+  const rates = mealRates || (await getMealRates(category));
 
-  const rates = mealRates || (await getMealRates());
-  const [existingMealRows, existingFeeRows] = await Promise.all([
-    getBookingMeals(existing.id),
-    getBookingFees(existing.id),
-  ]);
-  const oldMealTotal = existingMealRows.reduce((s, m) => s + Number(m.subtotal || 0), 0);
-  const oldFeeTotal = calcFeesTotal(existingFeeRows);
-  const lodgingBase = Math.max(
-    0,
-    Math.round((Number(existing.total_amount) - oldMealTotal - oldFeeTotal) * 100) / 100,
-  );
-
-  const mealPayload = meals != null ? meals : mealsPayloadFromRows(existingMealRows);
+  const mealPayload = meals != null
+    ? meals
+    : mealsPayloadFromRows(await getBookingMeals(existing.id));
   const feePayload = fees != null
     ? fees
-    : existingFeeRows.map((f) => ({
+    : (await getBookingFees(existing.id)).map((f) => ({
       fee_name: f.fee_name || f.service_name || 'Extra service',
       amount: Number(f.amount || 0),
     }));
 
   return computeGrandTotal({
-    roomTotal: lodgingBase,
+    roomTotal: validated.totalAmount,
     meals: mealPayload,
     fees: feePayload,
     mealRates: rates,
@@ -479,6 +482,7 @@ export async function computeGrandTotal({ roomTotal, meals, fees, mealRates = nu
 export async function getAvailableRooms({
   checkIn, checkOut, guestCount = 1, excludeBookingId = null, excludeGroupId = null, groupPicker = false,
   bypassAdvanceLimit = false,
+  pricingCategory = 'Guest',
 }) {
   await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit });
 
@@ -522,6 +526,7 @@ export async function getAvailableRooms({
     const occupancyItem = await resolveOccupancyItem({
       roomType: rateRoomType,
       guestCount: pricingGuests,
+      pricingCategory,
     });
     let pricePerNight = null;
     let estimatedTotal = null;
@@ -534,6 +539,7 @@ export async function getAvailableRooms({
         guestCount: pricingGuests,
         checkIn,
         checkOut,
+        pricingCategory,
       });
       if (estimatedTotal != null && nights > 0) {
         pricePerNight = Math.round((estimatedTotal / nights) * 100) / 100;

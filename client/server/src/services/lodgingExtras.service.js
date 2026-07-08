@@ -7,11 +7,12 @@ import {
 } from '../constants/ancillary.js';
 import {
   DEFAULT_EXTRA_BILLING_UNIT,
-  pickBookingRateRow,
+  normalizePricingCategory,
+  pickRateRowForAudience,
 } from '../constants/rateVariants.js';
 
 /** Seasonal accommodation extra rate (dorm per-person, extra bed/person, etc.). */
-export async function getAccommodationExtraRate(season, item) {
+export async function getAccommodationExtraRate(season, item, pricingCategory = 'Guest') {
   const [rows] = await pool.query(
     `SELECT rate, audience, age_band, currency, billing_unit, notes FROM rates_extra_services
      WHERE category = ? AND item = ? AND season = ?
@@ -21,7 +22,7 @@ export async function getAccommodationExtraRate(season, item) {
   const billing_unit = item === PER_PERSON_NIGHT_ITEM || item === LODGING_EXTRA_ITEM
     ? 'per night'
     : DEFAULT_EXTRA_BILLING_UNIT;
-  const match = pickBookingRateRow(rows, { billing_unit });
+  const match = pickRateRowForAudience(rows, pricingCategory, { billing_unit });
   return match ? Number(match.rate) : null;
 }
 

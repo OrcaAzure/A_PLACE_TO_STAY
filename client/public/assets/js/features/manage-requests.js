@@ -353,7 +353,12 @@ async function approve(key) {
   render();
 
   try {
-    await approveRequest(r);
+    const approved = await approveRequest(r);
+    if (!approved) {
+      approvingKey = null;
+      render();
+      return;
+    }
     message = `Request from ${requestLabel(r)} approved. The guest will be notified by email.`;
     notifyBookingUpdated();
     await load();

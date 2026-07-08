@@ -6,6 +6,7 @@ import {
   deleteReservationGroup,
   suggestRoomsForGroup,
 } from '../services/group.service.js';
+import { normalizePricingCategory } from '../constants/rateVariants.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -46,6 +47,9 @@ export const suggestRooms = async (req, res) => {
       totalGuests: total_guests || 1,
       excludeGroupId: exclude_group_id || null,
       bypassAdvanceLimit: ADMIN_ROLES.includes(req.user.role),
+      pricingCategory: ADMIN_ROLES.includes(req.user.role) && req.query.pricing_category
+        ? normalizePricingCategory(req.query.pricing_category)
+        : 'Guest',
     });
     res.status(200).json(result);
   } catch (error) {

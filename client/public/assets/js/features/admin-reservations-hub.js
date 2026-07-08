@@ -21,6 +21,7 @@ import {
   canAdminCancelVenueBooking, canAdminModifyVenueBooking, canAdminCancelRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
+import { pricingCategoryLabel } from '/assets/js/features/admin-pricing-category.js';
 
 const TABS = [
   { id: 'pending', label: 'Pending' },
@@ -255,6 +256,7 @@ function renderSingleRequestDetails(r) {
     ].join(''))}
     ${renderSection('Pricing estimate', [
       factRow('Estimated total', r.totalAmount != null ? formatMoney(r.totalAmount) : null),
+      factRow('Rate basis', 'Guest rates (estimate)'),
       factRow('Season', r.season),
       factRow('Rate type', r.occupancyItem),
     ].join(''))}
@@ -282,7 +284,10 @@ function renderGroupRequestDetails(r) {
   }
 
   const pricingSection = r.grandTotal != null && r.grandTotal > 0
-    ? renderSection('Pricing estimate', factRow('Estimated total', formatMoney(r.grandTotal)))
+    ? renderSection('Pricing estimate', [
+      factRow('Estimated total', formatMoney(r.grandTotal)),
+      factRow('Rate basis', 'Guest rates (estimate)'),
+    ].join(''))
     : '';
 
   return `
@@ -334,6 +339,7 @@ function renderSingleStayDetails(item) {
     ].join(''))}
     ${renderSection('Pricing', [
       factRow('Total amount', item.total_amount != null ? formatMoney(item.total_amount) : null),
+      factRow('Pricing category', pricingCategoryLabel(item.pricing_category)),
       factRow('Season', item.season),
       factRow('Rate type', item.occupancy_item),
     ].join(''))}
@@ -362,7 +368,10 @@ function renderGroupStayDetails(item) {
   }
 
   const pricingSection = item.grand_total != null && item.grand_total > 0
-    ? renderSection('Pricing', factRow('Grand total', formatMoney(item.grand_total)))
+    ? renderSection('Pricing', [
+      factRow('Grand total', formatMoney(item.grand_total)),
+      factRow('Pricing category', pricingCategoryLabel(item.pricing_category)),
+    ].join(''))
     : '';
 
   const housingSection = renderHousingPaymentSection(item);
@@ -765,7 +774,12 @@ async function approvePending(key) {
   state.approvingKey = key;
   renderActivePanel();
   try {
-    await approveRequest(r);
+    const approved = await approveRequest(r);
+    if (!approved) {
+      state.approvingKey = null;
+      renderActivePanel();
+      return;
+    }
     notifyBookingUpdated();
     await loadAll();
   } catch (err) {

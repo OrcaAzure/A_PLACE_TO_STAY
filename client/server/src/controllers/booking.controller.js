@@ -24,6 +24,7 @@ import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestA
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from '../services/ancillary.service.js';
 import { getInvoiceSnapshot, ensureInvoiceForBooking } from '../services/payment.service.js';
+import { normalizePricingCategory } from '../constants/rateVariants.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -97,6 +98,9 @@ export const getRoomAvailability = async (req, res) => {
       excludeGroupId: exclude_group_id || null,
       groupPicker: group_picker === '1' || group_picker === 'true',
       bypassAdvanceLimit: isAdmin,
+      pricingCategory: isAdmin && req.query.pricing_category
+        ? normalizePricingCategory(req.query.pricing_category)
+        : 'Guest',
     });
     if (!isAdmin) {
       rooms = filterRoomsForGuestUser(rooms, req.user.email);
@@ -114,9 +118,13 @@ export const getRoomAvailability = async (req, res) => {
   }
 };
 
-export const getMealRateList = async (_req, res) => {
+export const getMealRateList = async (req, res) => {
   try {
-    res.status(200).json({ rates: await getMealRates() });
+    const isAdmin = ADMIN_ROLES.includes(req.user.role);
+    const pricingCategory = isAdmin && req.query.pricing_category
+      ? normalizePricingCategory(req.query.pricing_category)
+      : 'Guest';
+    res.status(200).json({ rates: await getMealRates(pricingCategory) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -139,6 +147,9 @@ export const createBooking = async (req, res) => {
     }
 
     const isAdmin = ADMIN_ROLES.includes(role);
+    const pricingCategory = isAdmin
+      ? normalizePricingCategory(req.body.pricing_category)
+      : 'Guest';
     if (!isAdmin) {
       const room = await getRoomById(room_id);
       if (!room || !canGuestAccessBuilding(req.user.email, room.building_name)) {
@@ -154,9 +165,10 @@ export const createBooking = async (req, res) => {
       season,
       occupancyItem: occupancy_item,
       bypassAdvanceLimit: isAdmin,
+      pricingCategory,
     });
 
-    const mealRates = await getMealRates();
+    const mealRates = await getMealRates(pricingCategory);
     const grandTotal = await computeGrandTotal({
       roomTotal: prepared.total_amount,
       meals,
@@ -167,12 +179,12 @@ export const createBooking = async (req, res) => {
     const bookingStatus = ADMIN_ROLES.includes(role) ? (status || 'Approved') : 'Pending';
 
     const [result] = await pool.query(
-      `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes, pricing_category)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         effectiveUserId, room_id, req.body.group_id || null, check_in, check_out, guest_count || 1,
         prepared.season, prepared.occupancy_item, grandTotal, bookingStatus,
-        notes || null, contact_phone || null, meal_allergen_notes || null,
+        notes || null, contact_phone || null, meal_allergen_notes || null, pricingCategory,
       ]
     );
 
@@ -243,7 +255,7 @@ export const updateBooking = async (req, res) => {
 
       const validated = await validateBookingUpdate(existing, req.body, false);
       const { check_in, check_out, guest_count, notes, contact_phone, room_id, meals, fees, meal_allergen_notes } = req.body;
-      const mealRates = await getMealRates();
+      const mealRates = await getMealRates('Guest');
       let feesToSave = fees;
       if (fees != null) {
         const catalogRows = await fetchExtraServiceRows();
@@ -314,14 +326,19 @@ export const updateBooking = async (req, res) => {
       if (cancelError) return res.status(400).json({ message: cancelError });
     }
 
-    const validated = await validateBookingUpdate(existing, req.body, true);
+    const pricingCategory = req.body.pricing_category != null
+      ? normalizePricingCategory(req.body.pricing_category)
+      : normalizePricingCategory(existing.pricing_category ?? 'Guest');
+
+    const validated = await validateBookingUpdate(existing, { ...req.body, pricing_category: pricingCategory }, true);
     const { check_in, check_out, guest_count, status, notes, contact_phone, room_id, meals, fees, guest_name, email,
       notify_guest, notify_modification, modification_message, meal_allergen_notes } = req.body;
-    const mealRates = await getMealRates();
+    const mealRates = await getMealRates(pricingCategory);
     const grandTotal = await computeUpdatedBookingGrandTotal(existing, validated, {
       meals: meals != null ? meals : null,
       fees: fees != null ? fees : null,
       mealRates,
+      pricingCategory,
     });
 
     let resolvedUserId = req.body.user_id;
@@ -345,6 +362,7 @@ export const updateBooking = async (req, res) => {
         notes = COALESCE(?, notes),
         contact_phone = COALESCE(?, contact_phone),
         meal_allergen_notes = COALESCE(?, meal_allergen_notes),
+        pricing_category = ?,
         total_amount = ?
       WHERE id = ?`,
       [
@@ -352,7 +370,7 @@ export const updateBooking = async (req, res) => {
         room_id ?? validated.roomId,
         check_in, check_out, guest_count, status,
         validated.season, validated.occupancyItem,
-        notes, contact_phone, meal_allergen_notes, grandTotal,
+        notes, contact_phone, meal_allergen_notes, pricingCategory, grandTotal,
         req.params.id,
       ]
     );

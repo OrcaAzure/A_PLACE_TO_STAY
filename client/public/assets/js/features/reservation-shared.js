@@ -434,7 +434,7 @@ export function emptyWizardState() {
     expandedFeeGroupId: null,
     availableRooms: [], availableCount: 0,
     mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 },
-    roomTotal: 0, loadingRooms: false, saving: false, error: null,
+    roomTotal: 0, pricingCategory: 'Guest', loadingRooms: false, saving: false, error: null,
   };
 }
 
@@ -503,6 +503,7 @@ export function emptyGroupWizardState() {
     fees: [], originalFees: [], notes: '',
     expandedFeeGroupId: null,
     mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 },
+    pricingCategory: 'Guest',
     loadingRooms: false, saving: false, error: null,
   };
 }

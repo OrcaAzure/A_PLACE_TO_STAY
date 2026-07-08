@@ -746,7 +746,13 @@ function bindDetailActions(onRefresh) {
 
         try {
           if (action === 'approve') {
-            await approveRequest(booking);
+            const approved = await approveRequest(booking);
+            if (!approved) {
+              detailState.busy = false;
+              body.innerHTML = renderBookingDetailBody(detailState.raw, detailState);
+              bindDetailActions(onRefresh);
+              return;
+            }
           } else {
             const note = document.getElementById('tl-reject-note')?.value?.trim() || '';
             await rejectRequest(booking, note);

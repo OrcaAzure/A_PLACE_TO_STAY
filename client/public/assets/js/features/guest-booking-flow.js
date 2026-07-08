@@ -8,7 +8,7 @@ import { isRoomListVisible } from '/assets/js/features/reservation-shared.js';
 export { isInternalGuest };
 
 export const PRICE_DISCLAIMER =
-  'Prices shown are estimates only. Your final total may change after staff review — seasonal rates, meals, fees, occupancy adjustments, or special arrangements can apply.';
+  'Prices shown are estimates based on standard guest rates. Your final total may differ — housing will confirm the correct pricing category and amount after reviewing your request.';
 
 export const BROWSE_CATEGORIES = [
   {

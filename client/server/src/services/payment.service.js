@@ -29,7 +29,7 @@ export const paymentRoomDetailSelect = `
          p.amount, p.method, p.status, p.paid_at, p.invoice_sent_at, p.billing_invoice_sent_at, p.created_at, p.updated_at,
          b.user_id, b.check_in, b.check_out, b.status AS booking_status, b.guest_count,
          b.total_amount AS booking_total, b.group_id, b.season, b.occupancy_item,
-         b.notes, b.contact_phone, b.meal_allergen_notes,
+         b.notes, b.contact_phone, b.meal_allergen_notes, b.pricing_category,
          u.full_name AS guest_name, u.email AS guest_email,
          r.id AS room_id, r.room_number, r.room_type, r.status AS room_status,
          bl.name AS building_name,

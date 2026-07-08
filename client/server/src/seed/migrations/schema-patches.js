@@ -16,6 +16,7 @@ import {
   runGmcAblockMigration,
   runVenueFieldsMigration,
 } from './facilities.js';
+import { seedPricingCategoryRates } from '../data/pricing-category-rates.js';
 
 export async function runSchemaPatches() {
   try {
@@ -457,20 +458,12 @@ export async function runSchemaPatches() {
     try { await pool.execute(`ALTER TABLE ${table} ADD COLUMN notes VARCHAR(255) NULL DEFAULT NULL AFTER billing_unit`); } catch {}
   };
 
-  const migrateRateVariantKey = async (table, { indexName, hashExpr }) => {
+  const migrateRateVariantKey = async (table, { indexName, keyColumns }) => {
     if (!(await tableExists(table))) return;
-
-    if (!(await columnExists(table, 'variant_key'))) {
-      await pool.execute(`
-        ALTER TABLE ${table}
-        ADD COLUMN variant_key CHAR(64) GENERATED ALWAYS AS (${hashExpr}) STORED NOT NULL
-        AFTER notes
-      `);
-    }
 
     try { await pool.execute(`ALTER TABLE ${table} DROP INDEX ${indexName}`); } catch {}
     try {
-      await pool.execute(`ALTER TABLE ${table} ADD UNIQUE KEY ${indexName} (variant_key)`);
+      await pool.execute(`ALTER TABLE ${table} ADD UNIQUE KEY ${indexName} (${keyColumns})`);
     } catch (err) {
       if (!/Duplicate key name/i.test(err.message)) throw err;
     }
@@ -480,7 +473,7 @@ export async function runSchemaPatches() {
     await ensureRateVariantColumns('rates_rooms', { billing_unit: 'per night' });
     await migrateRateVariantKey('rates_rooms', {
       indexName: 'uq_room_rate',
-      hashExpr: `SHA2(CONCAT_WS(CHAR(31), room_type, item, season, audience, age_band, currency, billing_unit), 256)`,
+      keyColumns: 'room_type(64), item(64), season, audience(32), age_band(16), currency(8), billing_unit(32)',
     });
   } catch (err) {
     console.warn('[schema] rates_rooms variant index migration skipped:', err.message);
@@ -503,7 +496,7 @@ export async function runSchemaPatches() {
     await ensureRateVariantColumns('rates_extra_services', { billing_unit: 'per item' });
     await migrateRateVariantKey('rates_extra_services', {
       indexName: 'uq_extra_service',
-      hashExpr: `SHA2(CONCAT_WS(CHAR(31), category, item, season, audience, age_band, currency, billing_unit), 256)`,
+      keyColumns: 'category(32), item(64), season, audience(32), age_band(16), currency(8), billing_unit(32)',
     });
   } catch (err) {
     console.warn('[schema] rates_extra_services variant index migration skipped:', err.message);
@@ -701,5 +694,28 @@ export async function runSchemaPatches() {
     } catch (err) {
       console.warn('[schema] users.session_expires_at skipped:', err.message);
     }
+  }
+
+  try {
+    if (await tableExists('bookings_rooms') && !(await columnExists('bookings_rooms', 'pricing_category'))) {
+      await pool.execute(
+        `ALTER TABLE bookings_rooms ADD COLUMN pricing_category VARCHAR(80) NOT NULL DEFAULT 'Guest' AFTER meal_allergen_notes`
+      );
+      console.log('[schema] Added bookings_rooms.pricing_category');
+    }
+    if (await tableExists('reservation_groups') && !(await columnExists('reservation_groups', 'pricing_category'))) {
+      await pool.execute(
+        `ALTER TABLE reservation_groups ADD COLUMN pricing_category VARCHAR(80) NOT NULL DEFAULT 'Guest' AFTER notes`
+      );
+      console.log('[schema] Added reservation_groups.pricing_category');
+    }
+  } catch (err) {
+    console.warn('[schema] pricing_category migration skipped:', err.message);
+  }
+
+  try {
+    await seedPricingCategoryRates();
+  } catch (err) {
+    console.warn('[schema] pricing category rate seed skipped:', err.message);
   }
 }

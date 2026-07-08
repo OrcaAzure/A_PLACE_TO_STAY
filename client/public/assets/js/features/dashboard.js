@@ -403,7 +403,8 @@ async function handleQueueApprove(item) {
     const request = item.type === 'group'
       ? normalizeManageGroupRequest(item.raw)
       : normalizeManageRequest(item.raw);
-    await approveRequest(request);
+    const approved = await approveRequest(request);
+    if (!approved) return;
     await loadDashboard();
     window.dispatchEvent(new CustomEvent('booking:updated'));
   } catch (err) {

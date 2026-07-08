@@ -26,6 +26,8 @@ import {
   normalizeRateVariant,
   rateVariantKey,
   matchesDefaultRateVariant,
+  normalizePricingCategory,
+  pickRateRowForAudience,
 } from '../constants/rateVariants.js';
 
 export async function fetchMealRateRows() {
@@ -250,17 +252,17 @@ export async function getRoomRateGroups() {
   return [dormGroup, ...roomGroups];
 }
 
-export async function getMealRatesMap() {
+export async function getMealRatesMap(pricingCategory = 'Guest') {
   try {
     const rows = await fetchMealRateRows();
     const rates = { ...DEFAULT_MEAL_RATES };
-    // Live bookings: Guest · Adult · PHP only (see BOOKING_USES_DEFAULT_VARIANT_ONLY).
-    rows
-      .filter((r) => matchesDefaultRateVariant(r, { billing_unit: DEFAULT_MEAL_BILLING_UNIT }))
-      .forEach((r) => {
+    const category = normalizePricingCategory(pricingCategory);
+    rows.forEach((r) => {
+      const match = pickRateRowForAudience([r], category, { billing_unit: DEFAULT_MEAL_BILLING_UNIT });
+      if (!match) return;
       const type = r.item || r.meal_type;
-      rates[type] = Number(r.rate);
-      });
+      rates[type] = Number(match.rate);
+    });
     return rates;
   } catch {
     return { ...DEFAULT_MEAL_RATES };
