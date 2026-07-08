@@ -218,6 +218,84 @@ body.lp-shell::-webkit-scrollbar {
   flex-direction: column;
 }
 
+.lp-hero-grid-tight {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2rem;
+  width: 100%;
+}
+
+/* Desktop: match ~75% zoom comfort — content fits without cramming at 100% browser zoom */
+@media (min-width: 1024px) {
+  .lp-hero.lp-hero--comfort {
+    min-height: auto;
+    height: auto;
+    overflow-x: clip;
+    overflow-y: visible;
+  }
+
+  .lp-hero-grid-tight {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 2.5rem;
+    width: min(100%, 1160px);
+    margin-inline: auto;
+    align-items: center;
+  }
+
+  .lp-hero-copy-col {
+    justify-self: end;
+    width: 100%;
+    max-width: 34rem;
+    min-width: 0;
+    overflow-wrap: break-word;
+  }
+
+  .lp-hero-type-line {
+    display: block;
+  }
+
+  .lp-hero-copy-col .lp-hero-type-wrap {
+    display: block;
+    min-height: 1.65em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lp-hero.lp-hero--comfort > .lp-hero-content {
+    justify-content: flex-start;
+    padding-top: max(calc(4.25rem + 1rem), calc(4.25rem + env(safe-area-inset-top, 0px)));
+    padding-bottom: 3.5rem;
+  }
+
+  .lp-hero.lp-hero--comfort .lp-hero-visual-col {
+    justify-self: start;
+    min-height: 24rem;
+    max-width: 22rem;
+    margin-left: 2.75rem;
+    margin-right: 0;
+    overflow: visible;
+  }
+
+  .lp-hero.lp-hero--comfort::after {
+    height: clamp(5rem, 12vh, 7rem);
+  }
+
+  .lp-hero.lp-hero--comfort .lp-hero-visual {
+    max-height: min(28rem, 56dvh);
+  }
+
+  .lp-hero.lp-hero--comfort .lp-hero-rule {
+    width: 2.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .lp-hero.lp-hero--comfort .lp-scroll-hint {
+    display: none;
+  }
+}
+
 .lp-hero > .relative.z-10,
 .lp-hero > .lp-hero-content {
   flex: 1;
@@ -540,7 +618,8 @@ body.lp-scroll-snap-active {
 
 .lp-hero-type-wrap {
   display: inline;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .lp-hero-typed {
@@ -728,20 +807,26 @@ body.lp-scroll-snap-active {
   50% { transform: translateY(7px); }
 }
 
-/* Vertical section scroller (desktop) — always available */
+/* Vertical section scroller (desktop) — sits in viewport gutter beside content */
 .lp-section-scroller {
   position: fixed;
   right: max(1.25rem, env(safe-area-inset-right, 0px));
   top: 50%;
   z-index: 40;
-  transform: translateY(-50%) translateX(0);
+  transform: translateY(-50%);
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
   transition:
-    opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0.5s ease,
-    transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.4s ease,
+    border-color 0.4s ease;
+}
+
+@media (min-width: 1280px) {
+  .lp-section-scroller {
+    right: max(1.25rem, calc((100vw - 1380px) / 2 - 3.25rem));
+  }
 }
 
 .lp-section-scroller-rail {

@@ -5,13 +5,14 @@
   <meta content="width=device-width, initial-scale=1.0, viewport-fit=cover" name="viewport"/>
   <meta name="description" content="AptSpace — book Global Missions Center lodging and APTS campus venues. For faculty, staff, students, missionaries, and approved guests."/>
   <title>AptSpace | APTS Housing &amp; Facilities</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%231a365d'/%3E%3Cpath fill='%23fff' d='M8 22V12h3.2v10H8zm6.4 0V12h3.2l4.8 6.5V12H26v10h-3.2l-4.8-6.5V22h-3.6z'/%3E%3C/svg%3E"/>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
   <script src="/assets/js/config/tailwind-theme-base.js"></script>
   <script src="/assets/js/config/tailwind-guest.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.cdnfonts.com/css/rillosta-133416" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="/assets/css/global/landing.css"/>
+  <link rel="stylesheet" href="/assets/css/global/landing.css?v=comfort75g"/>
   <link rel="stylesheet" href="/assets/css/global/landing-preloader.css"/>
   <script type="module" src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" data-apt-dotlottie></script>
   <style>
@@ -49,7 +50,7 @@
 
 <!-- NAV -->
 <header class="lp-nav lp-nav-is-visible fixed top-0 inset-x-0 z-50 border-b border-outline-variant/15">
-  <div class="lp-nav-inner relative flex items-center gap-3 w-full px-4 sm:px-6 max-w-[1280px] mx-auto min-h-[4.25rem] h-[4.25rem]">
+  <div class="lp-nav-inner relative flex items-center gap-3 w-full px-4 sm:px-6 max-w-[1380px] mx-auto min-h-[4.25rem] h-[4.25rem]">
     <a href="/" class="lp-nav-brand flex items-center gap-2.5 min-w-0 shrink-0 z-[1]">
       <span class="w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/20 shrink-0">
         <span class="material-symbols-outlined text-white text-[19px]">apartment</span>
@@ -123,7 +124,7 @@
 <main class="lp-main">
 
   <!-- HERO -->
-  <section id="hero" class="lp-hero relative flex items-center overflow-hidden">
+  <section id="hero" class="lp-hero lp-hero--comfort relative flex items-center overflow-hidden">
     <div class="lp-hero-bg-wrap absolute inset-0" aria-hidden="true">
       <div
         class="lp-hero-bg"
@@ -135,60 +136,63 @@
     <div class="lp-hero-glow w-[420px] h-[420px] bg-primary/40 top-[-120px] right-[-80px]" aria-hidden="true"></div>
     <div class="lp-hero-glow w-[280px] h-[280px] bg-secondary/25 bottom-[-60px] left-[10%]" aria-hidden="true"></div>
 
-    <div class="relative z-10 max-w-[1280px] mx-auto lp-page-gutter sm:px-6 w-full lp-hero-content py-12 lg:py-14">
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-10 items-center">
+    <div class="relative z-10 max-w-[1380px] mx-auto lp-page-gutter sm:px-6 w-full lp-hero-content py-10 lg:py-12">
+      <!-- hero-layout: comfort-centered -->
+      <div class="lp-hero-grid-tight">
 
-        <div class="lp-gwill-hide">
-          <div class="lp-hero-badge inline-flex items-center gap-2.5 px-4 py-2 rounded-full border border-white/20 bg-white/10 mb-6 max-w-full backdrop-blur-sm">
+        <div class="lp-hero-copy-col lp-gwill-hide">
+          <div class="lp-hero-badge inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-white/20 bg-white/10 mb-4 max-w-full backdrop-blur-sm">
             <span class="lp-hero-live-dot shrink-0" aria-hidden="true"></span>
-            <span class="material-symbols-outlined text-emerald-300/90 text-[16px] shrink-0">verified</span>
-            <span class="text-white/90 text-label-sm uppercase tracking-widest sm:hidden">APTS Housing · Baguio</span>
-            <span class="text-white/90 text-label-sm uppercase tracking-widest hidden sm:inline">Asia Pacific Theological Seminary — Housing &amp; Facilities</span>
+            <span class="material-symbols-outlined text-emerald-300/90 text-[15px] shrink-0">verified</span>
+            <span class="text-white/90 text-[10px] sm:text-[11px] uppercase tracking-widest sm:hidden">APTS Housing · Baguio</span>
+            <span class="text-white/90 text-[10px] sm:text-[11px] uppercase tracking-widest hidden sm:inline">Asia Pacific Theological Seminary — Housing &amp; Facilities</span>
           </div>
 
-          <h1 class="text-4xl sm:text-5xl lg:text-[3.35rem] font-bold leading-[1.08] text-white mb-5 tracking-tight">
+          <h1 class="text-3xl sm:text-4xl lg:text-[2.5rem] xl:text-[2.65rem] font-bold leading-[1.1] text-white mb-4 tracking-tight">
             <span class="lp-hero-line block">Book campus lodging</span>
             <span class="lp-hero-line lp-hero-accent block">&amp; venues in one place.</span>
           </h1>
 
           <p class="lp-hero-rule" aria-hidden="true"></p>
 
-          <p class="lp-hero-sub text-body-lg max-w-xl mb-7 leading-relaxed">
-            <span class="text-white/92">AptSpace is APTS&rsquo;s online booking portal for </span>
-            <span class="lp-hero-type-wrap">
-              <span id="lp-hero-typed" class="lp-hero-typed" aria-live="polite">GMC rooms.</span><span class="lp-hero-type-cursor" aria-hidden="true"></span>
+          <p class="lp-hero-sub text-body-md lg:text-body-lg max-w-2xl mb-5 leading-relaxed">
+            <span class="lp-hero-type-line">
+              <span class="text-white/92 block">AptSpace is APTS&rsquo;s online booking portal for</span>
+              <span class="lp-hero-type-wrap">
+                <span id="lp-hero-typed" class="lp-hero-typed" aria-live="polite">GMC rooms.</span><span class="lp-hero-type-cursor" aria-hidden="true"></span>
+              </span>
             </span>
             <span class="lp-hero-sub-tail block mt-2.5 text-white/72 text-body-md sm:text-body-lg">
               Sign in with your seminary account or approved guest access.
             </span>
           </p>
 
-          <div class="lp-hero-cta flex flex-wrap gap-3 sm:gap-4 mb-6">
-            <a href="/login.html" class="lp-hero-cta-primary lp-magnetic inline-flex items-center gap-2 px-7 sm:px-8 py-3.5 sm:py-4 bg-white text-primary rounded-full font-bold text-label-md hover:bg-white/95 transition-all shadow-xl shadow-black/15">
+          <div class="lp-hero-cta flex flex-wrap gap-2.5 sm:gap-3 mb-5">
+            <a href="/login.html" class="lp-hero-cta-primary lp-magnetic inline-flex items-center gap-2 px-6 py-3 bg-white text-primary rounded-full font-bold text-label-sm sm:text-label-md hover:bg-white/95 transition-all shadow-xl shadow-black/15">
               Sign in to book
-              <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
+              <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
             </a>
-            <a href="#facilities" class="lp-hero-cta-secondary inline-flex items-center gap-2 px-7 sm:px-8 py-3.5 sm:py-4 border border-white/35 text-white rounded-full font-medium text-label-md hover:bg-white/10 hover:border-white/50 transition-all backdrop-blur-sm">
+            <a href="#facilities" class="lp-hero-cta-secondary inline-flex items-center gap-2 px-6 py-3 border border-white/35 text-white rounded-full font-medium text-label-sm sm:text-label-md hover:bg-white/10 hover:border-white/50 transition-all backdrop-blur-sm">
               See what&rsquo;s bookable
-              <span class="material-symbols-outlined text-[18px]">arrow_downward</span>
+              <span class="material-symbols-outlined text-[17px]">arrow_downward</span>
             </a>
           </div>
 
-          <div class="lp-hero-tags flex flex-wrap gap-2 mb-6" aria-label="Quick links">
+          <div class="lp-hero-tags flex flex-wrap gap-2 mb-5" aria-label="Quick links">
             <a href="#facilities" class="lp-hero-tag">Rooms</a>
             <a href="#facilities" class="lp-hero-tag">Venues</a>
             <a href="#facilities" class="lp-hero-tag">Group stays</a>
           </div>
 
-          <div class="grid grid-cols-2 gap-3 max-w-md">
-            <div class="lp-stat rounded-2xl px-4 py-4">
-              <span class="material-symbols-outlined text-white/45 text-[20px] mb-2 block">bed</span>
-              <p class="text-2xl font-bold text-white leading-none"><span data-count="30" data-suffix="+">30+</span></p>
+          <div class="grid grid-cols-2 gap-3 max-w-sm sm:max-w-md">
+            <div class="lp-stat rounded-2xl px-3.5 py-3">
+              <span class="material-symbols-outlined text-white/45 text-[18px] mb-1.5 block">bed</span>
+              <p class="text-xl font-bold text-white leading-none"><span data-count="30" data-suffix="+">30+</span></p>
               <p class="text-white/55 text-label-sm mt-1.5">GMC lodging units</p>
             </div>
-            <div class="lp-stat rounded-2xl px-4 py-4">
-              <span class="material-symbols-outlined text-white/45 text-[20px] mb-2 block">location_city</span>
-              <p class="text-2xl font-bold text-white leading-none"><span data-count="15" data-suffix="+">15+</span></p>
+            <div class="lp-stat rounded-2xl px-3.5 py-3">
+              <span class="material-symbols-outlined text-white/45 text-[18px] mb-1.5 block">location_city</span>
+              <p class="text-xl font-bold text-white leading-none"><span data-count="15" data-suffix="+">15+</span></p>
               <p class="text-white/55 text-label-sm mt-1.5">Campus venues</p>
             </div>
           </div>
@@ -207,7 +211,7 @@
         </div>
 
         <div class="lp-hero-visual-col relative hidden lg:block lp-gwill-hide">
-          <div class="lp-hero-visual aspect-[4/5] ml-auto w-full max-w-md">
+          <div class="lp-hero-visual aspect-[4/5] w-full max-w-[22rem]">
             <img
               src="https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=900&q=80"
               alt="APTS campus grounds"
@@ -220,15 +224,15 @@
               On campus
             </div>
           </div>
-          <div class="lp-hero-float lp-hero-float-a w-32 h-24 bottom-10 -left-5">
+          <div class="lp-hero-float lp-hero-float-a w-28 h-20 bottom-8 left-0">
             <img src="https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=400&q=80" alt="" width="400" height="300" loading="lazy"/>
           </div>
-          <div class="lp-hero-float lp-hero-float-b w-36 h-28 top-6 -right-2">
+          <div class="lp-hero-float lp-hero-float-b w-32 h-24 top-5 right-1">
             <img src="https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=500&q=80" alt="" width="500" height="350" loading="lazy"/>
           </div>
-          <div class="lp-hero-booking-card absolute bottom-0 right-4 flex items-start gap-3 rounded-2xl px-5 py-4 max-w-[240px]">
-            <span class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-              <span class="material-symbols-outlined text-primary text-[20px]">event_available</span>
+          <div class="lp-hero-booking-card absolute bottom-0 right-3 flex items-start gap-2.5 rounded-2xl px-4 py-3 max-w-[230px]">
+            <span class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-primary text-[18px]">event_available</span>
             </span>
             <div class="min-w-0">
               <p class="text-label-sm text-primary font-bold uppercase tracking-wider mb-0.5">Now booking</p>
