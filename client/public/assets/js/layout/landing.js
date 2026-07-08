@@ -105,6 +105,9 @@ async function loadGsapWithScrollTrigger() {
   if (window.gsap?.registerPlugin) {
     window.gsap.registerPlugin(window.ScrollTrigger, window.ScrollToPlugin);
   }
+  if (window.ScrollTrigger?.config) {
+    window.ScrollTrigger.config({ limitCallbacks: true });
+  }
   return window.gsap;
 }
 
@@ -368,18 +371,10 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return;
   }
 
-  const SNAP_MS = 0.42;
-  const WHEEL_STEP = 52;
-  const WHEEL_RESET_MS = 180;
-  const WHEEL_COOLDOWN_MS = 520;
+  const VISUAL_DUR = 0.26;
 
   let currentIndex = 0;
-  let isAnimating = false;
-  let activeTween = null;
-  let wheelAccum = 0;
-  let wheelTimer = null;
-  let lastWheelNavAt = 0;
-  let scrollSyncTimer = null;
+  let visualTween = null;
 
   function setSnapActive(active) {
     document.body.classList.toggle('lp-scroll-snap-active', active);
@@ -397,52 +392,59 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return Math.min(steps, Math.max(0, Math.round(progress * steps)));
   }
 
-  function crossfadeToSlide(fromIdx, toIdx, { light = false } = {}) {
-    const dur = light ? SNAP_MS * 0.85 : SNAP_MS;
-    const tl = gsap.timeline();
+  function crossfadeToSlide(fromIdx, toIdx) {
+    const dur = VISUAL_DUR;
+    const tl = gsap.timeline({
+      onStart: () => section.classList.add('is-transitioning'),
+      onComplete: () => section.classList.remove('is-transitioning'),
+    });
 
     if (fromIdx !== toIdx && bgImages[fromIdx]) {
-      tl.to(bgImages[fromIdx], { opacity: 0, duration: dur * 0.4, ease: 'power1.in' }, 0);
+      tl.to(bgImages[fromIdx], { opacity: 0, duration: dur * 0.35, ease: 'power2.in' }, 0);
     }
     if (bgImages[toIdx]) {
       tl.fromTo(bgImages[toIdx],
         { opacity: 0 },
-        { opacity: 1, duration: dur * 0.55, ease: 'power1.out' },
-        dur * 0.08);
+        { opacity: 1, duration: dur * 0.5, ease: 'power2.out' },
+        dur * 0.06);
       bgImages.forEach((img, i) => img.classList.toggle('is-active', i === toIdx));
     }
 
     phraseData.forEach((phrase, i) => {
       const on = i === toIdx;
-      if (light) {
+      if (i === fromIdx && fromIdx !== toIdx) {
+        tl.to(phrase.el, { opacity: 0, y: -10, duration: dur * 0.28, ease: 'power2.in' }, 0);
+      }
+      if (on) {
         gsap.set(phrase.el, {
-          opacity: on ? 1 : 0,
           xPercent: -50,
           yPercent: -50,
-          y: 0,
           scale: 1,
-          pointerEvents: on ? 'auto' : 'none',
+          pointerEvents: 'auto',
         });
-        if (on) applyScrollCharProgress(phrase.chars, 1);
-        return;
-      }
-
-      if (i === fromIdx && fromIdx !== toIdx) {
-        tl.to(phrase.el, { opacity: 0, y: -12, duration: dur * 0.3, ease: 'power1.in' }, 0);
+        applyScrollCharProgress(phrase.chars, 1);
+      } else if (i !== fromIdx) {
+        gsap.set(phrase.el, { opacity: 0, pointerEvents: 'none' });
       }
     });
 
-    if (!light) {
-      const incoming = phraseData[toIdx];
-      if (incoming) {
-        gsap.set(incoming.el, { opacity: 0, xPercent: -50, yPercent: -50, y: 20, scale: 0.98 });
-        tl.to(incoming.el, { opacity: 1, y: 0, scale: 1, duration: dur * 0.5, ease: 'power2.out' }, dur * 0.12);
-        tl.call(() => applyScrollCharProgress(incoming.chars, 1), null, dur * 0.2);
-      }
+    const incoming = phraseData[toIdx];
+    if (incoming) {
+      gsap.set(incoming.el, { opacity: 0, xPercent: -50, yPercent: -50, y: 14, scale: 0.99 });
+      tl.to(incoming.el, { opacity: 1, y: 0, scale: 1, duration: dur * 0.45, ease: 'power3.out' }, dur * 0.08);
     }
 
-    if (hint) tl.to(hint, { opacity: toIdx === 0 ? 1 : 0, duration: 0.15 }, 0);
+    if (hint) tl.to(hint, { opacity: toIdx === 0 ? 1 : 0, duration: 0.12 }, 0);
     return tl;
+  }
+
+  function syncSlideVisuals(nextIndex) {
+    const idx = Math.min(count - 1, Math.max(0, nextIndex));
+    if (idx === currentIndex) return idx;
+    visualTween?.kill();
+    visualTween = crossfadeToSlide(currentIndex, idx);
+    currentIndex = idx;
+    return idx;
   }
 
   function scrollYForIndex(index) {
@@ -451,92 +453,17 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return st.start + progress * (st.end - st.start);
   }
 
-  function scheduleScrollSync() {
-    if (scrollSyncTimer) return;
-    scrollSyncTimer = window.setTimeout(() => {
-      scrollSyncTimer = null;
-      if (!st.isActive || isAnimating) return;
-      if (Date.now() - lastWheelNavAt < WHEEL_COOLDOWN_MS) return;
-      const idx = progressToIndex(st.progress);
-      const y = scrollYForIndex(idx);
-      if (idx !== currentIndex) {
-        crossfadeToSlide(currentIndex, idx, { light: true });
-        currentIndex = idx;
-      }
-      if (Math.abs(window.scrollY - y) > 6) {
-        gsap.to(window, {
-          scrollTo: { y, autoKill: false },
-          duration: 0.22,
-          ease: 'power2.out',
-          overwrite: true,
-        });
-      }
-    }, 140);
+  function scrollToIndex(index) {
+    const idx = Math.min(count - 1, Math.max(0, index));
+    syncSlideVisuals(idx);
+    const y = scrollYForIndex(idx);
+    window.scrollTo(0, y);
+    ScrollTrigger.update();
   }
 
-  function normalizeWheelDelta(e) {
-    let delta = e.deltaY;
-    if (e.deltaMode === 1) delta *= 16;
-    else if (e.deltaMode === 2) delta *= window.innerHeight;
-    return delta;
-  }
-
-  function resetWheelAccum() {
-    wheelAccum = 0;
-    if (wheelTimer) {
-      window.clearTimeout(wheelTimer);
-      wheelTimer = null;
-    }
-  }
-
-  function scheduleWheelReset() {
-    if (wheelTimer) window.clearTimeout(wheelTimer);
-    wheelTimer = window.setTimeout(resetWheelAccum, WHEEL_RESET_MS);
-  }
-
-  function applySlideVisuals(index, { animateChars = false } = {}) {
-    currentIndex = showSlide(index, { animateChars });
+  function applySlideVisuals(index) {
+    currentIndex = showSlide(index);
     return currentIndex;
-  }
-
-  function goToSlide(nextIndex, { fromWheel = false } = {}) {
-    if (nextIndex < 0 || nextIndex >= count || isAnimating) return false;
-    if (nextIndex === currentIndex) return true;
-
-    if (fromWheel && Date.now() - lastWheelNavAt < WHEEL_COOLDOWN_MS) return false;
-
-    activeTween?.kill();
-    isAnimating = true;
-    resetWheelAccum();
-
-    const fromIdx = currentIndex;
-    const targetY = scrollYForIndex(nextIndex);
-    const light = fromWheel;
-
-    activeTween = gsap.timeline({
-      onComplete: () => {
-        applySlideVisuals(nextIndex);
-        isAnimating = false;
-        activeTween = null;
-        const y = scrollYForIndex(nextIndex);
-        if (Math.abs(window.scrollY - y) > 2) {
-          window.scrollTo(0, y);
-        }
-        ScrollTrigger.update();
-      },
-    });
-
-    activeTween.add(crossfadeToSlide(fromIdx, nextIndex, { light }), 0);
-    activeTween.to(window, {
-      scrollTo: { y: targetY, autoKill: false },
-      duration: light ? SNAP_MS * 0.9 : SNAP_MS,
-      ease: 'power2.inOut',
-      overwrite: true,
-    }, 0);
-
-    currentIndex = nextIndex;
-    if (fromWheel) lastWheelNavAt = Date.now();
-    return true;
   }
 
   const st = ScrollTrigger.create({
@@ -548,65 +475,36 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     pinReparent: false,
     anticipatePin: 0,
     invalidateOnRefresh: true,
-    fastScrollEnd: false,
+    fastScrollEnd: true,
+    snap: count > 1 ? {
+      snapTo: (value) => snapProgressForIndex(progressToIndex(value)),
+      duration: { min: 0.14, max: 0.3 },
+      delay: 0.03,
+      ease: 'power3.out',
+      inertia: false,
+    } : false,
     onToggle: (self) => setSnapActive(self.isActive),
     onEnter(self) {
-      resetWheelAccum();
-      if (!isAnimating) {
-        applySlideVisuals(progressToIndex(self.progress));
-      }
+      if (!visualTween) applySlideVisuals(progressToIndex(self.progress));
     },
     onEnterBack(self) {
-      resetWheelAccum();
-      if (!isAnimating) {
-        applySlideVisuals(progressToIndex(self.progress));
-      }
+      if (!visualTween) applySlideVisuals(progressToIndex(self.progress));
     },
-    onUpdate() {
-      scheduleScrollSync();
+    onUpdate(self) {
+      if (!self.isActive) return;
+      syncSlideVisuals(progressToIndex(self.progress));
     },
     onLeave: () => {
-      activeTween?.kill();
-      isAnimating = false;
-      resetWheelAccum();
+      visualTween?.kill();
+      visualTween = null;
       setSnapActive(false);
     },
     onLeaveBack: () => {
-      activeTween?.kill();
-      isAnimating = false;
-      resetWheelAccum();
+      visualTween?.kill();
+      visualTween = null;
       setSnapActive(false);
     },
   });
-
-  function onWheel(e) {
-    if (!st.isActive) return;
-
-    const delta = normalizeWheelDelta(e);
-    if (!delta) return;
-
-    const goingDown = delta > 0;
-    const atLast = currentIndex >= count - 1;
-    const atFirst = currentIndex <= 0;
-
-    if (isAnimating) {
-      e.preventDefault();
-      return;
-    }
-
-    // Let native scroll leave the section at first/last slide
-    if (goingDown && atLast) return;
-    if (!goingDown && atFirst) return;
-
-    e.preventDefault();
-    wheelAccum += delta;
-    scheduleWheelReset();
-    if (Math.abs(wheelAccum) < WHEEL_STEP) return;
-
-    const direction = wheelAccum > 0 ? 1 : -1;
-    resetWheelAccum();
-    goToSlide(currentIndex + direction, { fromWheel: true });
-  }
 
   let touchStartY = 0;
   let touchStartX = 0;
@@ -618,29 +516,28 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   }
 
   function onTouchEnd(e) {
-    if (!st.isActive || isAnimating) return;
+    if (!st.isActive) return;
     const dy = touchStartY - e.changedTouches[0].clientY;
     const dx = touchStartX - e.changedTouches[0].clientX;
     if (Math.abs(dy) < 44 || Math.abs(dy) < Math.abs(dx)) return;
 
-    if (dy > 0 && currentIndex < count - 1) goToSlide(currentIndex + 1, { fromWheel: true });
-    else if (dy < 0 && currentIndex > 0) goToSlide(currentIndex - 1, { fromWheel: true });
+    if (dy > 0 && currentIndex < count - 1) scrollToIndex(currentIndex + 1);
+    else if (dy < 0 && currentIndex > 0) scrollToIndex(currentIndex - 1);
   }
 
   function onKeyDown(e) {
-    if (!st.isActive || isAnimating) return;
+    if (!st.isActive) return;
     if (e.key === 'ArrowDown' || e.key === 'PageDown') {
       if (currentIndex >= count - 1) return;
       e.preventDefault();
-      goToSlide(currentIndex + 1, { fromWheel: true });
+      scrollToIndex(currentIndex + 1);
     } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
       if (currentIndex <= 0) return;
       e.preventDefault();
-      goToSlide(currentIndex - 1, { fromWheel: true });
+      scrollToIndex(currentIndex - 1);
     }
   }
 
-  window.addEventListener('wheel', onWheel, { passive: false, capture: true });
   pin.addEventListener('touchstart', onTouchStart, { passive: true });
   pin.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('keydown', onKeyDown);
@@ -649,7 +546,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
 
   window.addEventListener('resize', () => {
     ScrollTrigger.refresh();
-    if (st.isActive && !isAnimating) {
+    if (st.isActive && !visualTween) {
       const y = scrollYForIndex(currentIndex);
       if (Math.abs(window.scrollY - y) > 4) {
         window.scrollTo(0, y);
@@ -879,7 +776,7 @@ export async function initLandingPage(options = {}) {
         trigger: '.lp-hero',
         start: 'top top',
         end: 'bottom top',
-        scrub: true,
+        scrub: 0.6,
       },
     });
   }
@@ -891,7 +788,7 @@ export async function initLandingPage(options = {}) {
     duration: 0.55,
     ease: 'power2.out',
     immediateRender: false,
-    scrollTrigger: { trigger: '.lp-trust', start: 'top 96%' },
+    scrollTrigger: { trigger: '.lp-trust', start: 'top 96%', once: true },
   });
 
   gsap.utils.toArray('.lp-section-head').forEach((head) => {
@@ -901,7 +798,7 @@ export async function initLandingPage(options = {}) {
       stagger: 0.1,
       duration: 0.7,
       ease: 'power3.out',
-      scrollTrigger: { trigger: head, start: 'top 85%' },
+      scrollTrigger: { trigger: head, start: 'top 85%', once: true },
     });
   });
 
@@ -912,7 +809,7 @@ export async function initLandingPage(options = {}) {
     stagger: 0.1,
     duration: 0.75,
     ease: 'power3.out',
-    scrollTrigger: { trigger: '.lp-facilities-grid', start: 'top 82%' },
+    scrollTrigger: { trigger: '.lp-facilities-grid', start: 'top 82%', once: true },
   });
 
   gsap.from('.lp-audience-card', {
@@ -921,7 +818,7 @@ export async function initLandingPage(options = {}) {
     stagger: 0.08,
     duration: 0.6,
     ease: 'power2.out',
-    scrollTrigger: { trigger: '.lp-audience', start: 'top 85%' },
+    scrollTrigger: { trigger: '.lp-audience', start: 'top 85%', once: true },
   });
 
   gsap.from('.lp-team-head > *', {
@@ -930,7 +827,7 @@ export async function initLandingPage(options = {}) {
     stagger: 0.1,
     duration: 0.65,
     ease: 'power3.out',
-    scrollTrigger: { trigger: '.lp-team', start: 'top 85%' },
+    scrollTrigger: { trigger: '.lp-team', start: 'top 85%', once: true },
   });
 
   gsap.from('.lp-team-card', {
@@ -939,7 +836,7 @@ export async function initLandingPage(options = {}) {
     stagger: 0.1,
     duration: 0.6,
     ease: 'power2.out',
-    scrollTrigger: { trigger: '.lp-team-grid', start: 'top 86%' },
+    scrollTrigger: { trigger: '.lp-team-grid', start: 'top 86%', once: true },
   });
 
   gsap.from('.lp-cta-band', {
@@ -947,7 +844,7 @@ export async function initLandingPage(options = {}) {
     autoAlpha: 0,
     duration: 0.7,
     ease: 'power3.out',
-    scrollTrigger: { trigger: '.lp-cta-band', start: 'top 88%' },
+    scrollTrigger: { trigger: '.lp-cta-band', start: 'top 88%', once: true },
   });
 
   gsap.from('.lp-contact-card', {
@@ -957,7 +854,7 @@ export async function initLandingPage(options = {}) {
     duration: 0.6,
     ease: 'power2.out',
     clearProps: 'transform,opacity,visibility',
-    scrollTrigger: { trigger: '.lp-contact-cards', start: 'top 88%' },
+    scrollTrigger: { trigger: '.lp-contact-cards', start: 'top 88%', once: true },
   });
 
   document.querySelectorAll('.lp-magnetic').forEach((btn) => {

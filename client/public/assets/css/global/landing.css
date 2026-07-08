@@ -493,7 +493,6 @@ body.lp-scroll-snap-active .lp-section-scroller {
   margin: 0;
   opacity: 0;
   pointer-events: none;
-  will-change: opacity, transform;
   backface-visibility: hidden;
 }
 
@@ -512,7 +511,6 @@ body.lp-scroll-snap-active .lp-section-scroller {
   text-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
   transform-style: preserve-3d;
   transform-origin: center center;
-  will-change: transform;
 }
 
 .lp-scroll-phrase-line--accent .lp-scroll-char {
@@ -523,7 +521,12 @@ body.lp-scroll-snap-active .lp-section-scroller {
   display: inline-block;
   transform-style: preserve-3d;
   transform-origin: 50% 50%;
-  will-change: transform, opacity;
+}
+
+.lp-scroll-section.is-transitioning .lp-scroll-phrase,
+.lp-scroll-section.is-transitioning .lp-scroll-phrase-line,
+.lp-scroll-section.is-transitioning .lp-scroll-char {
+  will-change: opacity, transform;
 }
 
 .lp-scroll-char--space {
