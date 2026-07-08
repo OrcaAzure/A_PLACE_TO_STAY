@@ -1000,8 +1000,8 @@ function renderCalendarFilterSidebar(filters) {
             <li><span class="cal-legend-swatch cal-swatch--pending"></span>Needs approval</li>
             <li><span class="cal-legend-swatch cal-swatch--confirmed"></span>Confirmed / upcoming</li>
             <li><span class="cal-legend-swatch cal-swatch--venue"></span>Venue event</li>
-            <li><span class="cal-legend-swatch cal-swatch--in-progress"></span>In progress — guest is here now</li>
-            <li><span class="cal-legend-swatch cal-swatch--completed"></span>Completed — stay or event is done</li>
+            <li><span class="cal-legend-swatch cal-swatch--in-progress"></span>In progress</li>
+            <li><span class="cal-legend-swatch cal-swatch--completed"></span>Completed</li>
             <li><span class="cal-legend-swatch cal-swatch--cancelled"></span>Cancelled</li>
           </ul>
         </section>
