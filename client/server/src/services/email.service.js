@@ -116,6 +116,199 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+function fmtPeso(amount) {
+  if (amount == null || Number.isNaN(Number(amount))) return '—';
+  return `₱${Number(amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+}
+
+function formatStayDate(value) {
+  if (!value) return '—';
+  return formatEventDate(value);
+}
+
+function calcStayNights(checkIn, checkOut) {
+  if (!checkIn || !checkOut) return null;
+  const inDate = new Date(String(checkIn).slice(0, 10));
+  const outDate = new Date(String(checkOut).slice(0, 10));
+  if (Number.isNaN(inDate.getTime()) || Number.isNaN(outDate.getTime())) return null;
+  const nights = Math.round((outDate - inDate) / (1000 * 60 * 60 * 24));
+  return nights > 0 ? nights : null;
+}
+
+function formatMealsSummary(meals = []) {
+  const lines = (meals || [])
+    .filter((m) => Number(m.quantity) > 0)
+    .map((m) => {
+      const sub = m.subtotal != null ? ` · ${fmtPeso(m.subtotal)}` : '';
+      return `${escapeHtml(m.meal_type)} × ${Number(m.quantity)}${sub}`;
+    });
+  return lines.length ? lines.join('<br>') : null;
+}
+
+function formatFeesSummary(fees = []) {
+  const lines = (fees || [])
+    .filter((f) => Number(f.amount) > 0)
+    .map((f) => `${escapeHtml(f.fee_name || f.service_name || 'Extra service')}: ${fmtPeso(f.amount)}`);
+  return lines.length ? lines.join('<br>') : null;
+}
+
+function emailSection(title, bodyHtml) {
+  if (!bodyHtml) return '';
+  return `
+    <h3 style="margin:1.25rem 0 0.5rem;font-size:1rem;color:#1A365D;">${escapeHtml(title)}</h3>
+    ${bodyHtml}`;
+}
+
+function emailDetailList(items) {
+  const rows = items.filter(Boolean).join('');
+  if (!rows) return '';
+  return `<ul style="margin:0.25rem 0 0;padding-left:1.25rem;line-height:1.6;">${rows}</ul>`;
+}
+
+function emailDetailItem(label, value) {
+  if (value == null || value === '' || value === '—') return '';
+  return `<li><strong>${escapeHtml(label)}:</strong> ${value}</li>`;
+}
+
+function emailQuote(text) {
+  const trimmed = String(text || '').trim();
+  if (!trimmed) return '';
+  return `<blockquote style="margin:1rem 0;padding:0.75rem 1rem;background:#f8fafc;border-left:4px solid #1A365D;line-height:1.5;">${escapeHtml(trimmed)}</blockquote>`;
+}
+
+function emailNotice(text, tone = 'info') {
+  const colors = tone === 'warn'
+    ? { bg: '#FFFBEB', border: '#F59E0B', text: '#92400E' }
+    : { bg: '#EFF6FF', border: '#3B82F6', text: '#1E40AF' };
+  return `<p style="margin:1rem 0;padding:0.75rem 1rem;background:${colors.bg};border-left:4px solid ${colors.border};color:${colors.text};font-size:0.95em;line-height:1.5;">${text}</p>`;
+}
+
+function appReservationsUrl() {
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  return `${appUrl}/guest/reservations.html`;
+}
+
+function emailFooter({ includePayment = false } = {}) {
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const support = escapeHtml(getSupportEmail());
+  const paymentBlock = includePayment ? `
+    <p style="margin:1rem 0 0;"><strong>How to pay</strong><br>
+    Settle your balance at the Housing office using <strong>Cash</strong>, <strong>GCash</strong>, or <strong>Bank Transfer</strong>.
+    Bring this email or your reservation reference when you pay.</p>` : '';
+  return `
+    ${paymentBlock}
+    <p style="margin:1.25rem 0 0.5rem;">
+      <a href="${appUrl}/guest/reservations.html">View your reservations in AptSpace</a>
+    </p>
+    <p style="margin:0.5rem 0 0;color:#718096;font-size:0.9em;">
+      Questions? Contact Housing at <a href="mailto:${support}">${support}</a>.
+    </p>`;
+}
+
+function buildRoomStayDetailSections(booking, { estimate = false } = {}) {
+  const room = bookingRoomLabel(booking);
+  const nights = booking.nights ?? calcStayNights(booking.check_in, booking.check_out);
+  const nightsLabel = nights ? `${nights} night${nights === 1 ? '' : 's'}` : '—';
+  const meals = formatMealsSummary(booking.meals);
+  const fees = formatFeesSummary(booking.fees);
+  const totalLabel = estimate ? 'Estimated total' : 'Total due';
+  const category = booking.pricing_category && booking.pricing_category !== 'Guest'
+    ? booking.pricing_category
+    : null;
+
+  const stayItems = emailDetailList([
+    emailDetailItem('Room', escapeHtml(room)),
+    booking.room_type ? emailDetailItem('Room type', escapeHtml(booking.room_type)) : '',
+    emailDetailItem('Check-in', escapeHtml(formatStayDate(booking.check_in))),
+    emailDetailItem('Check-out', escapeHtml(formatStayDate(booking.check_out))),
+    emailDetailItem('Length of stay', escapeHtml(nightsLabel)),
+    emailDetailItem('Guests in room', escapeHtml(booking.guest_count ?? '—')),
+    booking.season ? emailDetailItem('Season', escapeHtml(booking.season)) : '',
+    booking.occupancy_item ? emailDetailItem('Rate type', escapeHtml(booking.occupancy_item)) : '',
+    category ? emailDetailItem('Pricing category', escapeHtml(category)) : '',
+    booking.total_amount != null ? emailDetailItem(totalLabel, `<strong>${fmtPeso(booking.total_amount)}</strong>`) : '',
+    emailDetailItem('Status', estimate ? 'Pending review' : 'Approved'),
+  ].filter(Boolean));
+
+  const contactItems = emailDetailList([
+    emailDetailItem('Guest name', escapeHtml(booking.guest_name || '—')),
+    booking.contact_phone ? emailDetailItem('Contact phone', escapeHtml(booking.contact_phone)) : '',
+    booking.guest_email ? emailDetailItem('Email', escapeHtml(booking.guest_email)) : '',
+  ].filter(Boolean));
+
+  let addons = '';
+  if (meals) addons += emailSection('Meals', `<p style="margin:0;line-height:1.6;">${meals}</p>`);
+  if (fees) addons += emailSection('Extra services', `<p style="margin:0;line-height:1.6;">${fees}</p>`);
+  if (booking.meal_allergen_notes) {
+    addons += emailSection('Dietary / allergen notes', emailQuote(booking.meal_allergen_notes));
+  }
+  if (booking.notes && !String(booking.notes).includes('[Modified by admin]')) {
+    addons += emailSection('Notes', emailQuote(booking.notes));
+  }
+
+  return {
+    reference: booking.id ? `#APT-${booking.id}` : null,
+    contactItems,
+    stayItems,
+    addons,
+  };
+}
+
+function buildGroupStayDetailSections(group, { estimate = false } = {}) {
+  const nights = calcStayNights(group.check_in, group.check_out);
+  const nightsLabel = nights ? `${nights} night${nights === 1 ? '' : 's'}` : '—';
+  const meals = formatMealsSummary(group.meals);
+  const fees = formatFeesSummary(group.fees);
+  const totalLabel = estimate ? 'Estimated total' : 'Total due';
+  const category = group.pricing_category && group.pricing_category !== 'Guest'
+    ? group.pricing_category
+    : null;
+
+  const roomRows = (group.bookings || []).map((b) => {
+    const label = [`${b.building_name || ''} Room ${b.room_number || '?'}`.trim(), b.room_type].filter(Boolean).join(' · ');
+    const guests = b.guest_count != null ? `${b.guest_count} guest${b.guest_count === 1 ? '' : 's'}` : '';
+    const cost = b.total_amount != null ? fmtPeso(b.total_amount) : '';
+    return emailDetailItem(label || 'Room', [guests, cost].filter(Boolean).join(' · '));
+  }).join('');
+
+  const stayItems = emailDetailList([
+    emailDetailItem('Group / organization', escapeHtml(group.group_name || '—')),
+    emailDetailItem('Check-in', escapeHtml(formatStayDate(group.check_in))),
+    emailDetailItem('Check-out', escapeHtml(formatStayDate(group.check_out))),
+    emailDetailItem('Length of stay', escapeHtml(nightsLabel)),
+    emailDetailItem('Total guests', escapeHtml(group.total_guests ?? '—')),
+    group.rooms_requested != null ? emailDetailItem('Rooms requested', escapeHtml(String(group.rooms_requested))) : '',
+    emailDetailItem('Rooms assigned', escapeHtml(String((group.bookings || []).length || '—'))),
+    category ? emailDetailItem('Pricing category', escapeHtml(category)) : '',
+    group.grand_total != null ? emailDetailItem(totalLabel, `<strong>${fmtPeso(group.grand_total)}</strong>`) : '',
+    emailDetailItem('Status', estimate ? 'Pending review' : 'Approved'),
+  ].filter(Boolean));
+
+  const contactItems = emailDetailList([
+    emailDetailItem('Contact person', escapeHtml(group.contact_name || '—')),
+    group.contact_phone ? emailDetailItem('Contact phone', escapeHtml(group.contact_phone)) : '',
+    emailDetailItem('Email', escapeHtml(group.contact_email || group.requester_email || '—')),
+  ].filter(Boolean));
+
+  let addons = '';
+  if (roomRows) addons += emailSection('Assigned rooms', emailDetailList(roomRows));
+  if (meals) addons += emailSection('Meals', `<p style="margin:0;line-height:1.6;">${meals}</p>`);
+  if (fees) addons += emailSection('Extra services', `<p style="margin:0;line-height:1.6;">${fees}</p>`);
+  if (group.meal_allergen_notes) {
+    addons += emailSection('Dietary / allergen notes', emailQuote(group.meal_allergen_notes));
+  }
+  if (group.notes && !String(group.notes).includes('[Modified by admin]')) {
+    addons += emailSection('Notes', emailQuote(group.notes));
+  }
+
+  return {
+    reference: group.id ? `Group #GRP-${group.id}` : null,
+    contactItems,
+    stayItems,
+    addons,
+  };
+}
+
 /** Resolve a guest inbox from user/booking/group fields (first non-empty wins). */
 export function resolveGuestRecipientEmail({ user, booking, group } = {}) {
   for (const value of [
@@ -211,59 +404,51 @@ function bookingRoomLabel(booking) {
 
 export async function sendBookingRequestReceivedEmail(user, booking) {
   const name = user.full_name || user.guest_name || 'Guest';
-  const room = bookingRoomLabel(booking);
-  const checkIn = booking.check_in;
-  const checkOut = booking.check_out;
-  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const details = buildRoomStayDetailSections(booking, { estimate: true });
 
   return sendMail({
     to: user.email || user.guest_email,
-    subject: 'Reservation Request Received — AptSpace',
+    subject: `Reservation request received ${details.reference || ''} — AptSpace`.trim(),
     html: `
       <h2>Reservation Request Received</h2>
       <p>Hi ${escapeHtml(name)},</p>
-      <p>We received your room reservation request. Housing staff will review it and email you when it is approved.</p>
-      <p style="color:#4A5568;font-size:0.95em">The total below is an <strong>estimate</strong> based on standard guest rates. Your final amount may differ once housing assigns your pricing category.</p>
-      <ul>
-        <li><strong>Room:</strong> ${escapeHtml(room)}</li>
-        <li><strong>Check-in:</strong> ${escapeHtml(checkIn)}</li>
-        <li><strong>Check-out:</strong> ${escapeHtml(checkOut)}</li>
-        <li><strong>Estimated total:</strong> ${price}</li>
-        <li><strong>Status:</strong> Pending review</li>
-      </ul>
-      <p>View your requests: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+      <p>We received your room reservation request. Housing staff will review the details below and email you once it is approved.</p>
+      ${emailNotice('The total shown is an <strong>estimate</strong> based on standard guest rates. Your final amount may change when housing assigns your pricing category.', 'warn')}
+      ${details.reference ? `<p><strong>Reference:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${emailSection('Contact', details.contactItems)}
+      ${emailSection('Stay details', details.stayItems)}
+      ${details.addons}
+      ${emailSection('What happens next', emailDetailList([
+        emailDetailItem('Step 1', 'Housing reviews your request for room availability and pricing.'),
+        emailDetailItem('Step 2', 'You receive a confirmation email with your <strong>final total</strong> when approved.'),
+        emailDetailItem('Step 3', 'Pay at the Housing office before or during check-in.'),
+      ].join('')))}
+      ${emailFooter()}
     `,
   });
 }
 
 export async function sendBookingConfirmationEmail(user, booking) {
   const name = user.full_name || user.guest_name || 'Guest';
-  const room = bookingRoomLabel(booking);
-  const checkIn = booking.check_in;
-  const checkOut = booking.check_out;
-  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
-  const category = booking.pricing_category && booking.pricing_category !== 'Guest'
-    ? `<li><strong>Pricing category:</strong> ${escapeHtml(booking.pricing_category)}</li>`
-    : '';
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const details = buildRoomStayDetailSections(booking, { estimate: false });
 
   return sendMail({
     to: user.email || user.guest_email,
-    subject: 'Reservation Confirmed — AptSpace',
+    subject: `Reservation confirmed ${details.reference || ''} — AptSpace`.trim(),
     html: `
       <h2>Reservation Confirmed</h2>
       <p>Hi ${escapeHtml(name)},</p>
-      <p>Your room reservation has been approved. Below is your <strong>final</strong> total based on the pricing category assigned by housing.</p>
-      <ul>
-        <li><strong>Room:</strong> ${escapeHtml(room)}</li>
-        <li><strong>Check-in:</strong> ${escapeHtml(checkIn)}</li>
-        <li><strong>Check-out:</strong> ${escapeHtml(checkOut)}</li>
-        ${category}
-        <li><strong>Total due:</strong> ${price}</li>
-        <li><strong>Status:</strong> Approved</li>
-      </ul>
-      <p>A detailed invoice will follow by email. View your reservation: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+      <p>Your room reservation has been <strong>approved</strong>. Below are your confirmed stay details and <strong>final amount due</strong>.</p>
+      ${details.reference ? `<p><strong>Confirmation:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${emailSection('Contact', details.contactItems)}
+      ${emailSection('Confirmed stay', details.stayItems)}
+      ${details.addons}
+      ${emailSection('Before check-in', emailDetailList([
+        emailDetailItem('Arrival', 'Please arrive on your check-in date. Contact Housing if your plans change.'),
+        emailDetailItem('Payment', 'Settle the amount due at the Housing office (Cash, GCash, or Bank Transfer).'),
+        emailDetailItem('Changes', 'Log in to AptSpace to view your reservation or submit a modification request.'),
+      ].join('')))}
+      ${emailFooter({ includePayment: true })}
     `,
   });
 }
@@ -277,25 +462,19 @@ function cancellationIntro({ cancelledByGuest, reservationType }) {
 
 export async function sendRoomBookingCancelledEmail(user, booking, { cancelledByGuest = true } = {}) {
   const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
-  const room = bookingRoomLabel(booking);
-  const checkIn = booking.check_in;
-  const checkOut = booking.check_out;
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const details = buildRoomStayDetailSections(booking, { estimate: false });
+  const ref = details.reference ? ` ${details.reference}` : '';
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
-    subject: 'Room Reservation Cancelled — AptSpace',
+    subject: `Room reservation cancelled${ref} — AptSpace`.trim(),
     html: `
       <h2>Room Reservation Cancelled</h2>
       <p>Hi ${escapeHtml(name)},</p>
       <p>${cancellationIntro({ cancelledByGuest, reservationType: 'room reservation' })}</p>
-      <ul>
-        <li><strong>Room:</strong> ${escapeHtml(room)}</li>
-        <li><strong>Check-in:</strong> ${escapeHtml(checkIn)}</li>
-        <li><strong>Check-out:</strong> ${escapeHtml(checkOut)}</li>
-        <li><strong>Status:</strong> Cancelled</li>
-      </ul>
-      <p>View your reservations: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+      ${details.reference ? `<p><strong>Reference:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${emailSection('Cancelled stay', details.stayItems)}
+      ${emailFooter()}
     `,
   });
 }
@@ -309,50 +488,45 @@ export async function sendVenueBookingCancelledEmail(user, booking, { cancelledB
   const start = formatTime12(booking.start_time);
   const end = formatTime12(booking.end_time);
   const timeRange = start && end ? `${start} – ${end}` : '—';
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const ref = booking.id ? `#VEN-${booking.id}` : null;
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
-    subject: 'Venue Booking Cancelled — AptSpace',
+    subject: `Venue booking cancelled${ref ? ` ${ref}` : ''} — AptSpace`.trim(),
     html: `
       <h2>Venue Booking Cancelled</h2>
       <p>Hi ${escapeHtml(name)},</p>
       <p>${cancellationIntro({ cancelledByGuest, reservationType: 'venue booking' })}</p>
-      <ul>
-        <li><strong>Venue:</strong> ${escapeHtml(venue)}</li>
-        <li><strong>Event date:</strong> ${escapeHtml(eventDate)}</li>
-        <li><strong>Time:</strong> ${escapeHtml(timeRange)}</li>
-        <li><strong>Guests:</strong> ${escapeHtml(booking.guest_count || 1)}</li>
-        <li><strong>Status:</strong> Cancelled</li>
-      </ul>
-      <p>View your bookings: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+      ${ref ? `<p><strong>Reference:</strong> ${escapeHtml(ref)}</p>` : ''}
+      ${emailSection('Cancelled booking', emailDetailList([
+        emailDetailItem('Venue', escapeHtml(venue)),
+        emailDetailItem('Event date', escapeHtml(eventDate)),
+        emailDetailItem('Time', escapeHtml(timeRange)),
+        emailDetailItem('Guests', escapeHtml(booking.guest_count || 1)),
+        booking.total_amount != null ? emailDetailItem('Amount', fmtPeso(booking.total_amount)) : '',
+        emailDetailItem('Status', 'Cancelled'),
+      ].join('')))}
+      ${emailFooter()}
     `,
   });
 }
 
 export async function sendGroupBookingCancelledEmail(user, group, { cancelledByGuest = true } = {}) {
   const name = user.full_name || group.contact_name || 'Guest';
-  const roomLines = (group.bookings || [])
-    .map((b) => `${b.building_name || ''} Room ${b.room_number || '?'}`)
-    .join(', ') || '—';
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  const details = buildGroupStayDetailSections(group, { estimate: false });
+  const ref = details.reference ? ` ${details.reference}` : '';
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
-    subject: 'Group Reservation Cancelled — AptSpace',
+    subject: `Group reservation cancelled${ref} — AptSpace`.trim(),
     html: `
       <h2>Group Reservation Cancelled</h2>
       <p>Hi ${escapeHtml(name)},</p>
       <p>${cancellationIntro({ cancelledByGuest, reservationType: 'group reservation' })}</p>
-      <ul>
-        <li><strong>Group:</strong> ${escapeHtml(group.group_name || '—')}</li>
-        <li><strong>Check-in:</strong> ${escapeHtml(group.check_in)}</li>
-        <li><strong>Check-out:</strong> ${escapeHtml(group.check_out)}</li>
-        <li><strong>Guests:</strong> ${escapeHtml(group.total_guests)}</li>
-        <li><strong>Rooms:</strong> ${escapeHtml(roomLines)}</li>
-        <li><strong>Status:</strong> Cancelled</li>
-      </ul>
-      <p>View your reservations: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+      ${details.reference ? `<p><strong>Reference:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${emailSection('Cancelled stay', details.stayItems)}
+      ${details.addons}
+      ${emailFooter()}
     `,
   });
 }
@@ -378,40 +552,28 @@ export async function sendGuestRoomSelfModifyEmail(user, booking, {
   previousCheckOut,
 }) {
   const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
-  const room = booking.building_name
-    ? `${booking.building_name} — Room ${booking.room_number}`
-    : `Room ${booking.room_number || booking.room_id}`;
-  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
-  const previousBlock = wasApproved ? `
-      <p><strong>Previous reservation:</strong></p>
-      <ul>
-        <li><strong>Room:</strong> ${escapeHtml(previousRoom || '—')}</li>
-        <li><strong>Check-in:</strong> ${escapeHtml(previousCheckIn || '—')}</li>
-        <li><strong>Check-out:</strong> ${escapeHtml(previousCheckOut || '—')}</li>
-      </ul>` : '';
+  const details = buildRoomStayDetailSections(booking, { estimate: true });
+  const previousBlock = wasApproved ? emailSection('Previous reservation', emailDetailList([
+    emailDetailItem('Room', escapeHtml(previousRoom || '—')),
+    emailDetailItem('Check-in', escapeHtml(formatStayDate(previousCheckIn))),
+    emailDetailItem('Check-out', escapeHtml(formatStayDate(previousCheckOut))),
+  ].join(''))) : '';
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
     subject: wasApproved
-      ? 'Modification Request Received — AptSpace'
-      : 'Your Reservation Was Updated — AptSpace',
+      ? `Modification request received ${details.reference || ''} — AptSpace`.trim()
+      : `Reservation updated ${details.reference || ''} — AptSpace`.trim(),
     html: `
       <h2>${wasApproved ? 'Modification Request Received' : 'Reservation Updated'}</h2>
       <p>Hi ${escapeHtml(name)},</p>
       <p>${guestSelfModifyIntro(wasApproved)}</p>
       ${guestSelfModifyMessageBlock(message)}
+      ${details.reference ? `<p><strong>Reference:</strong> ${escapeHtml(details.reference)}</p>` : ''}
       ${previousBlock}
-      <p><strong>${wasApproved ? 'Requested details' : 'Updated details'}:</strong></p>
-      <ul>
-        <li><strong>Room:</strong> ${escapeHtml(room)}</li>
-        <li><strong>Check-in:</strong> ${escapeHtml(booking.check_in)}</li>
-        <li><strong>Check-out:</strong> ${escapeHtml(booking.check_out)}</li>
-        <li><strong>Guests:</strong> ${escapeHtml(booking.guest_count ?? '—')}</li>
-        <li><strong>Estimated total:</strong> ${price}</li>
-        <li><strong>Status:</strong> Pending review</li>
-      </ul>
-      <p>View your reservation: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+      ${emailSection(wasApproved ? 'Requested changes' : 'Updated details', details.stayItems)}
+      ${details.addons}
+      ${emailFooter()}
     `,
   });
 }
@@ -424,33 +586,27 @@ export async function sendGuestGroupSelfModifyEmail(user, group, {
   previousRoomsRequested,
 }) {
   const name = user.full_name || group.contact_name || 'Guest';
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
-  const roomLines = (group.bookings || [])
-    .map((b) => `${b.building_name || ''} Room ${b.room_number || '?'}`)
-    .join(', ') || 'To be assigned';
-  const previousBlock = wasApproved ? `
-      <p><strong>Previous request:</strong> ${escapeHtml(previousCheckIn || '—')} to ${escapeHtml(previousCheckOut || '—')} · ${escapeHtml(previousRoomsRequested ?? '—')} room(s) requested</p>` : '';
+  const details = buildGroupStayDetailSections(group, { estimate: true });
+  const previousBlock = wasApproved ? emailSection('Previous request', emailDetailList([
+    emailDetailItem('Dates', `${escapeHtml(formatStayDate(previousCheckIn))} to ${escapeHtml(formatStayDate(previousCheckOut))}`),
+    emailDetailItem('Rooms requested', escapeHtml(previousRoomsRequested ?? '—')),
+  ].join(''))) : '';
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
     subject: wasApproved
-      ? 'Group Modification Request Received — AptSpace'
-      : 'Your Group Reservation Was Updated — AptSpace',
+      ? `Group modification request received ${details.reference || ''} — AptSpace`.trim()
+      : `Group reservation updated ${details.reference || ''} — AptSpace`.trim(),
     html: `
       <h2>${wasApproved ? 'Group Modification Request Received' : 'Group Reservation Updated'}</h2>
       <p>Hi ${escapeHtml(name)},</p>
       <p>${guestSelfModifyIntro(wasApproved)}</p>
       ${guestSelfModifyMessageBlock(message)}
+      ${details.reference ? `<p><strong>Reference:</strong> ${escapeHtml(details.reference)}</p>` : ''}
       ${previousBlock}
-      <p><strong>${wasApproved ? 'Requested details' : 'Updated details'} for ${escapeHtml(group.group_name)}:</strong></p>
-      <ul>
-        <li><strong>Check-in:</strong> ${escapeHtml(group.check_in)}</li>
-        <li><strong>Check-out:</strong> ${escapeHtml(group.check_out)}</li>
-        <li><strong>Guests:</strong> ${escapeHtml(group.total_guests)}</li>
-        <li><strong>Rooms:</strong> ${escapeHtml(roomLines)}</li>
-        <li><strong>Status:</strong> Pending review</li>
-      </ul>
-      <p>View your reservation: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+      ${emailSection(wasApproved ? 'Requested changes' : 'Updated details', details.stayItems)}
+      ${details.addons}
+      ${emailFooter()}
     `,
   });
 }
@@ -464,7 +620,6 @@ export async function sendGuestVenueSelfModifyEmail(user, booking, {
   previousGuestCount,
 }) {
   const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
   const venue = [booking.facility_category, booking.facility_name || booking.facility_room_code]
     .filter(Boolean)
     .join(' — ');
@@ -472,47 +627,42 @@ export async function sendGuestVenueSelfModifyEmail(user, booking, {
   const start = formatTime12(booking.start_time);
   const end = formatTime12(booking.end_time);
   const timeRange = start && end ? `${start} – ${end}` : '—';
-  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
+  const ref = booking.id ? `#VEN-${booking.id}` : null;
   const prevStart = formatTime12(previousStartTime);
   const prevEnd = formatTime12(previousEndTime);
-  const previousBlock = wasApproved ? `
-      <p><strong>Previous booking:</strong></p>
-      <ul>
-        <li><strong>Date:</strong> ${escapeHtml(formatEventDate(previousEventDate))}</li>
-        <li><strong>Time:</strong> ${escapeHtml(prevStart && prevEnd ? `${prevStart} – ${prevEnd}` : '—')}</li>
-        <li><strong>Guests:</strong> ${escapeHtml(previousGuestCount ?? '—')}</li>
-      </ul>` : '';
+  const previousBlock = wasApproved ? emailSection('Previous booking', emailDetailList([
+    emailDetailItem('Date', escapeHtml(formatEventDate(previousEventDate))),
+    emailDetailItem('Time', escapeHtml(prevStart && prevEnd ? `${prevStart} – ${prevEnd}` : '—')),
+    emailDetailItem('Guests', escapeHtml(previousGuestCount ?? '—')),
+  ].join(''))) : '';
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
     subject: wasApproved
-      ? 'Venue Modification Request Received — AptSpace'
-      : 'Your Venue Booking Was Updated — AptSpace',
+      ? `Venue modification request received${ref ? ` ${ref}` : ''} — AptSpace`.trim()
+      : `Venue booking updated${ref ? ` ${ref}` : ''} — AptSpace`.trim(),
     html: `
       <h2>${wasApproved ? 'Venue Modification Request Received' : 'Venue Booking Updated'}</h2>
       <p>Hi ${escapeHtml(name)},</p>
       <p>${guestSelfModifyIntro(wasApproved)}</p>
       ${guestSelfModifyMessageBlock(message)}
+      ${ref ? `<p><strong>Reference:</strong> ${escapeHtml(ref)}</p>` : ''}
       ${previousBlock}
-      <p><strong>${wasApproved ? 'Requested details' : 'Updated details'}:</strong></p>
-      <ul>
-        <li><strong>Venue:</strong> ${escapeHtml(venue)}</li>
-        <li><strong>Event date:</strong> ${escapeHtml(eventDate)}</li>
-        <li><strong>Time:</strong> ${escapeHtml(timeRange)}</li>
-        <li><strong>Guests:</strong> ${escapeHtml(booking.guest_count || 1)}</li>
-        <li><strong>Estimated total:</strong> ${price}</li>
-        <li><strong>Status:</strong> Pending review</li>
-      </ul>
-      <p>View your booking: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+      ${emailSection(wasApproved ? 'Requested details' : 'Updated details', emailDetailList([
+        emailDetailItem('Venue', escapeHtml(venue)),
+        emailDetailItem('Event date', escapeHtml(eventDate)),
+        emailDetailItem('Time', escapeHtml(timeRange)),
+        emailDetailItem('Guests', escapeHtml(booking.guest_count || 1)),
+        booking.total_amount != null ? emailDetailItem('Estimated total', fmtPeso(booking.total_amount)) : '',
+        emailDetailItem('Status', 'Pending review'),
+      ].join('')))}
+      ${emailFooter()}
     `,
   });
 }
 
 export async function sendPaymentReceiptEmail(user, payment) {
   const name = user.full_name || user.guest_name || 'Guest';
-  const amount = payment.amount != null ? `₱${Number(payment.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : '—';
-  const date = formatEmailDateTime(payment.paid_at || payment.created_at);
-  const method = payment.method || '—';
   const isVenue = isVenuePayment(payment);
   const place = isVenue
     ? [payment.facility_category, payment.facility_name || payment.facility_room_code].filter(Boolean).join(' — ')
@@ -523,77 +673,35 @@ export async function sendPaymentReceiptEmail(user, payment) {
   const end = formatTime12(payment.end_time);
   const when = isVenue
     ? `${formatEventDate(payment.event_date)}${start && end ? ` · ${start} – ${end}` : ''}`
-    : `${payment.check_in || '—'} to ${payment.check_out || '—'}`;
-  const invoiceRef = payment.id ? ` #${payment.id}` : '';
+    : `${formatStayDate(payment.check_in)} to ${formatStayDate(payment.check_out)}`;
+  const invoiceRef = payment.id ? `#${payment.id}` : null;
 
   return sendMail({
     to: user.email || user.guest_email,
     subject: isVenue
-      ? `Venue payment confirmed${invoiceRef} — AptSpace`
-      : `Housing payment confirmed${invoiceRef} — APTS Housing`,
+      ? `Venue payment confirmed${invoiceRef ? ` ${invoiceRef}` : ''} — AptSpace`.trim()
+      : `Housing payment confirmed${invoiceRef ? ` ${invoiceRef}` : ''} — AptSpace`.trim(),
     html: `
       <h2>${isVenue ? 'Venue Payment Confirmed' : 'Housing Payment Confirmed'}</h2>
-      <p>Hi ${name},</p>
-      <p>APTS Housing has recorded your ${isVenue ? 'venue' : 'housing'} payment. Thank you!</p>
-      <p><strong>Invoice${invoiceRef}</strong></p>
-      <ul>
-        <li><strong>${isVenue ? 'Venue' : 'Room'}:</strong> ${place}</li>
-        <li><strong>${isVenue ? 'Event' : 'Stay'}:</strong> ${when}</li>
-        ${isVenue && payment.season ? `<li><strong>Season:</strong> ${payment.season}</li>` : ''}
-        ${isVenue && payment.facility_package ? `<li><strong>Package:</strong> ${payment.facility_package}</li>` : ''}
-        <li><strong>Amount paid:</strong> ${amount}</li>
-        <li><strong>Date paid:</strong> ${date}</li>
-        <li><strong>Method:</strong> ${method}</li>
-      </ul>
-      <p>Your ${isVenue ? 'facility reservation' : 'room reservation'} remains confirmed.</p>
-    `,
-  });
-}
-
-export async function sendHousingInvoiceEmail(user, payment) {
-  const name = user.full_name || user.guest_name || 'Guest';
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
-  const room = payment.building_name
-    ? `${payment.building_name} — Room ${payment.room_number}`
-    : `Room ${payment.room_number || ''}`;
-  const subtotal = Number(payment.subtotal ?? payment.amount ?? 0);
-  const discount = Number(payment.discount_amount || 0);
-  const due = Number(payment.amount ?? subtotal);
-  const fmt = (n) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-  const discountLine = discount > 0
-    ? `<li><strong>Discount:</strong> −${fmt(discount)}${payment.discount_note ? ` (${payment.discount_note})` : ''}</li>`
-    : '';
-  const categoryLine = payment.pricing_category && payment.pricing_category !== 'Guest'
-    ? `<li><strong>Pricing category:</strong> ${escapeHtml(payment.pricing_category)}</li>`
-    : '';
-
-  return sendMail({
-    to: user.email || user.guest_email,
-    subject: `Your housing invoice #${payment.id} — Room ${payment.room_number || ''} | AptSpace`,
-    html: `
-      <h2>Your Housing Invoice</h2>
-      <p>Hi ${name},</p>
-      <p>Your room reservation at APTS Housing has been <strong>approved</strong>. This email is your automated housing invoice — please settle the final amount below with the Housing Department.</p>
-      <p><strong>Invoice #${payment.id}</strong></p>
-      <ul>
-        <li><strong>Room:</strong> ${room}</li>
-        <li><strong>Check-in:</strong> ${payment.check_in}</li>
-        <li><strong>Check-out:</strong> ${payment.check_out}</li>
-        ${categoryLine}
-        <li><strong>Subtotal:</strong> ${fmt(subtotal)}</li>
-        ${discountLine}
-        <li><strong><span style="font-size:1.1em">Amount due: ${fmt(due)}</span></strong></li>
-      </ul>
-      <p>Accepted methods: Cash, GCash, or Bank Transfer at the housing office.</p>
-      <p>View your invoice anytime after logging in: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
-      <p>If you have questions, contact the Housing Department.</p>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>We recorded your payment — thank you! Your ${isVenue ? 'venue booking' : 'room reservation'} remains confirmed.</p>
+      ${invoiceRef ? `<p><strong>Receipt:</strong> ${escapeHtml(invoiceRef)}</p>` : ''}
+      ${emailSection('Payment details', emailDetailList([
+        emailDetailItem(isVenue ? 'Venue' : 'Room', escapeHtml(place)),
+        emailDetailItem(isVenue ? 'Event' : 'Stay', escapeHtml(when)),
+        isVenue && payment.season ? emailDetailItem('Season', escapeHtml(payment.season)) : '',
+        isVenue && payment.facility_package ? emailDetailItem('Package', escapeHtml(payment.facility_package)) : '',
+        emailDetailItem('Amount paid', `<strong>${fmtPeso(payment.amount)}</strong>`),
+        emailDetailItem('Date paid', escapeHtml(formatEmailDateTime(payment.paid_at || payment.created_at))),
+        emailDetailItem('Method', escapeHtml(payment.method || '—')),
+      ].join('')))}
+      ${emailFooter()}
     `,
   });
 }
 
 export async function sendVenueInvoiceEmail(user, payment) {
   const name = user.full_name || user.guest_name || 'Guest';
-  const appUrl = process.env.APP_URL || 'http://localhost:3000';
   const venue = [payment.facility_category, payment.facility_name || payment.facility_room_code]
     .filter(Boolean)
     .join(' — ');
@@ -604,36 +712,31 @@ export async function sendVenueInvoiceEmail(user, payment) {
   const subtotal = Number(payment.subtotal ?? payment.amount ?? 0);
   const discount = Number(payment.discount_amount || 0);
   const due = Number(payment.amount ?? subtotal);
-  const fmt = (n) => `₱${n.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
   const discountLine = discount > 0
-    ? `<li><strong>Discount:</strong> −${fmt(discount)}${payment.discount_note ? ` (${payment.discount_note})` : ''}</li>`
-    : '';
-  const seasonLine = payment.season ? `<li><strong>Season:</strong> ${payment.season}</li>` : '';
-  const packageLine = payment.facility_package
-    ? `<li><strong>Package:</strong> ${payment.facility_package}</li>`
+    ? emailDetailItem('Discount', `−${fmtPeso(discount)}${payment.discount_note ? ` (${escapeHtml(payment.discount_note)})` : ''}`)
     : '';
 
   return sendMail({
     to: user.email || user.guest_email,
-    subject: `Your venue invoice #${payment.id} — ${payment.facility_name || 'Facility'} | AptSpace`,
+    subject: `Venue booking confirmed #${payment.id} — ${payment.facility_name || 'Facility'} | AptSpace`,
     html: `
-      <h2>Your Venue Invoice</h2>
-      <p>Hi ${name},</p>
-      <p>Your <strong>facility / venue reservation</strong> has been approved. This email is your venue invoice </p>
-      <p><strong>Invoice #${payment.id}</strong> · Booking #${payment.facility_booking_id || '—'}</p>
-      <ul>
-        <li><strong>Venue:</strong> ${venue}</li>
-        <li><strong>Event date:</strong> ${eventDate}</li>
-        <li><strong>Time:</strong> ${timeRange}</li>
-        <li><strong>Guests:</strong> ${payment.guest_count || 1}</li>
-        ${seasonLine}
-        ${packageLine}
-        <li><strong>Subtotal:</strong> ${fmt(subtotal)}</li>
-        ${discountLine}
-        <li><strong><span style="font-size:1.1em">Amount due: ${fmt(due)}</span></strong></li>
-      </ul>
-      <p>Accepted methods: Cash, GCash, or Bank Transfer at the housing office.</p>
-      <p>View your invoice anytime after logging in: <a href="${appUrl}/guest/reservations.html">${appUrl}/guest/reservations.html</a></p>
+      <h2>Venue Booking Confirmed</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Your facility / venue reservation has been <strong>approved</strong>. Below are your event details and amount due.</p>
+      <p><strong>Invoice #${payment.id}</strong>${payment.facility_booking_id ? ` · Booking #VEN-${payment.facility_booking_id}` : ''}</p>
+      ${emailSection('Event details', emailDetailList([
+        emailDetailItem('Venue', escapeHtml(venue)),
+        emailDetailItem('Event date', escapeHtml(eventDate)),
+        emailDetailItem('Time', escapeHtml(timeRange)),
+        emailDetailItem('Guests', escapeHtml(payment.guest_count || 1)),
+        payment.season ? emailDetailItem('Season', escapeHtml(payment.season)) : '',
+        payment.facility_package ? emailDetailItem('Package', escapeHtml(payment.facility_package)) : '',
+        emailDetailItem('Subtotal', fmtPeso(subtotal)),
+        discountLine,
+        emailDetailItem('Amount due', `<strong>${fmtPeso(due)}</strong>`),
+        emailDetailItem('Status', 'Approved'),
+      ].join('')))}
+      ${emailFooter({ includePayment: true })}
     `,
   });
 }
@@ -655,127 +758,108 @@ export async function sendVenueModifiedEmail(user, booking, {
   const start = formatTime12(booking.start_time);
   const end = formatTime12(booking.end_time);
   const timeRange = start && end ? `${start} – ${end}` : '—';
-  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
+  const ref = booking.id ? `#VEN-${booking.id}` : null;
   const prevStart = formatTime12(previousStartTime);
   const prevEnd = formatTime12(previousEndTime);
-  const messageBlock = notifyModification && message
-    ? `<blockquote style="margin:1rem 0;padding:0.75rem 1rem;background:#f8fafc;border-left:4px solid #1A365D;">${escapeHtml(message)}</blockquote>`
-    : '';
-  const previousBlock = `
-      <p><strong>Previous booking:</strong></p>
-      <ul>
-        ${previousVenue ? `<li><strong>Venue:</strong> ${escapeHtml(previousVenue)}</li>` : ''}
-        <li><strong>Date:</strong> ${escapeHtml(formatEventDate(previousEventDate))}</li>
-        <li><strong>Time:</strong> ${escapeHtml(prevStart && prevEnd ? `${prevStart} – ${prevEnd}` : '—')}</li>
-        <li><strong>Guests:</strong> ${escapeHtml(previousGuestCount ?? '—')}</li>
-      </ul>`;
+  const messageBlock = notifyModification && message ? emailQuote(message) : '';
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
-    subject: 'Your Venue Booking Was Updated — AptSpace',
+    subject: `Venue booking updated${ref ? ` ${ref}` : ''} — AptSpace`.trim(),
     html: `
       <h2>Venue Booking Updated</h2>
       <p>Hi ${escapeHtml(name)},</p>
-      <p>Your venue booking was reviewed and updated by our team.</p>
+      <p>Housing reviewed your venue request and approved it with the updates below.</p>
       ${messageBlock}
-      ${previousBlock}
-      <p><strong>Confirmed booking:</strong></p>
-      <ul>
-        <li><strong>Venue:</strong> ${escapeHtml(venue)}</li>
-        <li><strong>Event date:</strong> ${escapeHtml(eventDate)}</li>
-        <li><strong>Time:</strong> ${escapeHtml(timeRange)}</li>
-        <li><strong>Guests:</strong> ${escapeHtml(booking.guest_count || 1)}</li>
-        <li><strong>Estimated total:</strong> ${price}</li>
-        <li><strong>Status:</strong> ${escapeHtml(booking.status || 'Approved')}</li>
-      </ul>
-      <p>Log in to AptSpace to view your booking details.</p>
+      ${ref ? `<p><strong>Reference:</strong> ${escapeHtml(ref)}</p>` : ''}
+      ${emailSection('Previous booking', emailDetailList([
+        previousVenue ? emailDetailItem('Venue', escapeHtml(previousVenue)) : '',
+        emailDetailItem('Date', escapeHtml(formatEventDate(previousEventDate))),
+        emailDetailItem('Time', escapeHtml(prevStart && prevEnd ? `${prevStart} – ${prevEnd}` : '—')),
+        emailDetailItem('Guests', escapeHtml(previousGuestCount ?? '—')),
+      ].join('')))}
+      ${emailSection('Confirmed booking', emailDetailList([
+        emailDetailItem('Venue', escapeHtml(venue)),
+        emailDetailItem('Event date', escapeHtml(eventDate)),
+        emailDetailItem('Time', escapeHtml(timeRange)),
+        emailDetailItem('Guests', escapeHtml(booking.guest_count || 1)),
+        booking.total_amount != null ? emailDetailItem('Total due', `<strong>${fmtPeso(booking.total_amount)}</strong>`) : '',
+        emailDetailItem('Status', escapeHtml(booking.status || 'Approved')),
+      ].join('')))}
+      ${emailFooter({ includePayment: true })}
     `,
   });
 }
 
 export async function sendBookingModifiedEmail(user, booking, { message, previousRoom, previousCheckIn, previousCheckOut }) {
   const name = user.full_name || user.guest_name || 'Guest';
-  const room = booking.building_name
-    ? `${booking.building_name} — Room ${booking.room_number}`
-    : `Room ${booking.room_number || booking.room_id}`;
-  const price = booking.total_amount != null ? `₱${Number(booking.total_amount).toFixed(2)}` : '—';
+  const details = buildRoomStayDetailSections(booking, { estimate: false });
 
   return sendMail({
     to: user.email || user.guest_email,
-    subject: 'Your Reservation Was Updated — AptSpace',
+    subject: `Reservation updated ${details.reference || ''} — AptSpace`.trim(),
     html: `
       <h2>Reservation Updated</h2>
-      <p>Hi ${name},</p>
-      <p>Your reservation request was reviewed and approved with the following update from our team:</p>
-      <blockquote style="margin:1rem 0;padding:0.75rem 1rem;background:#f8fafc;border-left:4px solid #1A365D;">${message}</blockquote>
-      <p><strong>Previous request:</strong></p>
-      <ul>
-        <li><strong>Room:</strong> ${previousRoom || '—'}</li>
-        <li><strong>Check-in:</strong> ${previousCheckIn || '—'}</li>
-        <li><strong>Check-out:</strong> ${previousCheckOut || '—'}</li>
-      </ul>
-      <p><strong>Confirmed reservation:</strong></p>
-      <ul>
-        <li><strong>Room:</strong> ${room}</li>
-        <li><strong>Check-in:</strong> ${booking.check_in}</li>
-        <li><strong>Check-out:</strong> ${booking.check_out}</li>
-        <li><strong>Total:</strong> ${price}</li>
-      </ul>
-      <p>Log in to AptSpace to view your reservation details.</p>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Housing reviewed your request and approved it with the updates below.</p>
+      ${emailQuote(message)}
+      ${details.reference ? `<p><strong>Confirmation:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${emailSection('Previous request', emailDetailList([
+        emailDetailItem('Room', escapeHtml(previousRoom || '—')),
+        emailDetailItem('Check-in', escapeHtml(formatStayDate(previousCheckIn))),
+        emailDetailItem('Check-out', escapeHtml(formatStayDate(previousCheckOut))),
+      ].join('')))}
+      ${emailSection('Confirmed stay', details.stayItems)}
+      ${details.addons}
+      ${emailFooter({ includePayment: true })}
     `,
   });
 }
 
 export async function sendGroupConfirmationEmail(user, group) {
   const name = user.full_name || group.contact_name || 'Guest';
-  const roomLines = (group.bookings || [])
-    .map((b) => `${b.building_name || ''} Room ${b.room_number || '?'}`)
-    .join(', ') || 'Assigned at check-in';
-  const total = group.grand_total != null
-    ? `₱${Number(group.grand_total).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
-    : null;
-  const category = group.pricing_category && group.pricing_category !== 'Guest'
-    ? `<li><strong>Pricing category:</strong> ${escapeHtml(group.pricing_category)}</li>`
-    : '';
+  const details = buildGroupStayDetailSections(group, { estimate: false });
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
-    subject: 'Group Reservation Confirmed — AptSpace',
+    subject: `Group reservation confirmed ${details.reference || ''} — AptSpace`.trim(),
     html: `
       <h2>Group Reservation Confirmed</h2>
-      <p>Hi ${name},</p>
-      <p>Your group reservation for <strong>${group.group_name}</strong> has been approved. Below is your <strong>final</strong> total based on the pricing category assigned by housing.</p>
-      <ul>
-        <li><strong>Check-in:</strong> ${group.check_in}</li>
-        <li><strong>Check-out:</strong> ${group.check_out}</li>
-        <li><strong>Guests:</strong> ${group.total_guests}</li>
-        <li><strong>Rooms:</strong> ${roomLines}</li>
-        ${category}
-        ${total ? `<li><strong>Total due:</strong> ${total}</li>` : ''}
-      </ul>
-      <p>Log in to AptSpace to view details.</p>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Your group reservation for <strong>${escapeHtml(group.group_name || 'your group')}</strong> has been <strong>approved</strong>. Below are your confirmed details and final amount due.</p>
+      ${details.reference ? `<p><strong>Confirmation:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${emailSection('Contact', details.contactItems)}
+      ${emailSection('Confirmed stay', details.stayItems)}
+      ${details.addons}
+      ${emailSection('Before check-in', emailDetailList([
+        emailDetailItem('Arrival', 'Please coordinate with Housing if your group size or room needs change.'),
+        emailDetailItem('Payment', 'Settle the group balance at the Housing office (Cash, GCash, or Bank Transfer).'),
+      ].join('')))}
+      ${emailFooter({ includePayment: true })}
     `,
   });
 }
 
 export async function sendGroupModifiedEmail(user, group, { message, previousCheckIn, previousCheckOut, previousRoomsRequested }) {
   const name = user.full_name || group.contact_name || 'Guest';
-  const roomLines = (group.bookings || [])
-    .map((b) => `${b.building_name || ''} Room ${b.room_number || '?'}`)
-    .join(', ') || 'To be assigned';
+  const details = buildGroupStayDetailSections(group, { estimate: false });
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
-    subject: 'Your Group Reservation Was Updated — AptSpace',
+    subject: `Group reservation updated ${details.reference || ''} — AptSpace`.trim(),
     html: `
       <h2>Group Reservation Updated</h2>
-      <p>Hi ${name},</p>
-      <p>Your group reservation request for <strong>${group.group_name}</strong> was reviewed and approved with changes:</p>
-      <blockquote style="margin:1rem 0;padding:0.75rem 1rem;background:#f8fafc;border-left:4px solid #1A365D;">${message}</blockquote>
-      <p><strong>Previous request:</strong> ${previousCheckIn || '—'} to ${previousCheckOut || '—'} · ${previousRoomsRequested ?? '—'} room(s) requested</p>
-      <p><strong>Confirmed stay:</strong> ${group.check_in} to ${group.check_out} · ${group.total_guests} guest(s)</p>
-      <p><strong>Assigned rooms:</strong> ${roomLines}</p>
-      <p>Log in to AptSpace to view full details.</p>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Housing reviewed your group request for <strong>${escapeHtml(group.group_name || 'your group')}</strong> and approved it with changes.</p>
+      ${emailQuote(message)}
+      ${details.reference ? `<p><strong>Confirmation:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${emailSection('Previous request', emailDetailList([
+        emailDetailItem('Dates', `${escapeHtml(formatStayDate(previousCheckIn))} to ${escapeHtml(formatStayDate(previousCheckOut))}`),
+        emailDetailItem('Rooms requested', escapeHtml(previousRoomsRequested ?? '—')),
+      ].join('')))}
+      ${emailSection('Confirmed stay', details.stayItems)}
+      ${details.addons}
+      ${emailFooter({ includePayment: true })}
     `,
   });
 }

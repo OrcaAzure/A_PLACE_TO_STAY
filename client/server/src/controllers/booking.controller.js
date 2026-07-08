@@ -194,7 +194,7 @@ export const createBooking = async (req, res) => {
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [result.insertId]);
     const booking = await enrichBooking(rows[0]);
     if (bookingStatus === 'Approved') {
-      await ensureInvoiceForBooking(result.insertId, { autoEmail: true });
+      await ensureInvoiceForBooking(result.insertId);
       booking.invoice = await getInvoiceSnapshot(result.insertId);
     }
     notifyBookingCreated(rows[0]);
@@ -383,7 +383,7 @@ export const updateBooking = async (req, res) => {
 
     const becameApproved = status === 'Approved' && existing.status !== 'Approved';
     if (becameApproved || (status === 'Approved' && !booking.invoice)) {
-      await ensureInvoiceForBooking(req.params.id, { autoEmail: true });
+      await ensureInvoiceForBooking(req.params.id);
       booking.invoice = await getInvoiceSnapshot(req.params.id);
     } else if (status === 'Approved' && grandTotal !== Number(existing.total_amount)) {
       await ensureInvoiceForBooking(req.params.id);

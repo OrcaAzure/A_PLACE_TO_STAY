@@ -576,14 +576,29 @@ export async function getAvailableRooms({
   return results;
 }
 
+export async function buildBookingEmailPayload(bookingRow) {
+  if (!bookingRow?.id) return bookingRow;
+  const meals = bookingRow.meals ?? await getBookingMeals(bookingRow.id);
+  const fees = bookingRow.fees ?? await getBookingFees(bookingRow.id);
+  return {
+    ...bookingRow,
+    meals,
+    fees,
+    nights: calcNights(bookingRow.check_in, bookingRow.check_out),
+  };
+}
+
 export function notifyBookingCreated(bookingRow) {
-  const user = { full_name: bookingRow.guest_name, email: bookingRow.guest_email };
-  const status = String(bookingRow.status || '').toLowerCase();
-  if (status === 'approved') {
-    void sendBookingConfirmationEmail(user, bookingRow);
-  } else if (status === 'pending') {
-    void sendBookingRequestReceivedEmail(user, bookingRow);
-  }
+  void (async () => {
+    const payload = await buildBookingEmailPayload(bookingRow);
+    const user = { full_name: payload.guest_name, email: payload.guest_email };
+    const status = String(payload.status || '').toLowerCase();
+    if (status === 'approved') {
+      await sendBookingConfirmationEmail(user, payload);
+    } else if (status === 'pending') {
+      await sendBookingRequestReceivedEmail(user, payload);
+    }
+  })();
 }
 
 export function notifyBookingCancelled(bookingRow, { cancelledByGuest = true } = {}) {
@@ -616,7 +631,8 @@ export async function notifyBookingUpdated({ previous, current, modificationMess
         previousRoom = `${rows[0].building_name} Room ${rows[0].room_number}`;
       }
     }
-    await sendBookingModifiedEmail(user, current, {
+    const payload = await buildBookingEmailPayload(current);
+    await sendBookingModifiedEmail(user, payload, {
       message: modificationMessage,
       previousRoom,
       previousCheckIn: previous?.check_in,
@@ -642,11 +658,14 @@ export async function notifyGuestRoomSelfModified({ previous, current, wasApprov
       previousRoom = `${rows[0].building_name} Room ${rows[0].room_number}`;
     }
   }
-  void sendGuestRoomSelfModifyEmail(user, current, {
-    wasApproved,
-    message,
-    previousRoom,
-    previousCheckIn: previous?.check_in,
-    previousCheckOut: previous?.check_out,
-  });
+  void (async () => {
+    const payload = await buildBookingEmailPayload(current);
+    await sendGuestRoomSelfModifyEmail(user, payload, {
+      wasApproved,
+      message,
+      previousRoom,
+      previousCheckIn: previous?.check_in,
+      previousCheckOut: previous?.check_out,
+    });
+  })();
 }

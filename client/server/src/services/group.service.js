@@ -250,7 +250,7 @@ export async function saveGroupBookings({
 
     await conn.commit();
     if (status === 'Approved') {
-      await ensureInvoicesForGroup(groupId, { autoEmail: true });
+      await ensureInvoicesForGroup(groupId);
     }
     return getGroupById(groupId);
   } catch (err) {
@@ -573,7 +573,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       }
     }
     if (nextStatus === 'Approved') {
-      await ensureInvoicesForGroup(groupId, { autoEmail: true });
+      await ensureInvoicesForGroup(groupId);
     }
     return updated;
   }

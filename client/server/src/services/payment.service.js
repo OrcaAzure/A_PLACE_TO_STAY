@@ -1,6 +1,5 @@
 import { pool } from '../config/db.js';
 import {
-  sendHousingInvoiceEmail,
   sendVenueInvoiceEmail,
   sendPaymentReceiptEmail,
   getLastEmailError,
@@ -574,11 +573,11 @@ export async function getInvoiceSnapshot(bookingId) {
 }
 
 async function dispatchInvoiceEmail(payment) {
-  const user = { full_name: payment.guest_name, email: payment.guest_email };
-  if (isVenuePayment(payment)) {
-    return sendVenueInvoiceEmail(user, payment);
+  if (!isVenuePayment(payment)) {
+    return false;
   }
-  return sendHousingInvoiceEmail(user, payment);
+  const user = { full_name: payment.guest_name, email: payment.guest_email };
+  return sendVenueInvoiceEmail(user, payment);
 }
 
 export async function ensureInvoiceForBooking(bookingId, { autoEmail = false } = {}) {
@@ -715,6 +714,9 @@ export async function tryAutoSendInvoiceEmail(paymentId) {
   if (!payment || payment.status === 'Paid') {
     return { sent: false, skipped: true };
   }
+  if (!isVenuePayment(payment)) {
+    return { sent: false, skipped: true, reason: 'room_confirmation_email' };
+  }
   if (payment.invoice_sent_at) {
     return { sent: false, skipped: true, reason: 'already_sent' };
   }
@@ -739,6 +741,11 @@ export async function sendInvoiceEmail(paymentId) {
   const payment = await loadPaymentDetail(paymentId);
   if (!payment) throw new Error('Invoice not found');
   if (payment.status === 'Paid') throw new Error('This invoice is already paid');
+  if (!isVenuePayment(payment)) {
+    throw new Error(
+      'Room stay billing is included in the reservation confirmation email sent when housing approved the stay. Use that email for the guest, or resend approval from the reservation if needed.'
+    );
+  }
 
   const sent = await dispatchInvoiceEmail(payment);
   if (!sent) {
