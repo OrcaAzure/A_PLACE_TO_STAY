@@ -70,9 +70,13 @@ CREATE TABLE IF NOT EXISTS rates_rooms (
     currency  VARCHAR(8)   NOT NULL DEFAULT 'PHP',
     billing_unit VARCHAR(40) NOT NULL DEFAULT 'per night',
     notes     VARCHAR(255) DEFAULT NULL,
+    -- Hash of rate variant dimensions — avoids utf8mb4 composite unique key length limits.
+    variant_key CHAR(64) GENERATED ALWAYS AS (
+        SHA2(CONCAT_WS(CHAR(31), room_type, item, season, audience, age_band, currency, billing_unit), 256)
+    ) STORED NOT NULL,
 
-    UNIQUE KEY uq_room_rate (room_type, item, season, audience, age_band, currency, billing_unit),
-    CONSTRAINT chk_rate CHECK (rate > 0),
+    UNIQUE KEY uq_room_rate (variant_key),
+    CONSTRAINT chk_room_rate CHECK (`rate` > 0),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -129,7 +133,7 @@ CREATE TABLE IF NOT EXISTS rates_facilities (
     notes       VARCHAR(255) DEFAULT NULL,
 
     UNIQUE KEY uq_facility_rate (facility_id, season, audience, age_band, currency, billing_unit),
-    CONSTRAINT chk_facility_rate CHECK (rate > 0),
+    CONSTRAINT chk_facility_rate CHECK (`rate` > 0),
 
     CONSTRAINT fk_rates_facility
         FOREIGN KEY (facility_id) REFERENCES facilities(id)
@@ -368,7 +372,7 @@ CREATE TABLE IF NOT EXISTS rates_meals (
     notes      VARCHAR(255) DEFAULT NULL,
 
     UNIQUE KEY uq_meal_type (meal_type, audience, age_band, currency, billing_unit),
-    CONSTRAINT chk_meal_rate CHECK (rate > 0),
+    CONSTRAINT chk_meal_rate CHECK (`rate` > 0),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -389,9 +393,12 @@ CREATE TABLE IF NOT EXISTS rates_extra_services (
     currency VARCHAR(8)   NOT NULL DEFAULT 'PHP',
     billing_unit VARCHAR(40) NOT NULL DEFAULT 'per item',
     notes    VARCHAR(255) DEFAULT NULL,
+    variant_key CHAR(64) GENERATED ALWAYS AS (
+        SHA2(CONCAT_WS(CHAR(31), category, item, season, audience, age_band, currency, billing_unit), 256)
+    ) STORED NOT NULL,
 
-    UNIQUE KEY uq_extra_service (category, item, season, audience, age_band, currency, billing_unit),
-    CONSTRAINT chk_extra_service_rate CHECK (rate > 0),
+    UNIQUE KEY uq_extra_service (variant_key),
+    CONSTRAINT chk_extra_service_rate CHECK (`rate` > 0),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP

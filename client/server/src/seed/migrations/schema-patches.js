@@ -456,15 +456,31 @@ export async function runSchemaPatches() {
     try { await pool.execute(`ALTER TABLE ${table} ADD COLUMN notes VARCHAR(255) NULL DEFAULT NULL AFTER billing_unit`); } catch {}
   };
 
+  const migrateRateVariantKey = async (table, { indexName, hashExpr }) => {
+    if (!(await tableExists(table))) return;
+
+    if (!(await columnExists(table, 'variant_key'))) {
+      await pool.execute(`
+        ALTER TABLE ${table}
+        ADD COLUMN variant_key CHAR(64) GENERATED ALWAYS AS (${hashExpr}) STORED NOT NULL
+        AFTER notes
+      `);
+    }
+
+    try { await pool.execute(`ALTER TABLE ${table} DROP INDEX ${indexName}`); } catch {}
+    try {
+      await pool.execute(`ALTER TABLE ${table} ADD UNIQUE KEY ${indexName} (variant_key)`);
+    } catch (err) {
+      if (!/Duplicate key name/i.test(err.message)) throw err;
+    }
+  };
+
   try {
     await ensureRateVariantColumns('rates_rooms', { billing_unit: 'per night' });
-    await pool.execute(`ALTER TABLE rates_rooms DROP INDEX uq_room_rate`);
-  } catch {}
-  try {
-    await pool.execute(`
-      ALTER TABLE rates_rooms
-      ADD UNIQUE KEY uq_room_rate (room_type, item, season, audience, age_band, currency, billing_unit)
-    `);
+    await migrateRateVariantKey('rates_rooms', {
+      indexName: 'uq_room_rate',
+      hashExpr: `SHA2(CONCAT_WS(CHAR(31), room_type, item, season, audience, age_band, currency, billing_unit), 256)`,
+    });
   } catch (err) {
     console.warn('[schema] rates_rooms variant index migration skipped:', err.message);
   }
@@ -484,13 +500,10 @@ export async function runSchemaPatches() {
 
   try {
     await ensureRateVariantColumns('rates_extra_services', { billing_unit: 'per item' });
-    await pool.execute(`ALTER TABLE rates_extra_services DROP INDEX uq_extra_service`);
-  } catch {}
-  try {
-    await pool.execute(`
-      ALTER TABLE rates_extra_services
-      ADD UNIQUE KEY uq_extra_service (category, item, season, audience, age_band, currency, billing_unit)
-    `);
+    await migrateRateVariantKey('rates_extra_services', {
+      indexName: 'uq_extra_service',
+      hashExpr: `SHA2(CONCAT_WS(CHAR(31), category, item, season, audience, age_band, currency, billing_unit), 256)`,
+    });
   } catch (err) {
     console.warn('[schema] rates_extra_services variant index migration skipped:', err.message);
   }
