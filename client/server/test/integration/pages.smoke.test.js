@@ -43,7 +43,7 @@ describe('Pages smoke (public)', () => {
     assert.equal(res.status, 200);
     assert.match(res.text, /lp-hero--comfort/);
     assert.match(res.text, /lp-scroll-section/);
-    assert.match(res.text, /comfort75i/);
+    assert.match(res.text, /comfort75k/);
   });
 
   it('GET landing.css is served', async () => {

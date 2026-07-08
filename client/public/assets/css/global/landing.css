@@ -209,6 +209,9 @@ body.lp-shell::-webkit-scrollbar {
 }
 
 .lp-hero {
+  position: relative;
+  z-index: 3;
+  isolation: isolate;
   min-height: 100vh;
   min-height: 100svh;
   min-height: 100dvh;
@@ -228,7 +231,9 @@ body.lp-shell::-webkit-scrollbar {
 /* Desktop: match ~75% zoom comfort — content fits without cramming at 100% browser zoom */
 @media (min-width: 1024px) {
   .lp-hero.lp-hero--comfort {
-    min-height: auto;
+    min-height: 100vh;
+    min-height: 100svh;
+    min-height: 100dvh;
     height: auto;
     overflow-x: clip;
     overflow-y: visible;
@@ -265,9 +270,9 @@ body.lp-shell::-webkit-scrollbar {
   }
 
   .lp-hero.lp-hero--comfort > .lp-hero-content {
-    justify-content: flex-start;
+    justify-content: center;
     padding-top: max(calc(4.25rem + 1rem), calc(4.25rem + env(safe-area-inset-top, 0px)));
-    padding-bottom: 3.5rem;
+    padding-bottom: clamp(3.5rem, 6vh, 5rem);
   }
 
   .lp-hero.lp-hero--comfort .lp-hero-visual-col {
@@ -346,18 +351,29 @@ body.lp-shell::-webkit-scrollbar {
   position: relative;
   z-index: 2;
   isolation: isolate;
+  min-height: 100vh;
+  min-height: 100svh;
   min-height: 100dvh;
   overflow: visible;
   background: #1a365d;
   touch-action: pan-y;
+  scroll-margin-top: 0;
 }
 
 body.lp-scroll-snap-active {
   overscroll-behavior-y: auto;
 }
 
+body.lp-scroll-snap-active .lp-section-scroller {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .lp-scroll-pin {
   position: relative;
+  height: 100vh;
+  height: 100svh;
   height: 100dvh;
   width: 100%;
   overflow: hidden;
@@ -811,7 +827,7 @@ body.lp-scroll-snap-active {
 /* Vertical section scroller (desktop) — sits in viewport gutter beside content */
 .lp-section-scroller {
   position: fixed;
-  right: max(1.25rem, env(safe-area-inset-right, 0px));
+  right: max(1rem, env(safe-area-inset-right, 0px));
   top: 50%;
   z-index: 40;
   transform: translateY(-50%);
@@ -820,13 +836,14 @@ body.lp-scroll-snap-active {
   pointer-events: auto;
   transition:
     opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0.45s cubic-bezier(0.22, 1, 0.36, 1),
     background-color 0.4s ease,
     border-color 0.4s ease;
 }
 
-@media (min-width: 1280px) {
+@media (min-width: 1536px) {
   .lp-section-scroller {
-    right: max(1.25rem, calc((100vw - 1380px) / 2 - 3.25rem));
+    right: max(1.25rem, calc((100vw - 1380px) / 2 - 3.5rem));
   }
 }
 

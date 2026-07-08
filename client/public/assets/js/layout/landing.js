@@ -530,7 +530,8 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     end: () => `+=${Math.round(window.innerHeight * Math.max(count - 1, 1) + 24)}`,
     pin,
     pinSpacing: true,
-    anticipatePin: 1,
+    pinReparent: true,
+    anticipatePin: 0,
     invalidateOnRefresh: true,
     fastScrollEnd: false,
     snap: count > 1 ? {

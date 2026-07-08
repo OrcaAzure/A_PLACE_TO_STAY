@@ -58,7 +58,7 @@ export const GUEST_NEW_RESERVATION_FOOTER = `
   </div>`;
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v14';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v19';
 const COMPONENT_FETCH_MS = 10000;
 const BOOT_LOADER_ID = 'apt-boot-loader';
 const SHELL_BOOT_TIMEOUT_MS = 8000;
@@ -431,7 +431,7 @@ function renderGuestMobileNavLinks(activePage) {
 }
 
 const GUEST_SECTION_SCROLLER = `
-<nav class="lp-section-scroller hidden xl:block" aria-label="Page sections">
+<nav class="lp-section-scroller hidden 2xl:block" aria-label="Page sections">
   <div class="lp-section-scroller-rail">
     <ol class="lp-section-scroller-list">
       <li>
