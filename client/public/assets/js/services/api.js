@@ -533,6 +533,14 @@ export async function convertPaymentReservation(id, payload) {
   return data.payment;
 }
 
+export async function revertPaymentOvernight(id, payload) {
+  const data = await apiRequest(`/payments/${id}/revert-overnight`, {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return data.payment;
+}
+
 export async function sendPaymentInvoice(id) {
   return apiRequest(`/payments/${id}/send-invoice`, { method: 'POST' });
 }

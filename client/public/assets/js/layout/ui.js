@@ -58,7 +58,7 @@ export const GUEST_NEW_RESERVATION_FOOTER = `
   </div>`;
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v18';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v14';
 const COMPONENT_FETCH_MS = 10000;
 const BOOT_LOADER_ID = 'apt-boot-loader';
 const SHELL_BOOT_TIMEOUT_MS = 8000;
@@ -405,12 +405,29 @@ function guestPortalNavLinkClass(active) {
   return active ? `${base} is-active` : base;
 }
 
-function renderGuestPortalNavLinks(_activePage) {
-  return '';
+function renderGuestPortalNavLinks(activePage) {
+  const items = [
+    { id: 'dashboard', label: 'Home', href: '/guest/dashboard.html' },
+    { id: 'facilities', label: 'Browse', href: '/guest/facilities.html' },
+    { id: 'reservations', label: 'My Stays', href: '/guest/reservations.html' },
+  ];
+  return items.map((item) => `
+    <a class="${guestPortalNavLinkClass(activePage === item.id)}" href="${item.href}" aria-current="${activePage === item.id ? 'page' : 'false'}">${item.label}</a>
+  `).join('');
 }
 
-function renderGuestMobileNavLinks(_activePage) {
-  return '';
+function renderGuestMobileNavLinks(activePage) {
+  const items = [
+    { id: 'dashboard', label: 'Home', href: '/guest/dashboard.html', icon: 'home' },
+    { id: 'facilities', label: 'Browse', href: '/guest/facilities.html', icon: 'explore' },
+    { id: 'reservations', label: 'My Stays', href: '/guest/reservations.html', icon: 'event_available' },
+    { id: 'settings', label: 'Account', href: '/guest/settings.html', icon: 'person' },
+  ];
+  return items.map((item) => {
+    const base = 'lp-mobile-link flex items-center gap-2';
+    const cls = activePage === item.id ? `${base} text-primary font-semibold` : base;
+    return `<a class="${cls}" href="${item.href}" aria-current="${activePage === item.id ? 'page' : 'false'}"><span class="material-symbols-outlined text-[20px] text-primary/80">${item.icon}</span>${item.label}</a>`;
+  }).join('');
 }
 
 const GUEST_SECTION_SCROLLER = `
