@@ -1164,4 +1164,5 @@ export async function bootstrapGuestMyStaysPage() {
       const activeTab = document.querySelector('[data-res-tab].app-tab-active')?.dataset.resTab;
       await loadBookings({ background: true });
       if (activeTab === 'venues') await loadVenueBookings({ background: true });
+    });
 }

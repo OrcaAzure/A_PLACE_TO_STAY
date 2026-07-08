@@ -10,7 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="/assets/css/global/landing.css"/>
-<link rel="stylesheet" href="/assets/css/global/guest-portal.css"/>
+<link rel="stylesheet" href="/assets/css/global/guest-portal.css?v=guest-nav3"/>
 <link rel="stylesheet" href="/assets/css/features/guest-reservation-wizard.css" />
 <link rel="stylesheet" href="/assets/css/global/main.css" />
 <link rel="stylesheet" href="/assets/css/components/components.css" />
@@ -510,7 +510,7 @@
   import { requireAuth } from '/assets/js/services/auth.js';
   import { initAppLayout } from '/assets/js/layout/ui.js';
   import { initGuestSupportCompose } from '/assets/js/features/guest-support-compose.js';
-  import { bootstrapGuestMyStaysPage } from '/assets/js/features/guest-my-stays-page.js';
+  import { bootstrapGuestMyStaysPage } from '/assets/js/features/guest-my-stays-page.js?v=my-stays2';
 
   requireAuth();
   await initAppLayout({

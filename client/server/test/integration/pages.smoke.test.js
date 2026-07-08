@@ -37,6 +37,53 @@ describe('Pages smoke (public)', () => {
     assert.match(res.text, /runLandingWelcome/);
     assert.match(res.text, /WELCOME_MS/);
   });
+
+  it('GET /index.html includes comfort hero and scroll showcase', async () => {
+    const res = await agent.get('/index.html');
+    assert.equal(res.status, 200);
+    assert.match(res.text, /lp-hero--comfort/);
+    assert.match(res.text, /lp-scroll-section/);
+    assert.match(res.text, /comfort75i/);
+  });
+
+  it('GET landing.css is served', async () => {
+    const res = await agent.get('/assets/css/global/landing.css');
+    assert.equal(res.status, 200);
+    assert.match(res.text, /\.lp-scroll-section/);
+    assert.match(res.text, /\.lp-hero--comfort/);
+  });
+
+  it('GET landing.js is served', async () => {
+    const res = await agent.get('/assets/js/layout/landing.js');
+    assert.equal(res.status, 200);
+    assert.match(res.text, /initScrollShowcase/);
+    assert.match(res.text, /isNearSnapProgress/);
+  });
+
+  it('GET legal pages are served', async () => {
+    const privacy = await agent.get('/legal/privacy.html');
+    assert.equal(privacy.status, 200);
+    assert.match(privacy.text, /Privacy Policy/i);
+
+    const terms = await agent.get('/legal/terms.html');
+    assert.equal(terms.status, 200);
+    assert.match(terms.text, /Terms of Service/i);
+  });
+
+  it('GET guest footer has legal links (no coming soon)', async () => {
+    const res = await agent.get('/components/guest-footer.html');
+    assert.equal(res.status, 200);
+    assert.match(res.text, /\/legal\/privacy\.html/);
+    assert.match(res.text, /\/legal\/terms\.html/);
+    assert.doesNotMatch(res.text, /coming soon/i);
+  });
+
+  it('GET /api/health returns status payload', async () => {
+    const res = await agent.get('/api/health');
+    assert.equal(res.status, 200);
+    assert.equal(res.body.status, 'ok');
+    assert.ok('db' in res.body || res.body.status === 'ok');
+  });
 });
 
 describe('Pages smoke (auth)', {

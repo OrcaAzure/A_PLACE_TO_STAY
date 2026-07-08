@@ -388,14 +388,27 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     document.documentElement.classList.toggle('lp-scroll-snap-active', active);
   }
 
+  function snapProgressForIndex(index) {
+    if (count <= 1) return 0;
+    return index / (count - 1);
+  }
+
   function progressToIndex(progress) {
     if (count <= 1) return 0;
-    return Math.min(count - 1, Math.max(0, Math.round(progress * (count - 1))));
+    const steps = count - 1;
+    return Math.min(steps, Math.max(0, Math.round(progress * steps)));
+  }
+
+  function isNearSnapProgress(progress) {
+    if (count <= 1) return true;
+    const snapped = snapProgressForIndex(progressToIndex(progress));
+    return Math.abs(progress - snapped) < 0.04;
   }
 
   function scrollYForIndex(index) {
     if (count <= 1) return st.start;
-    return st.start + (index / (count - 1)) * (st.end - st.start);
+    const progress = snapProgressForIndex(index);
+    return st.start + progress * (st.end - st.start);
   }
 
   function playSettle(index) {
@@ -491,6 +504,10 @@ function initScrollShowcase(gsap, ScrollTrigger) {
         playSettle(nextIndex);
         isAnimating = false;
         activeTween = null;
+        const y = scrollYForIndex(nextIndex);
+        if (Math.abs(window.scrollY - y) > 2) {
+          window.scrollTo(0, y);
+        }
         ScrollTrigger.update();
       },
     });
@@ -510,12 +527,18 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   const st = ScrollTrigger.create({
     trigger: section,
     start: 'top top',
-    end: () => `+=${Math.round(window.innerHeight * Math.max(count - 1, 1))}`,
+    end: () => `+=${Math.round(window.innerHeight * Math.max(count - 1, 1) + 12)}`,
     pin,
     pinSpacing: true,
     anticipatePin: 1,
     invalidateOnRefresh: true,
-    fastScrollEnd: true,
+    fastScrollEnd: false,
+    snap: count > 1 ? {
+      snapTo: (value) => snapProgressForIndex(progressToIndex(value)),
+      duration: { min: 0.18, max: 0.45 },
+      delay: 0.06,
+      ease: 'power2.inOut',
+    } : false,
     onToggle: (self) => setSnapActive(self.isActive),
     onEnter(self) {
       resetWheelAccum();
@@ -532,6 +555,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     onUpdate(self) {
       if (isAnimating || !self.isActive) return;
       if (Date.now() - lastWheelNavAt < WHEEL_COOLDOWN_MS) return;
+      if (!isNearSnapProgress(self.progress)) return;
       const idx = progressToIndex(self.progress);
       if (idx !== currentIndex) {
         applySlideVisuals(idx);
