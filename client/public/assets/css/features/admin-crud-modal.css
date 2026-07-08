@@ -744,6 +744,12 @@
   backdrop-filter: blur(2px);
 }
 
+.catalog-modal-overlay.hidden,
+.catalog-modal.hidden {
+  display: none !important;
+  pointer-events: none;
+}
+
 .catalog-modal {
   position: fixed;
   inset: 0;

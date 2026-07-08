@@ -154,6 +154,11 @@ function hideModal() {
   document.body.style.overflow = '';
 }
 
+/** Close catalog modal when leaving Facilities or on any admin page transition. */
+export function hideFacilityCatalogModal() {
+  if (document.getElementById('catalog-modal')) hideModal();
+}
+
 export function isFacilityCatalogModalOpen() {
   return !$('catalog-modal')?.classList.contains('hidden');
 }

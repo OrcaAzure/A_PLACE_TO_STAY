@@ -13,6 +13,9 @@ export function cleanupAdminPage() {
   pageCleanup?.();
   pageCleanup = null;
   teardownGuestAccessPage();
+  import('/assets/js/features/admin-facility-catalog.js')
+    .then(({ hideFacilityCatalogModal }) => hideFacilityCatalogModal())
+    .catch(() => {});
   document.getElementById('calendar-mount')?.replaceChildren();
   document.getElementById('page-content')?.scrollTo(0, 0);
 }

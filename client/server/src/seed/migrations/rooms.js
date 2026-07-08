@@ -221,14 +221,18 @@ async function runVipRoomMigration() {
   );
   if (!gmc?.id) return;
 
-  await pool.execute(
+  const [result] = await pool.execute(
     `UPDATE rooms
      SET room_type = 'VIP', capacity_min = 1, capacity_max = 4
      WHERE building_id = ? AND room_number = '415'`,
     [gmc.id]
   );
 
-  console.log('[schema] GMC room 415 set to VIP');
+  if (result.affectedRows === 0) {
+    console.warn('[schema] VIP room migration: GMC room 415 not found');
+  } else {
+    console.log('[schema] GMC room 415 set to VIP');
+  }
 }
 
 async function runSeasonSettingsMigration() {

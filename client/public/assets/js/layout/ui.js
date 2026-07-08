@@ -168,7 +168,7 @@ function writeTemplateCache(templates) {
 
 async function loadAdminTemplates() {
   const cached = readTemplateCache();
-  if (cached?.sidebar && cached?.facilityCatalog && cached?.guestAccessModals && cached?.manageVenues) return cached;
+  if (cached?.sidebar && cached?.guestAccessModals && cached?.manageVenues) return cached;
 
   if (!templatesPromise) {
     templatesPromise = Promise.all([
@@ -185,9 +185,8 @@ async function loadAdminTemplates() {
       loadComponent('/components/venue-booking-wizard-modal.html'),
       loadComponent('/components/manage-venue-bookings-modal.html'),
       loadComponent('/components/notifications.html'),
-      loadComponent('/components/facility-catalog-modal.html'),
       loadComponent('/components/guest-access-modals.html'),
-    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, manageVenues, reservationWizard, groupWizard, venueWizard, manageVenueBookings, notifications, facilityCatalog, guestAccessModals]) => {
+    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, manageVenues, reservationWizard, groupWizard, venueWizard, manageVenueBookings, notifications, guestAccessModals]) => {
       const bundle = {
         sidebar,
         header,
@@ -202,7 +201,6 @@ async function loadAdminTemplates() {
         venueWizard,
         manageVenueBookings,
         notifications,
-        facilityCatalog,
         guestAccessModals,
       };
       writeTemplateCache(bundle);
@@ -335,7 +333,6 @@ function buildAdminShell({
     ${templates.venueWizard || ''}
     ${templates.manageVenueBookings || ''}
     ${templates.notifications || ''}
-    ${templates.facilityCatalog || ''}
     ${templates.guestAccessModals || ''}
   `;
 }

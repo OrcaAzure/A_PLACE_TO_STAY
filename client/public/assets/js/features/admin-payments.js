@@ -2,8 +2,12 @@
  * Admin billing — clickable list; invoice review opens in a popup modal.
  */
 
-import { getPayments, getPaymentById, updatePayment, sendPaymentInvoice, recordPaymentTransaction, deletePayment, clearPaidPayments } from '/assets/js/services/api.js';
+import {
+  getPayments, getPaymentById, updatePayment, sendPaymentInvoice, recordPaymentTransaction,
+  deletePayment, clearPaidPayments, getExtraServicesCatalog, updateBooking,
+} from '/assets/js/services/api.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
+import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer', 'Waived'];
@@ -452,6 +456,233 @@ function hasUnsavedBillingChanges(p, form) {
   return discount_amount !== savedDiscount || discount_note !== savedNote;
 }
 
+const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
+
+function feesFromPaymentRows(fees = []) {
+  return (fees || []).map((f) => ({
+    fee_name: f.fee_name || f.service_name || 'Extra service',
+    amount: Number(f.amount || 0),
+  }));
+}
+
+function mealsFromPaymentRows(meals = []) {
+  const out = Object.fromEntries(MEAL_TYPES.map((t) => [t, 0]));
+  (meals || []).forEach((m) => {
+    if (m.meal_type && out[m.meal_type] != null) {
+      out[m.meal_type] = Number(m.quantity) || 0;
+    }
+  });
+  return out;
+}
+
+function feesEqual(a, b) {
+  const left = feesFromPaymentRows(a);
+  const right = feesFromPaymentRows(b);
+  if (left.length !== right.length) return false;
+  return left.every((f, i) => f.fee_name === right[i].fee_name && f.amount === right[i].amount);
+}
+
+function canEditBookingFees(p) {
+  return !isVenueInvoice(p) && p.booking_id && p.status !== 'Paid';
+}
+
+function renderReadOnlyFeesList(fees = []) {
+  const items = feesFromPaymentRows(fees);
+  if (!items.length) {
+    return '<p class="billing-fee-panel__empty">No additional fees on this stay.</p>';
+  }
+  return `
+    <ul class="billing-fee-readonly">
+      ${items.map((f) => `
+        <li class="billing-fee-readonly__item">
+          <span>${escapeHtml(f.fee_name)}</span>
+          <strong>${fmt(f.amount)}</strong>
+        </li>`).join('')}
+    </ul>`;
+}
+
+function renderAdditionalFeesPanel(p, feeEditor, { editable } = {}) {
+  const pickerHtml = editable
+    ? renderWizardFeePicker({
+        feeGroups: feeEditor.feeGroups,
+        expandedGroupId: feeEditor.expandedGroupId,
+        fees: feeEditor.fees,
+        customNameInputId: `billing-fee-name-${p.id}`,
+        customAmtInputId: `billing-fee-amt-${p.id}`,
+        customAddBtnId: `billing-fee-add-${p.id}`,
+        emptyMessage: 'Pick a catalog fee below or add a custom charge.',
+      })
+    : renderReadOnlyFeesList(feeEditor.fees);
+
+  return `
+    <section class="billing-panel billing-panel--fees billing-fee-panel${editable ? '' : ' billing-fee-panel--readonly'}" data-billing-fees-root="${p.id}">
+      <h4 class="billing-section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">add_shopping_cart</span>
+        Additional fees
+      </h4>
+      ${editable
+        ? `<p class="billing-fee-panel__lead">Add charges the guest forgot at booking — laundry, corkage, custom items, and more.</p>
+           <p class="billing-fee-panel__catalog-hint hidden" data-billing-fee-catalog-hint">Fee catalog unavailable — custom charges still work.</p>`
+        : ''}
+      <div data-billing-fee-picker>${pickerHtml}</div>
+      ${editable ? `
+        <div class="billing-fee-panel__actions">
+          <button type="button" class="invoice-btn-secondary billing-fee-panel__save" data-save-booking-fees="${p.id}" disabled>
+            Save additional fees
+          </button>
+        </div>` : ''}
+    </section>`;
+}
+
+function renderRoomFeesSection(p) {
+  if (!p.booking_id || isVenueInvoice(p)) return '';
+  const editable = canEditBookingFees(p);
+  const feeEditor = {
+    fees: feesFromPaymentRows(p.fees),
+    originalFees: feesFromPaymentRows(p.fees),
+    expandedGroupId: null,
+    feeGroups: [],
+  };
+  if (!editable && !feeEditor.fees.length) return '';
+  return renderAdditionalFeesPanel(p, feeEditor, { editable });
+}
+
+function getFeeEditorRoot(detailEl, paymentId) {
+  return detailEl?.querySelector(`[data-billing-fees-root="${paymentId}"]`) || null;
+}
+
+function hasUnsavedFeeChanges(detailEl, paymentId) {
+  const root = getFeeEditorRoot(detailEl, paymentId);
+  const editor = root?._feeEditor;
+  if (!editor) return false;
+  return !feesEqual(editor.fees, editor.originalFees);
+}
+
+function syncFeeSaveButton(detailEl, paymentId) {
+  const root = getFeeEditorRoot(detailEl, paymentId);
+  const editor = root?._feeEditor;
+  const btn = root?.querySelector('[data-save-booking-fees]');
+  if (!btn || !editor) return;
+  btn.disabled = feesEqual(editor.fees, editor.originalFees);
+}
+
+function rerenderBillingFeePicker(detailEl, p, feeEditor) {
+  const mount = getFeeEditorRoot(detailEl, p.id)?.querySelector('[data-billing-fee-picker]');
+  if (!mount) return;
+  mount.innerHTML = renderWizardFeePicker({
+    feeGroups: feeEditor.feeGroups,
+    expandedGroupId: feeEditor.expandedGroupId,
+    fees: feeEditor.fees,
+    customNameInputId: `billing-fee-name-${p.id}`,
+    customAmtInputId: `billing-fee-amt-${p.id}`,
+    customAddBtnId: `billing-fee-add-${p.id}`,
+    emptyMessage: 'No catalog fees yet — add a custom charge below or configure fees under Facilities.',
+  });
+  syncFeeSaveButton(detailEl, p.id);
+}
+
+async function initBillingFeeEditor(p, detailEl) {
+  if (isVenueInvoice(p) || !p.booking_id) return;
+
+  const root = getFeeEditorRoot(detailEl, p.id);
+  if (!root) return;
+
+  const feeEditor = {
+    fees: feesFromPaymentRows(p.fees),
+    originalFees: feesFromPaymentRows(p.fees),
+    expandedGroupId: null,
+    feeGroups: [],
+  };
+  root._feeEditor = feeEditor;
+
+  if (!canEditBookingFees(p)) return;
+
+  bindBillingFeeEditorEvents(p, detailEl, feeEditor);
+
+  try {
+    const catalog = await getExtraServicesCatalog();
+    if (String(state.selectedId) !== String(p.id)) return;
+    const liveRoot = getFeeEditorRoot(detailEl, p.id);
+    if (!liveRoot?._feeEditor) return;
+    liveRoot._feeEditor.feeGroups = buildFeeGroups(catalog);
+    rerenderBillingFeePicker(detailEl, p, liveRoot._feeEditor);
+  } catch {
+    getFeeEditorRoot(detailEl, p.id)
+      ?.querySelector('[data-billing-fee-catalog-hint]')
+      ?.classList.remove('hidden');
+  }
+}
+
+function bindBillingFeeEditorEvents(p, detailEl, feeEditor) {
+  const root = getFeeEditorRoot(detailEl, p.id);
+  if (!root || root.dataset.feeBound === '1') return;
+  root.dataset.feeBound = '1';
+
+  root.addEventListener('click', (e) => {
+    if (e.target.closest(`#billing-fee-add-${p.id}`)) {
+      e.preventDefault();
+      const name = document.getElementById(`billing-fee-name-${p.id}`)?.value?.trim();
+      const amount = Number(document.getElementById(`billing-fee-amt-${p.id}`)?.value || 0);
+      if (!name) {
+        showFeedback(document.getElementById('billing-detail-feedback'), 'Enter a fee name.', 'error');
+        return;
+      }
+      if (!Number.isFinite(amount) || amount <= 0) {
+        showFeedback(document.getElementById('billing-detail-feedback'), 'Enter a valid fee amount.', 'error');
+        return;
+      }
+      hideFeedback(document.getElementById('billing-detail-feedback'));
+      feeEditor.fees.push({ fee_name: name, amount });
+      feeEditor.expandedGroupId = null;
+      rerenderBillingFeePicker(detailEl, p, feeEditor);
+      return;
+    }
+
+    const handled = handleWizardFeePickerClick(e, {
+      getExpandedGroupId: () => feeEditor.expandedGroupId,
+      setExpandedGroupId: (id) => { feeEditor.expandedGroupId = id; },
+      onAddFee: (fee) => {
+        feeEditor.fees.push(fee);
+        feeEditor.expandedGroupId = null;
+      },
+      onRemoveFee: (index) => { feeEditor.fees.splice(index, 1); },
+    });
+    if (handled) rerenderBillingFeePicker(detailEl, p, feeEditor);
+  });
+
+  root.querySelector('[data-save-booking-fees]')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget;
+    const detailFeedback = document.getElementById('billing-detail-feedback');
+    const billingForm = getBillingForm(detailEl);
+    if (hasUnsavedBillingChanges(p, billingForm)) {
+      showFeedback(detailFeedback, 'Save discount changes before updating fees.', 'error');
+      return;
+    }
+    if (feesEqual(feeEditor.fees, feeEditor.originalFees)) return;
+
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = 'Saving…';
+    try {
+      await updateBooking(p.booking_id, {
+        check_in: p.check_in,
+        check_out: p.check_out,
+        guest_count: p.guest_count,
+        room_id: p.room_id,
+        meals: mealsFromPaymentRows(p.meals),
+        fees: feeEditor.fees,
+      });
+      await reload({ keepSelection: true, keepModalOpen: true });
+      showFeedback(detailFeedback, 'Additional fees saved. Invoice subtotal updated.', 'ok');
+      window.dispatchEvent(new CustomEvent('booking:updated'));
+    } catch (err) {
+      showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  });
+}
+
 function formatPaidAt(value) {
   if (!value) return null;
   return new Date(value).toLocaleDateString('en-PH', {
@@ -754,40 +985,132 @@ function renderChargeTable(p) {
     </table>`;
 }
 
-function renderInfoChip(icon, label, value) {
-  if (!value) return '';
+const ADMIN_MOD_PREFIX = '[Modified by admin]';
+const MOD_REQUESTED_PREFIX = '[Modification requested]';
+const GUEST_UPDATED_PREFIX = '[Updated by guest]';
+
+function parseBookingNotes(raw) {
+  const result = {
+    adminModification: null,
+    modificationRequested: null,
+    guestUpdate: null,
+    guestNotes: null,
+  };
+  if (!raw || typeof raw !== 'string') return result;
+
+  const guestParts = [];
+  raw.split(/\r?\n/).forEach((line) => {
+    let remainder = line.trim();
+    if (!remainder) return;
+
+    const tags = [
+      { prefix: ADMIN_MOD_PREFIX, key: 'adminModification' },
+      { prefix: MOD_REQUESTED_PREFIX, key: 'modificationRequested' },
+      { prefix: GUEST_UPDATED_PREFIX, key: 'guestUpdate' },
+    ];
+
+    let matched = false;
+    for (const { prefix, key } of tags) {
+      const idx = remainder.indexOf(prefix);
+      if (idx === -1) continue;
+      matched = true;
+      const before = remainder.slice(0, idx).trim();
+      const after = remainder.slice(idx + prefix.length).trim();
+      if (before) guestParts.push(before);
+      if (after) {
+        result[key] = result[key] ? `${result[key]}\n${after}` : after;
+      }
+      remainder = '';
+      break;
+    }
+
+    if (!matched && remainder) guestParts.push(remainder);
+  });
+
+  result.guestNotes = guestParts.length ? guestParts.join('\n') : null;
+  return result;
+}
+
+function renderNoteTrackingCallouts(parsed) {
+  const blocks = [
+    parsed.adminModification
+      ? { label: 'Modified by admin', text: parsed.adminModification, tone: 'admin' }
+      : null,
+    parsed.modificationRequested
+      ? { label: 'Modification requested', text: parsed.modificationRequested, tone: 'requested' }
+      : null,
+    parsed.guestUpdate
+      ? { label: 'Updated by guest', text: parsed.guestUpdate, tone: 'guest' }
+      : null,
+  ].filter(Boolean);
+
+  if (!blocks.length) return '';
   return `
-    <div class="billing-info-chip">
-      <span class="material-symbols-outlined" aria-hidden="true">${icon}</span>
-      <div>
-        <span class="billing-info-chip__label">${escapeHtml(label)}</span>
-        <span class="billing-info-chip__value">${escapeHtml(value)}</span>
-      </div>
+    <div class="billing-note-tracking">
+      ${blocks.map(({ label, text, tone }) => `
+        <div class="billing-admin-mod billing-admin-mod--${tone}" role="note">
+          <div class="billing-admin-mod__badge">
+            <span class="material-symbols-outlined" aria-hidden="true">${tone === 'admin' ? 'admin_panel_settings' : tone === 'requested' ? 'pending_actions' : 'person_edit'}</span>
+            ${escapeHtml(label)}
+          </div>
+          <p class="billing-admin-mod__text">${escapeHtml(text)}</p>
+        </div>`).join('')}
     </div>`;
 }
 
-function renderVenueDetailItem(label, value, { wide = false } = {}) {
+function renderDetailItem(label, value, { wide = false, alert = false } = {}) {
   if (!value) return '';
   return `
-    <div class="billing-venue-details__item${wide ? ' billing-venue-details__item--wide' : ''}">
+    <div class="billing-venue-details__item${wide ? ' billing-venue-details__item--wide' : ''}${alert ? ' billing-venue-details__item--alert' : ''}">
       <span class="billing-venue-details__label">${escapeHtml(label)}</span>
       <span class="billing-venue-details__value">${escapeHtml(value)}</span>
     </div>`;
 }
 
-function renderVenueDetailsCard(p) {
+function renderRoomDetailsCard(p, parsedNotes) {
+  const notes = parsedNotes ?? parseBookingNotes(p.notes);
+  const nights = stayNights(p);
+  const mealsSummary = (p.meals || [])
+    .filter((m) => Number(m.quantity) > 0)
+    .map((m) => `${m.meal_type} × ${m.quantity}`)
+    .join(', ');
+
+  return `
+    <div class="billing-venue-details">
+      <div class="billing-venue-details__grid billing-venue-details__grid--unified">
+        ${renderDetailItem('Stay', formatDateRange(p.check_in, p.check_out))}
+        ${renderDetailItem('Nights', `${nights} night${nights === 1 ? '' : 's'}`)}
+        ${renderDetailItem('Guests', `${p.guest_count || 1} in room`)}
+        ${renderDetailItem('Room', roomLabel(p))}
+        ${renderDetailItem('Season', p.season)}
+        ${renderDetailItem('Group', p.group_name)}
+        ${renderDetailItem('Phone', p.contact_phone)}
+        ${renderDetailItem('Email', p.guest_email, { wide: true })}
+        ${mealsSummary ? renderDetailItem('Meals ordered', mealsSummary, { wide: true }) : ''}
+        ${p.meal_allergen_notes ? renderDetailItem('Allergen notes', p.meal_allergen_notes, { wide: true, alert: true }) : ''}
+        ${notes.guestNotes ? renderDetailItem('Booking notes', notes.guestNotes, { wide: true }) : ''}
+      </div>
+      <div class="billing-venue-details__footer">
+        <span class="billing-venue-details__ref">Booking ref #${escapeHtml(String(p.booking_id))}</span>
+        <span class="billing-venue-details__type">Room stay</span>
+      </div>
+    </div>`;
+}
+
+function renderVenueDetailsCard(p, parsedNotes) {
+  const notes = parsedNotes ?? parseBookingNotes(p.notes);
   const timeLabel = `${formatTime12(p.start_time)} – ${formatTime12(p.end_time)}`;
   return `
     <div class="billing-venue-details">
       <div class="billing-venue-details__grid billing-venue-details__grid--unified">
-        ${renderVenueDetailItem('Event date', formatDateLongSingle(p.event_date))}
-        ${renderVenueDetailItem('Time', timeLabel)}
-        ${renderVenueDetailItem('Guests', `${p.guest_count || 1} expected`)}
-        ${renderVenueDetailItem('Venue', venueLabel(p))}
-        ${renderVenueDetailItem('Season', p.season)}
-        ${renderVenueDetailItem('Package', p.facility_package)}
-        ${renderVenueDetailItem('Email', p.guest_email, { wide: true })}
-        ${renderVenueDetailItem('Booking notes', p.notes, { wide: true })}
+        ${renderDetailItem('Event date', formatDateLongSingle(p.event_date))}
+        ${renderDetailItem('Time', timeLabel)}
+        ${renderDetailItem('Guests', `${p.guest_count || 1} expected`)}
+        ${renderDetailItem('Venue', venueLabel(p))}
+        ${renderDetailItem('Season', p.season)}
+        ${renderDetailItem('Package', p.facility_package)}
+        ${renderDetailItem('Email', p.guest_email, { wide: true })}
+        ${notes.guestNotes ? renderDetailItem('Booking notes', notes.guestNotes, { wide: true }) : ''}
       </div>
       <div class="billing-venue-details__footer">
         <span class="billing-venue-details__ref">Booking ref #${escapeHtml(String(p.facility_booking_id))}</span>
@@ -797,60 +1120,49 @@ function renderVenueDetailsCard(p) {
 }
 
 function renderReservationSection(p) {
+  const parsedNotes = parseBookingNotes(p.notes);
+  const tracking = renderNoteTrackingCallouts(parsedNotes);
+
   if (isVenueInvoice(p)) {
     return `
-    <section class="billing-reservation-card">
-      <h4 class="billing-section-title">
-        <span class="material-symbols-outlined" aria-hidden="true">meeting_room</span>
-        Venue booking details
-      </h4>
-      ${renderVenueDetailsCard(p)}
-      <h4 class="billing-section-title billing-section-title--sub">
-        <span class="material-symbols-outlined" aria-hidden="true">request_quote</span>
-        Charge breakdown
-      </h4>
-      ${renderChargeTable(p)}
-    </section>`;
+    <div class="billing-left-stack">
+      <section class="billing-panel billing-panel--reservation">
+        <h4 class="billing-section-title">
+          <span class="material-symbols-outlined" aria-hidden="true">meeting_room</span>
+          Venue booking details
+        </h4>
+        ${tracking}
+        ${renderVenueDetailsCard(p, parsedNotes)}
+      </section>
+      <section class="billing-panel billing-panel--charges">
+        <h4 class="billing-section-title">
+          <span class="material-symbols-outlined" aria-hidden="true">request_quote</span>
+          Charge breakdown
+        </h4>
+        ${renderChargeTable(p)}
+      </section>
+    </div>`;
   }
 
-  const nights = stayNights(p);
-  const chips = [
-    renderInfoChip('calendar_month', 'Stay', formatDateRange(p.check_in, p.check_out)),
-    renderInfoChip('nights_stay', 'Nights', `${nights} night${nights === 1 ? '' : 's'}`),
-    renderInfoChip('group', 'Guests', `${p.guest_count || 1} in room`),
-    renderInfoChip('location_on', 'Room', roomLabel(p)),
-    p.season ? renderInfoChip('wb_sunny', 'Season', p.season) : '',
-    p.group_name ? renderInfoChip('groups', 'Group', p.group_name) : '',
-    p.contact_phone ? renderInfoChip('call', 'Phone', p.contact_phone) : '',
-  ].filter(Boolean).join('');
-
-  const mealsSummary = (p.meals || [])
-    .filter((m) => Number(m.quantity) > 0)
-    .map((m) => `${m.meal_type} × ${m.quantity}`)
-    .join(', ');
-
-  const extras = [
-    p.guest_email ? `<div class="billing-meta-row"><span>Email</span><span>${escapeHtml(p.guest_email)}</span></div>` : '',
-    mealsSummary ? `<div class="billing-meta-row"><span>Meals ordered</span><span>${escapeHtml(mealsSummary)}</span></div>` : '',
-    p.meal_allergen_notes ? `<div class="billing-meta-row billing-meta-row--alert"><span>Allergen notes</span><span>${escapeHtml(p.meal_allergen_notes)}</span></div>` : '',
-    p.notes ? `<div class="billing-meta-row"><span>Booking notes</span><span>${escapeHtml(p.notes)}</span></div>` : '',
-    `<div class="billing-meta-row"><span>Booking ref</span><span>#${p.booking_id}</span></div>`,
-  ].filter(Boolean).join('');
-
   return `
-    <section class="billing-reservation-card">
-      <h4 class="billing-section-title">
-        <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
-        Reservation details
-      </h4>
-      <div class="billing-info-chips">${chips}</div>
-      ${extras ? `<div class="billing-meta-list">${extras}</div>` : ''}
-      <h4 class="billing-section-title billing-section-title--sub">
-        <span class="material-symbols-outlined" aria-hidden="true">request_quote</span>
-        Charge breakdown
-      </h4>
-      ${renderChargeTable(p)}
-    </section>`;
+    <div class="billing-left-stack">
+      <section class="billing-panel billing-panel--reservation">
+        <h4 class="billing-section-title">
+          <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
+          Reservation details
+        </h4>
+        ${tracking}
+        ${renderRoomDetailsCard(p, parsedNotes)}
+      </section>
+      ${renderRoomFeesSection(p)}
+      <section class="billing-panel billing-panel--charges">
+        <h4 class="billing-section-title">
+          <span class="material-symbols-outlined" aria-hidden="true">request_quote</span>
+          Charge breakdown
+        </h4>
+        ${renderChargeTable(p)}
+      </section>
+    </div>`;
 }
 
 function formatTxAt(value) {
@@ -1210,6 +1522,11 @@ function getModal() {
   return document.getElementById('billing-invoice-modal');
 }
 
+function isBillingInvoiceModalOpen() {
+  const modal = getModal();
+  return Boolean(modal && !modal.hidden && !modal.classList.contains('is-hidden'));
+}
+
 async function openInvoiceModal(id) {
   state.selectedId = id;
   renderList();
@@ -1231,6 +1548,7 @@ async function openInvoiceModal(id) {
 
     detailEl.innerHTML = renderDetailPanel(p);
     bindDetailActions(p);
+    initBillingFeeEditor(p, detailEl);
   } catch (err) {
     detailEl.innerHTML = renderInvoiceLoadError(id, getBillingErrorMessage(err));
     detailEl.querySelector('[data-retry-invoice]')?.addEventListener('click', () => {
@@ -1356,6 +1674,11 @@ function bindDetailActions(p) {
       billingForm?.querySelector('button[type="submit"]')?.focus();
       return;
     }
+    if (hasUnsavedFeeChanges(detailEl, fresh.id)) {
+      showFeedback(detailFeedback, 'Save additional fees before recording payment.', 'error');
+      detailEl.querySelector('[data-save-booking-fees]')?.focus();
+      return;
+    }
     if (!check?.checked) {
       showFeedback(detailFeedback, 'Check the confirmation box to record payment.', 'error');
       check?.focus();
@@ -1443,7 +1766,7 @@ function updateSummary() {
 
 async function reload({ keepSelection = false, keepModalOpen = false, background = false } = {}) {
   const prevId = state.selectedId;
-  const wasOpen = keepModalOpen && prevId;
+  const modalOpen = isBillingInvoiceModalOpen();
   const feedback = document.getElementById('payments-feedback');
 
   try {
@@ -1451,8 +1774,10 @@ async function reload({ keepSelection = false, keepModalOpen = false, background
     updateSummary();
     renderList();
 
-    if (wasOpen && state.payments.some((x) => String(x.id) === String(prevId))) {
-      await openInvoiceModal(prevId);
+    if (keepModalOpen && prevId && modalOpen && state.payments.some((x) => String(x.id) === String(prevId))) {
+      if (!background) {
+        await openInvoiceModal(prevId);
+      }
     } else if (!keepModalOpen) {
       closeInvoiceModal();
     }
@@ -1537,12 +1862,14 @@ export async function loadPaymentsPage() {
   if (onBookingUpdated) {
     window.removeEventListener('booking:updated', onBookingUpdated);
   }
-  onBookingUpdated = () => reload({ keepSelection: true, keepModalOpen: true, background: true });
+  onBookingUpdated = () => {
+    if (isBillingInvoiceModalOpen()) return;
+    reload({ keepSelection: true, background: true });
+  };
   window.addEventListener('booking:updated', onBookingUpdated);
   stopBookingPoll?.();
-  stopBookingPoll = createBookingPoll(() => reload({
-    keepSelection: true,
-    keepModalOpen: true,
-    background: true,
-  }));
+  stopBookingPoll = createBookingPoll(
+    () => reload({ background: true }),
+    { shouldPoll: () => !isBillingInvoiceModalOpen() },
+  );
 }

@@ -406,12 +406,6 @@ export async function runSchemaPatches() {
   }
 
   try {
-    await runVipRoomMigration();
-  } catch (err) {
-    console.warn('[schema] VIP room migration skipped:', err.message);
-  }
-
-  try {
     await runSeasonSettingsMigration();
   } catch (err) {
     console.warn('[schema] season settings migration skipped:', err.message);
@@ -433,6 +427,13 @@ export async function runSchemaPatches() {
     await pool.execute(`ALTER TABLE rates_rooms MODIFY item VARCHAR(120) NOT NULL`);
   } catch (err) {
     console.warn('[schema] room type column migration skipped:', err.message);
+  }
+
+  // VIP must run after room_type is VARCHAR — ENUM columns without 'VIP' reject the update.
+  try {
+    await runVipRoomMigration();
+  } catch (err) {
+    console.warn('[schema] VIP room migration skipped:', err.message);
   }
 
   try {
