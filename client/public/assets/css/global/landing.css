@@ -234,9 +234,10 @@ body.lp-shell::-webkit-scrollbar {
     min-height: 100vh;
     min-height: 100svh;
     min-height: 100dvh;
-    height: auto;
+    height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
     overflow-x: clip;
-    overflow-y: visible;
   }
 
   .lp-hero-grid-tight {
@@ -349,7 +350,7 @@ body.lp-shell::-webkit-scrollbar {
 /* Full-viewport scroll showcase — chapel / garden / rooms + synced photos */
 .lp-scroll-section {
   position: relative;
-  z-index: 2;
+  z-index: 4;
   isolation: isolate;
   min-height: 100vh;
   min-height: 100svh;
@@ -494,10 +495,6 @@ body.lp-scroll-snap-active .lp-section-scroller {
   opacity: 0;
   pointer-events: none;
   backface-visibility: hidden;
-}
-
-.lp-scroll-phrase[data-scroll-phrase="0"] {
-  opacity: 0;
 }
 
 .lp-scroll-phrase-line {
@@ -827,7 +824,7 @@ body.lp-scroll-snap-active .lp-section-scroller {
 /* Vertical section scroller (desktop) — sits in viewport gutter beside content */
 .lp-section-scroller {
   position: fixed;
-  right: max(1rem, env(safe-area-inset-right, 0px));
+  right: max(1.5rem, env(safe-area-inset-right, 0px));
   top: 50%;
   z-index: 40;
   transform: translateY(-50%);

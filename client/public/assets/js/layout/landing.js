@@ -179,17 +179,18 @@ export function initNavScroll(nav) {
 }
 
 function initNavSpy() {
-  const sectionIds = ['hero', 'facilities', 'contact'];
+  const sectionIds = ['hero', 'explore', 'facilities', 'contact'];
   const links = document.querySelectorAll('[data-nav-section]');
   const scroller = document.querySelector('.lp-section-scroller');
   if (!links.length) return;
 
   const setActive = (id) => {
+    const navId = id === 'explore' ? 'hero' : id;
     if (!sectionIds.includes(id)) return;
     links.forEach((link) => {
-      link.classList.toggle('is-active', link.dataset.navSection === id);
+      link.classList.toggle('is-active', link.dataset.navSection === navId);
     });
-    scroller?.classList.toggle('is-on-light', id !== 'hero');
+    scroller?.classList.toggle('is-on-light', navId !== 'hero');
   };
 
   const resolveSection = () => {
@@ -371,10 +372,10 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return;
   }
 
-  const VISUAL_DUR = 0.26;
+  const BG_DUR = 0.24;
 
-  let currentIndex = 0;
-  let visualTween = null;
+  let currentIndex = -1;
+  let bgTween = null;
 
   function setSnapActive(active) {
     document.body.classList.toggle('lp-scroll-snap-active', active);
@@ -392,59 +393,65 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return Math.min(steps, Math.max(0, Math.round(progress * steps)));
   }
 
-  function crossfadeToSlide(fromIdx, toIdx) {
-    const dur = VISUAL_DUR;
-    const tl = gsap.timeline({
-      onStart: () => section.classList.add('is-transitioning'),
-      onComplete: () => section.classList.remove('is-transitioning'),
-    });
+  function setSlideIndex(nextIndex, { animateBg = false } = {}) {
+    const idx = Math.min(count - 1, Math.max(0, nextIndex));
+    const prev = currentIndex;
+    if (idx === prev) return idx;
 
-    if (fromIdx !== toIdx && bgImages[fromIdx]) {
-      tl.to(bgImages[fromIdx], { opacity: 0, duration: dur * 0.35, ease: 'power2.in' }, 0);
-    }
-    if (bgImages[toIdx]) {
-      tl.fromTo(bgImages[toIdx],
-        { opacity: 0 },
-        { opacity: 1, duration: dur * 0.5, ease: 'power2.out' },
-        dur * 0.06);
-      bgImages.forEach((img, i) => img.classList.toggle('is-active', i === toIdx));
-    }
+    currentIndex = idx;
 
     phraseData.forEach((phrase, i) => {
-      const on = i === toIdx;
-      if (i === fromIdx && fromIdx !== toIdx) {
-        tl.to(phrase.el, { opacity: 0, y: -10, duration: dur * 0.28, ease: 'power2.in' }, 0);
-      }
-      if (on) {
-        gsap.set(phrase.el, {
-          xPercent: -50,
-          yPercent: -50,
-          scale: 1,
-          pointerEvents: 'auto',
-        });
-        applyScrollCharProgress(phrase.chars, 1);
-      } else if (i !== fromIdx) {
-        gsap.set(phrase.el, { opacity: 0, pointerEvents: 'none' });
-      }
+      const on = i === idx;
+      gsap.set(phrase.el, {
+        opacity: on ? 1 : 0,
+        xPercent: -50,
+        yPercent: -50,
+        y: 0,
+        scale: 1,
+        pointerEvents: on ? 'auto' : 'none',
+      });
+      applyScrollCharProgress(phrase.chars, on ? 1 : 0);
     });
 
-    const incoming = phraseData[toIdx];
-    if (incoming) {
-      gsap.set(incoming.el, { opacity: 0, xPercent: -50, yPercent: -50, y: 14, scale: 0.99 });
-      tl.to(incoming.el, { opacity: 1, y: 0, scale: 1, duration: dur * 0.45, ease: 'power3.out' }, dur * 0.08);
+    if (hint) gsap.set(hint, { opacity: idx === 0 ? 1 : 0 });
+    rails.forEach((rail) => {
+      rail.style.opacity = '0.55';
+    });
+
+    bgTween?.kill();
+    bgTween = null;
+    section.classList.remove('is-transitioning');
+
+    if (!animateBg || prev === idx) {
+      bgImages.forEach((img, i) => {
+        gsap.set(img, { opacity: i === idx ? 1 : 0 });
+        img.classList.toggle('is-active', i === idx);
+      });
+      return idx;
     }
 
-    if (hint) tl.to(hint, { opacity: toIdx === 0 ? 1 : 0, duration: 0.12 }, 0);
-    return tl;
+    section.classList.add('is-transitioning');
+    bgTween = gsap.timeline({
+      onComplete: () => {
+        bgTween = null;
+        section.classList.remove('is-transitioning');
+      },
+    });
+
+    if (bgImages[prev]) {
+      bgTween.to(bgImages[prev], { opacity: 0, duration: BG_DUR * 0.85, ease: 'power2.in' }, 0);
+    }
+    if (bgImages[idx]) {
+      gsap.set(bgImages[idx], { opacity: 0 });
+      bgTween.to(bgImages[idx], { opacity: 1, duration: BG_DUR, ease: 'power2.out' }, BG_DUR * 0.08);
+    }
+    bgImages.forEach((img, i) => img.classList.toggle('is-active', i === idx));
+    return idx;
   }
 
-  function syncSlideVisuals(nextIndex) {
-    const idx = Math.min(count - 1, Math.max(0, nextIndex));
-    if (idx === currentIndex) return idx;
-    visualTween?.kill();
-    visualTween = crossfadeToSlide(currentIndex, idx);
-    currentIndex = idx;
-    return idx;
+  function syncSlideFromProgress(progress, { animateBg = true } = {}) {
+    if (!st || progress < 0 || progress > 1) return currentIndex;
+    return setSlideIndex(progressToIndex(progress), { animateBg });
   }
 
   function scrollYForIndex(index) {
@@ -455,15 +462,14 @@ function initScrollShowcase(gsap, ScrollTrigger) {
 
   function scrollToIndex(index) {
     const idx = Math.min(count - 1, Math.max(0, index));
-    syncSlideVisuals(idx);
     const y = scrollYForIndex(idx);
+    setSlideIndex(idx, { animateBg: true });
     window.scrollTo(0, y);
     ScrollTrigger.update();
   }
 
   function applySlideVisuals(index) {
-    currentIndex = showSlide(index);
-    return currentIndex;
+    return setSlideIndex(index, { animateBg: false });
   }
 
   const st = ScrollTrigger.create({
@@ -485,23 +491,27 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     } : false,
     onToggle: (self) => setSnapActive(self.isActive),
     onEnter(self) {
-      if (!visualTween) applySlideVisuals(progressToIndex(self.progress));
+      syncSlideFromProgress(self.progress, { animateBg: false });
     },
     onEnterBack(self) {
-      if (!visualTween) applySlideVisuals(progressToIndex(self.progress));
+      syncSlideFromProgress(self.progress, { animateBg: false });
     },
     onUpdate(self) {
-      if (!self.isActive) return;
-      syncSlideVisuals(progressToIndex(self.progress));
+      syncSlideFromProgress(self.progress, { animateBg: true });
+    },
+    onRefresh(self) {
+      syncSlideFromProgress(self.progress, { animateBg: false });
     },
     onLeave: () => {
-      visualTween?.kill();
-      visualTween = null;
+      bgTween?.kill();
+      bgTween = null;
+      section.classList.remove('is-transitioning');
       setSnapActive(false);
     },
     onLeaveBack: () => {
-      visualTween?.kill();
-      visualTween = null;
+      bgTween?.kill();
+      bgTween = null;
+      section.classList.remove('is-transitioning');
       setSnapActive(false);
     },
   });
@@ -546,7 +556,8 @@ function initScrollShowcase(gsap, ScrollTrigger) {
 
   window.addEventListener('resize', () => {
     ScrollTrigger.refresh();
-    if (st.isActive && !visualTween) {
+    if (st.isActive) {
+      syncSlideFromProgress(st.progress, { animateBg: false });
       const y = scrollYForIndex(currentIndex);
       if (Math.abs(window.scrollY - y) > 4) {
         window.scrollTo(0, y);
