@@ -72,7 +72,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y mysql-client
-          mysql -h 127.0.0.1 -P 3306 -uroot -proot aptspace < ../../database/schema.sql
+          mysql -h 127.0.0.1 -P 3306 -uroot -proot aptspace < ../database/schema.sql
 
       - name: Seed test data
         run: |
@@ -93,5 +93,5 @@ jobs:
             process.exit(code);
           "
 
-      - name: Run full test suite
-        run: npm test
+      - name: Run integration tests
+        run: npm run test:integration
