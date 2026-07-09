@@ -1,5 +1,5 @@
 import { getProfile, logout as logoutApi } from '/assets/js/services/api.js';
-import { isInternalGuestEmail } from '/shared/guest-access.js';
+import { isInternalGuestEmail } from '/assets/js/config/guest-access.js';
 
 export const LOGGED_IN_KEY = 'aptspace_logged_in';
 const USER_KEY = 'user';

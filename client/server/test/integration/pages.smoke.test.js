@@ -87,7 +87,7 @@ describe('Pages smoke (public)', () => {
   });
 
   it('GET shared guest-access module is served', async () => {
-    const res = await agent.get('/shared/guest-access.js');
+    const res = await agent.get('/assets/js/config/guest-access.js');
     assert.equal(res.status, 200);
     assert.match(res.text, /EXTERNAL_ROOM_BUILDINGS/);
     assert.match(res.text, /canGuestAccessBuilding/);

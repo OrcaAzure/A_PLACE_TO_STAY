@@ -237,13 +237,19 @@ function initSmoothAnchors() {
       if (!id || id === '#') return;
       if (id === '#hero') {
         e.preventDefault();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'auto' });
+        return;
+      }
+      if (id === '#explore') {
+        e.preventDefault();
+        const target = document.getElementById('explore');
+        if (target) target.scrollIntoView({ behavior: 'auto', block: 'start' });
         return;
       }
       const target = document.querySelector(id);
       if (!target) return;
       e.preventDefault();
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      target.scrollIntoView({ behavior: 'auto', block: 'start' });
     });
   });
 }
@@ -307,6 +313,21 @@ function applyScrollCharProgress(chars, progress) {
   });
 }
 
+function setSlidesStatic(phraseData, bgImages, index, hint) {
+  phraseData.forEach((phrase, i) => {
+    const on = i === index;
+    phrase.el.style.opacity = on ? '1' : '0';
+    phrase.el.style.pointerEvents = on ? 'auto' : 'none';
+    applyScrollCharProgress(phrase.chars, on ? 1 : 0);
+  });
+  bgImages.forEach((img, i) => {
+    const on = i === index;
+    img.style.opacity = on ? '1' : '0';
+    img.classList.toggle('is-active', on);
+  });
+  if (hint) hint.style.opacity = index === 0 ? '1' : '0';
+}
+
 function initScrollShowcase(gsap, ScrollTrigger) {
   const section = document.querySelector('.lp-scroll-section');
   const pin = section?.querySelector('.lp-scroll-pin');
@@ -325,54 +346,16 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return { el: phraseEl, chars };
   });
 
-  function showSlide(index, { animateChars = false } = {}) {
-    const idx = Math.min(count - 1, Math.max(0, index));
+  section.classList.remove('is-pending-init');
 
-    phraseData.forEach((phrase, i) => {
-      const on = i === idx;
-      gsap.set(phrase.el, {
-        opacity: on ? 1 : 0,
-        xPercent: -50,
-        yPercent: -50,
-        y: on ? 0 : 24,
-        scale: on ? 1 : 0.96,
-        pointerEvents: on ? 'auto' : 'none',
-      });
-      applyScrollCharProgress(phrase.chars, on ? 1 : 0);
-    });
-
-    bgImages.forEach((img, i) => {
-      const on = i === idx;
-      gsap.set(img, { opacity: on ? 1 : 0 });
-      img.classList.toggle('is-active', on);
-    });
-
-    if (hint) hint.style.opacity = idx === 0 ? '1' : '0';
-    rails.forEach((rail) => {
-      rail.style.opacity = '0.55';
-    });
-
-    if (animateChars && phraseData[idx]?.chars.length) {
-      applyScrollCharProgress(phraseData[idx].chars, 0);
-      const proxy = { p: 0 };
-      gsap.to(proxy, {
-        p: 1,
-        duration: 0.45,
-        ease: 'power2.out',
-        onUpdate: () => applyScrollCharProgress(phraseData[idx].chars, proxy.p),
-      });
-    }
-
-    return idx;
-  }
-
-  if (prefersReducedMotion() || !ScrollTrigger) {
-    showSlide(0);
+  if (prefersReducedMotion() || !ScrollTrigger || !gsap) {
+    setSlidesStatic(phraseData, bgImages, 0, hint);
     if (hint) hint.style.display = 'none';
+    section.classList.add('is-ready');
     return;
   }
 
-  const BG_DUR = 0.24;
+  const BG_DUR = 0.28;
 
   let currentIndex = -1;
   let bgTween = null;
@@ -380,6 +363,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   function setSnapActive(active) {
     document.body.classList.toggle('lp-scroll-snap-active', active);
     document.documentElement.classList.toggle('lp-scroll-snap-active', active);
+    document.documentElement.classList.toggle('scroll-smooth', !active);
   }
 
   function snapProgressForIndex(index) {
@@ -396,7 +380,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   function setSlideIndex(nextIndex, { animateBg = false } = {}) {
     const idx = Math.min(count - 1, Math.max(0, nextIndex));
     const prev = currentIndex;
-    if (idx === prev) return idx;
+    if (idx === prev && !animateBg) return idx;
 
     currentIndex = idx;
 
@@ -449,11 +433,6 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return idx;
   }
 
-  function syncSlideFromProgress(progress, { animateBg = true } = {}) {
-    if (!st || progress < 0 || progress > 1) return currentIndex;
-    return setSlideIndex(progressToIndex(progress), { animateBg });
-  }
-
   function scrollYForIndex(index) {
     if (count <= 1) return st.start;
     const progress = snapProgressForIndex(index);
@@ -464,18 +443,21 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     const idx = Math.min(count - 1, Math.max(0, index));
     const y = scrollYForIndex(idx);
     setSlideIndex(idx, { animateBg: true });
-    window.scrollTo(0, y);
-    ScrollTrigger.update();
+    gsap.to(window, {
+      scrollTo: { y, autoKill: true },
+      duration: 0.42,
+      ease: 'power2.inOut',
+      overwrite: true,
+      onComplete: () => ScrollTrigger.update(),
+    });
   }
 
-  function applySlideVisuals(index) {
-    return setSlideIndex(index, { animateBg: false });
-  }
+  setSlideIndex(0, { animateBg: false });
 
   const st = ScrollTrigger.create({
     trigger: section,
     start: 'top top',
-    end: () => `+=${Math.round(window.innerHeight * Math.max(count - 1, 1) + 24)}`,
+    end: () => `+=${Math.round(window.innerHeight * Math.max(count - 1, 1))}`,
     pin,
     pinSpacing: true,
     pinReparent: false,
@@ -484,23 +466,29 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     fastScrollEnd: true,
     snap: count > 1 ? {
       snapTo: (value) => snapProgressForIndex(progressToIndex(value)),
-      duration: { min: 0.14, max: 0.3 },
-      delay: 0.03,
-      ease: 'power3.out',
+      duration: { min: 0.16, max: 0.38 },
+      delay: 0.02,
+      ease: 'power2.out',
       inertia: false,
+      onComplete: () => {
+        setSlideIndex(progressToIndex(st.progress), { animateBg: true });
+      },
     } : false,
     onToggle: (self) => setSnapActive(self.isActive),
     onEnter(self) {
-      syncSlideFromProgress(self.progress, { animateBg: false });
+      setSlideIndex(progressToIndex(self.progress), { animateBg: false });
     },
     onEnterBack(self) {
-      syncSlideFromProgress(self.progress, { animateBg: false });
+      setSlideIndex(progressToIndex(self.progress), { animateBg: false });
     },
     onUpdate(self) {
-      syncSlideFromProgress(self.progress, { animateBg: true });
+      const idx = progressToIndex(self.progress);
+      if (idx !== currentIndex) {
+        setSlideIndex(idx, { animateBg: false });
+      }
     },
     onRefresh(self) {
-      syncSlideFromProgress(self.progress, { animateBg: false });
+      setSlideIndex(progressToIndex(self.progress), { animateBg: false });
     },
     onLeave: () => {
       bgTween?.kill();
@@ -552,16 +540,12 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   pin.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('keydown', onKeyDown);
 
-  applySlideVisuals(0);
+  section.classList.add('is-ready');
 
   window.addEventListener('resize', () => {
     ScrollTrigger.refresh();
     if (st.isActive) {
-      syncSlideFromProgress(st.progress, { animateBg: false });
-      const y = scrollYForIndex(currentIndex);
-      if (Math.abs(window.scrollY - y) > 4) {
-        window.scrollTo(0, y);
-      }
+      setSlideIndex(progressToIndex(st.progress), { animateBg: false });
     }
   }, { passive: true });
 

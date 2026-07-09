@@ -5,7 +5,7 @@ import {
   canGuestAccessBuilding,
   canGuestAccessRoom,
   EXTERNAL_ROOM_BUILDINGS,
-} from '../../../shared/guest-access.js';
+} from '../../../public/assets/js/config/guest-access.js';
 
 describe('guest-access constants', () => {
   it('detects internal APTS email suffixes', () => {

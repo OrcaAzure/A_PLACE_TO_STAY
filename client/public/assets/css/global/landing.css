@@ -486,6 +486,14 @@ body.lp-scroll-snap-active .lp-section-scroller {
   text-align: center;
 }
 
+.lp-scroll-section.is-pending-init .lp-scroll-phrase[data-scroll-phrase="0"] {
+  opacity: 1;
+}
+
+.lp-scroll-section.is-pending-init .lp-scroll-bg-img[data-scroll-bg="0"] {
+  opacity: 1;
+}
+
 .lp-scroll-phrase {
   position: absolute;
   left: 50%;

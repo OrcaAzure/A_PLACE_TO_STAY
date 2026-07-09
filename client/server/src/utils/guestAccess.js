@@ -8,9 +8,9 @@ export {
   canGuestAccessRoom,
   roomAllowedForGuest,
   filterRoomsForGuestUser,
-} from '../../../shared/guest-access.js';
+} from '../../../public/assets/js/config/guest-access.js';
 
-import { canGuestAccessBuilding } from '../../../shared/guest-access.js';
+import { canGuestAccessBuilding } from '../../../public/assets/js/config/guest-access.js';
 
 export function assertGuestCanAccessRoom(email, buildingName) {
   if (!canGuestAccessBuilding(email, buildingName)) {

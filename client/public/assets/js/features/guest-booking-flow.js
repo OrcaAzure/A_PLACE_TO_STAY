@@ -7,7 +7,7 @@ import {
   canGuestAccessRoom,
   EXTERNAL_ROOM_BUILDINGS,
   GUEST_BLOCKED_BUILDINGS,
-} from '/shared/guest-access.js';
+} from '/assets/js/config/guest-access.js';
 import { isRoomListVisible } from '/assets/js/features/reservation-shared.js';
 
 export { isInternalGuest, canGuestAccessRoom as roomAllowedForGuest };
