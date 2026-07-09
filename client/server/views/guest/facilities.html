@@ -244,7 +244,7 @@
   import { roomPreviewImage } from '/assets/js/features/facility-display.js';
 
   await initSplashIdle({ portal: 'guest' });
-  requireAuth();
+  if (!(await requireAuth())) throw new Error('Not authenticated');
   await initAppLayout({
     portal: 'guest',
     activePage: 'facilities',

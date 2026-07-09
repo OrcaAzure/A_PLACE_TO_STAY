@@ -53,8 +53,15 @@ describe('API auth', { skip: dbReady ? false : 'MySQL not available — run sche
   });
 
   it('POST /api/auth/login succeeds for seeded admin', async () => {
-    const token = await loginAs(agent, 'admin@aptspace.com');
-    const res = await agent.get('/api/auth/me').set(authHeader(token));
+    const user = await loginAs(agent, 'admin@aptspace.com');
+    assert.equal(user.email, 'admin@aptspace.com');
+    assert.equal(user.role, 'Super Admin');
+  });
+
+  it('GET /api/auth/me authenticates via httpOnly cookie', async () => {
+    const cookieAgent = api();
+    await loginAs(cookieAgent, 'admin@aptspace.com');
+    const res = await cookieAgent.get('/api/auth/me');
     assert.equal(res.status, 200);
     assert.equal(res.body.user.email, 'admin@aptspace.com');
     assert.equal(res.body.user.role, 'Super Admin');

@@ -512,7 +512,7 @@
   import { initGuestSupportCompose } from '/assets/js/features/guest-support-compose.js';
   import { bootstrapGuestMyStaysPage } from '/assets/js/features/guest-my-stays-page.js?v=my-stays3';
 
-  requireAuth();
+  if (!(await requireAuth())) throw new Error('Not authenticated');
   await initAppLayout({
     portal: 'guest',
     activePage: 'reservations',

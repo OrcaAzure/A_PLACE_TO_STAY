@@ -1,54 +1,79 @@
-import { login, getProfile, logout as logoutApi } from '/assets/js/services/api.js';
+import { getProfile, logout as logoutApi } from '/assets/js/services/api.js';
 
-export function requireAuth() {
-  const token = localStorage.getItem('token');
+export const LOGGED_IN_KEY = 'aptspace_logged_in';
+const USER_KEY = 'user';
+
+/** Non-sensitive session hint for UI; real auth is the httpOnly cookie + /api/auth/me. */
+export function isLoggedInHint() {
+  return sessionStorage.getItem(LOGGED_IN_KEY) === '1';
+}
+
+export function setAuthSession(user) {
+  if (!user) return;
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  sessionStorage.setItem(LOGGED_IN_KEY, '1');
+  localStorage.removeItem('token');
+}
+
+export function clearAuthSession() {
+  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem('token');
+  sessionStorage.removeItem(LOGGED_IN_KEY);
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('aptspace:auth-expired', clearAuthSession);
+}
+
+export async function requireAuth() {
   const isAdmin = window.location.pathname.includes('/admin/');
   const isGuest = window.location.pathname.includes('/guest/');
+  const portalPath = isAdmin || isGuest;
 
-  if (!token) {
-    if (isAdmin || isGuest) {
+  try {
+    const { user } = await getProfile({ skipAuthRedirect: !portalPath });
+    setAuthSession(user);
+
+    const role = user?.role || '';
+    const isAdminRole = ADMIN_ROLES.includes(role);
+
+    if (isAdmin && !isAdminRole) {
+      window.location.href = '/guest/dashboard.html';
+      return false;
+    }
+
+    if (isGuest && isAdminRole) {
+      window.location.href = '/admin/dashboard.html';
+      return false;
+    }
+
+    return true;
+  } catch {
+    clearAuthSession();
+    if (portalPath) {
       window.location.href = '/login.html';
     }
     return false;
   }
-
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const role = user.role || '';
-  const isAdminRole = role === 'Super Admin' || role === 'Admin';
-
-  if (isAdmin && !isAdminRole) {
-    window.location.href = '/guest/dashboard.html';
-    return false;
-  }
-
-  if (isGuest && isAdminRole) {
-    window.location.href = '/admin/dashboard.html';
-    return false;
-  }
-
-  return true;
 }
 
 export async function redirectIfLoggedIn() {
-  const token = localStorage.getItem('token');
-  if (!token) return;
-
   try {
     const { user } = await getProfile({ skipAuthRedirect: true });
+    setAuthSession(user);
     const params = new URLSearchParams(window.location.search);
     const next = params.get('next');
     const role = user?.role || '';
     const dest = next || (ADMIN_ROLES.includes(role) ? '/admin/dashboard.html' : '/guest/dashboard.html');
     window.location.href = dest;
   } catch {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAuthSession();
   }
 }
 
 export function getCurrentUser() {
   try {
-    return JSON.parse(localStorage.getItem('user') || 'null');
+    return JSON.parse(localStorage.getItem(USER_KEY) || 'null');
   } catch {
     return null;
   }
@@ -124,9 +149,8 @@ export function applyRoleUI() {
 export async function doLogout() {
   try {
     await logoutApi();
-  } catch {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  } finally {
+    clearAuthSession();
   }
   window.location.href = '/login.html';
 }

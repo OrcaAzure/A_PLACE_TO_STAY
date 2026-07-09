@@ -193,7 +193,7 @@
     import { initAdminEnhancements } from '/assets/js/layout/animations.js';
     import { loadAdminSettings } from '/assets/js/features/settings.js';
 
-    if (!requireAuth()) throw new Error('Not authenticated');
+    if (!(await requireAuth())) throw new Error('Not authenticated');
 
     await initAppLayout({
       portal: 'admin',

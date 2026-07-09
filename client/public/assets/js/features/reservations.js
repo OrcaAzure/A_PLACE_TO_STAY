@@ -2,7 +2,7 @@ import { initAppLayout, showError } from '/assets/js/layout/ui.js';
 import { requireAuth } from '/assets/js/services/auth.js';
 import { mountBookingTimeline } from '/assets/js/features/timeline.js';
 
-requireAuth();
+if (!(await requireAuth())) throw new Error('Not authenticated');
 
 await initAppLayout({
   portal: 'admin',

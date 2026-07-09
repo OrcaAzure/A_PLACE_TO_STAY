@@ -297,7 +297,7 @@
     import { bootstrapRoomRates } from '/assets/js/features/admin-room-rates.js';
     import { bootstrapVenueRates } from '/assets/js/features/admin-venue-rates.js';
 
-    if (!requireAuth()) throw new Error('Not authenticated');
+    if (!(await requireAuth())) throw new Error('Not authenticated');
 
     initSplashIdle({ portal: 'admin' });
 

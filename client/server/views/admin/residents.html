@@ -118,7 +118,7 @@
     import { initAppLayout } from '/assets/js/layout/ui.js';
     import { initGuestAccessPage, loadGuestAccessPage } from '/assets/js/features/admin-guest-access.js';
 
-    if (!requireAuth()) throw new Error('Not authenticated');
+    if (!(await requireAuth())) throw new Error('Not authenticated');
 
     await initAppLayout({
       portal:     'admin',

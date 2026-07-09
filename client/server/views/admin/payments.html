@@ -108,7 +108,7 @@
     }
 
     try {
-      if (!requireAuth()) throw new Error('Not authenticated');
+      if (!(await requireAuth())) throw new Error('Not authenticated');
       await initAppLayout({
         portal: 'admin',
         activePage: 'payments',

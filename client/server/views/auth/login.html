@@ -78,7 +78,7 @@
   </main>
 
   <script type="module">
-    import { redirectIfLoggedIn, ADMIN_ROLES } from '/assets/js/services/auth.js';
+    import { redirectIfLoggedIn, ADMIN_ROLES, setAuthSession } from '/assets/js/services/auth.js';
     import { login } from '/assets/js/services/api.js';
 
     const errorEl = document.getElementById('loginError');
@@ -122,8 +122,7 @@
 
         try {
           const data = await login(email, password);
-          localStorage.setItem('token', data.token);
-          localStorage.setItem('user', JSON.stringify(data.user));
+          setAuthSession(data.user);
 
           const role = data.user.role || '';
           if (ADMIN_ROLES.includes(role)) {

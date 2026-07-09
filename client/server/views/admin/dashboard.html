@@ -122,7 +122,7 @@
     import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
     initSplashIdle({ portal: 'admin' });
-    if (!requireAuth()) throw new Error('Not authenticated');
+    if (!(await requireAuth())) throw new Error('Not authenticated');
 
     await initAppLayout({
       portal:     'admin',

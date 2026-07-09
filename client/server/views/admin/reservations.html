@@ -65,7 +65,7 @@
     import { initAppLayout } from '/assets/js/layout/ui.js';
     import { bootstrapReservationsHub } from '/assets/js/features/admin-reservations-hub.js';
 
-    if (!requireAuth()) throw new Error('Not authenticated');
+    if (!(await requireAuth())) throw new Error('Not authenticated');
 
     await initAppLayout({
       portal:     'admin',

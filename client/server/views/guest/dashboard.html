@@ -30,7 +30,7 @@
     import { applyGuestLandingAccess } from '/assets/js/features/guest-booking-flow.js';
 
     await initSplashIdle({ portal: 'guest' });
-    const authed = requireAuth();
+    const authed = await requireAuth();
     if (authed) {
       try {
         await initAppLayout({

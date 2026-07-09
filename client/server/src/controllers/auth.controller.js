@@ -10,7 +10,10 @@ export const login = async (req, res) => {
   try {
     const result = await authService.login(req.body);
     setAuthCookie(res, result.token);
-    res.status(200).json(result);
+    res.status(200).json({
+      message: result.message,
+      user: result.user,
+    });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

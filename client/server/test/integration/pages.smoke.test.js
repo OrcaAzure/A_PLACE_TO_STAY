@@ -1,6 +1,6 @@
 import { before, describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { api, authHeader, isDbAvailable, loginAs } from '../helpers/http.mjs';
+import { api, isDbAvailable, loginAs } from '../helpers/http.mjs';
 
 const dbReady = await isDbAvailable();
 
@@ -85,6 +85,13 @@ describe('Pages smoke (public)', () => {
     assert.equal(res.body.status, 'ok');
     assert.ok('db' in res.body || res.body.status === 'ok');
   });
+
+  it('GET api.js uses cookie credentials instead of localStorage token', async () => {
+    const res = await agent.get('/assets/js/services/api.js');
+    assert.equal(res.status, 200);
+    assert.doesNotMatch(res.text, /localStorage\.getItem\(['"]token['"]\)/);
+    assert.match(res.text, /credentials:\s*'include'/);
+  });
 });
 
 describe('Pages smoke (auth)', {
@@ -109,15 +116,17 @@ describe('Pages smoke (auth)', {
   });
 
   it('admin can load reservations hub after login', async () => {
-    const token = await loginAs(agent, 'admin@aptspace.com');
-    const res = await agent.get('/admin/reservations.html').set(authHeader(token));
+    const adminAgent = api();
+    await loginAs(adminAgent, 'admin@aptspace.com');
+    const res = await adminAgent.get('/admin/reservations.html');
     assert.equal(res.status, 200);
     assert.match(res.text, /reservations/i);
   });
 
   it('guest can load My Stays after login', async () => {
-    const token = await loginAs(agent, 'samuel.park@gracechurch.org');
-    const res = await agent.get('/guest/reservations.html').set(authHeader(token));
+    const guestAgent = api();
+    await loginAs(guestAgent, 'samuel.park@gracechurch.org');
+    const res = await guestAgent.get('/guest/reservations.html');
     assert.equal(res.status, 200);
     assert.match(res.text, /reservations|My Stays/i);
   });

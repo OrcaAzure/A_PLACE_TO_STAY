@@ -143,8 +143,9 @@
   import { initAppLayout } from '/assets/js/layout/ui.js';
   import { initTabGroup } from '/assets/js/layout/tabs.js';
   import { loadGuestSettings } from '/assets/js/features/guest-settings.js';
+  import { changePassword } from '/assets/js/services/api.js';
 
-  requireAuth();
+  if (!(await requireAuth())) throw new Error('Not authenticated');
   await initAppLayout({
     portal: 'guest',
     activePage: 'settings',
@@ -189,16 +190,7 @@
     btn.disabled = true;
     btn.textContent = 'Saving…';
     try {
-      const res = await fetch('/api/auth/me/password', {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ current_password: currentPw, new_password: newPw }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Update failed');
+      const data = await changePassword({ current_password: currentPw, new_password: newPw });
       showMsg(data.message || 'Password updated.', false);
       ['current-password', 'new-password', 'confirm-new-password'].forEach(id => {
         const el = document.getElementById(id);

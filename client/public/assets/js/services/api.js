@@ -1,11 +1,7 @@
 /**
- * AptSpace API client
+ * AptSpace API client — auth via httpOnly cookie (credentials: include).
  */
 export const API_URL = `${window.location.origin}/api`;
-
-function getToken() {
-  return localStorage.getItem('token');
-}
 
 export async function apiRequest(endpoint, options = {}) {
   const { skipAuthRedirect = false, ...fetchOptions } = options;
@@ -13,9 +9,6 @@ export async function apiRequest(endpoint, options = {}) {
     'Content-Type': 'application/json',
     ...fetchOptions.headers,
   };
-
-  const token = getToken();
-  if (token) headers.Authorization = `Bearer ${token}`;
 
   let response;
   try {
@@ -40,12 +33,9 @@ export async function apiRequest(endpoint, options = {}) {
 
   if (!response.ok) {
     const message = data?.message || `Request failed (${response.status})`;
-    if (response.status === 401 && token) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      if (!skipAuthRedirect && !window.location.pathname.includes('login.html')) {
-        window.location.href = '/login.html?reason=session';
-      }
+    if (response.status === 401 && !skipAuthRedirect && !window.location.pathname.includes('login.html')) {
+      window.dispatchEvent(new CustomEvent('aptspace:auth-expired'));
+      window.location.href = '/login.html?reason=session';
     }
     throw new Error(message);
   }
@@ -57,6 +47,7 @@ export async function login(email, password) {
   return apiRequest('/auth/login', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
+    skipAuthRedirect: true,
   });
 }
 
@@ -64,15 +55,11 @@ export async function logout() {
   try {
     await fetch(`${API_URL}/auth/logout`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      },
+      headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
     });
-  } finally {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+  } catch {
+    /* server may be unreachable; still clear local session below */
   }
 }
 
