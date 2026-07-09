@@ -510,12 +510,12 @@ CREATE TABLE IF NOT EXISTS payments (
     CONSTRAINT fk_payments_bookings_room
         FOREIGN KEY (bookings_room_id) REFERENCES bookings_rooms(id)
         ON DELETE RESTRICT
-        ON UPDATE CASCADE,
+        ON UPDATE RESTRICT,
 
     CONSTRAINT fk_payments_bookings_facility
         FOREIGN KEY (bookings_facility_id) REFERENCES bookings_facilities(id)
         ON DELETE RESTRICT
-        ON UPDATE CASCADE,
+        ON UPDATE RESTRICT,
 
     CONSTRAINT chk_payment_booking_ref CHECK (
         (bookings_room_id IS NOT NULL AND bookings_facility_id IS NULL) OR

@@ -79,8 +79,18 @@ jobs:
           node --input-type=module -e "
             import './test/helpers/env-setup.mjs';
             import { runSeed } from './src/config/seed.js';
-            await runSeed();
-            console.log('seed complete');
+            import { closePool } from './src/config/db.js';
+            let code = 0;
+            try {
+              await runSeed();
+              console.log('seed complete');
+            } catch (err) {
+              console.error(err);
+              code = 1;
+            } finally {
+              await closePool();
+            }
+            process.exit(code);
           "
 
       - name: Run full test suite
