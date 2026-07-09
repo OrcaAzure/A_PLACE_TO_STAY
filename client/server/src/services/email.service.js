@@ -212,9 +212,6 @@ function buildRoomStayDetailSections(booking, { estimate = false } = {}) {
   const meals = formatMealsSummary(booking.meals);
   const fees = formatFeesSummary(booking.fees);
   const totalLabel = estimate ? 'Estimated total' : 'Total due';
-  const category = booking.pricing_category && booking.pricing_category !== 'Guest'
-    ? booking.pricing_category
-    : null;
 
   const stayItems = emailDetailList([
     emailDetailItem('Room', escapeHtml(room)),
@@ -225,7 +222,6 @@ function buildRoomStayDetailSections(booking, { estimate = false } = {}) {
     emailDetailItem('Guests in room', escapeHtml(booking.guest_count ?? '—')),
     booking.season ? emailDetailItem('Season', escapeHtml(booking.season)) : '',
     booking.occupancy_item ? emailDetailItem('Rate type', escapeHtml(booking.occupancy_item)) : '',
-    category ? emailDetailItem('Pricing category', escapeHtml(category)) : '',
     booking.total_amount != null ? emailDetailItem(totalLabel, `<strong>${fmtPeso(booking.total_amount)}</strong>`) : '',
     emailDetailItem('Status', estimate ? 'Pending review' : 'Approved'),
   ].filter(Boolean));
@@ -260,9 +256,6 @@ function buildGroupStayDetailSections(group, { estimate = false } = {}) {
   const meals = formatMealsSummary(group.meals);
   const fees = formatFeesSummary(group.fees);
   const totalLabel = estimate ? 'Estimated total' : 'Total due';
-  const category = group.pricing_category && group.pricing_category !== 'Guest'
-    ? group.pricing_category
-    : null;
 
   const roomRows = (group.bookings || []).map((b) => {
     const label = [`${b.building_name || ''} Room ${b.room_number || '?'}`.trim(), b.room_type].filter(Boolean).join(' · ');
@@ -279,7 +272,6 @@ function buildGroupStayDetailSections(group, { estimate = false } = {}) {
     emailDetailItem('Total guests', escapeHtml(group.total_guests ?? '—')),
     group.rooms_requested != null ? emailDetailItem('Rooms requested', escapeHtml(String(group.rooms_requested))) : '',
     emailDetailItem('Rooms assigned', escapeHtml(String((group.bookings || []).length || '—'))),
-    category ? emailDetailItem('Pricing category', escapeHtml(category)) : '',
     group.grand_total != null ? emailDetailItem(totalLabel, `<strong>${fmtPeso(group.grand_total)}</strong>`) : '',
     emailDetailItem('Status', estimate ? 'Pending review' : 'Approved'),
   ].filter(Boolean));
@@ -413,7 +405,7 @@ export async function sendBookingRequestReceivedEmail(user, booking) {
       <h2>Reservation Request Received</h2>
       <p>Hi ${escapeHtml(name)},</p>
       <p>We received your room reservation request. Housing staff will review the details below and email you once it is approved.</p>
-      ${emailNotice('The total shown is an <strong>estimate</strong> based on standard guest rates. Your final amount may change when housing assigns your pricing category.', 'warn')}
+      ${emailNotice('The total shown is an <strong>estimate</strong>. Housing staff will confirm your final amount after reviewing your request.', 'warn')}
       ${details.reference ? `<p><strong>Reference:</strong> ${escapeHtml(details.reference)}</p>` : ''}
       ${emailSection('Contact', details.contactItems)}
       ${emailSection('Stay details', details.stayItems)}

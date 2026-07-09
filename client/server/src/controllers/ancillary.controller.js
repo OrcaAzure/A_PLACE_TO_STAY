@@ -22,6 +22,8 @@ import {
 import {
   fetchExtraServiceRows,
   fetchMealRateRows,
+  groupDefaultMealRows,
+  groupDefaultServiceRows,
   groupMealRows,
   groupServiceRows,
   getRoomRateGroups,
@@ -31,7 +33,7 @@ import { bustCatalogAndFacilities } from '../utils/cache.js';
 export const getMealRatesCatalog = async (req, res) => {
   try {
     const rows = await fetchMealRateRows();
-    res.status(200).json({ meals: groupMealRows(rows) });
+    res.status(200).json({ meals: groupDefaultMealRows(rows) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -40,7 +42,7 @@ export const getMealRatesCatalog = async (req, res) => {
 export const getExtraServicesCatalog = async (req, res) => {
   try {
     const rows = await fetchExtraServiceRows();
-    res.status(200).json({ services: groupServiceRows(rows) });
+    res.status(200).json({ services: groupDefaultServiceRows(rows) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

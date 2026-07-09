@@ -16,7 +16,6 @@ import {
   runGmcAblockMigration,
   runVenueFieldsMigration,
 } from './facilities.js';
-import { seedPricingCategoryRates } from '../data/pricing-category-rates.js';
 
 export async function runSchemaPatches() {
   try {
@@ -712,10 +711,5 @@ export async function runSchemaPatches() {
   } catch (err) {
     console.warn('[schema] pricing_category migration skipped:', err.message);
   }
-
-  try {
-    await seedPricingCategoryRates();
-  } catch (err) {
-    console.warn('[schema] pricing category rate seed skipped:', err.message);
-  }
 }
+

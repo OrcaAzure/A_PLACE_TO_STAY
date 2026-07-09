@@ -14,7 +14,7 @@ export function cleanupAdminPage() {
   pageCleanup = null;
   teardownGuestAccessPage();
   import('/assets/js/features/admin-facility-catalog.js')
-    .then(({ hideFacilityCatalogModal }) => hideFacilityCatalogModal())
+    .then(({ teardownFacilityCatalog }) => teardownFacilityCatalog())
     .catch(() => {});
   document.getElementById('calendar-mount')?.replaceChildren();
   document.getElementById('page-content')?.scrollTo(0, 0);
@@ -162,6 +162,9 @@ async function bootFacilities() {
   return () => {
     teardownRoomsBoard();
     teardownVenueScheduleBoard();
+    import('/assets/js/features/admin-facility-catalog.js')
+      .then(({ teardownFacilityCatalog }) => teardownFacilityCatalog())
+      .catch(() => {});
   };
 }
 

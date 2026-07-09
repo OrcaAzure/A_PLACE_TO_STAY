@@ -85,12 +85,6 @@ a.res-action-card {
 .res-banner--ok { background: #ECFDF5; border: 1px solid #A7F3D0; color: #065F46; }
 .res-banner--warn { background: #FEF2F2; border: 1px solid #FECACA; color: #991B1B; }
 
-.res-pricing-category { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #EDF2F7; }
-.res-pricing-category--compact { margin-top: 0.75rem; padding-top: 0; border-top: none; }
-.res-pricing-category__hint { margin: 0.25rem 0 0.5rem; }
-.res-pricing-category__select { max-width: 16rem; }
-.res-pricing-category__active-hint { font-size: 0.8125rem; color: #718096; margin: 0.375rem 0 0; line-height: 1.4; }
-
 .res-room-grid { display: grid; gap: 0.75rem; }
 .res-room-card { text-align: left; padding: 1rem; border: 2px solid #E2E8F0; border-radius: 0.75rem; background: #fff; cursor: pointer; width: 100%; }
 .res-room-card:hover:not(:disabled) { border-color: #1A365D; }

@@ -19,8 +19,6 @@ import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancell
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from './ancillary.service.js';
 import { sendGroupModifiedEmail, sendGroupConfirmationEmail, sendGuestGroupSelfModifyEmail, sendGroupBookingCancelledEmail } from './email.service.js';
 import { ensureInvoiceForBooking, ensureInvoicesForGroup, getInvoiceSnapshot } from './payment.service.js';
-import { normalizePricingCategory } from '../constants/rateVariants.js';
-
 const bookingSelect = `
   SELECT bk.*,
          r.room_number, r.room_type, r.capacity_min, r.capacity_max,
@@ -139,7 +137,7 @@ export async function listGroups({ userId = null, admin = false } = {}) {
 }
 
 export async function suggestRoomsForGroup({
-  checkIn, checkOut, totalGuests, excludeGroupId = null, bypassAdvanceLimit = false, pricingCategory = 'Guest',
+  checkIn, checkOut, totalGuests, excludeGroupId = null, bypassAdvanceLimit = false,
 }) {
   const rooms = await getAvailableRooms({
     checkIn,
@@ -148,7 +146,6 @@ export async function suggestRoomsForGroup({
     excludeGroupId,
     groupPicker: true,
     bypassAdvanceLimit,
-    pricingCategory,
   });
   const suggestion = suggestRoomAssignment(rooms, totalGuests);
   const availableCount = rooms.filter((r) => r.availability_status === 'available').length;
@@ -189,12 +186,10 @@ export async function saveGroupBookings({
   fees,
   meal_allergen_notes,
   bypassAdvanceLimit = false,
-  pricingCategory = 'Guest',
 }) {
   await validateRoomAssignments({ checkIn, checkOut, rooms, excludeGroupId: groupId });
 
-  const category = normalizePricingCategory(pricingCategory);
-  const mealRates = await getMealRates(category);
+  const mealRates = await getMealRates();
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
@@ -211,7 +206,6 @@ export async function saveGroupBookings({
         checkOut,
         guestCount: guest_count,
         bypassAdvanceLimit,
-        pricingCategory: category,
       });
 
       let lineTotal = prepared.total_amount;
@@ -232,7 +226,7 @@ export async function saveGroupBookings({
         [
           userId, room_id, groupId, checkIn, checkOut, guest_count,
           prepared.season, prepared.occupancy_item, lineTotal, status,
-          notes || null, contactPhone || null, i === 0 ? (meal_allergen_notes || null) : null, category,
+          notes || null, contactPhone || null, i === 0 ? (meal_allergen_notes || null) : null, 'Guest',
         ]
       );
 
@@ -281,9 +275,6 @@ export async function createReservationGroup(raw = {}) {
   const userId = raw.userId ?? raw.user_id;
   const guestName = raw.guestName || raw.guest_name;
   const email = raw.email || raw.contact_email;
-  const pricingCategory = isAdmin
-    ? normalizePricingCategory(raw.pricing_category ?? raw.pricingCategory)
-    : 'Guest';
 
   if (isEmpty(groupName) || isEmpty(contactName) || isEmpty(checkIn) || isEmpty(checkOut)) {
     throw new Error('group_name, contact_name, check_in, and check_out are required');
@@ -313,7 +304,7 @@ export async function createReservationGroup(raw = {}) {
       roomsRequested || null,
       groupStatus,
       notes || null,
-      pricingCategory,
+      'Guest',
     ]
   );
 
@@ -337,7 +328,6 @@ export async function createReservationGroup(raw = {}) {
       fees,
       meal_allergen_notes,
       bypassAdvanceLimit: isAdmin,
-      pricingCategory,
     });
   }
 
@@ -474,12 +464,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
     group_name, contact_name, contact_phone, contact_email,
     check_in, check_out, total_guests, rooms_requested, notes, status,
     rooms, meals, fees, user_id, guest_name, email, meal_allergen_notes,
-    pricing_category,
   } = body;
-
-  const pricingCategory = normalizePricingCategory(
-    pricing_category ?? group.pricing_category ?? 'Guest',
-  );
 
   const nextCheckIn = check_in || group.check_in;
   const nextCheckOut = check_out || group.check_out;
@@ -526,7 +511,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       resolvedUserId,
       group_name, contact_name, contact_phone, contact_email,
       nextCheckIn, nextCheckOut, nextGuests, rooms_requested,
-      nextStatus, notes, pricingCategory, groupId,
+      nextStatus, notes, 'Guest', groupId,
     ]
   );
 
@@ -548,7 +533,6 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       fees,
       meal_allergen_notes,
       bypassAdvanceLimit: isAdmin,
-      pricingCategory,
     });
     const fresh = await getGroupById(groupId);
     if (nextStatus === 'Cancelled' && isAdmin) {
