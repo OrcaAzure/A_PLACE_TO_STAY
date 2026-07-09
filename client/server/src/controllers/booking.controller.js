@@ -24,7 +24,6 @@ import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestA
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from '../services/ancillary.service.js';
 import { getInvoiceSnapshot, ensureInvoiceForBooking } from '../services/payment.service.js';
-import { normalizePricingCategory } from '../constants/rateVariants.js';
 
 const ADMIN_ROLES = ['Super Admin', 'Admin'];
 
@@ -98,9 +97,6 @@ export const getRoomAvailability = async (req, res) => {
       excludeGroupId: exclude_group_id || null,
       groupPicker: group_picker === '1' || group_picker === 'true',
       bypassAdvanceLimit: isAdmin,
-      pricingCategory: isAdmin && req.query.pricing_category
-        ? normalizePricingCategory(req.query.pricing_category)
-        : 'Guest',
     });
     if (!isAdmin) {
       rooms = filterRoomsForGuestUser(rooms, req.user.email);
@@ -120,11 +116,7 @@ export const getRoomAvailability = async (req, res) => {
 
 export const getMealRateList = async (req, res) => {
   try {
-    const isAdmin = ADMIN_ROLES.includes(req.user.role);
-    const pricingCategory = isAdmin && req.query.pricing_category
-      ? normalizePricingCategory(req.query.pricing_category)
-      : 'Guest';
-    res.status(200).json({ rates: await getMealRates(pricingCategory) });
+    res.status(200).json({ rates: await getMealRates() });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -147,9 +139,6 @@ export const createBooking = async (req, res) => {
     }
 
     const isAdmin = ADMIN_ROLES.includes(role);
-    const pricingCategory = isAdmin
-      ? normalizePricingCategory(req.body.pricing_category)
-      : 'Guest';
     if (!isAdmin) {
       const room = await getRoomById(room_id);
       if (!room || !canGuestAccessBuilding(req.user.email, room.building_name)) {
@@ -165,10 +154,9 @@ export const createBooking = async (req, res) => {
       season,
       occupancyItem: occupancy_item,
       bypassAdvanceLimit: isAdmin,
-      pricingCategory,
     });
 
-    const mealRates = await getMealRates(pricingCategory);
+    const mealRates = await getMealRates();
     const grandTotal = await computeGrandTotal({
       roomTotal: prepared.total_amount,
       meals,
@@ -184,7 +172,7 @@ export const createBooking = async (req, res) => {
       [
         effectiveUserId, room_id, req.body.group_id || null, check_in, check_out, guest_count || 1,
         prepared.season, prepared.occupancy_item, grandTotal, bookingStatus,
-        notes || null, contact_phone || null, meal_allergen_notes || null, pricingCategory,
+        notes || null, contact_phone || null, meal_allergen_notes || null, 'Guest',
       ]
     );
 
@@ -326,19 +314,14 @@ export const updateBooking = async (req, res) => {
       if (cancelError) return res.status(400).json({ message: cancelError });
     }
 
-    const pricingCategory = req.body.pricing_category != null
-      ? normalizePricingCategory(req.body.pricing_category)
-      : normalizePricingCategory(existing.pricing_category ?? 'Guest');
-
-    const validated = await validateBookingUpdate(existing, { ...req.body, pricing_category: pricingCategory }, true);
+    const validated = await validateBookingUpdate(existing, req.body, true);
     const { check_in, check_out, guest_count, status, notes, contact_phone, room_id, meals, fees, guest_name, email,
       notify_guest, notify_modification, modification_message, meal_allergen_notes } = req.body;
-    const mealRates = await getMealRates(pricingCategory);
+    const mealRates = await getMealRates();
     const grandTotal = await computeUpdatedBookingGrandTotal(existing, validated, {
       meals: meals != null ? meals : null,
       fees: fees != null ? fees : null,
       mealRates,
-      pricingCategory,
     });
 
     let resolvedUserId = req.body.user_id;
@@ -370,7 +353,7 @@ export const updateBooking = async (req, res) => {
         room_id ?? validated.roomId,
         check_in, check_out, guest_count, status,
         validated.season, validated.occupancyItem,
-        notes, contact_phone, meal_allergen_notes, pricingCategory, grandTotal,
+        notes, contact_phone, meal_allergen_notes, 'Guest', grandTotal,
         req.params.id,
       ]
     );

@@ -15,15 +15,6 @@ import {
   deleteExtraServiceRate,
 } from '/assets/js/services/api.js';
 import { confirmModal, loadComponent } from '/assets/js/layout/ui.js';
-import {
-  normalizeAudience,
-  rowAudience,
-  filterByAudience,
-  countByAudience,
-  renderPricingAudienceTabs,
-  bindPricingAudienceTabs,
-  audienceTabHint,
-} from '/assets/js/features/admin-pricing-audience.js';
 
 const MEAL_NAMES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const EXTRA_CATEGORIES = [
@@ -56,9 +47,7 @@ function escapeHtml(value) {
 function simpleVariantFields(row = {}, defaults = {}) {
   const ageBand = row.age_band || defaults.age_band || 'Adult';
   const currency = row.currency || defaults.currency || 'PHP';
-  const audience = modalState.kind === 'extra'
-    ? 'Guest'
-    : normalizeAudience(activeCatalogAudience);
+  const audience = 'Guest';
   return `
     <div class="catalog-row">
       <div>
@@ -99,23 +88,24 @@ function variantChips(row = {}) {
 }
 
 let onRefresh = async () => {};
-let catalogShellInitialized = false;
 let catalogModalEventsBound = false;
-let modalMountPromise = null;
+/** @type {AbortController | null} */
+let catalogPageActionsAbort = null;
 let modalState = { mode: 'edit', kind: 'venue', row: null };
 let activeCatalogTab = 'rooms';
-let activeCatalogAudience = 'Guest';
 const catalogEditMode = { venues: false, meals: false, extras: false };
 const catalogCache = { venues: [], meals: [], services: [] };
 
 async function ensureFacilityCatalogModalMounted() {
   if (document.getElementById('catalog-modal')) return;
-  if (!modalMountPromise) {
-    modalMountPromise = loadComponent('/components/facility-catalog-modal.html').then((html) => {
-      document.body.insertAdjacentHTML('beforeend', html);
-    });
+  try {
+    const html = await loadComponent('/components/facility-catalog-modal.html');
+    document.body.insertAdjacentHTML('beforeend', html);
+    catalogModalEventsBound = false;
+  } catch (err) {
+    console.error('[facility-catalog] Failed to mount modal:', err);
+    throw err;
   }
-  await modalMountPromise;
 }
 
 function bindCatalogModalEvents() {
@@ -159,6 +149,16 @@ export function hideFacilityCatalogModal() {
   if (document.getElementById('catalog-modal')) hideModal();
 }
 
+/** Drop modal markup and page listeners when admin soft-nav leaves Facilities. */
+export function teardownFacilityCatalog() {
+  catalogPageActionsAbort?.abort();
+  catalogPageActionsAbort = null;
+  hideFacilityCatalogModal();
+  document.getElementById('catalog-modal')?.remove();
+  document.getElementById('catalog-modal-overlay')?.remove();
+  catalogModalEventsBound = false;
+}
+
 export function isFacilityCatalogModalOpen() {
   return !$('catalog-modal')?.classList.contains('hidden');
 }
@@ -182,7 +182,7 @@ function renderModalForm() {
   const title = $('catalog-modal-title');
   const fields = $('catalog-modal-fields');
   const deleteBtn = $('catalog-modal-delete');
-  if (!fields) return;
+  if (!title || !fields) return;
 
   const { mode, kind, row } = modalState;
   title.textContent = mode === 'add'
@@ -280,7 +280,7 @@ function readPayload() {
   const capMaxEl = $('cat-cap-max');
   const capacity_min = capMinEl?.value ? Number(capMinEl.value) : null;
   const capacity_max = capMaxEl?.value ? Number(capMaxEl.value) : null;
-  const audience = normalizeAudience($('cat-audience')?.value || activeCatalogAudience);
+  const audience = $('cat-audience')?.value?.trim() || 'Guest';
   const age_band = $('cat-age-band')?.value || 'Adult';
   const currency = $('cat-currency')?.value || 'PHP';
   const billing_unit = $('cat-billing-unit')?.value?.trim() || 'per item';
@@ -418,25 +418,6 @@ function resolveRow(kind, id) {
   return null;
 }
 
-function renderCatalogAudienceBars() {
-  const mealsTabs = $('meals-audience-tabs');
-  const mealHint = $('meals-audience-hint');
-
-  renderPricingAudienceTabs(mealsTabs, {
-    active: activeCatalogAudience,
-    counts: countByAudience(catalogCache.meals, { pricedOnly: true }),
-  });
-
-  if (mealHint) mealHint.textContent = audienceTabHint(activeCatalogAudience);
-}
-
-function setCatalogAudience(audience) {
-  const next = normalizeAudience(audience);
-  if (next === activeCatalogAudience) return;
-  activeCatalogAudience = next;
-  renderMealsCatalog(catalogCache.meals);
-}
-
 function editBtn(kind, id) {
   return `<button type="button" class="catalog-edit-btn" data-catalog-edit="${kind}" data-id="${id}" aria-label="Edit this price">
     <span class="material-symbols-outlined text-[18px]">edit</span> Edit
@@ -507,18 +488,13 @@ export function renderVenuesCatalog(venues) {
 
 export function renderMealsCatalog(meals) {
   catalogCache.meals = meals || [];
-  renderCatalogAudienceBars();
   const mount = $('meals-grid-mount');
   if (!mount) return;
 
-  const visible = filterByAudience(meals, activeCatalogAudience);
+  const visible = meals || [];
 
   if (!visible.length) {
-    const label = escapeHtml(activeCatalogAudience);
-    const hint = activeCatalogAudience === 'Guest'
-      ? 'No meal prices yet. Use <strong>Add meal</strong> to get started.'
-      : `No <strong>${label}</strong> meal prices yet. Use <strong>Add meal</strong> to add one for this category.`;
-    mount.innerHTML = `<p class="fac-catalog-grid__empty">${hint}</p>`;
+    mount.innerHTML = '<p class="fac-catalog-grid__empty">No meal prices yet. Use <strong>Add meal</strong> to get started.</p>';
     return;
   }
 
@@ -539,9 +515,8 @@ export function renderExtrasCatalog(services) {
   const mount = $('extras-grid-mount');
   if (!mount) return;
 
-  const guestAudience = 'Guest';
   const cards = (services || []).map((group) => {
-    const items = filterByAudience(group.items || [], guestAudience);
+    const items = group.items || [];
     if (!items.length) return '';
 
     const itemsHtml = items.map((item) => `
@@ -606,38 +581,46 @@ export function setCatalogToolbarTab(tab) {
   updateCatalogToolbar(tab);
 }
 
-export async function initFacilityCatalog({ refresh }) {
-  onRefresh = refresh;
-  await ensureFacilityCatalogModalMounted();
-  bindCatalogModalEvents();
-
-  if (catalogShellInitialized) return;
-  catalogShellInitialized = true;
-
-  document.querySelectorAll('[data-catalog-edit-toggle]').forEach((btn) => {
-    btn.addEventListener('click', toggleCatalogEditMode);
-  });
+function bindCatalogPageActions() {
+  catalogPageActionsAbort?.abort();
+  catalogPageActionsAbort = new AbortController();
+  const { signal } = catalogPageActionsAbort;
 
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && isFacilityCatalogModalOpen()) hideModal();
-  });
+  }, { signal });
 
   document.body.addEventListener('click', (e) => {
+    const editToggle = e.target.closest('[data-catalog-edit-toggle]');
+    if (editToggle) {
+      toggleCatalogEditMode({ currentTarget: editToggle });
+      return;
+    }
+
     const edit = e.target.closest('[data-catalog-edit]');
     if (edit) {
       const kind = edit.getAttribute('data-catalog-edit');
       const row = resolveRow(kind, edit.getAttribute('data-id'));
       if (!row) return;
-      openModal({ mode: 'edit', kind, row });
+      e.preventDefault();
+      openModal({ mode: 'edit', kind, row }).catch((err) => {
+        console.error('[facility-catalog] Could not open edit modal:', err);
+      });
       return;
     }
 
     const add = e.target.closest('[data-catalog-add]');
-    if (add) {
-      e.preventDefault();
-      openModal({ mode: 'add', kind: add.getAttribute('data-catalog-add') });
-    }
-  });
+    if (!add) return;
+    e.preventDefault();
+    openModal({ mode: 'add', kind: add.getAttribute('data-catalog-add') }).catch((err) => {
+      console.error('[facility-catalog] Could not open add modal:', err);
+    });
+  }, { signal });
+}
 
-  bindPricingAudienceTabs($('meals-audience-tabs'), setCatalogAudience);
+export async function initFacilityCatalog({ refresh }) {
+  onRefresh = refresh;
+  await ensureFacilityCatalogModalMounted();
+  bindCatalogModalEvents();
+  bindCatalogPageActions();
 }

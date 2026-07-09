@@ -26,8 +26,7 @@ import {
   normalizeRateVariant,
   rateVariantKey,
   matchesDefaultRateVariant,
-  normalizePricingCategory,
-  pickRateRowForAudience,
+  pickBookingRateRow,
 } from '../constants/rateVariants.js';
 
 export async function fetchMealRateRows() {
@@ -202,7 +201,8 @@ export async function getRoomRateGroups() {
   const dormGroup = await getDormRateGroup();
 
   const roomGroups = tiers.map((tier) => {
-    const tierRows = rateRows.filter((row) => row.room_type === tier);
+    const tierRows = rateRows.filter((row) => row.room_type === tier
+      && matchesDefaultRateVariant(row, { billing_unit: DEFAULT_ROOM_BILLING_UNIT }));
     const variantMap = new Map();
     for (const row of tierRows) {
       const key = `${row.item}|${rateVariantKey(row, { billing_unit: DEFAULT_ROOM_BILLING_UNIT })}`;
@@ -252,13 +252,12 @@ export async function getRoomRateGroups() {
   return [dormGroup, ...roomGroups];
 }
 
-export async function getMealRatesMap(pricingCategory = 'Guest') {
+export async function getMealRatesMap() {
   try {
     const rows = await fetchMealRateRows();
     const rates = { ...DEFAULT_MEAL_RATES };
-    const category = normalizePricingCategory(pricingCategory);
     rows.forEach((r) => {
-      const match = pickRateRowForAudience([r], category, { billing_unit: DEFAULT_MEAL_BILLING_UNIT });
+      const match = pickBookingRateRow([r], { billing_unit: DEFAULT_MEAL_BILLING_UNIT });
       if (!match) return;
       const type = r.item || r.meal_type;
       rates[type] = Number(match.rate);

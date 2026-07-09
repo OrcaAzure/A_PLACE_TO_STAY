@@ -13,9 +13,12 @@
 
 import { getAdminVenues, saveAdminVenue } from '/assets/js/services/api.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
-import { normalizeAudience, rowAudience } from '/assets/js/features/admin-pricing-audience.js';
 
 const GUEST_AUDIENCE = 'Guest';
+
+function rowAudience(row) {
+  return String(row?.audience ?? 'Guest').trim() || 'Guest';
+}
 
 let venues = [];
 /** @type {Map<string, object>} working copy keyed by venue.key */
@@ -121,7 +124,7 @@ function buildDrafts() {
           id: r.id,
           season: r.season,
           rate: r.rate,
-          audience: normalizeAudience(r.audience),
+          audience: GUEST_AUDIENCE,
           age_band: r.age_band,
           currency: r.currency,
           billing_unit: r.billing_unit,
