@@ -29,15 +29,15 @@ function runMiddleware(middleware, req) {
 
 describe('requireRole', () => {
   it('returns 401 when req.user is missing', () => {
-    const { res, nextCalled } = runMiddleware(requireRole('Admin'), {});
+    const { res, nextCalled } = runMiddleware(requireRole('Super Admin'), {});
     assert.equal(res.statusCode, 401);
     assert.equal(res.body.message, 'Unauthorized');
     assert.equal(nextCalled, false);
   });
 
   it('returns 403 when role is not allowed', () => {
-    const { res, nextCalled } = runMiddleware(requireRole('Super Admin', 'Admin'), {
-      user: { role: 'Faculty' },
+    const { res, nextCalled } = runMiddleware(requireRole('Super Admin'), {
+      user: { role: 'Guest' },
     });
     assert.equal(res.statusCode, 403);
     assert.match(res.body.message, /Forbidden/);
@@ -45,8 +45,8 @@ describe('requireRole', () => {
   });
 
   it('calls next when role is allowed', () => {
-    const { res, nextCalled } = runMiddleware(requireRole('Super Admin', 'Admin'), {
-      user: { role: 'Admin' },
+    const { res, nextCalled } = runMiddleware(requireRole('Super Admin'), {
+      user: { role: 'Super Admin' },
     });
     assert.equal(res.statusCode, 200);
     assert.equal(nextCalled, true);
@@ -63,21 +63,21 @@ describe('denyRole / blockReadOnly', () => {
     assert.equal(nextCalled, false);
   });
 
-  it('allows Faculty through blockReadOnly', () => {
+  it('allows Guest through blockReadOnly', () => {
     const { res, nextCalled } = runMiddleware(blockReadOnly, {
-      user: { role: 'Faculty' },
+      user: { role: 'Guest' },
     });
     assert.equal(nextCalled, true);
     assert.equal(res.statusCode, 200);
   });
 
   it('denyRole blocks only listed roles', () => {
-    const guard = denyRole('GMC', 'Staff');
-    const blocked = runMiddleware(guard, { user: { role: 'GMC' } });
+    const guard = denyRole('Supervisory User');
+    const blocked = runMiddleware(guard, { user: { role: 'Supervisory User' } });
     assert.equal(blocked.res.statusCode, 403);
     assert.equal(blocked.nextCalled, false);
 
-    const allowed = runMiddleware(guard, { user: { role: 'Faculty' } });
+    const allowed = runMiddleware(guard, { user: { role: 'Guest' } });
     assert.equal(allowed.nextCalled, true);
   });
 });

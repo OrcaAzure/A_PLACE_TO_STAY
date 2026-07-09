@@ -117,7 +117,6 @@ function renderSingleRequest(r) {
     factRow('Name', r.requester?.name),
     factRow('Email', r.requester?.email),
     factRow('Phone', r.contactPhone),
-    factRow('Role', r.requester?.role),
   ].join('');
 
   const stayRows = [

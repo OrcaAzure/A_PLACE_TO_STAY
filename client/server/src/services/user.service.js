@@ -3,18 +3,20 @@ import bcrypt from 'bcryptjs';
 import { pool } from '../config/db.js';
 import { safeUser, isEmpty } from '../utils/helpers.js';
 import { ROLES } from '../utils/constants.js';
+import { isInternalGuestEmail } from '../utils/guestAccess.js';
 import { sendGuestAccessEmail } from './email.service.js';
 import { logAudit, AUDIT_ACTIONS } from './audit.service.js';
 
-const INTERNAL_PORTAL_ROLES = new Set([
-  ROLES.SUPER_ADMIN,
-  ROLES.ADMIN,
-  ROLES.SUPERVISORY_USER,
-  ROLES.GMC,
-  ROLES.FACULTY,
-  ROLES.STAFF,
-  ROLES.MISSIONARY,
-]);
+export function isInternalPortalUser(user) {
+  if (!user) return false;
+  if (user.role === ROLES.SUPER_ADMIN || user.role === ROLES.SUPERVISORY_USER) return true;
+  return user.role === ROLES.GUEST && isInternalGuestEmail(user.email);
+}
+
+/** External visitors managed on the Guest Access page (Guest role, non-APTS email). */
+export function isManagedExternalGuest(user) {
+  return user?.role === ROLES.GUEST && !isInternalGuestEmail(user.email);
+}
 
 export function generateTempPassword() {
   const segment = crypto.randomBytes(3).toString('hex');
@@ -35,18 +37,18 @@ export async function findUserByEmail(email) {
 export function describeGuestEmailConflict(existing) {
   if (!existing) return 'Email is already in use';
 
-  if (existing.role === ROLES.EXTERNAL_GUEST) {
+  if (isManagedExternalGuest(existing)) {
     if (existing.status === 'Active') {
       return `A guest account for ${existing.full_name} (${existing.email}) already exists. Look for them in the guest accounts list below.`;
     }
     return `A guest account for ${existing.full_name} (${existing.email}) already exists but is inactive. Creating again will reactivate it.`;
   }
 
-  if (INTERNAL_PORTAL_ROLES.has(existing.role)) {
-    return `This email belongs to ${existing.full_name}, an internal ${existing.role} account. Guest Access is for external visitors — that person already has an APTS login and will not appear in this list.`;
+  if (isInternalPortalUser(existing)) {
+    return `This email belongs to ${existing.full_name}, an internal APTS community account. Guest Access is for external visitors — that person already has an APTS login and will not appear in this list.`;
   }
 
-  return `This email is already used by ${existing.full_name} (${existing.role}). Guest Access only lists External Guest accounts.`;
+  return `This email is already used by ${existing.full_name} (${existing.role}). Guest Access only lists external visitor accounts.`;
 }
 
 export async function createGuestUser({ full_name, email, organization, actorUserId = null }) {
@@ -61,7 +63,7 @@ export async function createGuestUser({ full_name, email, organization, actorUse
 
   const existing = await findUserByEmail(normalizedEmail);
   if (existing) {
-    if (existing.role === ROLES.EXTERNAL_GUEST) {
+    if (isManagedExternalGuest(existing)) {
       if (existing.status === 'Active') {
         throw new Error(describeGuestEmailConflict(existing));
       }
@@ -108,7 +110,7 @@ export async function createGuestUser({ full_name, email, organization, actorUse
 
   const [result] = await pool.query(
     'INSERT INTO users (full_name, email, password, role, status) VALUES (?, ?, ?, ?, ?)',
-    [full_name.trim(), normalizedEmail, hashedPassword, ROLES.EXTERNAL_GUEST, 'Active']
+    [full_name.trim(), normalizedEmail, hashedPassword, ROLES.GUEST, 'Active']
   );
 
   const [rows] = await pool.query('SELECT * FROM users WHERE id = ? LIMIT 1', [result.insertId]);

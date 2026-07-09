@@ -78,7 +78,7 @@
   </main>
 
   <script type="module">
-    import { redirectIfLoggedIn, ADMIN_ROLES, setAuthSession } from '/assets/js/services/auth.js';
+    import { redirectIfLoggedIn, ADMIN_PORTAL_ROLES, setAuthSession } from '/assets/js/services/auth.js';
     import { login } from '/assets/js/services/api.js';
 
     const errorEl = document.getElementById('loginError');
@@ -125,7 +125,7 @@
           setAuthSession(data.user);
 
           const role = data.user.role || '';
-          if (ADMIN_ROLES.includes(role)) {
+          if (ADMIN_PORTAL_ROLES.includes(role)) {
             window.location.href = '/admin/dashboard.html';
           } else {
             window.location.href = '/guest/dashboard.html';

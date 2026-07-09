@@ -641,7 +641,6 @@ function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', 
     renderDetailRow('Name', booking.requester.name),
     renderDetailRow('Email', booking.requester.email),
     renderDetailRow('Phone', booking.contactPhone),
-    renderDetailRow('Role', booking.requester.role),
   ].join('');
 
   if (mode === 'reject') {

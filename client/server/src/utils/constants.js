@@ -1,26 +1,25 @@
 export const ROLES = {
   SUPER_ADMIN: 'Super Admin',
-  ADMIN: 'Admin',
   SUPERVISORY_USER: 'Supervisory User',
-  GMC: 'GMC',
-  FACULTY: 'Faculty',
-  STAFF: 'Staff',
-  MISSIONARY: 'Missionary',
-  EXTERNAL_GUEST: 'External Guest',
+  GUEST: 'Guest',
 };
 
-/** Roles that use the admin portal. */
-export const ADMIN_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
+/** Roles that may perform housing admin write actions (approve, edit catalog, billing). */
+export const ADMIN_ROLES = [ROLES.SUPER_ADMIN];
+
+/** Roles that may open the admin portal and view housing operations (read-only for Supervisory). */
+export const ADMIN_PORTAL_ROLES = [ROLES.SUPER_ADMIN, ROLES.SUPERVISORY_USER];
 
 export function isAdminRole(role) {
   return ADMIN_ROLES.includes(role);
 }
 
-/** Default role when admin creates a booking for someone not yet in the system. */
-export const DEFAULT_BOOKING_GUEST_ROLE = ROLES.EXTERNAL_GUEST;
+export function isAdminPortalRole(role) {
+  return ADMIN_PORTAL_ROLES.includes(role);
+}
 
-/** Roles the housing admin manages on the Guest Access page. */
-export const GUEST_ACCESS_ROLES = [ROLES.EXTERNAL_GUEST];
+/** Default role when admin creates a booking for someone not yet in the system. */
+export const DEFAULT_BOOKING_GUEST_ROLE = ROLES.GUEST;
 
 export const USER_ROLES = Object.values(ROLES);
 

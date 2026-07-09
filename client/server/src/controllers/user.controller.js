@@ -1,11 +1,10 @@
 import { pool } from '../config/db.js';
 import { safeUser } from '../utils/helpers.js';
 import { ROLES, USER_ROLES, STATUS } from '../utils/constants.js';
-import { createGuestUser } from '../services/user.service.js';
+import { isAdminRole } from '../utils/constants.js';
+import { createGuestUser, isManagedExternalGuest } from '../services/user.service.js';
 import { logAudit, AUDIT_ACTIONS } from '../services/audit.service.js';
 import { invalidateSession } from '../services/session.service.js';
-
-import { isAdminRole } from '../utils/constants.js';
 
 const USER_PUBLIC_COLUMNS = 'id, full_name, email, role, status, created_at, updated_at';
 
@@ -91,8 +90,8 @@ export const updateUser = async (req, res) => {
       return res.status(403).json({ message: 'Only a Super Admin can modify Super Admin accounts' });
     }
 
-    if (role && role !== ROLES.EXTERNAL_GUEST && target.role === ROLES.EXTERNAL_GUEST) {
-      return res.status(400).json({ message: 'Use Settings or contact a Super Admin to change internal roles' });
+    if (role && role !== ROLES.GUEST && isManagedExternalGuest(target)) {
+      return res.status(400).json({ message: 'Use Settings or contact a Super Admin to change housing roles for guest accounts' });
     }
 
     await pool.query(
@@ -109,7 +108,7 @@ export const updateUser = async (req, res) => {
     }
 
     if (
-      target.role === ROLES.EXTERNAL_GUEST
+      isManagedExternalGuest(target)
       && status
       && status !== target.status
       && req.user?.id

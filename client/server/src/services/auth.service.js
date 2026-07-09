@@ -5,6 +5,8 @@ import { isProduction } from '../config/env.js';
 import { safeUser, isEmpty } from '../utils/helpers.js';
 import { sendPasswordResetEmail } from './email.service.js';
 import { signUserToken } from '../utils/authToken.js';
+import { ROLES } from '../utils/constants.js';
+import { isHousingSuperAdminEmail } from '../config/housing.js';
 import {
   checkLoginAllowed,
   recordFailedLogin,
@@ -19,6 +21,15 @@ function assertPasswordStrength(password) {
   if (password.length < MIN_PASSWORD_LENGTH) {
     throw new Error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`);
   }
+}
+
+async function applyHousingRoleAllowlist(user) {
+  if (!isHousingSuperAdminEmail(user.email)) return user;
+  if (user.role === ROLES.SUPER_ADMIN) return user;
+
+  await pool.query('UPDATE users SET role = ? WHERE id = ?', [ROLES.SUPER_ADMIN, user.id]);
+  user.role = ROLES.SUPER_ADMIN;
+  return user;
 }
 
 export const login = async ({ email, password }) => {
@@ -52,13 +63,14 @@ export const login = async ({ email, password }) => {
   }
 
   await clearLoginAttempts(normalizedEmail);
-  const sid = await rotateSession(user.id);
-  const token = signUserToken(user, sid);
+  const promoted = await applyHousingRoleAllowlist(user);
+  const sid = await rotateSession(promoted.id);
+  const token = signUserToken(promoted, sid);
 
   return {
     message: 'Login successful',
     token,
-    user: safeUser(user)
+    user: safeUser(promoted)
   };
 };
 

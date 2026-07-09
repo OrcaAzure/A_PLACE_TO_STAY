@@ -25,7 +25,7 @@ import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancell
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from '../services/ancillary.service.js';
 import { getInvoiceSnapshot, ensureInvoiceForBooking, deletePaymentsForRoomBooking } from '../services/payment.service.js';
 
-import { isAdminRole } from '../utils/constants.js';
+import { isAdminRole, isAdminPortalRole } from '../utils/constants.js';
 
 const bookingSelect = `
   SELECT bk.*,
@@ -53,7 +53,7 @@ export const getAllBookings = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
     let rows;
-    if (isAdminRole(role)) {
+    if (isAdminPortalRole(role)) {
       [rows] = await pool.query(`${bookingSelect} ORDER BY bk.check_in ASC`);
     } else {
       [rows] = await pool.query(
@@ -73,7 +73,7 @@ export const getBookingById = async (req, res) => {
     const { role, id: userId } = req.user;
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ? LIMIT 1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Booking not found' });
-    if (!isAdminRole(role) && rows[0].user_id !== userId) {
+    if (!isAdminPortalRole(role) && rows[0].user_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     res.status(200).json({ booking: await enrichBooking(rows[0]) });

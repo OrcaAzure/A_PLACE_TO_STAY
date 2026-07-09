@@ -6,12 +6,12 @@ import {
   deleteReservationGroup,
   suggestRoomsForGroup,
 } from '../services/group.service.js';
-import { isAdminRole } from '../utils/constants.js';
+import { isAdminRole, isAdminPortalRole } from '../utils/constants.js';
 
 export const getAllGroups = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
-    const admin = isAdminRole(role);
+    const admin = isAdminPortalRole(role);
     const groups = await listGroups({ userId, admin });
     res.status(200).json({ groups });
   } catch (error) {
@@ -24,7 +24,7 @@ export const getGroup = async (req, res) => {
     const { role, id: userId } = req.user;
     const group = await getGroupById(req.params.id);
     if (!group) return res.status(404).json({ message: 'Group reservation not found' });
-    if (!isAdminRole(role) && group.user_id !== userId) {
+    if (!isAdminPortalRole(role) && group.user_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     res.status(200).json({ group });

@@ -155,14 +155,9 @@ CREATE TABLE IF NOT EXISTS users (
     password   VARCHAR(255) NOT NULL,
     role       ENUM(
                  'Super Admin',
-                 'Admin',
                  'Supervisory User',
-                 'GMC',
-                 'Faculty',
-                 'Staff',
-                 'Missionary',
-                 'External Guest'
-               ) NOT NULL DEFAULT 'Faculty',
+                 'Guest'
+               ) NOT NULL DEFAULT 'Guest',
     status              ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
     session_id          VARCHAR(64) NULL,
     session_expires_at  TIMESTAMP NULL,

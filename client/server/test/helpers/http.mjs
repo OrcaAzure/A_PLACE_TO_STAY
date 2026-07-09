@@ -4,20 +4,33 @@ import './env-setup.mjs';
 import app from '../../src/app.js';
 import { testConnection } from '../../src/config/db.js';
 import { AUTH_COOKIE } from '../../src/utils/cookies.js';
+import { runSchemaPatches } from '../../src/seed/index.js';
 
 export { app };
+
+let schemaReadyPromise;
+
+async function ensureSchemaReady() {
+  if (!schemaReadyPromise) {
+    schemaReadyPromise = (async () => {
+      try {
+        await testConnection();
+        await runSchemaPatches();
+        return true;
+      } catch {
+        return false;
+      }
+    })();
+  }
+  return schemaReadyPromise;
+}
 
 export function api() {
   return request.agent(app);
 }
 
 export async function isDbAvailable() {
-  try {
-    await testConnection();
-    return true;
-  } catch {
-    return false;
-  }
+  return ensureSchemaReady();
 }
 
 function hasAuthCookie(res) {

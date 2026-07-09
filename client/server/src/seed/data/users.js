@@ -2,18 +2,13 @@ import bcrypt from 'bcryptjs';
 import { pool } from '../../config/db.js';
 
 const SEED_USERS = [
-  { full_name: 'System Administrator', email: 'admin@aptspace.com',          role: 'Super Admin',   status: 'Active' },
-  { full_name: 'Admin User',           email: 'admin2@aptspace.com',         role: 'Admin',         status: 'Active' },
-  { full_name: 'Lyshael Bernal',       email: 'lyshael.bernal@apts.edu',     role: 'Admin',         status: 'Active' },
-  { full_name: 'Maria Santos',         email: 'maria.santos@apts.edu.ph',    role: 'Faculty',       status: 'Active' },
-  { full_name: 'James Reyes',          email: 'james.reyes@apts.edu.ph',     role: 'Faculty',       status: 'Active' },
-  { full_name: 'Ruth Villanueva',      email: 'ruth.villanueva@apts.edu.ph', role: 'Staff',         status: 'Active' },
-  { full_name: 'Paul Mendoza',         email: 'paul.mendoza@apts.edu.ph',    role: 'Missionary',       status: 'Active' },
-  { full_name: 'Grace Tan',            email: 'grace.tan@apts.edu.ph',       role: 'Staff', status: 'Active' },
-  { full_name: 'David Cho',            email: 'david.cho@apts.edu.ph',       role: 'GMC',              status: 'Active' },
-  { full_name: 'Rev. Samuel Park',     email: 'samuel.park@gracechurch.org', role: 'External Guest',   status: 'Active' },
-  { full_name: 'Manila Bible Church',  email: 'mbc.retreat@example.org',   role: 'External Guest',   status: 'Inactive' },
-  { full_name: 'Pacific Outreach Group', email: 'outreach@example.org',    role: 'External Guest',   status: 'Active' },
+  { full_name: 'System Administrator', email: 'admin@aptspace.com',       role: 'Super Admin', status: 'Active' },
+  { full_name: 'Lyshael Bernal',       email: 'lyshael.bernal@apts.edu', role: 'Super Admin', status: 'Active' },
+  { full_name: 'Maria Santos',         email: 'maria.santos@apts.edu.ph', role: 'Guest',       status: 'Active' },
+  { full_name: 'James Reyes',          email: 'james.reyes@apts.edu.ph',  role: 'Guest',       status: 'Active' },
+  { full_name: 'Rev. Samuel Park',     email: 'samuel.park@gracechurch.org', role: 'Guest',    status: 'Active' },
+  { full_name: 'Manila Bible Church',  email: 'mbc.retreat@example.org', role: 'Guest',        status: 'Inactive' },
+  { full_name: 'Pacific Outreach Group', email: 'outreach@example.org', role: 'Guest',         status: 'Active' },
 ];
 
 export async function seedUsers() {

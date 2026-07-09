@@ -9,11 +9,11 @@ import {
   checkVenueSlotAvailability,
 } from '../controllers/facilityBooking.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
-import { blockReadOnly, requireAdmin } from '../middleware/role.middleware.js';
+import { blockReadOnly, requireAdmin, requireAdminPortal } from '../middleware/role.middleware.js';
 
 const router = Router();
 
-router.get('/overview', requireAuth, requireAdmin, getVenueScheduleOverview);
+router.get('/overview', requireAuth, requireAdminPortal, getVenueScheduleOverview);
 router.get('/check-slot', requireAuth, checkVenueSlotAvailability);
 router.get('/',      requireAuth,                                       getAllFacilityBookings);
 router.get('/:id',   requireAuth,                                       getFacilityBookingById);

@@ -170,7 +170,7 @@ export async function getGuestAccessActivity(limit = 25) {
 }
 
 export async function getGuestUsers(params = {}) {
-  return getUsers({ role: 'External Guest', ...params });
+  return getUsers({ role: 'Guest', ...params });
 }
 
 export async function createGuestUser(payload) {

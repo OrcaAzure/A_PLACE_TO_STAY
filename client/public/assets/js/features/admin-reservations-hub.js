@@ -245,7 +245,6 @@ function renderSingleRequestDetails(r) {
       factRow('Name', r.requester?.name),
       factRow('Email', r.requester?.email),
       factRow('Phone', r.contactPhone),
-      factRow('Role', r.requester?.role),
     ].join(''))}
     ${renderSection('Room requested', factRow('Room', roomLabel))}
     ${renderSection('Stay dates', [
@@ -328,7 +327,6 @@ function renderSingleStayDetails(item) {
       factRow('Name', item.guest_name),
       factRow('Email', item.guest_email),
       factRow('Phone', item.contact_phone),
-      factRow('Role', item.guest_role),
     ].join(''))}
     ${renderSection('Room', factRow('Assigned room', roomLabel))}
     ${renderSection('Stay dates', [

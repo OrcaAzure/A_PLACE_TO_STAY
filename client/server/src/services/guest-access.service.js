@@ -1,7 +1,7 @@
 import { pool } from '../config/db.js';
 import { safeUser } from '../utils/helpers.js';
-import { ROLES, GUEST_ACCESS_ROLES } from '../utils/constants.js';
-import { createGuestUser, findUserByEmail, describeGuestEmailConflict } from './user.service.js';
+import { ROLES } from '../utils/constants.js';
+import { createGuestUser, findUserByEmail, describeGuestEmailConflict, isManagedExternalGuest } from './user.service.js';
 import { logAudit, AUDIT_ACTIONS, listGuestAccessActivity } from './audit.service.js';
 import { invalidateSession } from './session.service.js';
 
@@ -145,10 +145,13 @@ function resolveStayContext(stays, today) {
 }
 
 async function loadGuestAccessAccounts() {
-  const rolePlaceholders = GUEST_ACCESS_ROLES.map(() => '?').join(', ');
   const [guests] = await pool.query(
-    `SELECT * FROM users WHERE role IN (${rolePlaceholders}) ORDER BY created_at DESC`,
-    GUEST_ACCESS_ROLES,
+    `SELECT * FROM users
+     WHERE role = ?
+       AND LOWER(email) NOT LIKE '%@apts.edu'
+       AND LOWER(email) NOT LIKE '%@apts.edu.ph'
+     ORDER BY created_at DESC`,
+    [ROLES.GUEST],
   );
   return guests;
 }
@@ -353,7 +356,7 @@ export async function approveGuestAccessRequest(requestId, actorUserId) {
   const existingUser = await findUserByEmail(request.email);
 
   if (existingUser) {
-    if (existingUser.role !== ROLES.EXTERNAL_GUEST) {
+    if (!isManagedExternalGuest(existingUser)) {
       throw new Error(describeGuestEmailConflict(existingUser));
     }
 
@@ -486,7 +489,7 @@ export async function assessGuestAccountDeletion(userId) {
   if (!guest) {
     return { canDelete: false, blockers: ['Guest account not found.'] };
   }
-  if (guest.role !== ROLES.EXTERNAL_GUEST) {
+  if (!isManagedExternalGuest(guest)) {
     return { canDelete: false, blockers: ['Only external guest accounts can be deleted from Guest Access.'] };
   }
 
@@ -574,7 +577,7 @@ export async function assessGuestAccountDeletion(userId) {
 export async function deleteGuestAccount(userId, actorUserId) {
   const guest = await loadGuestForDeletion(userId);
   if (!guest) throw new Error('Guest account not found');
-  if (guest.role !== ROLES.EXTERNAL_GUEST) {
+  if (!isManagedExternalGuest(guest)) {
     throw new Error('Only external guest accounts can be deleted from Guest Access');
   }
 

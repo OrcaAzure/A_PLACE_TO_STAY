@@ -24,7 +24,7 @@ import { fetchFacilitiesWithRates, FACILITY_GROUP_ICONS } from '../services/faci
 import { sendGuestVenueSelfModifyEmail, sendVenueModifiedEmail } from '../services/email.service.js';
 import { notifyVenueBookingCancelled } from '../services/booking.service.js';
 
-import { isAdminRole } from '../utils/constants.js';
+import { isAdminRole, isAdminPortalRole } from '../utils/constants.js';
 
 /** Ensure TIME values work with MySQL (HH:MM or HH:MM:SS). */
 function normalizeTime(value) {
@@ -53,7 +53,7 @@ export const getAllFacilityBookings = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
     let rows;
-    if (isAdminRole(role)) {
+    if (isAdminPortalRole(role)) {
       [rows] = await pool.query(`${bookingSelect} ORDER BY fb.event_date ASC`);
     } else {
       [rows] = await pool.query(
@@ -72,7 +72,7 @@ export const getFacilityBookingById = async (req, res) => {
     const { role, id: userId } = req.user;
     const [rows] = await pool.query(`${bookingSelect} WHERE fb.id = ? LIMIT 1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Booking not found' });
-    if (!isAdminRole(role) && rows[0].user_id !== userId) {
+    if (!isAdminPortalRole(role) && rows[0].user_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     res.status(200).json({ booking: rows[0] });

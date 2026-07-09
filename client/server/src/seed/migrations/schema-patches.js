@@ -725,5 +725,29 @@ export async function runSchemaPatches() {
   } catch (err) {
     console.warn('[schema] pricing_category migration skipped:', err.message);
   }
+
+  try {
+    if (await tableExists('users')) {
+      await pool.execute(
+        `ALTER TABLE users
+         MODIFY role ENUM(
+           'Super Admin', 'Admin', 'Supervisory User', 'GMC', 'Faculty', 'Staff',
+           'Missionary', 'External Guest', 'Guest'
+         ) NOT NULL DEFAULT 'Guest'`
+      );
+      await pool.execute(`UPDATE users SET role = 'Super Admin' WHERE role = 'Admin'`);
+      await pool.execute(
+        `UPDATE users SET role = 'Guest'
+         WHERE role IN ('GMC', 'Faculty', 'Staff', 'Missionary', 'External Guest', 'GNC View Only')`
+      );
+      await pool.execute(
+        `ALTER TABLE users
+         MODIFY role ENUM('Super Admin', 'Supervisory User', 'Guest') NOT NULL DEFAULT 'Guest'`
+      );
+      console.log('[schema] Simplified users.role to Super Admin / Supervisory User / Guest');
+    }
+  } catch (err) {
+    console.warn('[schema] users.role simplification skipped:', err.message);
+  }
 }
 

@@ -130,7 +130,6 @@ function buildQueueItems(bookingsRaw, groupsRaw) {
       sortDate: dateOnly(b.check_in),
       pending: normStatus(b.status) === 'pending',
       name: b.guest_name || 'Unknown guest',
-      role: b.guest_role || 'Guest',
       facility: facilityLabelForBooking(b),
       checkIn: b.check_in,
       checkOut: b.check_out,
@@ -188,7 +187,6 @@ function renderQueueItem(item) {
           <div class="dashboard-queue-item__meta">
             <span><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>${escapeHtml(formatDateRange(item.checkIn, item.checkOut))}</span>
             <span><span class="material-symbols-outlined" aria-hidden="true">group</span>${escapeHtml(String(item.guests))} guest${item.guests === 1 ? '' : 's'}${nights ? ` · ${nights} night${nights === 1 ? '' : 's'}` : ''}</span>
-            <span><span class="material-symbols-outlined" aria-hidden="true">badge</span>${escapeHtml(item.role)}</span>
           </div>
         </div>
       </div>
@@ -305,7 +303,7 @@ function renderRecentActivity(bookingsRaw) {
         </div>
         <div>
           <p class="text-body-sm text-on-surface leading-relaxed">${action}</p>
-          <p class="text-body-sm text-on-surface-variant mt-1">${relativeTime(b.updated_at || b.created_at)} · ${escapeHtml(b.guest_role || 'Guest')}${typeNote}${status === 'cancelled' ? ' · <span class="font-semibold text-slate-600">Cancelled</span>' : ''}</p>
+          <p class="text-body-sm text-on-surface-variant mt-1">${relativeTime(b.updated_at || b.created_at)}${typeNote}${status === 'cancelled' ? ' · <span class="font-semibold text-slate-600">Cancelled</span>' : ''}</p>
         </div>
       </div>`;
   }).join('');

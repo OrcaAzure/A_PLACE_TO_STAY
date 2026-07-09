@@ -31,9 +31,9 @@ export async function requireAuth() {
     setAuthSession(user);
 
     const role = user?.role || '';
-    const isAdminRole = ADMIN_ROLES.includes(role);
+    const isAdminPortal = ADMIN_PORTAL_ROLES.includes(role);
 
-    if (isAdmin && !isAdminRole) {
+    if (isAdmin && !isAdminPortal) {
       window.location.href = '/guest/dashboard.html';
       return false;
     }
@@ -60,7 +60,7 @@ export async function redirectIfLoggedIn() {
     const params = new URLSearchParams(window.location.search);
     const next = params.get('next');
     const role = user?.role || '';
-    const dest = next || (ADMIN_ROLES.includes(role) ? '/admin/dashboard.html' : '/guest/dashboard.html');
+    const dest = next || (ADMIN_PORTAL_ROLES.includes(role) ? '/admin/dashboard.html' : '/guest/dashboard.html');
     window.location.href = dest;
   } catch {
     clearAuthSession();
@@ -87,13 +87,16 @@ export function isInternalGuest(userOrEmail = getCurrentUser()) {
   return isInternalGuestEmail(email);
 }
 
-/* Roles that use the admin portal. Everyone else lands in the guest portal. */
-export const ADMIN_ROLES = ['Super Admin', 'Admin'];
+/* Roles that may perform housing admin write actions. */
+export const ADMIN_ROLES = ['Super Admin'];
 
-/** Display label for admin roles in the UI (DB role unchanged). */
+/* Roles that may open the admin portal (Supervisory is read-only). */
+export const ADMIN_PORTAL_ROLES = ['Super Admin', 'Supervisory User'];
+
+/** Display label for roles in the UI (DB role unchanged). */
 export function formatRoleLabel(role) {
   if (role === 'Super Admin') return 'Housing Administrator';
-  if (role === 'Admin') return 'Housing Admin';
+  if (role === 'Supervisory User') return 'Supervisory';
   return role || '';
 }
 
