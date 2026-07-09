@@ -66,8 +66,11 @@ APSTPACE/
 ├── package.json              ← root scripts (npm run dev, npm run setup)
 ├── scripts/
 │   ├── setup.mjs             ← first-time env copy + next-step hints
-│   └── restructure.mjs       ← one-time folder move helper (already applied)
+│   ├── verify-local.mjs      ← local setup checks
+│   └── run-server.mjs        ← staging / production server launcher
 └── client/
+    ├── shared/               ← cross-stack constants (served at /shared/)
+    │   └── guest-access.js
     ├── database/schema.sql
     ├── public/               ← static assets only (marketing + shared files)
     │   ├── index.html
@@ -118,12 +121,12 @@ Bookings auto-calculate price, season, and check room availability.
 | Guest portal | ~90% | Book, modify, cancel reservations; venue bookings; profile saves |
 | Backend API | ~88% | Core flows done; room/venue rates and seasonal periods in Settings |
 | Auth & email | ~92% | 12 automated email templates; needs production SMTP to deliver |
-| Dev tooling | ~82% | Setup, Docker, health check, 21 API tests (`npm test`); no CI yet |
+| Dev tooling | ~90% | Setup, Docker, GitHub Actions CI, health check, `npm test` |
 | Deployment / ops | ~65% | Docs and configs ready; staging/prod not validated with IT yet |
 
 **Product overall ~89% · production-ready ~75%** (blocked mainly on IT: DB, SSL, SMTP, smoke test).
 
-**Still in progress:** guest notification prefs (UI only), admin venue modify UI, in-app notification feed, CI pipeline.
+**Still in progress:** guest notification prefs (UI only), admin venue modify UI, in-app notification feed.
 
 **Recently shipped:** guest self-modify (room/group/venue), self-modify confirmation emails, landing page polish, multiple seasonal rate periods, automated tests.
 

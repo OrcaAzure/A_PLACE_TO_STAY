@@ -1,7 +1,7 @@
 import { pool } from '../config/db.js';
 import Room from '../models/Room.js';
 import { isEmpty } from '../utils/helpers.js';
-import { filterRoomsForGuestUser, canGuestAccessBuilding } from '../utils/guestAccess.js';
+import { isAdminRole } from '../utils/constants.js';
 
 export const getAllBuildings = async (req, res) => {
   try {
@@ -165,8 +165,7 @@ export const getRoomById = async (req, res) => {
       [req.params.id]
     );
     if (rows.length === 0) return res.status(404).json({ message: 'Room not found' });
-    const ADMIN_ROLES = ['Super Admin', 'Admin'];
-    if (!ADMIN_ROLES.includes(req.user?.role)
+    if (!isAdminRole(req.user?.role)
       && !canGuestAccessBuilding(req.user?.email, rows[0].building_name)) {
       return res.status(403).json({ message: 'You do not have access to this room.' });
     }

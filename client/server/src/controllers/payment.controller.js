@@ -17,7 +17,7 @@ import {
 } from '../services/payment.service.js';
 import { isEmailDevMode } from '../services/email.service.js';
 
-const ADMIN_ROLES = ['Super Admin', 'Admin'];
+import { isAdminRole } from '../utils/constants.js';
 
 function parsePaymentId(raw) {
   const id = Number.parseInt(String(raw), 10);
@@ -41,7 +41,7 @@ export const getAllPayments = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
     const rows = await listAllPaymentRows(
-      ADMIN_ROLES.includes(role) ? {} : { userId }
+      isAdminRole(role) ? {} : { userId }
     );
     const payments = await enrichPaymentRows(rows);
     res.status(200).json({ payments });
@@ -57,7 +57,7 @@ export const getPaymentById = async (req, res) => {
 
     const payment = await loadPaymentDetail(paymentId);
     if (!payment) return res.status(404).json({ message: 'Invoice not found' });
-    if (!ADMIN_ROLES.includes(req.user.role) && payment.user_id !== req.user.id) {
+    if (!isAdminRole(req.user.role) && payment.user_id !== req.user.id) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     res.status(200).json({ payment });
@@ -158,7 +158,7 @@ export const getPaymentTransactions = async (req, res) => {
 
     const payment = await loadPaymentDetail(paymentId);
     if (!payment) return res.status(404).json({ message: 'Invoice not found' });
-    if (!ADMIN_ROLES.includes(req.user.role) && payment.user_id !== req.user.id) {
+    if (!isAdminRole(req.user.role) && payment.user_id !== req.user.id) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     res.status(200).json({

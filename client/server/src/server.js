@@ -1,6 +1,6 @@
 import app from './app.js';
 import { testConnection, closePool } from './config/db.js';
-import { runSeed } from './config/seed.js';
+import { runSeed } from './seed/index.js';
 import { validateEnv } from './config/validateEnv.js';
 import { PORT, HOST, isProduction } from './config/env.js';
 

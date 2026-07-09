@@ -11,7 +11,7 @@ import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDraw
 import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
 import { initGuestPortalChrome } from '/assets/js/layout/guest-portal.js';
 import { initSplashIdle, dismissAptSplash } from '/assets/js/layout/splash-idle.js';
-import { formatRoleLabel } from '/assets/js/services/auth.js';
+import { formatRoleLabel, getCurrentUser } from '/assets/js/services/auth.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 import {
   isDesktopSidebar,
@@ -617,7 +617,7 @@ export async function initAppLayout(config = {}) {
       autoDismiss: false,
     }));
 
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = getCurrentUser() || {};
     const userName = user.full_name || user.name || (isGuest ? 'Guest User' : 'Admin User');
     const userRole = formatRoleLabel(user.role) || (isGuest ? 'Guest' : 'Housing Admin');
     const userInitial = userName.charAt(0).toUpperCase();

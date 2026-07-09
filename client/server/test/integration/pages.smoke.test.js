@@ -86,6 +86,13 @@ describe('Pages smoke (public)', () => {
     assert.ok('db' in res.body || res.body.status === 'ok');
   });
 
+  it('GET shared guest-access module is served', async () => {
+    const res = await agent.get('/shared/guest-access.js');
+    assert.equal(res.status, 200);
+    assert.match(res.text, /EXTERNAL_ROOM_BUILDINGS/);
+    assert.match(res.text, /canGuestAccessBuilding/);
+  });
+
   it('GET api.js uses cookie credentials instead of localStorage token', async () => {
     const res = await agent.get('/assets/js/services/api.js');
     assert.equal(res.status, 200);

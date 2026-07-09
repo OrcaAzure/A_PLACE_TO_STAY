@@ -24,6 +24,7 @@ import { cache } from './utils/cache.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir  = path.join(__dirname, '../../public');
+const sharedDir  = path.join(__dirname, '../../shared');
 
 const app = express();
 
@@ -146,6 +147,14 @@ app.use('/api/settings',   settingsRoutes);
 app.use('/api/support',    supportRoutes);
 
 app.use(pageRoutes);
+
+app.use('/shared', express.static(sharedDir, {
+  setHeaders(res, filePath) {
+    if (/\.js$/i.test(filePath)) {
+      res.setHeader('Cache-Control', isProduction ? 'public, max-age=86400' : 'no-cache');
+    }
+  },
+}));
 
 app.use(express.static(publicDir, {
   extensions: ['html'],

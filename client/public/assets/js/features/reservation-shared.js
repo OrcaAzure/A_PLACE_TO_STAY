@@ -1,5 +1,7 @@
 /** Shared reservation UI helpers */
 
+import { getCurrentUser } from '/assets/js/services/auth.js';
+
 export const MEAL_TYPE_LIST = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 export const MEAL_MAX_QTY = 9999;
 /** Dorm nightly rate — priced with the room, not as a booking add-on. */
@@ -145,7 +147,7 @@ export function servicesToQuickFees(services = []) {
 /** Fill missing guest contact fields from the logged-in portal user (guest modify). */
 export function applyLoggedInGuestContact(state) {
   try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = getCurrentUser() || {};
     if (!state.guestName) state.guestName = user.full_name || user.name || '';
     if (!state.email) state.email = user.email || '';
     if (!state.contactPhone) state.contactPhone = user.phone || user.contact_phone || '';
@@ -156,7 +158,7 @@ export function applyLoggedInGuestContact(state) {
 /** Fill missing group contact fields from the logged-in portal user (guest modify). */
 export function applyLoggedInGroupContact(state) {
   try {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = getCurrentUser() || {};
     if (!state.contactName) state.contactName = user.full_name || user.name || '';
     if (!state.email) state.email = user.email || '';
     if (!state.contactPhone) state.contactPhone = user.phone || user.contact_phone || '';

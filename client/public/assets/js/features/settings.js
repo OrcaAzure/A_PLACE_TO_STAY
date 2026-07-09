@@ -3,7 +3,7 @@
  */
 
 import { getProfile, updateProfile, changePassword, getFiscalYear, updateFiscalYearSettings, previewSeasonCalendar } from '/assets/js/services/api.js';
-import { formatRoleLabel } from '/assets/js/services/auth.js';
+import { formatRoleLabel, updateCachedUser } from '/assets/js/services/auth.js';
 import { formatDate } from '/assets/js/features/reservation-shared.js';
 import { openModal, closeModal } from '/assets/js/layout/ui.js';
 
@@ -99,7 +99,7 @@ async function saveProfile() {
 
   try {
     const result = await updateProfile({ full_name: nameInput.value.trim() });
-    localStorage.setItem('user', JSON.stringify(result.user));
+    updateCachedUser(result.user);
     updateProfileHeader(result.user);
     refreshAdminChromeName(result.user);
     showFeedback(feedback, 'Saved.');

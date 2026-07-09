@@ -9,16 +9,16 @@ import {
   checkVenueSlotAvailability,
 } from '../controllers/facilityBooking.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
-import { requireRole, blockReadOnly } from '../middleware/role.middleware.js';
+import { blockReadOnly, requireAdmin } from '../middleware/role.middleware.js';
 
 const router = Router();
 
-router.get('/overview', requireAuth, requireRole('Super Admin', 'Admin'), getVenueScheduleOverview);
+router.get('/overview', requireAuth, requireAdmin, getVenueScheduleOverview);
 router.get('/check-slot', requireAuth, checkVenueSlotAvailability);
 router.get('/',      requireAuth,                                       getAllFacilityBookings);
 router.get('/:id',   requireAuth,                                       getFacilityBookingById);
 router.post('/',     requireAuth, blockReadOnly,                        createFacilityBooking);
 router.patch('/:id', requireAuth, blockReadOnly,                        updateFacilityBooking);
-router.delete('/:id',requireAuth, requireRole('Super Admin', 'Admin'),  deleteFacilityBooking);
+router.delete('/:id',requireAuth, requireAdmin,  deleteFacilityBooking);
 
 export default router;

@@ -69,20 +69,6 @@ export async function rotateSession(userId) {
   return sid;
 }
 
-export async function validateUserSession(userId, sid) {
-  if (!sid) return false;
-  const [rows] = await pool.query(
-    'SELECT session_id, session_expires_at, status FROM users WHERE id = ? LIMIT 1',
-    [userId]
-  );
-  if (!rows.length || rows[0].status === 'Inactive') return false;
-  if (rows[0].session_id !== sid) return false;
-  if (rows[0].session_expires_at && new Date(rows[0].session_expires_at) <= new Date()) {
-    return false;
-  }
-  return true;
-}
-
 export async function invalidateSession(userId) {
   await pool.query(
     'UPDATE users SET session_id = NULL, session_expires_at = NULL WHERE id = ?',

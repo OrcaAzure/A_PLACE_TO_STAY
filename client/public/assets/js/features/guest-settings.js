@@ -3,6 +3,7 @@
  */
 
 import { getProfile, updateProfile } from '/assets/js/services/api.js';
+import { getCurrentUser, setAuthSession, updateCachedUser } from '/assets/js/services/auth.js';
 
 export async function loadGuestSettings() {
   const nameInput = document.getElementById('settings-name');
@@ -14,9 +15,9 @@ export async function loadGuestSettings() {
     const { user } = await getProfile();
     if (nameInput) nameInput.value = user.full_name || '';
     if (emailInput) emailInput.value = user.email || '';
-    localStorage.setItem('user', JSON.stringify(user));
+    setAuthSession(user);
   } catch (err) {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = getCurrentUser() || {};
     if (nameInput) nameInput.value = user.full_name || user.name || '';
     if (emailInput) emailInput.value = user.email || '';
     if (feedback) {
@@ -32,7 +33,7 @@ export async function loadGuestSettings() {
 
     try {
       const result = await updateProfile({ full_name: nameInput.value.trim() });
-      localStorage.setItem('user', JSON.stringify(result.user));
+      updateCachedUser(result.user);
       if (feedback) {
         feedback.textContent = 'Profile saved.';
         feedback.className = 'text-body-sm text-emerald-700 bg-emerald-50 rounded-lg px-3 py-2';

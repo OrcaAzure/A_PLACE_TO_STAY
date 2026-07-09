@@ -8,11 +8,11 @@ import {
 import { previewStayNights } from '../services/season.service.js';
 import { bustFiscalYearSettings } from '../utils/cache.js';
 
-const ADMIN_ROLES = ['Super Admin', 'Admin'];
+import { isAdminRole } from '../utils/constants.js';
 
 export const getFiscalYear = async (req, res) => {
   try {
-    const bypassAdvanceLimit = ADMIN_ROLES.includes(req.user?.role);
+    const bypassAdvanceLimit = isAdminRole(req.user?.role);
     const info = await getPublicFiscalYearInfo({ bypassAdvanceLimit });
     res.status(200).json(info);
   } catch (error) {
@@ -22,7 +22,7 @@ export const getFiscalYear = async (req, res) => {
 
 export const updateFiscalYear = async (req, res) => {
   try {
-    if (!ADMIN_ROLES.includes(req.user.role)) {
+    if (!isAdminRole(req.user.role)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
@@ -41,7 +41,7 @@ export const updateFiscalYear = async (req, res) => {
 
 export const getFiscalYearSettingsOnly = async (req, res) => {
   try {
-    if (!ADMIN_ROLES.includes(req.user.role)) {
+    if (!isAdminRole(req.user.role)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     const settings = await getFiscalYearSettings();
@@ -53,7 +53,7 @@ export const getFiscalYearSettingsOnly = async (req, res) => {
 
 export const previewSeasonCalendar = async (req, res) => {
   try {
-    if (!ADMIN_ROLES.includes(req.user.role)) {
+    if (!isAdminRole(req.user.role)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
 

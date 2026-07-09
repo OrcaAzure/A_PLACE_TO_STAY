@@ -1,12 +1,8 @@
 import { getProfile, logout as logoutApi } from '/assets/js/services/api.js';
+import { isInternalGuestEmail } from '/shared/guest-access.js';
 
 export const LOGGED_IN_KEY = 'aptspace_logged_in';
 const USER_KEY = 'user';
-
-/** Non-sensitive session hint for UI; real auth is the httpOnly cookie + /api/auth/me. */
-export function isLoggedInHint() {
-  return sessionStorage.getItem(LOGGED_IN_KEY) === '1';
-}
 
 export function setAuthSession(user) {
   if (!user) return;
@@ -79,11 +75,16 @@ export function getCurrentUser() {
   }
 }
 
+/** Update cached user after profile changes without re-running full login. */
+export function updateCachedUser(user) {
+  if (!user) return;
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
 /** APTS community members use @apts.edu / @apts.edu.ph addresses. */
 export function isInternalGuest(userOrEmail = getCurrentUser()) {
   const email = typeof userOrEmail === 'string' ? userOrEmail : userOrEmail?.email;
-  const normalized = String(email || '').trim().toLowerCase();
-  return normalized.endsWith('@apts.edu.ph') || normalized.endsWith('@apts.edu');
+  return isInternalGuestEmail(email);
 }
 
 /* Roles that use the admin portal. Everyone else lands in the guest portal. */

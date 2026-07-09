@@ -6,12 +6,12 @@ import {
   deleteReservationGroup,
   suggestRoomsForGroup,
 } from '../services/group.service.js';
-const ADMIN_ROLES = ['Super Admin', 'Admin'];
+import { isAdminRole } from '../utils/constants.js';
 
 export const getAllGroups = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
-    const admin = ADMIN_ROLES.includes(role);
+    const admin = isAdminRole(role);
     const groups = await listGroups({ userId, admin });
     res.status(200).json({ groups });
   } catch (error) {
@@ -24,7 +24,7 @@ export const getGroup = async (req, res) => {
     const { role, id: userId } = req.user;
     const group = await getGroupById(req.params.id);
     if (!group) return res.status(404).json({ message: 'Group reservation not found' });
-    if (!ADMIN_ROLES.includes(role) && group.user_id !== userId) {
+    if (!isAdminRole(role) && group.user_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     res.status(200).json({ group });
@@ -44,7 +44,7 @@ export const suggestRooms = async (req, res) => {
       checkOut: check_out,
       totalGuests: total_guests || 1,
       excludeGroupId: exclude_group_id || null,
-      bypassAdvanceLimit: ADMIN_ROLES.includes(req.user.role),
+      bypassAdvanceLimit: isAdminRole(req.user.role),
     });
     res.status(200).json(result);
   } catch (error) {
@@ -55,7 +55,7 @@ export const suggestRooms = async (req, res) => {
 export const createGroup = async (req, res) => {
   try {
     const { role, id: requesterId } = req.user;
-    const isAdmin = ADMIN_ROLES.includes(role);
+    const isAdmin = isAdminRole(role);
     const group = await createReservationGroup({
       requesterId,
       isAdmin,
@@ -73,7 +73,7 @@ export const updateGroup = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
     const group = await updateReservationGroup(req.params.id, req.body, {
-      isAdmin: ADMIN_ROLES.includes(role),
+      isAdmin: isAdminRole(role),
       userId,
     });
     res.status(200).json({ message: 'Group reservation updated', group });

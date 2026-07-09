@@ -3,9 +3,15 @@
  */
 
 import { isInternalGuest } from '/assets/js/services/auth.js';
+import {
+  canGuestAccessRoom,
+  EXTERNAL_ROOM_BUILDINGS,
+  GUEST_BLOCKED_BUILDINGS,
+} from '/shared/guest-access.js';
 import { isRoomListVisible } from '/assets/js/features/reservation-shared.js';
 
-export { isInternalGuest };
+export { isInternalGuest, canGuestAccessRoom as roomAllowedForGuest };
+export { EXTERNAL_ROOM_BUILDINGS, GUEST_BLOCKED_BUILDINGS };
 
 export const PRICE_DISCLAIMER =
   'Prices shown are estimates. Your final total will be confirmed by housing after reviewing your request.';
@@ -119,8 +125,6 @@ export function readBrowseQuery() {
   };
 }
 
-const BLOCKED_BUILDINGS = [];
-const EXTERNAL_ROOM_BUILDINGS = ['Global Missions Center'];
 
 export function getBrowseCategories() {
   return BROWSE_CATEGORIES;
@@ -151,12 +155,6 @@ export function categoryUsesEventDate(categoryId) {
   return !categoryShowsRooms(categoryId);
 }
 
-export function roomAllowedForGuest(room, isInternal = isInternalGuest()) {
-  const building = String(room?.building || room?.building_name || '').trim();
-  if (BLOCKED_BUILDINGS.includes(building)) return false;
-  if (isInternal) return true;
-  return EXTERNAL_ROOM_BUILDINGS.includes(building);
-}
 
 export function parsePackageHours(itemName) {
   if (!itemName) return null;

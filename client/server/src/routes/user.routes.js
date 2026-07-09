@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware.js';
-import { requireRole } from '../middleware/role.middleware.js';
+import { requireRole, requireAdmin } from '../middleware/role.middleware.js';
 import {
   getAllUsers,
   getUserById,
@@ -20,7 +20,7 @@ import {
 } from '../controllers/guest-access.controller.js';
 
 const router = Router();
-const adminOnly = [requireAuth, requireRole('Super Admin', 'Admin')];
+const adminOnly = [requireAuth, requireAdmin];
 
 router.get('/guest-access/activity', ...adminOnly, getGuestAccessActivity);
 router.get('/guest-access/requests', ...adminOnly, getGuestAccessRequests);

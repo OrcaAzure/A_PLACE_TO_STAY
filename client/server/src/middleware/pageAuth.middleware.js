@@ -1,7 +1,7 @@
 import { extractToken, resolveAuthUser } from '../utils/authToken.js';
 import { clearAuthCookie } from '../utils/cookies.js';
 
-const ADMIN_ROLES = ['Super Admin', 'Admin'];
+import { isAdminRole } from '../utils/constants.js';
 
 function redirectToLogin(res, reason) {
   clearAuthCookie(res);
@@ -18,7 +18,7 @@ export function requirePortalPage(portal) {
       const user = await resolveAuthUser(token);
       if (!user) return redirectToLogin(res, 'session');
 
-      const isAdmin = ADMIN_ROLES.includes(user.role);
+      const isAdmin = isAdminRole(user.role);
       if (portal === 'admin' && !isAdmin) {
         return res.redirect('/guest/dashboard.html');
       }

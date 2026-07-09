@@ -1,4 +1,4 @@
-import { READ_ONLY_ROLES } from '../utils/constants.js';
+import { READ_ONLY_ROLES, ADMIN_ROLES } from '../utils/constants.js';
 
 // Checks that the logged-in user has one of the allowed roles.
 // Always use after requireAuth so req.user is already set.
@@ -27,6 +27,9 @@ export const denyRole = (...deniedRoles) => {
     next();
   };
 };
+
+// Convenience guard for admin-only API endpoints.
+export const requireAdmin = requireRole(...ADMIN_ROLES);
 
 // Convenience guard for write endpoints: blocks all view-only roles.
 export const blockReadOnly = denyRole(...READ_ONLY_ROLES);

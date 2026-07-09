@@ -9,7 +9,7 @@ import {
   getMealRateList,
 } from '../controllers/booking.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
-import { requireRole, blockReadOnly } from '../middleware/role.middleware.js';
+import { blockReadOnly, requireAdmin } from '../middleware/role.middleware.js';
 import { cacheResponse } from '../middleware/cache.middleware.js';
 
 const router = Router();
@@ -20,6 +20,6 @@ router.get('/meal-rates', requireAuth, cacheResponse('booking:meal-rates'), getM
 router.get('/:id', requireAuth, getBookingById);
 router.post('/', requireAuth, blockReadOnly, createBooking);
 router.patch('/:id', requireAuth, blockReadOnly, updateBooking);
-router.delete('/:id', requireAuth, requireRole('Super Admin', 'Admin'), deleteBooking);
+router.delete('/:id', requireAuth, requireAdmin, deleteBooking);
 
 export default router;

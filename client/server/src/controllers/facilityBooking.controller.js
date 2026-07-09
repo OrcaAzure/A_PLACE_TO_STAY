@@ -24,7 +24,7 @@ import { fetchFacilitiesWithRates, FACILITY_GROUP_ICONS } from '../services/faci
 import { sendGuestVenueSelfModifyEmail, sendVenueModifiedEmail } from '../services/email.service.js';
 import { notifyVenueBookingCancelled } from '../services/booking.service.js';
 
-const ADMIN_ROLES = ['Super Admin', 'Admin'];
+import { isAdminRole } from '../utils/constants.js';
 
 /** Ensure TIME values work with MySQL (HH:MM or HH:MM:SS). */
 function normalizeTime(value) {
@@ -53,7 +53,7 @@ export const getAllFacilityBookings = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
     let rows;
-    if (ADMIN_ROLES.includes(role)) {
+    if (isAdminRole(role)) {
       [rows] = await pool.query(`${bookingSelect} ORDER BY fb.event_date ASC`);
     } else {
       [rows] = await pool.query(
@@ -72,7 +72,7 @@ export const getFacilityBookingById = async (req, res) => {
     const { role, id: userId } = req.user;
     const [rows] = await pool.query(`${bookingSelect} WHERE fb.id = ? LIMIT 1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Booking not found' });
-    if (!ADMIN_ROLES.includes(role) && rows[0].user_id !== userId) {
+    if (!isAdminRole(role) && rows[0].user_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     res.status(200).json({ booking: rows[0] });
@@ -96,7 +96,7 @@ export const createFacilityBooking = async (req, res) => {
       return res.status(400).json({ message: 'Provide facility_id, event_venue_id, room_code, or category and item' });
     }
 
-    const isAdmin = ADMIN_ROLES.includes(role);
+    const isAdmin = isAdminRole(role);
     const effectiveUserId = isAdmin
       ? await resolveGuestUser({ userId: user_id, guestName: guest_name, email })
       : userId;
@@ -174,7 +174,7 @@ export const updateFacilityBooking = async (req, res) => {
       .filter(Boolean)
       .join(' — ');
 
-    if (!ADMIN_ROLES.includes(role)) {
+    if (!isAdminRole(role)) {
       if (existing[0].user_id !== userId) {
         return res.status(403).json({ message: 'Forbidden' });
       }

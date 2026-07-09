@@ -9,6 +9,13 @@ export const ROLES = {
   EXTERNAL_GUEST: 'External Guest',
 };
 
+/** Roles that use the admin portal. */
+export const ADMIN_ROLES = [ROLES.SUPER_ADMIN, ROLES.ADMIN];
+
+export function isAdminRole(role) {
+  return ADMIN_ROLES.includes(role);
+}
+
 /** Default role when admin creates a booking for someone not yet in the system. */
 export const DEFAULT_BOOKING_GUEST_ROLE = ROLES.EXTERNAL_GUEST;
 

@@ -25,7 +25,7 @@ import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancell
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from '../services/ancillary.service.js';
 import { getInvoiceSnapshot, ensureInvoiceForBooking } from '../services/payment.service.js';
 
-const ADMIN_ROLES = ['Super Admin', 'Admin'];
+import { isAdminRole } from '../utils/constants.js';
 
 const bookingSelect = `
   SELECT bk.*,
@@ -53,7 +53,7 @@ export const getAllBookings = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
     let rows;
-    if (ADMIN_ROLES.includes(role)) {
+    if (isAdminRole(role)) {
       [rows] = await pool.query(`${bookingSelect} ORDER BY bk.check_in ASC`);
     } else {
       [rows] = await pool.query(
@@ -73,7 +73,7 @@ export const getBookingById = async (req, res) => {
     const { role, id: userId } = req.user;
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ? LIMIT 1`, [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Booking not found' });
-    if (!ADMIN_ROLES.includes(role) && rows[0].user_id !== userId) {
+    if (!isAdminRole(role) && rows[0].user_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     res.status(200).json({ booking: await enrichBooking(rows[0]) });
@@ -88,7 +88,7 @@ export const getRoomAvailability = async (req, res) => {
     if (isEmpty(check_in) || isEmpty(check_out)) {
       return res.status(400).json({ message: 'check_in and check_out are required' });
     }
-    const isAdmin = ADMIN_ROLES.includes(req.user.role);
+    const isAdmin = isAdminRole(req.user.role);
     let rooms = await getAvailableRooms({
       checkIn: check_in,
       checkOut: check_out,
@@ -131,14 +131,14 @@ export const createBooking = async (req, res) => {
       guest_name, email, meal_allergen_notes,
     } = req.body;
 
-    const effectiveUserId = ADMIN_ROLES.includes(role)
+    const effectiveUserId = isAdminRole(role)
       ? await resolveGuestUser({ userId: user_id, guestName: guest_name, email })
       : requesterId;
     if (isEmpty(room_id) || isEmpty(check_in) || isEmpty(check_out)) {
       return res.status(400).json({ message: 'room_id, check_in, and check_out are required' });
     }
 
-    const isAdmin = ADMIN_ROLES.includes(role);
+    const isAdmin = isAdminRole(role);
     if (!isAdmin) {
       const room = await getRoomById(room_id);
       if (!room || !canGuestAccessBuilding(req.user.email, room.building_name)) {
@@ -164,7 +164,7 @@ export const createBooking = async (req, res) => {
       mealRates,
     });
 
-    const bookingStatus = ADMIN_ROLES.includes(role) ? (status || 'Approved') : 'Pending';
+    const bookingStatus = isAdminRole(role) ? (status || 'Approved') : 'Pending';
 
     const [result] = await pool.query(
       `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes, pricing_category)
@@ -197,7 +197,7 @@ export const createBooking = async (req, res) => {
 export const updateBooking = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
-    const isAdmin = ADMIN_ROLES.includes(role);
+    const isAdmin = isAdminRole(role);
 
     const [existingRows] = await pool.query('SELECT * FROM bookings_rooms WHERE id = ?', [req.params.id]);
     if (!existingRows.length) return res.status(404).json({ message: 'Booking not found' });

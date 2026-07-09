@@ -1,6 +1,6 @@
 import { pool } from '../config/db.js';
 
-const ADMIN_ROLES = ['Super Admin', 'Admin'];
+import { isAdminRole } from '../utils/constants.js';
 
 const bookingSelect = `
   SELECT bk.*,
@@ -34,7 +34,7 @@ const venueBookingSelect = `
 
 export const getAdminSummary = async (req, res) => {
   try {
-    if (!ADMIN_ROLES.includes(req.user.role)) {
+    if (!isAdminRole(req.user.role)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
 

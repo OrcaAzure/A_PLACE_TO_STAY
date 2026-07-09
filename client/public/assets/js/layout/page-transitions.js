@@ -2,7 +2,7 @@
  * Portal page navigation — admin soft nav keeps sidebar/header static.
  */
 
-import { formatRoleLabel } from '/assets/js/services/auth.js';
+import { formatRoleLabel, getCurrentUser } from '/assets/js/services/auth.js';
 import { lockStaticChrome } from '/assets/js/layout/animations.js';
 import { bootAdminPage, cleanupAdminPage } from '/assets/js/layout/admin-page-loaders.js';
 
@@ -129,7 +129,7 @@ async function navigateAdminSoft(href) {
       pageEl.innerHTML = meta.contentHtml;
 
       const { ADMIN_NAV, updateActiveNav, updateAdminHeader } = await import('/assets/js/layout/ui.js');
-      const user = JSON.parse(localStorage.getItem('user') || '{}');
+      const user = getCurrentUser() || {};
       const userName = user.full_name || user.name || 'Admin User';
       updateAdminHeader({
         title: meta.title,

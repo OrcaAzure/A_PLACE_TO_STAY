@@ -78,7 +78,7 @@ jobs:
         run: |
           node --input-type=module -e "
             import './test/helpers/env-setup.mjs';
-            import { runSeed } from './src/config/seed.js';
+            import { runSeed } from './src/seed/index.js';
             import { closePool } from './src/config/db.js';
             let code = 0;
             try {

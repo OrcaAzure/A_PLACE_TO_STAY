@@ -5,7 +5,7 @@ import { createGuestUser } from '../services/user.service.js';
 import { logAudit, AUDIT_ACTIONS } from '../services/audit.service.js';
 import { invalidateSession } from '../services/session.service.js';
 
-const ADMIN_ROLES = ['Super Admin', 'Admin'];
+import { isAdminRole } from '../utils/constants.js';
 
 const USER_PUBLIC_COLUMNS = 'id, full_name, email, role, status, created_at, updated_at';
 
@@ -36,7 +36,7 @@ export const getAllUsers = async (req, res) => {
 export const getUserById = async (req, res) => {
   try {
     const targetId = Number(req.params.id);
-    const isAdmin = ADMIN_ROLES.includes(req.user.role);
+    const isAdmin = isAdminRole(req.user.role);
     if (!isAdmin && targetId !== req.user.id) {
       return res.status(403).json({ message: 'Forbidden' });
     }

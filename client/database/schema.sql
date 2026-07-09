@@ -856,4 +856,4 @@ INSERT INTO system_settings (setting_key, setting_value) VALUES
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
 
 -- Demo bookings, payments, and room status samples are seeded by the server
--- on startup (see client/server/src/config/seed.js) after users are created.
+-- on startup (see client/server/src/seed/index.js) after users are created.
