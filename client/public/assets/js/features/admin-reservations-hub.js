@@ -21,8 +21,6 @@ import {
   canAdminCancelVenueBooking, canAdminModifyVenueBooking, canAdminCancelRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
-import { pricingCategoryLabel } from '/assets/js/features/admin-pricing-category.js';
-
 const TABS = [
   { id: 'pending', label: 'Pending' },
   { id: 'rooms', label: 'Room stays' },
@@ -339,7 +337,6 @@ function renderSingleStayDetails(item) {
     ].join(''))}
     ${renderSection('Pricing', [
       factRow('Total amount', item.total_amount != null ? formatMoney(item.total_amount) : null),
-      factRow('Pricing category', pricingCategoryLabel(item.pricing_category)),
       factRow('Season', item.season),
       factRow('Rate type', item.occupancy_item),
     ].join(''))}
@@ -370,7 +367,6 @@ function renderGroupStayDetails(item) {
   const pricingSection = item.grand_total != null && item.grand_total > 0
     ? renderSection('Pricing', [
       factRow('Grand total', formatMoney(item.grand_total)),
-      factRow('Pricing category', pricingCategoryLabel(item.pricing_category)),
     ].join(''))
     : '';
 

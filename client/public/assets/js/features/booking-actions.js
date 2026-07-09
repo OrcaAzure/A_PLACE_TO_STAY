@@ -5,12 +5,6 @@ import {
 } from '/assets/js/services/api.js';
 import { escapeHtml, normStatus, formatMoney } from '/assets/js/features/reservation-shared.js';
 import { confirmModal, openModal, closeModal } from '/assets/js/layout/ui.js';
-import {
-  normalizePricingCategory,
-  readPricingCategory,
-  renderApprovePricingCategoryModalBody,
-  bindPricingCategoryField,
-} from '/assets/js/features/admin-pricing-category.js';
 
 export function parseRequestKey(key) {
   if (String(key).startsWith('g-')) return { kind: 'group', id: key.slice(2) };
@@ -32,7 +26,7 @@ function requestEstimate(r) {
   return amount != null ? formatMoney(amount) : null;
 }
 
-export function promptApprovePricingCategory(r) {
+export function promptApproveReservation(r) {
   const guestName = escapeHtml(requestGuestName(r));
   const estimate = requestEstimate(r);
   const isGroup = r.kind === 'group';
@@ -46,12 +40,12 @@ export function promptApprovePricingCategory(r) {
       resolve(value);
     };
 
+    const estimateHtml = estimate
+      ? `<p class="res-hint">Total due: <strong>${estimate}</strong></p>`
+      : '';
     const body = `
-      ${renderApprovePricingCategoryModalBody({
-        guestName: requestGuestName(r),
-        estimatedTotal: estimate,
-        isGroup,
-      })}
+      <p class="res-lead">Approve ${isGroup ? 'this group reservation' : 'this reservation'} for <strong>${guestName}</strong>? The guest will be notified by email.</p>
+      ${estimateHtml}
       <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-outline-variant">
         <button type="button" class="px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant font-semibold text-sm hover:bg-surface-variant/30 transition-colors min-h-[2.75rem]" data-action="cancel">Cancel</button>
         <button type="button" class="btn-primary px-5 py-2.5 min-h-[2.75rem]" data-action="confirm">Approve &amp; notify guest</button>
@@ -60,23 +54,18 @@ export function promptApprovePricingCategory(r) {
     requestAnimationFrame(() => {
       openModal('Approve reservation', body);
       const modalBody = document.getElementById('modalBody');
-      bindPricingCategoryField(modalBody);
       modalBody?.querySelector('[data-action="cancel"]')?.addEventListener('click', () => finish(null));
-      modalBody?.querySelector('[data-action="confirm"]')?.addEventListener('click', () => {
-        finish(readPricingCategory(modalBody, 'Guest'));
-      });
+      modalBody?.querySelector('[data-action="confirm"]')?.addEventListener('click', () => finish(true));
     });
   });
 }
 
-export async function approveSingleRequest(r, pricingCategory = 'Guest') {
-  const category = normalizePricingCategory(pricingCategory);
+export async function approveSingleRequest(r) {
   const avail = await getRoomAvailability({
     check_in: r.schedule?.checkIn,
     check_out: r.schedule?.checkOut,
     guest_count: r.guestCount || 1,
     exclude_booking_id: r.id,
-    pricing_category: category,
   });
   const room = (avail.rooms || []).find((x) => String(x.id) === String(r.roomId));
   if (!room || room.availability_status !== 'available') {
@@ -84,19 +73,16 @@ export async function approveSingleRequest(r, pricingCategory = 'Guest') {
   }
   await updateBooking(r.id, {
     status: 'Approved',
-    pricing_category: category,
     notify_guest: true,
   });
 }
 
-export async function approveGroupRequest(r, pricingCategory = 'Guest') {
-  const category = normalizePricingCategory(pricingCategory);
+export async function approveGroupRequest(r) {
   const data = await suggestGroupRooms({
     check_in: r.schedule?.checkIn,
     check_out: r.schedule?.checkOut,
     total_guests: r.totalGuests || 1,
     exclude_group_id: r.id,
-    pricing_category: category,
   });
   if (!data.suggestion?.length) {
     throw new Error('Could not auto-assign rooms for this group. Use Modify to pick rooms manually.');
@@ -107,17 +93,16 @@ export async function approveGroupRequest(r, pricingCategory = 'Guest') {
   }));
   await updateGroup(r.id, {
     status: 'Approved',
-    pricing_category: category,
     rooms,
     notify_guest: true,
   });
 }
 
 export async function approveRequest(r) {
-  const category = await promptApprovePricingCategory(r);
-  if (!category) return false;
-  if (r.kind === 'group') await approveGroupRequest(r, category);
-  else await approveSingleRequest(r, category);
+  const confirmed = await promptApproveReservation(r);
+  if (!confirmed) return false;
+  if (r.kind === 'group') await approveGroupRequest(r);
+  else await approveSingleRequest(r);
   return true;
 }
 
@@ -235,7 +220,6 @@ export function openModifyRequestWizard(r, { modifyRequest = true } = {}) {
           userId: r.userId,
           meals: r.meals,
           mealAllergenNotes: r.mealAllergenNotes,
-          pricingCategory: r.pricingCategory || 'Guest',
         },
         originalRequest: {
           checkIn: r.schedule?.checkIn,
@@ -261,7 +245,6 @@ export function openModifyRequestWizard(r, { modifyRequest = true } = {}) {
           notes: r.notes,
           meals: r.meals,
           mealAllergenNotes: r.mealAllergenNotes,
-          pricingCategory: r.pricingCategory || 'Guest',
           facility: r.facility,
         },
         originalRequest: {

@@ -15,12 +15,6 @@ import {
   renderAdminMealRow, readMealsFromInputs, syncAdminMealSubtotals, clampMealQty,
 } from '/assets/js/features/reservation-shared.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
-import {
-  normalizePricingCategory,
-  renderPricingCategoryField,
-  bindPricingCategoryField,
-  readPricingCategory,
-} from '/assets/js/features/admin-pricing-category.js';
 
 let initialized = false;
 let isOpen = false;
@@ -287,12 +281,6 @@ function renderStep5() {
     ${state.fees.length ? `<div class="res-review"><h4>Extra fees</h4><p>${state.fees.map((f) => `${escapeHtml(f.fee_name)}: ${formatMoney(f.amount)}`).join('<br>')}</p></div>` : ''}
     <label class="res-label">Notes (optional)</label>
     <textarea id="wiz-notes" class="res-input" rows="2">${escapeHtml(state.notes)}</textarea>
-    ${!state.guestModify ? renderPricingCategoryField({
-    id: 'wiz-pricing-category',
-    value: state.pricingCategory,
-    compact: true,
-    hint: 'Assign the rate tier for this stay. Totals update when you change this.',
-  }) : ''}
     <p class="res-grand-total">${state.guestModify || state.fromRequestId ? 'Estimated total' : 'Grand total'}: ${formatMoney(grand)}</p>`;
 }
 
@@ -360,19 +348,6 @@ function readFields() {
   if ($('wiz-guest-message')) {
     state.guestMessage = $('wiz-guest-message').value?.trim() || '';
   }
-  if (!state.guestModify && $('wiz-pricing-category')) {
-    state.pricingCategory = readPricingCategory($('reservation-wizard-body'), state.pricingCategory);
-  }
-}
-
-async function reloadPricingForCategory(category) {
-  state.pricingCategory = normalizePricingCategory(category);
-  state.mealRates = await getMealRates(state.pricingCategory);
-  if (state.checkIn && state.checkOut && state.checkOut > state.checkIn) {
-    await fetchRooms();
-  } else {
-    renderBody();
-  }
 }
 
 async function fetchRooms() {
@@ -386,7 +361,6 @@ async function fetchRooms() {
       check_out: state.checkOut,
       guest_count: state.guestCount,
       exclude_booking_id: state.bookingId || state.fromRequestId || undefined,
-      pricing_category: state.guestModify ? undefined : state.pricingCategory,
     });
     state.availableRooms = data.rooms || [];
     state.availableCount = data.available_count ?? 0;
@@ -506,7 +480,6 @@ function bindEvents() {
   });
 
   if (!state.guestModify && state.step === 5) {
-    bindPricingCategoryField(bodyEl, (cat) => reloadPricingForCategory(cat));
   }
 }
 
@@ -599,7 +572,6 @@ async function confirmSave() {
         : (state.modifyRequest ? state.guestMessage?.trim() : undefined)),
     notify_guest: Boolean(!state.guestModify && (state.fromRequestId || state.modifyRequest)),
     notify_modification: Boolean(!state.guestModify && state.modifyRequest),
-    pricing_category: state.guestModify ? undefined : normalizePricingCategory(state.pricingCategory),
   };
 
   try {
@@ -658,15 +630,10 @@ export async function openReservationWizard(options = {}) {
   state.modifyRequest = modifyRequest;
   state.guestModify = guestModify;
   state.guestWasApproved = guestWasApproved;
-  if (!guestModify) {
-    const prefillCategory = prefill?.pricingCategory || prefill?.pricing_category;
-    if (prefillCategory) state.pricingCategory = normalizePricingCategory(prefillCategory);
-  }
-
   try {
     const loaders = [
       guestModify ? getUsers().catch(() => []) : getUsers(),
-      getMealRates(guestModify ? 'Guest' : state.pricingCategory),
+      getMealRates(),
       loadFiscalYearBounds(),
       getFacilitiesOverview().catch(() => ({ services: [] })),
     ];
@@ -698,10 +665,6 @@ export async function openReservationWizard(options = {}) {
     state.mealAllergenNotes = booking.meal_allergen_notes || '';
     state.fees = (booking.fees || []).map((f) => ({ fee_name: f.fee_name, amount: f.amount }));
     state.originalFees = state.fees.map((f) => ({ ...f }));
-    if (!guestModify && booking.pricing_category) {
-      state.pricingCategory = normalizePricingCategory(booking.pricing_category);
-      state.mealRates = await getMealRates(state.pricingCategory);
-    }
     if (guestModify) applyLoggedInGuestContact(state);
   }
 

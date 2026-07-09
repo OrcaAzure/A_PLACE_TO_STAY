@@ -430,7 +430,6 @@ export async function getRoomAvailability(params = {}) {
   if (params.exclude_booking_id) qs.set('exclude_booking_id', String(params.exclude_booking_id));
   if (params.exclude_group_id) qs.set('exclude_group_id', String(params.exclude_group_id));
   if (params.group_picker) qs.set('group_picker', '1');
-  if (params.pricing_category) qs.set('pricing_category', params.pricing_category);
   return apiRequest(`/bookings/availability?${qs.toString()}`);
 }
 
@@ -450,7 +449,6 @@ export async function suggestGroupRooms(params = {}) {
   if (params.check_out) qs.set('check_out', params.check_out);
   if (params.total_guests) qs.set('total_guests', String(params.total_guests));
   if (params.exclude_group_id) qs.set('exclude_group_id', String(params.exclude_group_id));
-  if (params.pricing_category) qs.set('pricing_category', params.pricing_category);
   return apiRequest(`/groups/suggest-rooms?${qs.toString()}`);
 }
 
@@ -493,7 +491,6 @@ export function normalizeManageGroupRequest(group) {
     submittedAt: group.created_at,
     updatedAt: group.updated_at,
     grandTotal: group.grand_total != null ? Number(group.grand_total) : null,
-    pricingCategory: group.pricing_category || 'Guest',
     mealAllergenNotes: group.meal_allergen_notes || '',
     assignedBookings: (group.bookings || []).map((b) => ({
       id: b.id,
@@ -506,9 +503,8 @@ export function normalizeManageGroupRequest(group) {
   };
 }
 
-export async function getMealRates(pricingCategory) {
-  const qs = pricingCategory ? `?pricing_category=${encodeURIComponent(pricingCategory)}` : '';
-  const data = await apiRequest(`/bookings/meal-rates${qs}`);
+export async function getMealRates() {
+  const data = await apiRequest('/bookings/meal-rates');
   return data.rates || { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 };
 }
 
@@ -650,7 +646,6 @@ export function normalizeManageRequest(booking) {
     submittedAt: booking.created_at,
     updatedAt: booking.updated_at,
     totalAmount: booking.total_amount != null ? Number(booking.total_amount) : null,
-    pricingCategory: booking.pricing_category || 'Guest',
     roomId: booking.room_id,
     userId: booking.user_id,
   };

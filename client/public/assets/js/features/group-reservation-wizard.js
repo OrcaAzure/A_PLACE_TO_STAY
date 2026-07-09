@@ -13,12 +13,6 @@ import {
   renderAdminMealRow, readMealsFromInputs, syncAdminMealSubtotals, clampMealQty,
 } from '/assets/js/features/reservation-shared.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
-import {
-  normalizePricingCategory,
-  renderPricingCategoryField,
-  bindPricingCategoryField,
-  readPricingCategory,
-} from '/assets/js/features/admin-pricing-category.js';
 
 let initialized = false;
 let isOpen = false;
@@ -269,12 +263,6 @@ function renderStep5() {
     <div class="res-review"><h4>Rooms</h4><p>${roomLines || '—'}</p></div>
     <label class="res-label">Notes (optional)</label>
     <textarea id="gw-notes" class="res-input" rows="2">${escapeHtml(state.notes)}</textarea>
-    ${!state.guestModify ? renderPricingCategoryField({
-    id: 'gw-pricing-category',
-    value: state.pricingCategory,
-    compact: true,
-    hint: 'Assign the rate tier for this group. Totals update when you change this.',
-  }) : ''}
     <p class="res-grand-total">${state.guestModify || state.fromRequestId ? 'Estimated grand total' : 'Grand total'}: ${formatMoney(grand)}</p>`;
 }
 
@@ -338,9 +326,6 @@ function readAllFields() {
   if (mealRoot?.querySelector('[data-meal-qty]')) {
     state.meals = readMealsFromInputs(mealRoot, state.meals);
   }
-  if (!state.guestModify && $('gw-pricing-category')) {
-    state.pricingCategory = readPricingCategory($('group-wizard-body'), state.pricingCategory);
-  }
 }
 
 function readStepFields() {
@@ -362,19 +347,6 @@ function readStepFields() {
     state.notes = $('gw-notes')?.value?.trim() || '';
     state.guestMessage = $('gw-guest-message')?.value?.trim() || state.guestMessage;
   }
-  if (!state.guestModify && $('gw-pricing-category')) {
-    state.pricingCategory = readPricingCategory($('group-wizard-body'), state.pricingCategory);
-  }
-}
-
-async function reloadPricingForCategory(category) {
-  state.pricingCategory = normalizePricingCategory(category);
-  state.mealRates = await getMealRates(state.pricingCategory);
-  if (state.checkIn && state.checkOut && state.checkOut > state.checkIn) {
-    await fetchRooms();
-  } else {
-    renderBody();
-  }
 }
 
 async function fetchRooms() {
@@ -389,7 +361,6 @@ async function fetchRooms() {
       check_out: state.checkOut,
       total_guests: state.totalGuests,
       exclude_group_id: state.groupId || state.fromRequestId || undefined,
-      pricing_category: state.guestModify ? undefined : state.pricingCategory,
     });
     state.availableRooms = data.rooms || [];
     state.availableCount = data.available_count ?? 0;
@@ -519,7 +490,6 @@ function bindEvents() {
   });
 
   if (!state.guestModify && state.step === 5) {
-    bindPricingCategoryField(bodyEl, (cat) => reloadPricingForCategory(cat));
   }
 }
 
@@ -628,7 +598,6 @@ async function confirmSave() {
         : (state.modifyRequest ? state.guestMessage?.trim() : undefined)),
     notify_guest: Boolean(!state.guestModify && (state.fromRequestId || state.modifyRequest)),
     notify_modification: Boolean(!state.guestModify && state.modifyRequest),
-    pricing_category: state.guestModify ? undefined : normalizePricingCategory(state.pricingCategory),
   };
 
   try {
@@ -684,15 +653,11 @@ export async function openGroupWizard(options = {}) {
   state.guestModify = guestModify;
   state.guestWasApproved = guestWasApproved;
   state.groupId = groupId;
-  if (!guestModify) {
-    const prefillCategory = prefill?.pricingCategory || prefill?.pricing_category;
-    if (prefillCategory) state.pricingCategory = normalizePricingCategory(prefillCategory);
-  }
 
   try {
     const loaders = [
       guestModify ? getUsers().catch(() => []) : getUsers(),
-      getMealRates(guestModify ? 'Guest' : state.pricingCategory),
+      getMealRates(),
       loadFiscalYearBounds(),
       getFacilitiesOverview().catch(() => ({ services: [] })),
     ];
@@ -729,10 +694,6 @@ export async function openGroupWizard(options = {}) {
       room_id: b.room_id,
       guest_count: b.guest_count,
     }));
-    if (!guestModify && group.pricing_category) {
-      state.pricingCategory = normalizePricingCategory(group.pricing_category);
-      state.mealRates = await getMealRates(state.pricingCategory);
-    }
     if (guestModify) applyLoggedInGroupContact(state);
   }
 

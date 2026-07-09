@@ -718,59 +718,6 @@ INSERT INTO rates_rooms (room_type, item, season, rate) VALUES
     ('Deluxe 3 BR', 'Daily Maximum',             'Super Peak', 5200.00)
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
--- Category 1 (10% below Guest) and Category 2 (20% below Guest) — for internal pricing tests
-INSERT INTO rates_rooms (room_type, item, season, rate, audience) VALUES
-    ('Superior Guest Room', 'Single/Double Occupancy', 'Regular',    2025.00, 'Category 1'),
-    ('Superior Guest Room', 'Single/Double Occupancy', 'Peak',       2250.00, 'Category 1'),
-    ('Superior Guest Room', 'Single/Double Occupancy', 'Super Peak', 2475.00, 'Category 1'),
-    ('Superior Guest Room', 'Daily Maximum',           'Regular',    2520.00, 'Category 1'),
-    ('Superior Guest Room', 'Daily Maximum',           'Peak',       2745.00, 'Category 1'),
-    ('Superior Guest Room', 'Daily Maximum',           'Super Peak', 3060.00, 'Category 1'),
-    ('Standard Apartment', 'Single/Double Occupancy',   'Regular',    2250.00, 'Category 1'),
-    ('Standard Apartment', 'Single/Double Occupancy',   'Peak',       2430.00, 'Category 1'),
-    ('Standard Apartment', 'Single/Double Occupancy',   'Super Peak', 2700.00, 'Category 1'),
-    ('Standard Apartment', 'Daily Maximum',             'Regular',    2745.00, 'Category 1'),
-    ('Standard Apartment', 'Daily Maximum',             'Peak',       3015.00, 'Category 1'),
-    ('Standard Apartment', 'Daily Maximum',             'Super Peak', 3330.00, 'Category 1'),
-    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Regular',    2700.00, 'Category 1'),
-    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Peak',       2947.50, 'Category 1'),
-    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Super Peak', 3285.00, 'Category 1'),
-    ('Deluxe 2 BR', 'Daily Maximum',             'Regular',    3375.00, 'Category 1'),
-    ('Deluxe 2 BR', 'Daily Maximum',             'Peak',       3735.00, 'Category 1'),
-    ('Deluxe 2 BR', 'Daily Maximum',             'Super Peak', 4050.00, 'Category 1'),
-    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Regular',    3240.00, 'Category 1'),
-    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Peak',       3285.00, 'Category 1'),
-    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Super Peak', 4005.00, 'Category 1'),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Regular',    3915.00, 'Category 1'),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Peak',       4275.00, 'Category 1'),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Super Peak', 4680.00, 'Category 1'),
-
-    ('Superior Guest Room', 'Single/Double Occupancy', 'Regular',    1800.00, 'Category 2'),
-    ('Superior Guest Room', 'Single/Double Occupancy', 'Peak',       2000.00, 'Category 2'),
-    ('Superior Guest Room', 'Single/Double Occupancy', 'Super Peak', 2200.00, 'Category 2'),
-    ('Superior Guest Room', 'Daily Maximum',           'Regular',    2240.00, 'Category 2'),
-    ('Superior Guest Room', 'Daily Maximum',           'Peak',       2440.00, 'Category 2'),
-    ('Superior Guest Room', 'Daily Maximum',           'Super Peak', 2720.00, 'Category 2'),
-    ('Standard Apartment', 'Single/Double Occupancy',   'Regular',    2000.00, 'Category 2'),
-    ('Standard Apartment', 'Single/Double Occupancy',   'Peak',       2160.00, 'Category 2'),
-    ('Standard Apartment', 'Single/Double Occupancy',   'Super Peak', 2400.00, 'Category 2'),
-    ('Standard Apartment', 'Daily Maximum',             'Regular',    2440.00, 'Category 2'),
-    ('Standard Apartment', 'Daily Maximum',             'Peak',       2680.00, 'Category 2'),
-    ('Standard Apartment', 'Daily Maximum',             'Super Peak', 2960.00, 'Category 2'),
-    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Regular',    2400.00, 'Category 2'),
-    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Peak',       2620.00, 'Category 2'),
-    ('Deluxe 2 BR', 'Single/Double Occupancy',   'Super Peak', 2920.00, 'Category 2'),
-    ('Deluxe 2 BR', 'Daily Maximum',             'Regular',    3000.00, 'Category 2'),
-    ('Deluxe 2 BR', 'Daily Maximum',             'Peak',       3320.00, 'Category 2'),
-    ('Deluxe 2 BR', 'Daily Maximum',             'Super Peak', 3600.00, 'Category 2'),
-    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Regular',    2880.00, 'Category 2'),
-    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Peak',       2920.00, 'Category 2'),
-    ('Deluxe 3 BR', 'Single/Double Occupancy',   'Super Peak', 3560.00, 'Category 2'),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Regular',    3480.00, 'Category 2'),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Peak',       3800.00, 'Category 2'),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Super Peak', 4160.00, 'Category 2')
-ON DUPLICATE KEY UPDATE rate = VALUES(rate);
-
 -- ============================================
 -- SEED DATA: FACILITIES & RATES (FY26)
 -- Event spaces — not lodging rooms
@@ -854,17 +801,6 @@ INSERT INTO rates_meals (meal_type, rate) VALUES
     ('Snack',      85.00)
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
-INSERT INTO rates_meals (meal_type, rate, audience) VALUES
-    ('Breakfast', 157.50, 'Category 1'),
-    ('Lunch',     202.50, 'Category 1'),
-    ('Dinner',    202.50, 'Category 1'),
-    ('Snack',      76.50, 'Category 1'),
-    ('Breakfast', 140.00, 'Category 2'),
-    ('Lunch',     180.00, 'Category 2'),
-    ('Dinner',    180.00, 'Category 2'),
-    ('Snack',      68.00, 'Category 2')
-ON DUPLICATE KEY UPDATE rate = VALUES(rate);
-
 -- ============================================
 -- SEED DATA: EXTRA SERVICE RATES (FY26)
 -- ============================================
@@ -890,21 +826,6 @@ INSERT INTO rates_extra_services (category, item, season, rate) VALUES
     ('Accommodation Extras', 'Extra Bed or Extra Person', 'Super Peak', 550.00),
 
     ('GMC Chapel', 'Aircon', 'N/A', 275.00)
-ON DUPLICATE KEY UPDATE rate = VALUES(rate);
-
-INSERT INTO rates_extra_services (category, item, season, rate, audience) VALUES
-    ('Accommodation Extras', 'Per person per Night', 'Regular',    405.00, 'Category 1'),
-    ('Accommodation Extras', 'Per person per Night', 'Peak',       450.00, 'Category 1'),
-    ('Accommodation Extras', 'Per person per Night', 'Super Peak', 495.00, 'Category 1'),
-    ('Accommodation Extras', 'Extra Bed or Extra Person', 'Regular',    405.00, 'Category 1'),
-    ('Accommodation Extras', 'Extra Bed or Extra Person', 'Peak',       450.00, 'Category 1'),
-    ('Accommodation Extras', 'Extra Bed or Extra Person', 'Super Peak', 495.00, 'Category 1'),
-    ('Accommodation Extras', 'Per person per Night', 'Regular',    360.00, 'Category 2'),
-    ('Accommodation Extras', 'Per person per Night', 'Peak',       400.00, 'Category 2'),
-    ('Accommodation Extras', 'Per person per Night', 'Super Peak', 440.00, 'Category 2'),
-    ('Accommodation Extras', 'Extra Bed or Extra Person', 'Regular',    360.00, 'Category 2'),
-    ('Accommodation Extras', 'Extra Bed or Extra Person', 'Peak',       400.00, 'Category 2'),
-    ('Accommodation Extras', 'Extra Bed or Extra Person', 'Super Peak', 440.00, 'Category 2')
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================
