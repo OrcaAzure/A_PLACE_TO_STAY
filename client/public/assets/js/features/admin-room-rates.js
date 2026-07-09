@@ -290,6 +290,7 @@ function addRateRow(card) {
 function removeRateRow(card, rowEl) {
   const tbody = card.querySelector('.fac-rate-table tbody');
   if (!tbody || tbody.querySelectorAll('[data-rate-row]').length <= 1) return;
+
   rowEl.remove();
 
   const rows = tbody.querySelectorAll('[data-rate-row]');
@@ -297,6 +298,26 @@ function removeRateRow(card, rowEl) {
     const removeBtn = el.querySelector('[data-remove-rate-row]');
     if (removeBtn) removeBtn.hidden = rows.length <= 1;
   });
+}
+
+async function confirmRemoveRateRow(card, rowEl) {
+  const tbody = card.querySelector('.fac-rate-table tbody');
+  if (!tbody || tbody.querySelectorAll('[data-rate-row]').length <= 1) return;
+
+  const rowName = rowEl.querySelector('.fac-rate-item-input')?.value?.trim()
+    || rowEl.querySelector('.fac-rate-row-title')?.textContent?.trim()
+    || 'this price row';
+  const roomLabel = card.querySelector('.fac-rate-card__title')?.textContent?.trim() || 'this room type';
+
+  const confirmed = await confirmModal({
+    title: 'Remove price row',
+    message: `Remove <strong>${escapeHtml(rowName)}</strong> from <strong>${escapeHtml(roomLabel)}</strong>? The row will disappear when you save — there is no undo.`,
+    confirmLabel: 'Remove row',
+    danger: true,
+  });
+  if (!confirmed) return;
+
+  removeRateRow(card, rowEl);
 }
 
 function toggleEdit() {
@@ -350,7 +371,7 @@ function initRoomRates() {
     if (remove) {
       const card = remove.closest('.fac-rate-card');
       const row = remove.closest('[data-rate-row]');
-      if (card && row) removeRateRow(card, row);
+      if (card && row) confirmRemoveRateRow(card, row);
     }
   });
 }

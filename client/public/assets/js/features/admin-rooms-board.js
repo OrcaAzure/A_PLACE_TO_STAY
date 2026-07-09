@@ -224,7 +224,7 @@ function availNoteHtml(room) {
 function roomCardTypeLabel(room) {
   const key = room.room_type || 'Room';
   const friendly = {
-    Dorm: 'Group sleep',
+    Dorm: 'Dorm',
     'Standard Apartment': 'Apartment',
     'Superior Guest Room': 'Superior guest room',
     VIP: 'VIP room',

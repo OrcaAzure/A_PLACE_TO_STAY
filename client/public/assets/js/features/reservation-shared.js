@@ -33,24 +33,43 @@ export function renderAdminMealRow(type, qty, price, { idPrefix = 'wiz' } = {}) 
     </div>`;
 }
 
+export function mealTypesOrdered(mealRates = {}) {
+  const types = [...MEAL_TYPE_LIST];
+  for (const key of Object.keys(mealRates || {})) {
+    if (!types.includes(key)) types.push(key);
+  }
+  return types;
+}
+
+export function ensureMealsShape(meals = {}, mealRates = {}) {
+  const next = { ...meals };
+  for (const type of mealTypesOrdered(mealRates)) {
+    if (next[type] == null) next[type] = 0;
+  }
+  return next;
+}
+
 export function syncAdminMealSubtotals(root, meals, mealRates) {
   if (!root) return;
-  MEAL_TYPE_LIST.forEach((type) => {
+  mealTypesOrdered(mealRates).forEach((type) => {
     const sub = root.querySelector(`[data-meal-sub="${type}"]`);
     if (sub) sub.textContent = formatMoney((Number(mealRates[type]) || 0) * clampMealQty(meals[type]));
-    const total = root.querySelector('[data-meals-total]');
-    if (total) {
-      const sum = MEAL_TYPE_LIST.reduce((s, t) => s + (Number(mealRates[t]) || 0) * clampMealQty(meals[t]), 0);
-      total.textContent = formatMoney(sum);
-    }
   });
+  const total = root.querySelector('[data-meals-total]');
+  if (total) {
+    const sum = mealTypesOrdered(mealRates).reduce(
+      (s, t) => s + (Number(mealRates[t]) || 0) * clampMealQty(meals[t]),
+      0
+    );
+    total.textContent = formatMoney(sum);
+  }
 }
 
 export function readMealsFromInputs(root, meals) {
   const next = { ...meals };
-  MEAL_TYPE_LIST.forEach((type) => {
-    const input = root?.querySelector(`[data-meal-qty="${type}"]`);
-    if (input) next[type] = readMealQtyInput(input);
+  root?.querySelectorAll('[data-meal-qty]').forEach((input) => {
+    const type = input.getAttribute('data-meal-qty');
+    if (type) next[type] = readMealQtyInput(input);
   });
   return next;
 }
@@ -450,7 +469,11 @@ export function filterRoomsList(rooms, { search = '', status = null, includeStat
 
 export function mealsFromBooking(mealsArr = []) {
   const out = { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 };
-  mealsArr.forEach((m) => { if (out[m.meal_type] != null) out[m.meal_type] = Number(m.quantity) || 0; });
+  mealsArr.forEach((m) => {
+    const type = m?.meal_type;
+    if (!type) return;
+    out[type] = Number(m.quantity) || 0;
+  });
   return out;
 }
 

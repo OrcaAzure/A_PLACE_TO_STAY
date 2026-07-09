@@ -360,8 +360,8 @@ export async function getMealRates() {
 
 export function calcMealsTotal(meals = {}, rates = DEFAULT_MEAL_RATES) {
   let total = 0;
-  for (const type of MEAL_TYPES) {
-    const qty = Number(meals[type] || 0);
+  for (const [type, qtyRaw] of Object.entries(meals || {})) {
+    const qty = Number(qtyRaw || 0);
     if (qty > 0) total += (rates[type] || 0) * qty;
   }
   return Math.round(total * 100) / 100;
@@ -372,11 +372,9 @@ export function calcFeesTotal(fees = []) {
 }
 
 export function mealsPayloadFromRows(rows = []) {
-  const out = Object.fromEntries(MEAL_TYPES.map((type) => [type, 0]));
+  const out = {};
   for (const row of rows || []) {
-    if (row.meal_type && out[row.meal_type] != null) {
-      out[row.meal_type] = Number(row.quantity) || 0;
-    }
+    if (row.meal_type) out[row.meal_type] = Number(row.quantity) || 0;
   }
   return out;
 }
@@ -446,8 +444,8 @@ export async function saveBookingMeals(bookingId, meals = {}, rates = null) {
   const mealRates = rates || (await getMealRates());
   try {
     await pool.query('DELETE FROM bookings_meals WHERE bookings_room_id = ?', [bookingId]);
-    for (const type of MEAL_TYPES) {
-      const qty = Number(meals[type] || 0);
+    for (const [type, qtyRaw] of Object.entries(meals || {})) {
+      const qty = Number(qtyRaw || 0);
       if (qty <= 0) continue;
       const unitPrice = mealRates[type] || 0;
       const subtotal = Math.round(unitPrice * qty * 100) / 100;

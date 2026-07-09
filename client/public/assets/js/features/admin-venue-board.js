@@ -51,46 +51,8 @@ function normalizeTime(value) {
   return raw.slice(0, 5);
 }
 
-function formatDisplayDate(iso) {
-  return new Date(`${iso}T12:00:00`).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
-function formatTimeRange(start, end) {
-  if (!start || !end) return '';
-  const fmt = (t) => {
-    const [h, m] = t.split(':').map(Number);
-    return new Date(2000, 0, 1, h, m).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  };
-  return `${fmt(start)} – ${fmt(end)}`;
-}
-
 function hasSlotCheck() {
   return Boolean(state.data?.check_start && state.data?.check_end);
-}
-
-function renderStats(summary) {
-  const mount = document.getElementById('venue-board-stats');
-  if (!mount || !summary) return;
-
-  const slotOpen = summary.freeForSlot;
-  mount.innerHTML = `
-    <article class="rooms-stat">
-      <span class="rooms-stat__value">${summary.totalSpaces}</span>
-      <span class="rooms-stat__label">All spaces</span>
-    </article>
-    <article class="rooms-stat rooms-stat--vacant">
-      <span class="rooms-stat__value">${slotOpen != null ? slotOpen : summary.noBookingsToday ?? 0}</span>
-      <span class="rooms-stat__label">${slotOpen != null ? 'Free for slot' : 'No bookings'}</span>
-    </article>
-    <article class="rooms-stat rooms-stat--busy">
-      <span class="rooms-stat__value">${summary.bookedToday}</span>
-      <span class="rooms-stat__label">Booked slots</span>
-    </article>`;
 }
 
 function formatRateLine(f) {
@@ -206,11 +168,9 @@ function readSlotInputs() {
 }
 
 function updateSchedulePlanUi() {
-  const prompt = document.getElementById('venue-plan-prompt');
   const panel = document.getElementById('venue-date-plan');
   const feedback = document.getElementById('venue-schedule-feedback');
 
-  prompt?.classList.toggle('hidden', state.schedulePanelOpen);
   panel?.classList.toggle('hidden', !state.schedulePanelOpen);
 
   if (!feedback) return;
@@ -255,39 +215,31 @@ function updateSchedulePlanUi() {
   feedback.textContent = '';
 }
 
-function updateBoardChrome(visibleCount) {
-  const summaryEl = document.getElementById('venue-schedule-summary');
-  const data = state.data;
-
-  if (!summaryEl) return;
-
-  if (state.scheduleLoading) {
-    summaryEl.textContent = 'Loading schedule…';
-    return;
-  }
-
-  if (!data) {
-    summaryEl.textContent = 'No schedule loaded';
-    return;
-  }
-
-  const searchNote = state.search.trim() ? ` · matching “${state.search.trim()}”` : '';
-  const slotNote = hasSlotCheck()
-    ? ` · ${formatTimeRange(data.check_start, data.check_end)}`
-    : '';
-  summaryEl.textContent = `${visibleCount} space${visibleCount === 1 ? '' : 's'} · ${formatDisplayDate(data.date)}${slotNote}${searchNote}`;
-}
-
 function openSchedulePanel() {
   state.schedulePanelOpen = true;
+  const dateInput = document.getElementById('venue-schedule-date');
+  const startInput = document.getElementById('venue-schedule-start');
+  const endInput = document.getElementById('venue-schedule-end');
+  const today = dateOnly();
+  if (dateInput && !dateInput.value) {
+    dateInput.value = today;
+    dateInput.min = today;
+    state.date = today;
+  } else if (dateInput) {
+    dateInput.min = today;
+  }
+  if (startInput && !startInput.value) startInput.value = '09:00';
+  if (endInput && !endInput.value) endInput.value = '12:00';
+  readSlotInputs();
   updateSchedulePlanUi();
+  loadSchedule(state.date || today);
   document.getElementById('venue-date-plan')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function closeSchedulePanel() {
   state.schedulePanelOpen = false;
   updateSchedulePlanUi();
-  renderSchedule();
+  loadSchedule(state.date || dateOnly());
 }
 
 function renderSchedule() {
@@ -301,14 +253,8 @@ function renderSchedule() {
     if (state.scheduleLoading) {
       mount.innerHTML = '<p class="rooms-board-message">Loading venue schedule…</p>';
     }
-    updateBoardChrome(0);
     return;
   }
-
-  renderStats(data.summary);
-
-  const visible = countVisibleSpaces();
-  updateBoardChrome(visible);
 
   if (state.scheduleLoading) {
     mount.innerHTML = '<p class="rooms-board-message">Loading venue schedule…</p>';
@@ -357,11 +303,18 @@ async function loadSchedule(date, { background = false } = {}) {
   const dateInput = document.getElementById('venue-schedule-date');
   const startInput = document.getElementById('venue-schedule-start');
   const endInput = document.getElementById('venue-schedule-end');
-  if (dateInput) dateInput.value = state.date;
-  if (startInput) startInput.value = state.startTime;
-  if (endInput) endInput.value = state.endTime;
+  if (state.schedulePanelOpen) {
+    if (dateInput) dateInput.value = state.date;
+    if (startInput) startInput.value = state.startTime;
+    if (endInput) endInput.value = state.endTime;
+  }
 
-  if (state.endTime <= state.startTime) {
+  const useSlotFilter = state.schedulePanelOpen
+    && state.startTime
+    && state.endTime
+    && state.endTime > state.startTime;
+
+  if (state.schedulePanelOpen && state.endTime <= state.startTime) {
     state.scheduleError = 'End time must be after start time.';
     updateSchedulePlanUi();
     renderSchedule();
@@ -375,10 +328,9 @@ async function loadSchedule(date, { background = false } = {}) {
   }
 
   try {
-    state.data = await getVenueScheduleOverview(state.date, {
-      startTime: state.startTime,
-      endTime: state.endTime,
-    });
+    state.data = await getVenueScheduleOverview(state.date, useSlotFilter
+      ? { startTime: state.startTime, endTime: state.endTime }
+      : {});
     state.scheduleError = '';
   } catch (err) {
     state.scheduleError = err.message || 'Could not load schedule.';
@@ -401,6 +353,7 @@ function loadToday() {
 }
 
 const debouncedSlotChange = debounce(() => {
+  if (!state.schedulePanelOpen) return;
   readSlotInputs();
   loadSchedule(state.date);
 }, 350);
@@ -412,11 +365,6 @@ export function initVenueScheduleBoard() {
   const dateInput = document.getElementById('venue-schedule-date');
   const startInput = document.getElementById('venue-schedule-start');
   const endInput = document.getElementById('venue-schedule-end');
-  const today = dateOnly();
-  if (dateInput) {
-    dateInput.min = today;
-    dateInput.value = today;
-  }
   if (startInput && !startInput.value) startInput.value = '09:00';
   if (endInput && !endInput.value) endInput.value = '12:00';
 

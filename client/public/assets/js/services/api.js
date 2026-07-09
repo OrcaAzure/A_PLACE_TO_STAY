@@ -307,8 +307,9 @@ export async function createMealRate(payload) {
   });
 }
 
-export async function getMealRatesCatalog() {
-  const data = await apiRequest('/catalog/meal-rates');
+export async function getMealRatesCatalog({ fresh = false } = {}) {
+  const query = fresh ? `?_=${Date.now()}` : '';
+  const data = await apiRequest(`/catalog/meal-rates${query}`, fresh ? { cache: 'no-store' } : {});
   return data.meals || [];
 }
 
@@ -330,8 +331,9 @@ export async function createExtraServiceRate(payload) {
   });
 }
 
-export async function getExtraServicesCatalog() {
-  const data = await apiRequest('/catalog/extra-services');
+export async function getExtraServicesCatalog({ fresh = false } = {}) {
+  const query = fresh ? `?_=${Date.now()}` : '';
+  const data = await apiRequest(`/catalog/extra-services${query}`, fresh ? { cache: 'no-store' } : {});
   return data.services || [];
 }
 

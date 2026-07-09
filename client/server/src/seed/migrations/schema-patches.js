@@ -11,6 +11,8 @@ import {
   runSeasonSettingsMigration,
   runLodgingExtrasMigration,
 } from './rooms.js';
+import { runGuestOnlyRateCleanup } from './guest-only-rates-cleanup.js';
+import { runMealTypeVarcharMigration } from './meal-type-varchar.js';
 import {
   runFacilitiesCatalogMigration,
   runGmcAblockMigration,
@@ -522,6 +524,18 @@ export async function runSchemaPatches() {
     `);
   } catch (err) {
     console.warn('[schema] rates_facilities variant index migration skipped:', err.message);
+  }
+
+  try {
+    await runGuestOnlyRateCleanup();
+  } catch (err) {
+    console.warn('[schema] guest-only rate cleanup skipped:', err.message);
+  }
+
+  try {
+    await runMealTypeVarcharMigration();
+  } catch (err) {
+    console.warn('[schema] meal type varchar migration skipped:', err.message);
   }
 
   if (await tableExists('payments')) {

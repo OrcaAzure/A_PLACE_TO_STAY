@@ -15,9 +15,16 @@ import { getAdminVenues, saveAdminVenue } from '/assets/js/services/api.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
 
 const GUEST_AUDIENCE = 'Guest';
+const GUEST_VARIANT = {
+  audience: GUEST_AUDIENCE,
+  age_band: 'Adult',
+  currency: 'PHP',
+  billing_unit: 'per segment',
+  notes: '',
+};
 
 function rowAudience(row) {
-  return String(row?.audience ?? 'Guest').trim() || 'Guest';
+  return String(row?.audience ?? GUEST_AUDIENCE).trim() || GUEST_AUDIENCE;
 }
 
 let venues = [];
@@ -26,8 +33,6 @@ let drafts = new Map();
 let editMode = false;
 let initialized = false;
 let cid = 0;
-const CURRENCIES = ['PHP', 'USD'];
-const AGE_BANDS = ['Adult', 'Child', 'All Ages'];
 
 function $(id) {
   return document.getElementById(id);
@@ -38,12 +43,8 @@ function peso(n) {
   return `₱${Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
 }
 
-function variantSummary(fn) {
-  const chips = [
-    fn.age_band !== 'Adult' ? fn.age_band : null,
-    fn.currency !== 'PHP' ? fn.currency : null,
-  ].filter(Boolean);
-  return chips.join(' · ');
+function variantSummary() {
+  return '';
 }
 
 function rateFor(fn, season) {
@@ -63,11 +64,7 @@ function syncFnRates(fn, fields) {
     const row = {
       season,
       rate: Number(rate),
-      audience: GUEST_AUDIENCE,
-      age_band: fields.age_band || 'Adult',
-      currency: fields.currency || 'PHP',
-      billing_unit: 'per segment',
-      notes: fields.notes || '',
+      ...GUEST_VARIANT,
     };
     if (idx >= 0) fn.rate_rows[idx] = { ...fn.rate_rows[idx], ...row };
     else fn.rate_rows.push(row);
@@ -78,16 +75,11 @@ function syncFnRates(fn, fields) {
 }
 
 function decorateFn(fn) {
-  const variantRow = (fn.rate_rows || []).find((r) => rowAudience(r) === GUEST_AUDIENCE);
   return {
     ...fn,
     regular_rate: rateFor(fn, 'Regular'),
     peak_rate: rateFor(fn, 'Peak'),
-    audience: GUEST_AUDIENCE,
-    age_band: variantRow?.age_band || 'Adult',
-    currency: variantRow?.currency || 'PHP',
-    billing_unit: variantRow?.billing_unit || 'per segment',
-    notes: variantRow?.notes || '',
+    ...GUEST_VARIANT,
   };
 }
 
@@ -150,6 +142,7 @@ function blankFunction() {
 
 /** Read the live inputs from every card back into their drafts (before a re-render). */
 function captureAllCards() {
+  if (!editMode) return;
   const mount = $('venue-rates-grid-mount');
   if (!mount) return;
   mount.querySelectorAll('.fac-rate-card[data-venue-key]').forEach((card) => {
@@ -158,6 +151,7 @@ function captureAllCards() {
     card.querySelectorAll('[data-use-cid]').forEach((row) => {
       const fn = draft.functions.find((f) => f._cid === row.getAttribute('data-use-cid'));
       if (!fn) return;
+      if (!row.querySelector('[data-use-field="regular_rate"]')) return;
       const fields = { function_name: fn.function_name };
       row.querySelectorAll('[data-use-field]').forEach((input) => {
         fields[input.getAttribute('data-use-field')] = input.value;
@@ -175,7 +169,6 @@ function renderUseRow(draft, fnView) {
   const single = draft.functions.length <= 1;
   const name = String(fnView.function_name || '').trim();
   const unpriced = fnView.regular_rate === '' || fnView.regular_rate == null;
-  const showVariant = fnView.age_band !== 'Adult' || fnView.currency !== 'PHP';
 
   if (editMode) {
     return `
@@ -183,14 +176,6 @@ function renderUseRow(draft, fnView) {
         <td class="venue-rate-cell-name">
           <input type="text" class="fac-rate-input venue-rate-name-input" data-use-field="function_name"
             value="${escapeHtml(fnView.function_name)}" placeholder="${single ? 'Use name (optional)' : 'Use name'}" aria-label="Use name" />
-          <div class="fac-rate-variant-grid fac-rate-variant-grid--compact mt-2">
-            <select class="fac-rate-meta-input" data-use-field="age_band" aria-label="Age band">
-              ${AGE_BANDS.map((v) => `<option value="${escapeHtml(v)}"${fnView.age_band === v ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('')}
-            </select>
-            <select class="fac-rate-meta-input" data-use-field="currency" aria-label="Currency">
-              ${CURRENCIES.map((v) => `<option value="${escapeHtml(v)}"${fnView.currency === v ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('')}
-            </select>
-          </div>
         </td>
         <td class="fac-rate-cell">
           <input type="number" min="1" step="1" inputmode="numeric" class="fac-rate-input" data-use-field="regular_rate"
@@ -217,7 +202,6 @@ function renderUseRow(draft, fnView) {
       <th scope="row" class="fac-rate-row-label">
         <span class="fac-rate-row-title">${escapeHtml(name || 'Unnamed use')}</span>
         ${unpriced ? '<span class="venue-rate-flag">Set a price to make bookable</span>' : ''}
-        ${showVariant ? `<span class="fac-rate-row-sub">${escapeHtml(variantSummary(fnView))}</span>` : ''}
       </th>
       <td class="fac-rate-cell">${reg ? `<span class="fac-rate-price">${reg}</span>` : '<span class="fac-rate-empty">—</span>'}</td>
       <td class="fac-rate-cell">${peak ? `<span class="fac-rate-price">${peak}</span>` : '<span class="fac-rate-empty">—</span>'}</td>
@@ -265,8 +249,6 @@ function renderCard(draft) {
 }
 
 function paint() {
-  captureAllCards();
-
   const mount = $('venue-rates-grid-mount');
   if (!mount) return;
 

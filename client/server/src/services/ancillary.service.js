@@ -33,7 +33,7 @@ export async function fetchMealRateRows() {
   const [rows] = await pool.query(
     `SELECT id, meal_type AS item, rate, audience, age_band, currency, billing_unit, notes
      FROM rates_meals
-     ORDER BY FIELD(meal_type, 'Breakfast', 'Lunch', 'Dinner', 'Snack')`
+     ORDER BY meal_type ASC`
   );
   return rows;
 }

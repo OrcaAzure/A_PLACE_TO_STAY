@@ -129,10 +129,6 @@
 
     <div id="fac-panel-venue-spaces" class="fac-panel hidden">
 
-      <div id="venue-board-stats" class="rooms-board-stats">
-        <article class="rooms-stat"><span class="rooms-stat__value">…</span><span class="rooms-stat__label">Loading</span></article>
-      </div>
-
       <section class="res-hub-panel">
         <div class="res-hub-toolbar">
           <div class="res-hub-toolbar__search">
@@ -179,9 +175,6 @@
           </div>
           <p id="venue-schedule-feedback" class="rooms-date-plan__feedback hidden" role="status"></p>
         </div>
-        <p class="rooms-board-meta">
-          <span id="venue-schedule-summary" class="rooms-board-meta__count">Loading venue schedule…</span>
-        </p>
         <div id="venue-schedule-mount">
           <p class="rooms-board-message">Loading venue schedule…</p>
         </div>
@@ -228,7 +221,7 @@
         <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="meals" role="note">
           <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
           <div class="admin-notice__body">
-            <p>Editing mode — tap <strong>Edit</strong> on a card, or use <strong>Add meal</strong> to create a new price.</p>
+            <p>Editing mode — tap <strong>Edit</strong> on a card to change a price, or use <strong>Add meal</strong> for a new one.</p>
           </div>
         </div>
         <div id="meals-grid-mount" class="fac-catalog-grid fac-catalog-grid--meals">
@@ -254,7 +247,7 @@
         <div class="admin-notice admin-notice--inline hidden" data-catalog-edit-hint data-catalog-panel="extras" role="note">
           <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
           <div class="admin-notice__body">
-            <p>Editing mode — tap <strong>Edit</strong> on any fee, or use <strong>Add extra</strong> to create a new one.</p>
+            <p>Editing mode — tap <strong>Edit</strong> on a fee to change it, or use <strong>Add extra</strong> for a new one.</p>
           </div>
         </div>
         <div id="extras-grid-mount" class="fac-catalog-grid fac-catalog-grid--extras">
@@ -299,8 +292,8 @@
 
     async function reloadCatalog() {
       const [meals, extras] = await Promise.all([
-        getMealRatesCatalog(),
-        getExtraServicesCatalog(),
+        getMealRatesCatalog({ fresh: true }),
+        getExtraServicesCatalog({ fresh: true }),
       ]);
       allMeals = meals || [];
       allExtras = extras || [];
