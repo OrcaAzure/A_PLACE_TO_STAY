@@ -3,7 +3,7 @@
  */
 
 import {
-  getBookings, getGroups, getFacilityBookings, deleteBooking, deleteGroup,
+  getBookings, getGroups, getFacilityBookings, deleteBooking, deleteGroup, deleteFacilityBooking,
   updateFacilityBooking,
   normalizeManageRequest, normalizeManageGroupRequest, normalizeFacilityBooking,
 } from '/assets/js/services/api.js';
@@ -12,6 +12,7 @@ import {
   requestKey, parseRequestKey,
   cancelRoomReservation, cancelVenueReservation,
   confirmAdminCancelReservation, confirmDeclineRequest,
+  confirmAdminDeleteStayRecord, confirmAdminDeleteVenueRecord, alertPaidInvoiceBlocksDelete,
   notifyBookingUpdated,
 } from '/assets/js/features/booking-actions.js';
 import { confirmModal, promptModal, showAlertModal } from '/assets/js/layout/ui.js';
@@ -19,6 +20,7 @@ import {
   escapeHtml, formatDateLong, formatMoney, formatSubmittedAt, statusBadge, debounce,
   normStatus, stayNights, getReservationCategory, lifecyclePhaseForBooking, lifecyclePhaseBadge,
   canAdminCancelVenueBooking, canAdminModifyVenueBooking, canAdminCancelRoomBooking,
+  canAdminDeleteStayRecord, canAdminDeleteVenueRecord, collectStayInvoiceSummary,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 const TABS = [
@@ -511,6 +513,7 @@ function renderVenueCard(item, { pendingActions = false } = {}) {
   const pending = normStatus(item.status) === 'pending';
   const canCancel = canAdminCancelVenueBooking(item);
   const canModify = canAdminModifyVenueBooking(item);
+  const canDelete = !pendingActions && canAdminDeleteVenueRecord(item);
   const lifecycleBadge = lifecyclePhaseBadge(lifecyclePhaseForBooking(item));
   const calLink = `calendar.html?date=${encodeURIComponent(item.eventDate)}&q=${encodeURIComponent(item.venueName || '')}`;
   const cardKey = `ven-${item.id}`;
@@ -555,6 +558,10 @@ function renderVenueCard(item, { pendingActions = false } = {}) {
           <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vb-cancel="${item.id}">
             <span class="material-symbols-outlined">cancel</span> Cancel booking
           </button>` : ''}
+        ${canDelete ? `
+          <button type="button" class="res-btn res-btn--danger res-btn--wide" data-del-venue="${item.id}">
+            <span class="material-symbols-outlined">delete</span> Delete record
+          </button>` : ''}
       </div>`,
   });
 }
@@ -576,6 +583,9 @@ function renderStayCard(item) {
     : 'facilities.html?tab=rooms';
   const body = isGroup ? renderGroupStayDetails(item) : renderSingleStayDetails(item);
   const canCancel = canAdminCancelRoomBooking(item);
+  const canDelete = canAdminDeleteStayRecord(item);
+  const invoiceSummary = canDelete ? collectStayInvoiceSummary(item) : null;
+  const deleteBlockedByPaid = invoiceSummary?.hasPaid;
   const summaryHtml = renderDatesTriple([
     { label: 'Check-in', value: formatDateLong(item.check_in) },
     { label: 'Check-out', value: formatDateLong(item.check_out) },
@@ -604,6 +614,10 @@ function renderStayCard(item) {
         ${canCancel ? `
           <button type="button" class="res-btn res-btn--reject res-btn--wide" data-cancel-res="${key}">
             <span class="material-symbols-outlined">cancel</span> Cancel
+          </button>` : ''}
+        ${canDelete ? `
+          <button type="button" class="res-btn res-btn--danger res-btn--wide" data-del-res="${key}"${deleteBlockedByPaid ? ' title="Clear paid invoice in Billing first"' : ''}>
+            <span class="material-symbols-outlined">delete</span> Delete record
           </button>` : ''}
       </div>`,
   });
@@ -863,15 +877,15 @@ async function deleteStay(key) {
   const { kind, id } = parseResKey(key);
   const list = kind === 'group' ? state.groupStays : state.roomStays;
   const item = list.find((x) => String(x.id) === String(id));
-  if (!item) return;
-  const name = kind === 'group' ? item.group_name : item.guest_name;
-  const confirmed = await confirmModal({
-    title: 'Delete reservation record?',
-    message: `Are you sure you want to permanently delete the record for <strong>${escapeHtml(name || 'this guest')}</strong>? This cannot be undone.`,
-    confirmLabel: 'Delete permanently',
-    cancelLabel: 'Keep record',
-    danger: true,
-  });
+  if (!item || !canAdminDeleteStayRecord(item)) return;
+
+  const summary = collectStayInvoiceSummary(item);
+  if (summary.hasPaid) {
+    await alertPaidInvoiceBlocksDelete(item);
+    return;
+  }
+
+  const confirmed = await confirmAdminDeleteStayRecord(item);
   if (!confirmed) return;
   try {
     if (kind === 'group') await deleteGroup(id);
@@ -879,7 +893,26 @@ async function deleteStay(key) {
     notifyBookingUpdated();
     await loadAll();
   } catch (err) {
-    await showAlertModal('Could not delete record', err.message || 'Could not delete this reservation record.');
+    const msg = err.message || 'Could not delete this reservation record.';
+    if (/paid invoice/i.test(msg)) {
+      await alertPaidInvoiceBlocksDelete(item);
+      return;
+    }
+    await showAlertModal('Could not delete record', msg);
+  }
+}
+
+async function deleteVenueRecord(id) {
+  const item = state.venueBookings.find((v) => String(v.id) === String(id));
+  if (!item || !canAdminDeleteVenueRecord(item)) return;
+  const confirmed = await confirmAdminDeleteVenueRecord(item);
+  if (!confirmed) return;
+  try {
+    await deleteFacilityBooking(id);
+    notifyBookingUpdated();
+    await loadAll();
+  } catch (err) {
+    await showAlertModal('Could not delete record', err.message || 'Could not delete this venue booking record.');
   }
 }
 
@@ -1009,6 +1042,8 @@ function bindEvents() {
     if (cancelRes) { cancelStay(cancelRes.getAttribute('data-cancel-res')); return; }
     const del = e.target.closest('[data-del-res]');
     if (del) { deleteStay(del.getAttribute('data-del-res')); return; }
+    const delVenue = e.target.closest('[data-del-venue]');
+    if (delVenue) { deleteVenueRecord(Number(delVenue.getAttribute('data-del-venue'))); return; }
     const vbApprove = e.target.closest('[data-vb-approve]');
     if (vbApprove) {
       setVenueStatus(Number(vbApprove.dataset.vbApprove), 'Approved');

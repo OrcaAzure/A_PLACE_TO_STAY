@@ -4,11 +4,13 @@ import { getBookings, getGroups, deleteBooking, deleteGroup } from '/assets/js/s
 import {
   escapeHtml, formatDateLong, statusBadge, debounce, normStatus, getReservationCategory,
   lifecyclePhaseForBooking, lifecyclePhaseBadge, canAdminCancelRoomBooking,
+  canAdminDeleteStayRecord, collectStayInvoiceSummary,
 } from '/assets/js/features/reservation-shared.js';
 import {
   cancelRoomReservation, confirmAdminCancelReservation,
+  confirmAdminDeleteStayRecord, alertPaidInvoiceBlocksDelete,
 } from '/assets/js/features/booking-actions.js';
-import { confirmModal, showAlertModal } from '/assets/js/layout/ui.js';
+import { showAlertModal } from '/assets/js/layout/ui.js';
 
 let initialized = false;
 let isOpen = false;
@@ -67,6 +69,9 @@ function renderList() {
       : escapeHtml(item.guest_name || 'Unknown guest');
     const key = isGroup ? `g-${item.id}` : `b-${item.id}`;
     const canCancel = canAdminCancelRoomBooking(item);
+    const canDelete = canAdminDeleteStayRecord(item);
+    const invoiceSummary = canDelete ? collectStayInvoiceSummary(item) : null;
+    const deleteBlockedByPaid = invoiceSummary?.hasPaid;
 
     return `<article class="res-list-card" role="listitem">
       <div class="res-list-card-top">
@@ -98,6 +103,10 @@ function renderList() {
         ${canCancel ? `
           <button type="button" class="res-btn res-btn--reject res-btn--wide" data-cancel-res="${key}">
             <span class="material-symbols-outlined">cancel</span> Cancel
+          </button>` : ''}
+        ${canDelete ? `
+          <button type="button" class="res-btn res-btn--danger res-btn--wide" data-del-res="${key}"${deleteBlockedByPaid ? ' title="Clear paid invoice in Billing first"' : ''}>
+            <span class="material-symbols-outlined">delete</span> Delete record
           </button>` : ''}
       </div>
     </article>`;
@@ -191,20 +200,29 @@ async function cancel(key) {
 async function remove(key) {
   const { kind, id } = parseKey(key);
   const item = list.find((x) => x.kind === kind && String(x.id) === String(id));
-  if (!item) return;
-  const name = kind === 'group' ? item.group_name : item.guest_name;
-  const confirmed = await confirmModal({
-    title: 'Delete reservation record?',
-    message: `Are you sure you want to permanently delete the record for <strong>${escapeHtml(name || 'this guest')}</strong>? This cannot be undone.`,
-    confirmLabel: 'Delete permanently',
-    cancelLabel: 'Keep record',
-    danger: true,
-  });
+  if (!item || !canAdminDeleteStayRecord(item)) return;
+
+  const summary = collectStayInvoiceSummary(item);
+  if (summary.hasPaid) {
+    await alertPaidInvoiceBlocksDelete(item);
+    return;
+  }
+
+  const confirmed = await confirmAdminDeleteStayRecord(item);
   if (!confirmed) return;
-  if (kind === 'group') await deleteGroup(id);
-  else await deleteBooking(id);
-  window.dispatchEvent(new CustomEvent('booking:updated'));
-  await load();
+  try {
+    if (kind === 'group') await deleteGroup(id);
+    else await deleteBooking(id);
+    window.dispatchEvent(new CustomEvent('booking:updated'));
+    await load();
+  } catch (err) {
+    const msg = err.message || 'Could not delete this reservation record.';
+    if (/paid invoice/i.test(msg)) {
+      await alertPaidInvoiceBlocksDelete(item);
+      return;
+    }
+    await showAlertModal('Could not delete record', msg);
+  }
 }
 
 function onClick(e) {

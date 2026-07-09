@@ -930,6 +930,29 @@ export async function deletePaymentsForGroup(groupId) {
   }
 }
 
+export async function deletePaymentsForFacilityBooking(facilityBookingId, conn = null) {
+  const query = conn
+    ? (...args) => conn.query(...args).then(([rows]) => rows)
+    : (...args) => pool.query(...args).then(([rows]) => rows);
+
+  const payments = await query(
+    'SELECT id, status FROM payments WHERE bookings_facility_id = ?',
+    [facilityBookingId]
+  );
+  if (payments.some((p) => p.status === 'Paid')) {
+    throw new Error('Cannot delete this booking while a paid invoice exists. Clear the payment record in Billing first.');
+  }
+  if (!payments.length) return;
+  const ids = payments.map((p) => p.id);
+  if (conn) {
+    await conn.query('DELETE FROM payment_transactions WHERE payment_id IN (?)', [ids]);
+    await conn.query('DELETE FROM payments WHERE bookings_facility_id = ?', [facilityBookingId]);
+    return;
+  }
+  await runPaymentQuery('DELETE FROM payment_transactions WHERE payment_id IN (?)', [ids]);
+  await runPaymentQuery('DELETE FROM payments WHERE bookings_facility_id = ?', [facilityBookingId]);
+}
+
 export async function deletePaidInvoice(paymentId, actorUserId = null) {
   const payment = await loadPaymentDetail(paymentId);
   if (!payment) throw new Error('Invoice not found');

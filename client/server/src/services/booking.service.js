@@ -212,7 +212,7 @@ export async function assertRoomDeletable(roomId) {
   );
   if (Number(history[0].n) > 0) {
     throw new Error(
-      'This room still has reservation records on file (cancelled, rejected, or past). Remove those records before deleting the room.'
+      'This room still has reservation records on file (cancelled or past). Delete those records from Admin → Reservations (filter by Cancelled), then try removing the room again.'
     );
   }
 }

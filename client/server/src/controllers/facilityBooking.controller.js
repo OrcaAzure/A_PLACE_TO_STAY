@@ -1,6 +1,6 @@
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
-import { ensureInvoiceForFacilityBooking } from '../services/payment.service.js';
+import { ensureInvoiceForFacilityBooking, deletePaymentsForFacilityBooking } from '../services/payment.service.js';
 import { resolveGuestUser } from '../services/booking.service.js';
 import {
   assertCanCancelVenueBooking,
@@ -458,10 +458,12 @@ export const deleteFacilityBooking = async (req, res) => {
   try {
     const [existing] = await pool.query('SELECT id FROM bookings_facilities WHERE id = ? LIMIT 1', [req.params.id]);
     if (!existing.length) return res.status(404).json({ message: 'Venue booking not found' });
+    await deletePaymentsForFacilityBooking(req.params.id);
     await pool.query('DELETE FROM bookings_facilities WHERE id = ?', [req.params.id]);
     res.status(200).json({ message: 'Venue booking deleted' });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+  } catch (error) {
+    const status = error.message.includes('paid invoice') ? 409 : 500;
+    res.status(status).json({ message: error.message });
   }
 };
 

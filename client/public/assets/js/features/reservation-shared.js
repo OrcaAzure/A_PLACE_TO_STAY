@@ -339,6 +339,35 @@ export function canAdminCancelRoomBooking(booking, now = new Date()) {
   ) === 'upcoming';
 }
 
+/** Permanent record removal — only for closed/cancelled stays, not active ones. */
+export function canAdminDeleteStayRecord(booking) {
+  return normStatus(booking?.status) === 'cancelled';
+}
+
+export function canAdminDeleteVenueRecord(booking) {
+  return ['cancelled', 'rejected'].includes(normStatus(booking?.status));
+}
+
+/** Housing invoices linked to a room or group stay row. */
+export function collectStayInvoiceSummary(item) {
+  const invoices = [];
+  if (item?.kind === 'group' || item?.bookings?.length) {
+    for (const row of item.bookings || []) {
+      if (row.invoice) {
+        invoices.push({
+          ...row.invoice,
+          label: [`${row.building_name || ''} ${row.room_number || ''}`.trim(), row.room_type].filter(Boolean).join(' · ') || 'Room',
+        });
+      }
+    }
+  } else if (item?.invoice) {
+    invoices.push({ ...item.invoice, label: 'Room stay' });
+  }
+  const paid = invoices.filter((inv) => inv.status === 'Paid');
+  const pending = invoices.filter((inv) => inv.status === 'Pending');
+  return { invoices, paid, pending, hasPaid: paid.length > 0, hasPending: pending.length > 0 };
+}
+
 export function canAdminCancelVenueBooking(booking, now = new Date()) {
   const status = normStatus(booking.status);
   if (!['pending', 'approved'].includes(status)) return false;

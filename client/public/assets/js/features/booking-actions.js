@@ -3,8 +3,8 @@
 import {
   getRoomAvailability, suggestGroupRooms, updateBooking, updateGroup, updateFacilityBooking,
 } from '/assets/js/services/api.js';
-import { escapeHtml, normStatus, formatMoney } from '/assets/js/features/reservation-shared.js';
-import { confirmModal, openModal, closeModal } from '/assets/js/layout/ui.js';
+import { escapeHtml, normStatus, formatMoney, formatDateLong, collectStayInvoiceSummary } from '/assets/js/features/reservation-shared.js';
+import { confirmModal, openModal, closeModal, showAlertModal } from '/assets/js/layout/ui.js';
 
 export function parseRequestKey(key) {
   if (String(key).startsWith('g-')) return { kind: 'group', id: key.slice(2) };
@@ -199,6 +199,109 @@ export async function confirmDeclineRequest(label) {
     cancelLabel: 'Keep request',
     danger: true,
   });
+}
+
+function stayRecordLabel(item) {
+  if (item.kind === 'group') return item.group_name || item.contact_name || 'Group';
+  return item.guest_name || item.guestName || 'Guest';
+}
+
+function buildInvoiceDeleteNotices(summary) {
+  const parts = [];
+  if (summary.hasPaid) {
+    const lines = summary.paid.map((inv) =>
+      `${escapeHtml(inv.label)}: ${formatMoney(inv.amount)} paid`
+    ).join('<br>');
+    parts.push(`<p class="res-hint res-hint--warn"><strong>Paid housing invoice:</strong> ${lines}. You must clear paid invoice(s) in <strong>Billing</strong> before this record can be deleted.</p>`);
+  }
+  if (summary.hasPending) {
+    const lines = summary.pending.map((inv) =>
+      `${escapeHtml(inv.label)}: ${formatMoney(inv.amount)} pending`
+    ).join('<br>');
+    parts.push(`<p class="res-hint">Any <strong>unpaid</strong> housing invoice(s) for this stay will also be removed:<br>${lines}</p>`);
+  }
+  return parts.join('');
+}
+
+export function buildAdminDeleteStayMessage(item) {
+  const isGroup = item.kind === 'group';
+  const name = escapeHtml(stayRecordLabel(item));
+  const status = escapeHtml(normStatus(item.status));
+  const dates = `${escapeHtml(formatDateLong(item.check_in || item.startDate))} → ${escapeHtml(formatDateLong(item.check_out || item.endDate))}`;
+  const total = item.grand_total != null
+    ? formatMoney(item.grand_total)
+    : (item.total_amount != null ? formatMoney(item.total_amount) : '—');
+  const summary = collectStayInvoiceSummary(item);
+  const invoiceNotices = buildInvoiceDeleteNotices(summary);
+
+  const scopeNote = isGroup
+    ? '<p class="res-hint">All <strong>assigned room records</strong> for this group will be permanently removed.</p>'
+    : (item.room_number
+      ? `<p class="res-hint">The room assignment (<strong>${escapeHtml([item.building_name, item.room_number].filter(Boolean).join(' '))}</strong>) will be unlinked. Deleting cancelled records may allow removing the room in Facilities later.</p>`
+      : '');
+
+  return `
+    <p>Permanently delete the reservation record for <strong>${name}</strong>?</p>
+    <ul class="res-delete-summary">
+      <li><strong>Status:</strong> ${status}</li>
+      <li><strong>Stay:</strong> ${dates}</li>
+      <li><strong>Total on file:</strong> ${total}</li>
+    </ul>
+    ${scopeNote}
+    ${invoiceNotices}
+    <p class="res-hint res-hint--warn"><strong>This cannot be undone.</strong> Calendar and reporting will no longer show this stay. The guest will not be emailed.</p>`;
+}
+
+export function buildAdminDeleteVenueMessage(item) {
+  const name = escapeHtml(item.guestName || 'Guest');
+  const status = escapeHtml(normStatus(item.status));
+  const when = `${escapeHtml(formatDateLong(item.eventDate))} · ${escapeHtml(item.startLabel || '')} – ${escapeHtml(item.endLabel || '')}`;
+  const total = item.totalAmount != null ? formatMoney(item.totalAmount) : '—';
+
+  return `
+    <p>Permanently delete the venue booking record for <strong>${name}</strong>?</p>
+    <ul class="res-delete-summary">
+      <li><strong>Status:</strong> ${status}</li>
+      <li><strong>Event:</strong> ${escapeHtml(item.venueName || 'Venue')} — ${when}</li>
+      <li><strong>Total on file:</strong> ${total}</li>
+    </ul>
+    <p class="res-hint"><strong>This cannot be undone.</strong> The event will disappear from the calendar and venue schedule. The guest will not be emailed.</p>`;
+}
+
+export async function confirmAdminDeleteStayRecord(item) {
+  const summary = collectStayInvoiceSummary(item);
+  if (summary.hasPaid) {
+    return false;
+  }
+  const isGroup = item.kind === 'group';
+  return confirmModal({
+    title: isGroup ? 'Delete group record?' : 'Delete reservation record?',
+    message: buildAdminDeleteStayMessage(item),
+    confirmLabel: 'Delete permanently',
+    cancelLabel: 'Keep record',
+    danger: true,
+  });
+}
+
+export async function confirmAdminDeleteVenueRecord(item) {
+  return confirmModal({
+    title: 'Delete venue booking record?',
+    message: buildAdminDeleteVenueMessage(item),
+    confirmLabel: 'Delete permanently',
+    cancelLabel: 'Keep record',
+    danger: true,
+  });
+}
+
+export async function alertPaidInvoiceBlocksDelete(item) {
+  const summary = collectStayInvoiceSummary(item);
+  const paidLines = summary.paid.map((inv) =>
+    `• ${inv.label}: ${formatMoney(inv.amount)}`
+  ).join('\n');
+  await showAlertModal(
+    'Cannot delete — paid invoice on file',
+    `This stay has a paid housing invoice that must be cleared in Billing first:\n\n${paidLines}\n\nOpen Billing → find the paid invoice → Clear invoice. Then return here to delete the reservation record.`,
+  );
 }
 
 export function openModifyRequestWizard(r, { modifyRequest = true } = {}) {
