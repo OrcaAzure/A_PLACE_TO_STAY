@@ -436,6 +436,10 @@
 }
 
 .fac-meal-card .catalog-edit-btn {
+  margin-top: 0;
+}
+
+.fac-meal-card .catalog-card-actions {
   margin-top: 0.75rem;
 }
 

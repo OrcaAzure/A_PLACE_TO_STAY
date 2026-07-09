@@ -1,5 +1,20 @@
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
+
+function normalizeCatalogLabel(value, { max, label }) {
+  const name = String(value ?? '').trim();
+  if (!name) {
+    const err = new Error(`${label} is required.`);
+    err.status = 400;
+    throw err;
+  }
+  if (name.length > max) {
+    const err = new Error(`${label} must be ${max} characters or fewer.`);
+    err.status = 400;
+    throw err;
+  }
+  return name;
+}
 import {
   EXTRA_SERVICE_CATEGORIES,
   EXTRA_SERVICE_SEASONS,
@@ -93,19 +108,13 @@ export const saveRoomRates = async (req, res) => {
     if (roomType.length > 100) return res.status(400).json({ message: 'Room type name is too long.' });
 
     const isDorm = roomType === 'Dorm';
-    const audienceScope = String(req.body.audience || '').trim() || null;
 
     if (isDorm) {
       const dormRow = rowDefs[0] || {
         item: PER_PERSON_NIGHT_ITEM,
         rates: [],
-        audience: audienceScope || 'Guest',
-        age_band: 'Adult',
-        currency: 'PHP',
-        billing_unit: 'per night',
-        notes: null,
+        ...normalizeRateVariant({}, { billing_unit: 'per night' }),
       };
-      if (audienceScope) dormRow.audience = audienceScope;
       if (normalizeRoomRateItemName(dormRow.item) !== PER_PERSON_NIGHT_ITEM) {
         return res.status(400).json({ message: `Dorm pricing must use "${PER_PERSON_NIGHT_ITEM}".` });
       }
@@ -155,11 +164,6 @@ export const saveRoomRates = async (req, res) => {
     }
 
     if (!rowDefs.length) {
-      if (audienceScope) {
-        await pool.query('DELETE FROM rates_rooms WHERE room_type = ? AND audience = ?', [roomType, audienceScope]);
-        bustCatalogAndFacilities();
-        return res.status(200).json({ message: 'Room prices saved', room_rates: await getRoomRateGroups() });
-      }
       return res.status(400).json({ message: 'Add at least one price row.' });
     }
 
@@ -206,9 +210,7 @@ export const saveRoomRates = async (req, res) => {
       });
     }
 
-    const audiencesToReplace = audienceScope
-      ? [audienceScope]
-      : [...new Set(normalizedRows.map((row) => row.audience))];
+    const audiencesToReplace = [...new Set(normalizedRows.map((row) => row.audience))];
 
     for (const aud of audiencesToReplace) {
       await pool.query('DELETE FROM rates_rooms WHERE room_type = ? AND audience = ?', [roomType, aud]);
@@ -241,13 +243,13 @@ export const saveRoomRates = async (req, res) => {
 
 export const createMealRate = async (req, res) => {
   try {
-    const mealType = (req.body.item || req.body.meal_type || '').trim();
+    const mealType = normalizeCatalogLabel(
+      req.body.item || req.body.meal_type,
+      { max: 100, label: 'Meal type' }
+    );
     const rate = Number(req.body.rate);
     const variant = normalizeRateVariant(req.body, { billing_unit: DEFAULT_MEAL_BILLING_UNIT });
 
-    if (!MEAL_TYPES.includes(mealType)) {
-      return res.status(400).json({ message: 'Invalid meal type' });
-    }
     if (!rate || rate <= 0) {
       return res.status(400).json({ message: 'rate must be greater than 0' });
     }
@@ -269,7 +271,7 @@ export const createMealRate = async (req, res) => {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: 'Meal price already exists for this type' });
     }
-    res.status(500).json({ message: error.message });
+    res.status(error.status || 500).json({ message: error.message });
   }
 };
 
@@ -280,13 +282,12 @@ export const updateMealRate = async (req, res) => {
       return res.status(404).json({ message: 'Meal price not found' });
     }
 
-    const mealType = req.body.item || req.body.meal_type;
+    const mealType = !isEmpty(req.body.item || req.body.meal_type)
+      ? normalizeCatalogLabel(req.body.item || req.body.meal_type, { max: 100, label: 'Meal type' })
+      : null;
     const rate = req.body.rate != null ? Number(req.body.rate) : null;
     const variant = normalizeRateVariant(req.body, { billing_unit: DEFAULT_MEAL_BILLING_UNIT });
 
-    if (!isEmpty(mealType) && !MEAL_TYPES.includes(mealType)) {
-      return res.status(400).json({ message: 'Invalid meal type' });
-    }
     if (rate != null && rate <= 0) {
       return res.status(400).json({ message: 'rate must be greater than 0' });
     }
@@ -315,7 +316,7 @@ export const updateMealRate = async (req, res) => {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: 'Meal price already exists for this type' });
     }
-    res.status(500).json({ message: error.message });
+    res.status(error.status || 500).json({ message: error.message });
   }
 };
 
@@ -335,19 +336,16 @@ export const deleteMealRate = async (req, res) => {
 
 export const createExtraService = async (req, res) => {
   try {
-    const category = (req.body.category || '').trim();
-    const item = (req.body.item || '').trim();
+    const category = normalizeCatalogLabel(req.body.category, { max: 50, label: 'Service type' });
+    const item = normalizeCatalogLabel(req.body.item, { max: 100, label: 'Item name' });
     const season = (req.body.season || 'N/A').trim();
     const rate = Number(req.body.rate);
     const variant = normalizeRateVariant(req.body, {
       billing_unit: category === ACCOMMODATION_EXTRAS_CATEGORY ? 'per night' : DEFAULT_EXTRA_BILLING_UNIT,
     });
 
-    if (isEmpty(category) || isEmpty(item) || !rate || rate <= 0) {
+    if (!rate || rate <= 0) {
       return res.status(400).json({ message: 'category, item, and rate are required' });
-    }
-    if (!EXTRA_SERVICE_CATEGORIES.includes(category)) {
-      return res.status(400).json({ message: 'Invalid service category' });
     }
     if (!EXTRA_SERVICE_SEASONS.includes(season)) {
       return res.status(400).json({ message: 'Invalid season' });
@@ -367,7 +365,7 @@ export const createExtraService = async (req, res) => {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: 'This extra service already exists' });
     }
-    res.status(500).json({ message: error.message });
+    res.status(error.status || 500).json({ message: error.message });
   }
 };
 
@@ -379,13 +377,16 @@ export const updateExtraService = async (req, res) => {
     }
 
     const { category, item, season, rate } = req.body;
+    const nextCategory = !isEmpty(category)
+      ? normalizeCatalogLabel(category, { max: 50, label: 'Service type' })
+      : null;
+    const nextItem = !isEmpty(item)
+      ? normalizeCatalogLabel(item, { max: 100, label: 'Item name' })
+      : null;
     const variant = normalizeRateVariant(req.body, {
-      billing_unit: req.body.category === ACCOMMODATION_EXTRAS_CATEGORY ? 'per night' : DEFAULT_EXTRA_BILLING_UNIT,
+      billing_unit: (nextCategory || existing[0].category) === ACCOMMODATION_EXTRAS_CATEGORY ? 'per night' : DEFAULT_EXTRA_BILLING_UNIT,
     });
 
-    if (!isEmpty(category) && !EXTRA_SERVICE_CATEGORIES.includes(category)) {
-      return res.status(400).json({ message: 'Invalid service category' });
-    }
     if (!isEmpty(season) && !EXTRA_SERVICE_SEASONS.includes(String(season).trim())) {
       return res.status(400).json({ message: 'Invalid season' });
     }
@@ -405,7 +406,7 @@ export const updateExtraService = async (req, res) => {
         billing_unit = COALESCE(?, billing_unit),
         notes = ?
        WHERE id = ?`,
-      [category || null, item || null, season || null, rate ?? null, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes, req.params.id]
+      [nextCategory, nextItem, season || null, rate ?? null, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes, req.params.id]
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_extra_services WHERE id = ?', [req.params.id]);
@@ -415,7 +416,7 @@ export const updateExtraService = async (req, res) => {
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ message: 'This extra service already exists' });
     }
-    res.status(500).json({ message: error.message });
+    res.status(error.status || 500).json({ message: error.message });
   }
 };
 

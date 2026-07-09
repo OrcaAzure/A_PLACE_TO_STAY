@@ -4,7 +4,6 @@
 
 import { getMealRates, getFacilitiesOverview } from '/assets/js/services/api.js';
 import {
-  MEAL_TYPE_LIST,
   calcMealsSubtotal,
   calcFeesSubtotal,
   calcGrandTotal,
@@ -13,6 +12,8 @@ import {
   clampMealQty,
   readMealQtyInput,
   MEAL_MAX_QTY,
+  mealTypesOrdered,
+  ensureMealsShape,
 } from '/assets/js/features/reservation-shared.js';
 import { buildFeeGroups, LAUNDRY_GROUP_ID } from '/assets/js/features/booking-fee-picker.js';
 
@@ -23,8 +24,8 @@ const MEAL_META = {
   Snack: { icon: 'cookie', tone: 'rose' },
 };
 
-function emptyMeals() {
-  return { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 };
+function emptyMeals(mealRates = {}) {
+  return ensureMealsShape({}, mealRates);
 }
 
 export function createGuestBookingExtras({
@@ -73,7 +74,7 @@ export function createGuestBookingExtras({
   }
 
   function reset() {
-    meals = emptyMeals();
+    meals = emptyMeals(mealRates);
     fees = [];
     expandedGroupId = null;
     const allergenEl = document.getElementById('booking-meal-allergens');
@@ -92,7 +93,7 @@ export function createGuestBookingExtras({
 
   function renderMeals() {
     if (!mealsMount) return;
-    mealsMount.innerHTML = MEAL_TYPE_LIST.map((type) => {
+    mealsMount.innerHTML = mealTypesOrdered(mealRates).map((type) => {
       const qty = meals[type] || 0;
       const price = mealRates[type] || 0;
       const meta = MEAL_META[type] || { icon: 'restaurant', tone: 'slate' };
@@ -225,7 +226,7 @@ export function createGuestBookingExtras({
   }
 
   function syncMealSubtotals() {
-    MEAL_TYPE_LIST.forEach((type) => {
+    mealTypesOrdered(mealRates).forEach((type) => {
       const qty = clampMealQty(meals[type]);
       const sub = mealsMount?.querySelector(`[data-meal-sub="${type}"]`);
       if (!sub) return;
@@ -322,6 +323,7 @@ export function createGuestBookingExtras({
         getFacilitiesOverview().catch(() => ({ services: [] })),
       ]);
       mealRates = { ...mealRates, ...rates };
+      meals = ensureMealsShape(meals, mealRates);
       feeGroups = buildFeeGroups(catalog.services || []);
     } catch {
       feeGroups = [];

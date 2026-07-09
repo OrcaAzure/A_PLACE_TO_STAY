@@ -97,8 +97,8 @@ async function bootFacilities() {
 
   async function reloadCatalog() {
     const [meals, extras] = await Promise.all([
-      getMealRatesCatalog(),
-      getExtraServicesCatalog(),
+      getMealRatesCatalog({ fresh: true }),
+      getExtraServicesCatalog({ fresh: true }),
     ]);
     renderMealsCatalog(meals || []);
     renderExtrasCatalog(extras || []);

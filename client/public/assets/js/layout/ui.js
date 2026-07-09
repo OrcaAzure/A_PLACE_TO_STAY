@@ -1083,8 +1083,8 @@ export function confirmModal({
     // Defer one frame so the click that opened this dialog can't hit the overlay.
     requestAnimationFrame(() => {
       if (elevate) {
-        if (overlay) overlay.style.zIndex = '95';
-        if (modal) modal.style.zIndex = '100';
+        if (overlay) overlay.style.zIndex = '130';
+        if (modal) modal.style.zIndex = '135';
       }
       openModal(title, body);
       const bodyEl = document.getElementById('modalBody');

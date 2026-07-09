@@ -12,7 +12,7 @@ import {
   recommendRooms, recommendationReason, servicesToQuickFees, applyLoggedInGuestContact, filterRoomsList,
   DORM_MIN_GUEST_COUNT, dormPriceLabel, effectiveCapacityMin,
   isRoomListVisible, isRoomBookable, dormMinGuestsNotice,
-  renderAdminMealRow, readMealsFromInputs, syncAdminMealSubtotals, clampMealQty,
+  renderAdminMealRow, readMealsFromInputs, syncAdminMealSubtotals, clampMealQty, mealTypesOrdered, ensureMealsShape,
 } from '/assets/js/features/reservation-shared.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
 
@@ -229,10 +229,7 @@ function renderStep4() {
   return `
     <p class="res-lead">Add meals if needed. Set a different quantity for each meal.</p>
     <div class="res-meals-box">
-      ${renderMealRow('Breakfast', state.meals.Breakfast)}
-      ${renderMealRow('Lunch', state.meals.Lunch)}
-      ${renderMealRow('Dinner', state.meals.Dinner)}
-      ${renderMealRow('Snack', state.meals.Snack)}
+      ${mealTypesOrdered(state.mealRates).map((t) => renderMealRow(t, state.meals[t])).join('')}
       <p class="res-meal-total">Meals subtotal: <strong data-meals-total>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
     </div>
     <label class="res-label" for="wiz-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
@@ -247,7 +244,7 @@ function renderStep4() {
 function renderStep5() {
   const r = state.selectedRoom;
   const grand = calcGrandTotal(state.roomTotal, state.meals, state.fees, state.mealRates);
-  const mealLines = ['Breakfast', 'Lunch', 'Dinner', 'Snack'].filter((t) => state.meals[t] > 0)
+  const mealLines = mealTypesOrdered(state.mealRates).filter((t) => state.meals[t] > 0)
     .map((t) => `${t} × ${state.meals[t]} = ${formatMoney(state.meals[t] * state.mealRates[t])}`).join('<br>');
   const modifyBlock = state.guestModify
     ? (state.guestWasApproved ? `
@@ -437,7 +434,7 @@ function bindEvents() {
   });
 
   const bodyEl = $('reservation-wizard-body');
-  ['Breakfast', 'Lunch', 'Dinner', 'Snack'].forEach((type) => {
+  mealTypesOrdered(state.mealRates).forEach((type) => {
     bodyEl?.querySelector(`[data-meal-qty="${type}"]`)?.addEventListener('input', (e) => {
       state.meals[type] = clampMealQty(e.target.value);
       syncAdminMealSubtotals(bodyEl, state.meals, state.mealRates);
@@ -640,6 +637,7 @@ export async function openReservationWizard(options = {}) {
     const [usersResult, mealRatesResult, fiscalResult, catalogResult] = await Promise.all(loaders);
     users = usersResult;
     state.mealRates = mealRatesResult;
+    state.meals = ensureMealsShape(state.meals, state.mealRates);
     fiscalBounds = fiscalResult;
     quickFees = servicesToQuickFees(catalogResult.services || []);
     feeGroups = buildFeeGroups(catalogResult.services || []);
@@ -701,6 +699,8 @@ export async function openReservationWizard(options = {}) {
   if (guestModify && state.checkIn && state.checkOut && state.checkOut > state.checkIn) {
     state.step = 2;
   }
+
+  state.meals = ensureMealsShape(state.meals, state.mealRates);
 
   isOpen = true;
   showModal();

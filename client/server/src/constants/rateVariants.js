@@ -22,12 +22,13 @@ function clean(value, fallback, maxLen = 120) {
 }
 
 export function normalizeRateVariant(raw = {}, defaults = {}) {
+  const source = raw ?? {};
   return {
-    audience: clean(raw.audience, defaults.audience || DEFAULT_RATE_AUDIENCE, 80),
-    age_band: clean(raw.age_band, defaults.age_band || DEFAULT_RATE_AGE_BAND, 40),
-    currency: clean(raw.currency, defaults.currency || DEFAULT_RATE_CURRENCY, 8).toUpperCase(),
-    billing_unit: clean(raw.billing_unit, defaults.billing_unit || DEFAULT_ROOM_BILLING_UNIT, 40),
-    notes: String(raw.notes ?? '').trim().slice(0, 255) || null,
+    audience: clean(source.audience, defaults.audience || DEFAULT_RATE_AUDIENCE, 80),
+    age_band: clean(source.age_band, defaults.age_band || DEFAULT_RATE_AGE_BAND, 40),
+    currency: clean(source.currency, defaults.currency || DEFAULT_RATE_CURRENCY, 8).toUpperCase(),
+    billing_unit: clean(source.billing_unit, defaults.billing_unit || DEFAULT_ROOM_BILLING_UNIT, 40),
+    notes: String(source.notes ?? '').trim().slice(0, 255) || null,
   };
 }
 
