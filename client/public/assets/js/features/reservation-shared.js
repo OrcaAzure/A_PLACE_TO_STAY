@@ -1,11 +1,19 @@
 /** Shared reservation UI helpers */
 
 import { getCurrentUser } from '/assets/js/services/auth.js';
+import { collectRoomTypeFilters, roomMatchesTypeFilter, resolveRoomFilterKey } from '/assets/js/features/room-types.js';
 
 export const MEAL_TYPE_LIST = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 export const MEAL_MAX_QTY = 9999;
 /** Dorm nightly rate — priced with the room, not as a booking add-on. */
 export const PER_PERSON_NIGHT_EXTRA_ITEM = 'Per person per Night';
+
+/** Basic email check for admin create/edit wizards (guest email is required). */
+export function isValidEmail(value) {
+  const v = String(value ?? '').trim();
+  if (!v) return false;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
 
 export function clampMealQty(value) {
   const n = Math.floor(Number(value));
@@ -448,7 +456,7 @@ export function emptyWizardState() {
     checkIn: '', checkOut: '', guestCount: 2, roomId: '', selectedRoom: null,
     originalRoomId: '', originalCheckIn: '', originalCheckOut: '',
     originalRoomLabel: '', guestMessage: '',
-    roomSearch: '', showRecommendations: false,
+    roomSearch: '', roomTypeFilter: '', showRecommendations: false,
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     mealAllergenNotes: '',
     fees: [], originalFees: [], notes: '',
@@ -458,13 +466,28 @@ export function emptyWizardState() {
   };
 }
 
-export function filterRoomsList(rooms, { search = '', status = null, includeStatuses = null } = {}) {
+export function collectWizardRoomTypes(rooms) {
+  return collectRoomTypeFilters(rooms);
+}
+
+export function filterRoomsList(rooms, {
+  search = '', roomType = '', status = null, includeStatuses = null,
+} = {}) {
   const q = String(search || '').trim().toLowerCase();
+  const typeKey = String(roomType || '').trim();
   const allowed = includeStatuses || (status ? (Array.isArray(status) ? status : [status]) : null);
   return (rooms || []).filter((room) => {
     if (allowed?.length && !allowed.includes(room.availability_status)) return false;
+    if (typeKey && !roomMatchesTypeFilter(room, typeKey)) return false;
     if (!q) return true;
-    const hay = [room.room_number, room.room_type, String(room.id)].join(' ').toLowerCase();
+    const hay = [
+      room.room_number,
+      room.room_type,
+      room.room_type_label,
+      room.building_name,
+      String(room.id),
+      resolveRoomFilterKey(room),
+    ].join(' ').toLowerCase();
     return hay.includes(q);
   });
 }
@@ -521,7 +544,7 @@ export function emptyGroupWizardState() {
     checkIn: '', checkOut: '', totalGuests: 10, roomsRequested: null,
     guestMessage: '',
     selectedRooms: [], availableRooms: [], availableCount: 0,
-    roomSearch: '',
+    roomSearch: '', roomTypeFilter: '',
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     mealAllergenNotes: '',
     fees: [], originalFees: [], notes: '',

@@ -20,11 +20,11 @@ const ADD_TYPE_VALUE = '__add_type__';
 
 /** Built-in room categories that map to seasonal pricing tiers. */
 const BUILTIN_ROOM_TYPES = [
-  { value: 'Dorm', label: 'Dorm', icon: 'night_shelter', capacity: { min: 5, max: 12 } },
-  { value: 'Superior Guest Room', label: 'Superior Guest Room', icon: 'king_bed', capacity: { min: 1, max: 4 } },
-  { value: 'VIP', label: 'VIP', icon: 'workspace_premium', capacity: { min: 1, max: 4 } },
-  { value: 'Standard Apartment', label: 'Standard Apartment', icon: 'apartment', capacity: { min: 1, max: 4 } },
-  { value: 'Deluxe Apartment', label: 'Deluxe Apartment', icon: 'holiday_village', capacity: { min: 1, max: 6 } },
+  { value: 'Dorm', label: 'Dorm (shared bunk room)', icon: 'night_shelter', capacity: { min: 5, max: 12 } },
+  { value: 'Superior Guest Room', label: 'Superior Guest Room (studio, no kitchen)', icon: 'king_bed', capacity: { min: 1, max: 4 } },
+  { value: 'VIP', label: 'VIP Room', icon: 'workspace_premium', capacity: { min: 1, max: 4 } },
+  { value: 'Standard Apartment', label: 'Standard Apartment (with kitchen)', icon: 'apartment', capacity: { min: 1, max: 4 } },
+  { value: 'Deluxe Apartment', label: 'Deluxe Apartment (with kitchen, 2 or 3 BR)', icon: 'holiday_village', capacity: { min: 1, max: 6 } },
 ];
 
 const ROOM_STATUSES = roomStatusOptions().map((opt) => ({
@@ -256,8 +256,8 @@ function renderBedField() {
   const isDeluxe = state.form.room_type === 'Deluxe Apartment';
   return `
     <div class="admin-crud-field span-full">
-      <label class="mf-field-label" for="mf-bed_count">Bedrooms</label>
-      <p class="mf-field-hint">How many separate bedrooms this unit has.${isDeluxe ? ' Deluxe pricing uses the 2&nbsp;BR rate for 1–2 bedrooms and the 3&nbsp;BR rate for 3 or more.' : ''}</p>
+      <label class="mf-field-label" for="mf-bed_count">Bedrooms (BR)</label>
+      <p class="mf-field-hint">How many separate bedrooms this unit has.${isDeluxe ? ' Deluxe 2&nbsp;BR and 3&nbsp;BR units use different nightly rates.' : ''}</p>
       <div class="mf-stepper mf-stepper--inline">
         <button type="button" class="mf-stepper-btn" data-step="bed_count" data-delta="-1" aria-label="Decrease bedrooms">
           <span class="material-symbols-outlined">remove</span>

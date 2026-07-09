@@ -66,8 +66,10 @@ export const ROOM_RATE_TIER_ICONS = {
 
 /** Friendly label for a pricing tier. */
 export function roomRateTierLabel(tier) {
-  if (tier === 'Deluxe 2 BR') return 'Deluxe Apartment (2 BR)';
-  if (tier === 'Deluxe 3 BR') return 'Deluxe Apartment (3 BR)';
+  if (tier === 'Deluxe 2 BR') return 'Deluxe Apartment · 2 BR';
+  if (tier === 'Deluxe 3 BR') return 'Deluxe Apartment · 3 BR';
+  if (tier === 'Superior Guest Room') return 'Superior Guest Room';
+  if (tier === 'VIP') return 'VIP Room';
   return tier;
 }
 
@@ -80,6 +82,8 @@ export const DORM_MIN_GUEST_COUNT = 5;
 /** FY26 rate tier — "Deluxe 2 BR" / "Deluxe 3 BR" = two or three bedrooms. */
 export function resolveRateRoomType(room) {
   if (!room?.room_type) return null;
+  if (room.room_type === 'Deluxe 2 BR') return 'Deluxe 2 BR';
+  if (room.room_type === 'Deluxe 3 BR') return 'Deluxe 3 BR';
   if (room.room_type === 'Deluxe Apartment') {
     const bedrooms = deluxeBedroomCount(room);
     return bedrooms >= 3 ? 'Deluxe 3 BR' : 'Deluxe 2 BR';
@@ -89,6 +93,9 @@ export function resolveRateRoomType(room) {
 
 /** Bedroom count for deluxe apartments (`bed_count` column stores bedrooms). */
 export function deluxeBedroomCount(room) {
+  if (!room) return null;
+  if (room.room_type === 'Deluxe 3 BR') return 3;
+  if (room.room_type === 'Deluxe 2 BR') return 2;
   if (room?.room_type !== 'Deluxe Apartment') return null;
   if (room.bed_count != null) return Number(room.bed_count);
   if (room.bedroom_count != null) return Number(room.bedroom_count);
@@ -100,12 +107,14 @@ export function deluxeBedCount(room) {
   return deluxeBedroomCount(room);
 }
 
-/** Guest-facing label for deluxe units. */
+/** Friendly label for deluxe units and built-in types. BR = bedrooms. */
 export function formatRoomTypeLabel(room) {
   if (!room?.room_type) return 'Room';
-  if (room.room_type === 'Deluxe Apartment') {
-    const bedrooms = deluxeBedroomCount(room);
-    return bedrooms >= 3 ? 'Deluxe Apartment (3 BR)' : 'Deluxe Apartment (2 BR)';
+  if (room.room_type === 'Superior Guest Room') return 'Superior Guest Room';
+  if (room.room_type === 'VIP') return 'VIP Room';
+  if (room.room_type === 'Deluxe Apartment' || room.room_type === 'Deluxe 2 BR' || room.room_type === 'Deluxe 3 BR') {
+    const bedrooms = deluxeBedroomCount(room) ?? (room.room_type === 'Deluxe 3 BR' ? 3 : 2);
+    return bedrooms >= 3 ? 'Deluxe Apartment · 3 BR' : 'Deluxe Apartment · 2 BR';
   }
   return room.room_type;
 }

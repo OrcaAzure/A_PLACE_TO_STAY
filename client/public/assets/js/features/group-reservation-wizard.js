@@ -7,11 +7,21 @@ import {
 } from '/assets/js/services/api.js';
 import {
   GROUP_WIZARD_STEPS, escapeHtml, formatDateLong, formatMoney,
-  emptyGroupWizardState, mealsFromBooking, calcMealsSubtotal, calcFeesSubtotal, calcGroupGrandTotal,
+  emptyGroupWizardState, mealsFromBooking, calcGroupGrandTotal,
   assignedGuestTotal, debounce, servicesToQuickFees, applyLoggedInGroupContact, sanitizeGuestModifyFees,
+  filterRoomsList, collectWizardRoomTypes,
   loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
-  renderAdminMealRow, readMealsFromInputs, syncAdminMealSubtotals, clampMealQty, mealTypesOrdered, ensureMealsShape,
+  readMealsFromInputs, clampMealQty, mealTypesOrdered, ensureMealsShape, isValidEmail,
 } from '/assets/js/features/reservation-shared.js';
+import {
+  renderWizardMealGrid,
+  syncWizardMealCards,
+  renderWizardGroupRoomCard,
+  renderWizardRoomTypeFilter,
+  bindWizardRoomTypeFilter,
+  renderWizardConfirmCard,
+  renderWizardPriceSummary,
+} from '/assets/js/features/wizard-visuals.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
 
 let initialized = false;
@@ -22,6 +32,7 @@ let fiscalBounds = null;
 let feeGroups = [];
 let quickFees = [];
 let feePickerClickBound = false;
+let mealDelegationBound = false;
 
 function $(id) { return document.getElementById(id); }
 
@@ -76,12 +87,12 @@ function renderStep1() {
     <input id="gw-group-name" class="res-input" type="text" value="${escapeHtml(state.groupName)}" placeholder="e.g. Youth Camp 2026" />
     <label class="res-label">Link to guest account (optional)</label>
     <select id="gw-user" class="res-input"><option value="">— Type contact below —</option>${opts}</select>
-    <label class="res-label">Contact person</label>
+    <label class="res-label" for="gw-contact">Contact person</label>
     <input id="gw-contact" class="res-input" type="text" value="${escapeHtml(state.contactName)}" placeholder="Full name" />
-    <label class="res-label">Contact number</label>
-    <input id="gw-phone" class="res-input" type="tel" value="${escapeHtml(state.contactPhone)}" placeholder="09XX XXX XXXX" />
-    <label class="res-label">Email</label>
-    <input id="gw-email" class="res-input" type="email" value="${escapeHtml(state.email)}" placeholder="email@example.com" />`;
+    <label class="res-label" for="gw-email">Email <span class="res-label-required">(required)</span></label>
+    <input id="gw-email" class="res-input" type="email" value="${escapeHtml(state.email)}" placeholder="email@example.com" autocomplete="email" required />
+    <label class="res-label" for="gw-phone">Contact number <span class="res-label-optional">(optional)</span></label>
+    <input id="gw-phone" class="res-input" type="tel" value="${escapeHtml(state.contactPhone)}" placeholder="09XX XXX XXXX" autocomplete="tel" />`;
 }
 
 function renderStep2() {
@@ -112,14 +123,30 @@ function renderStep2() {
 }
 
 function getFilteredRooms() {
-  const q = state.roomSearch.trim().toLowerCase();
-  return state.availableRooms
-    .filter((r) => r.availability_status === 'available')
-    .filter((r) => {
-      if (!q) return true;
-      return [r.room_number, r.room_type].join(' ').toLowerCase().includes(q);
-    })
-    .sort((a, b) => String(a.room_number).localeCompare(String(b.room_number), undefined, { numeric: true }));
+  return filterRoomsList(state.availableRooms, {
+    search: state.roomSearch,
+    roomType: state.roomTypeFilter,
+    includeStatuses: ['available'],
+  }).sort((a, b) => String(a.room_number).localeCompare(String(b.room_number), undefined, { numeric: true }));
+}
+
+function renderGroupRoomFilters() {
+  const types = collectWizardRoomTypes(state.availableRooms);
+  const filterHtml = types.length
+    ? renderWizardRoomTypeFilter(types, state.roomTypeFilter, { idPrefix: 'gw' })
+    : `<p class="res-hint wiz-room-type-hint">Room types appear after availability loads.</p>`;
+  return `
+    <div class="wiz-room-filters wiz-room-filters--group">
+      <div class="wiz-group-auto-pick-row">
+        <button type="button" id="gw-use-suggested" class="res-btn res-btn--primary" ${state.suggestion ? '' : 'disabled'}>
+          <span class="material-symbols-outlined">auto_awesome</span> Auto-pick rooms
+        </button>
+      </div>
+      <div class="wiz-room-toolbar">
+        <input id="gw-room-search" type="search" class="res-input" placeholder="Search room number or type…" value="${escapeHtml(state.roomSearch)}" />
+        ${filterHtml}
+      </div>
+    </div>`;
 }
 
 function renderSelectedSummary() {
@@ -150,58 +177,49 @@ function renderSelectedSummary() {
 
 function renderGroupRoomRow(room) {
   const sel = state.selectedRooms.find((r) => String(r.room_id) === String(room.id));
-  const guests = sel?.guest_count ?? room.capacity_min;
-  const selected = Boolean(sel);
-
-  return `
-    <div class="res-room-row${selected ? ' is-selected' : ''}">
-      <div class="res-room-row-main">
-        <div class="res-room-row-id">
-          <span class="material-symbols-outlined res-room-icon">meeting_room</span>
-          <div>
-            <strong class="res-room-row-num">Room ${escapeHtml(room.room_number)}</strong>
-            <span class="res-room-meta">${escapeHtml(room.room_type_label || room.room_type)}</span>
-          </div>
-        </div>
-        <div class="res-room-row-cap">Fits ${room.capacity_min}–${room.capacity_max} guests</div>
-        ${room.estimated_total != null ? `<div class="res-room-row-price">${formatMoney(room.estimated_total)}</div>` : ''}
-        <button type="button" class="res-btn ${selected ? 'res-btn--ghost' : 'res-btn--primary'} res-btn-sm" data-room-toggle="${room.id}">
-          ${selected ? 'Remove' : 'Add Room'}
-        </button>
-      </div>
-      ${selected ? `
-        <div class="res-room-row-guests">
-          <span class="res-label">Guests in this room:</span>
-          <div class="res-qty">
-            <button type="button" data-room-guest-minus="${room.id}" aria-label="Fewer guests">−</button>
-            <span>${guests}</span>
-            <button type="button" data-room-guest-plus="${room.id}" aria-label="More guests">+</button>
-          </div>
-        </div>` : ''}
-    </div>`;
+  return renderWizardGroupRoomCard(room, {
+    selected: Boolean(sel),
+    guestCount: sel?.guest_count ?? room.capacity_min,
+  });
 }
 
 function renderStep3() {
   const eligible = getFilteredRooms();
 
   return `
-    <p class="res-lead">Tap <strong>Add Room</strong> for each room you need. Use the +/− buttons to set guests per room.</p>
+    <p class="res-lead">Tap <strong>Add room</strong> for each room you need. Use the +/− buttons to set guests per room.</p>
     ${renderSelectedSummary()}
-    <div class="res-group-toolbar">
-      <button type="button" id="gw-use-suggested" class="res-btn res-btn--primary" ${state.suggestion ? '' : 'disabled'}>
-        <span class="material-symbols-outlined">auto_awesome</span> Auto-pick rooms
-      </button>
-      <input id="gw-room-search" type="search" class="res-input" placeholder="Search room number or type…" value="${escapeHtml(state.roomSearch)}" />
-    </div>
+    ${renderGroupRoomFilters()}
     ${state.loadingRooms ? '<p class="res-hint">Loading rooms…</p>' : ''}
-    <div class="res-room-list">
+    <div class="wiz-group-room-list">
       ${eligible.length ? eligible.map(renderGroupRoomRow).join('')
         : '<div class="res-empty-box"><p>No rooms match your search. Try clearing filters or go back to change dates.</p></div>'}
     </div>`;
 }
 
-function renderMealRow(type, qty) {
-  return renderAdminMealRow(type, qty, state.mealRates[type], { idPrefix: 'gw' });
+function bindMealDelegation() {
+  if (mealDelegationBound) return;
+  const root = $('group-wizard-body');
+  if (!root) return;
+  mealDelegationBound = true;
+  root.addEventListener('input', (e) => {
+    const input = e.target.closest('.guest-meal-qty-input[data-meal-qty]');
+    if (!input) return;
+    const type = input.getAttribute('data-meal-qty');
+    if (!type) return;
+    state.meals[type] = clampMealQty(input.value);
+    syncWizardMealCards(root, state.meals, state.mealRates);
+  });
+  root.addEventListener('blur', (e) => {
+    const input = e.target.closest('.guest-meal-qty-input[data-meal-qty]');
+    if (!input) return;
+    const type = input.getAttribute('data-meal-qty');
+    if (!type) return;
+    const qty = clampMealQty(input.value);
+    state.meals[type] = qty;
+    input.value = qty;
+    syncWizardMealCards(root, state.meals, state.mealRates);
+  }, true);
 }
 
 function renderStep4() {
@@ -219,25 +237,47 @@ function renderStep4() {
   });
   return `
     <p class="res-lead">Meals and fees apply to the whole group.</p>
-    <div class="res-meals-box">
-      ${mealTypesOrdered(state.mealRates).map((t) => renderMealRow(t, state.meals[t])).join('')}
-      <p class="res-meal-total">Meals subtotal: <strong data-meals-total>${formatMoney(calcMealsSubtotal(state.meals, state.mealRates))}</strong></p>
+    <div class="wiz-extras-block">
+      <p class="guest-extras-block__label">Meals</p>
+      ${renderWizardMealGrid(state.meals, state.mealRates, { idPrefix: 'gw' })}
     </div>
     <label class="res-label" for="gw-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
     <textarea id="gw-meal-allergens" class="res-input" rows="2" placeholder="e.g. nut allergy, gluten-free, vegetarian…">${escapeHtml(state.mealAllergenNotes || '')}</textarea>
-    <h3 class="res-subhead">Additional fees (optional)</h3>
-    <p class="res-hint">${state.guestModify
+    <div class="wiz-extras-block">
+      <p class="guest-extras-block__label">Additional fees (optional)</p>
+      <p class="res-hint">${state.guestModify
     ? 'Choose a category, then add catalog fees. Custom charges must be arranged with housing.'
     : 'Choose a category to browse options, or add a custom fee below.'}</p>
-    ${feePickerBlock}`;
+      ${feePickerBlock}
+    </div>`;
 }
 
 function renderStep5() {
   const roomLines = state.selectedRooms.map((sel) => {
     const room = state.availableRooms.find((r) => String(r.id) === String(sel.room_id));
-    return room ? `Room ${escapeHtml(room.room_number)} (${sel.guest_count} guest(s))` : '';
+    return room ? `Room ${escapeHtml(room.room_number)} · ${sel.guest_count} guest(s)` : '';
   }).filter(Boolean).join('<br>');
   const grand = calcGroupGrandTotal(state);
+  const roomTotal = state.selectedRooms.reduce((sum, sel) => {
+    const room = state.availableRooms.find((r) => String(r.id) === String(sel.room_id));
+    if (!room) return sum;
+    const guests = sel.guest_count || 1;
+    const est = room.estimated_total || 0;
+    const refGuests = Math.max(room.capacity_min, Math.min(guests, room.capacity_max));
+    return sum + (est / (refGuests || 1)) * guests;
+  }, 0);
+  const summaryLines = [{ label: 'Rooms', value: roomTotal }];
+  mealTypesOrdered(state.mealRates).forEach((t) => {
+    if (state.meals[t] > 0) {
+      summaryLines.push({
+        label: `${t} × ${state.meals[t]}`,
+        value: state.meals[t] * (Number(state.mealRates[t]) || 0),
+      });
+    }
+  });
+  state.fees.forEach((f) => {
+    summaryLines.push({ label: f.fee_name, value: f.amount });
+  });
   const modifyBlock = state.guestModify
     ? (state.guestWasApproved ? `
     <div class="res-banner res-banner--warn">This group reservation was already approved. Submitting changes sends it back to housing for review.</div>
@@ -253,14 +293,20 @@ function renderStep5() {
   return `
     <p class="res-lead">Review the group reservation before saving.</p>
     ${modifyBlock}
-    <div class="res-review"><h4>Group</h4>${state.guestModify
+    <div class="wiz-confirm-grid">
+      ${renderWizardConfirmCard('Group', state.guestModify
     ? renderGroupContactCard({ compact: true })
-    : `<p><strong>${escapeHtml(state.groupName)}</strong><br>${escapeHtml(state.contactName)} · ${escapeHtml(state.contactPhone || '—')}</p>`}</div>
-    <div class="res-review"><h4>Stay</h4><p>${formatDateLong(state.checkIn)} to ${formatDateLong(state.checkOut)} · ${state.totalGuests} guest(s) · ${state.selectedRooms.length} room(s)</p></div>
-    <div class="res-review"><h4>Rooms</h4><p>${roomLines || '—'}</p></div>
+    : `<p><strong>${escapeHtml(state.groupName)}</strong><br>${escapeHtml(state.contactName)}<br>${escapeHtml(state.contactPhone || '—')}<br>${escapeHtml(state.email || '—')}</p>`)}
+      ${renderWizardConfirmCard('Stay', `<p>${formatDateLong(state.checkIn)} → ${formatDateLong(state.checkOut)}<br>${state.totalGuests} guest(s) · ${state.selectedRooms.length} room(s)</p>`)}
+      ${renderWizardConfirmCard('Rooms', `<p>${roomLines || '—'}</p>`)}
+    </div>
+    ${renderWizardPriceSummary({
+    lines: summaryLines,
+    grandLabel: state.guestModify || state.fromRequestId ? 'Estimated grand total' : 'Grand total',
+    grandTotal: grand,
+  })}
     <label class="res-label">Notes (optional)</label>
-    <textarea id="gw-notes" class="res-input" rows="2">${escapeHtml(state.notes)}</textarea>
-    <p class="res-grand-total">${state.guestModify || state.fromRequestId ? 'Estimated grand total' : 'Grand total'}: ${formatMoney(grand)}</p>`;
+    <textarea id="gw-notes" class="res-input" rows="2">${escapeHtml(state.notes)}</textarea>`;
 }
 
 function renderBody() {
@@ -346,9 +392,12 @@ function readStepFields() {
   }
 }
 
+let fetchRoomsToken = 0;
+
 async function fetchRooms() {
   readAllFields();
   if (!state.checkIn || !state.checkOut || state.checkOut <= state.checkIn) return;
+  const token = ++fetchRoomsToken;
   state.loadingRooms = true;
   state.error = null;
   renderBody();
@@ -359,6 +408,7 @@ async function fetchRooms() {
       total_guests: state.totalGuests,
       exclude_group_id: state.groupId || state.fromRequestId || undefined,
     });
+    if (token !== fetchRoomsToken) return;
     state.availableRooms = data.rooms || [];
     state.availableCount = data.available_count ?? 0;
     state.suggestion = data.suggestion || null;
@@ -367,8 +417,10 @@ async function fetchRooms() {
       return room?.availability_status === 'available';
     });
   } catch (err) {
-    state.error = err.message;
+    if (token !== fetchRoomsToken) return;
+    state.error = err.message || 'Could not load available rooms.';
   } finally {
+    if (token !== fetchRoomsToken) return;
     state.loadingRooms = false;
     renderSteps();
     renderBody();
@@ -430,6 +482,13 @@ function bindEvents() {
     renderBody();
   }, 200);
   $('gw-room-search')?.addEventListener('input', debouncedSearch);
+  bindWizardRoomTypeFilter($('group-wizard-body'), {
+    idPrefix: 'gw',
+    onChange: (value) => {
+      state.roomTypeFilter = value;
+      renderBody();
+    },
+  });
 
   $('group-wizard-body')?.querySelectorAll('[data-room-toggle]').forEach((btn) => {
     btn.addEventListener('click', () => toggleRoom(btn.getAttribute('data-room-toggle')));
@@ -442,19 +501,6 @@ function bindEvents() {
   });
   $('group-wizard-body')?.querySelectorAll('[data-room-guest-minus]').forEach((btn) => {
     btn.addEventListener('click', () => adjustRoomGuests(btn.getAttribute('data-room-guest-minus'), -1));
-  });
-
-  const bodyEl = $('group-wizard-body');
-  mealTypesOrdered(state.mealRates).forEach((type) => {
-    bodyEl?.querySelector(`[data-meal-qty="${type}"]`)?.addEventListener('input', (e) => {
-      state.meals[type] = clampMealQty(e.target.value);
-      syncAdminMealSubtotals(bodyEl, state.meals, state.mealRates);
-    });
-    bodyEl?.querySelector(`[data-meal-qty="${type}"]`)?.addEventListener('blur', (e) => {
-      state.meals[type] = clampMealQty(e.target.value);
-      e.target.value = state.meals[type];
-      syncAdminMealSubtotals(bodyEl, state.meals, state.mealRates);
-    });
   });
 
   if (!feePickerClickBound) {
@@ -490,12 +536,22 @@ function bindEvents() {
   }
 }
 
+function showWizardError(message) {
+  state.error = message;
+  renderBody();
+  $('group-wizard-error')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 function validate() {
   readStepFields();
   state.error = null;
   if (state.step === 1 && !state.guestModify) {
     if (!state.groupName) { state.error = 'Please enter the group name.'; return false; }
     if (!state.contactName) { state.error = 'Please enter a contact person.'; return false; }
+    if (!isValidEmail(state.email)) {
+      state.error = 'Please enter a valid email address for the contact person.';
+      return false;
+    }
   }
   if (state.step === 2) {
     if (!state.checkIn || !state.checkOut) { state.error = 'Please select dates.'; return false; }
@@ -521,7 +577,11 @@ function validate() {
 }
 
 async function goNext() {
-  if (!validate()) { renderBody(); return; }
+  if (!validate()) {
+    renderBody();
+    $('group-wizard-error')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
   if (state.step === 2) await fetchRooms();
   if (state.step < 5) state.step++;
   renderSteps();
@@ -539,6 +599,11 @@ function goBack() {
 async function confirmSave() {
   readAllFields();
   state.error = null;
+  if (!state.guestModify && !isValidEmail(state.email)) {
+    state.step = 1;
+    showWizardError('Please enter a valid email address for the contact person.');
+    return;
+  }
   if (!state.groupName) { state.error = 'Please enter the group name.'; renderBody(); return; }
   if (!state.contactName) { state.error = 'Please enter a contact person.'; renderBody(); return; }
   if (!state.checkIn || !state.checkOut) { state.error = 'Please set check-in and check-out dates.'; renderBody(); return; }
@@ -574,7 +639,7 @@ async function confirmSave() {
     group_name: state.groupName,
     contact_name: state.contactName,
     contact_phone: state.contactPhone || undefined,
-    contact_email: state.email || undefined,
+    contact_email: state.email,
     user_id: state.guestModify ? undefined : (state.userId ? Number(state.userId) : undefined),
     check_in: state.checkIn,
     check_out: state.checkOut,
@@ -754,6 +819,7 @@ export function initGroupWizard() {
   $('group-wizard-next')?.addEventListener('click', goNext);
   $('group-wizard-confirm')?.addEventListener('click', confirmSave);
   window.addEventListener('group-wizard:open', (e) => openGroupWizard(e.detail || {}));
+  bindMealDelegation();
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || !isOpen) return;

@@ -551,11 +551,7 @@ export async function clearPaidPayments() {
 
 export function normalizeRoom(room) {
   const bedCount = room.bed_count != null ? Number(room.bed_count) : null;
-  let roomTypeLabel = room.room_type_label;
-  if (!roomTypeLabel && room.room_type === 'Deluxe Apartment') {
-    const bedrooms = bedCount ?? (['201', '304'].includes(String(room.room_number)) ? 3 : 2);
-    roomTypeLabel = bedrooms >= 3 ? 'Deluxe Apartment (3 BR)' : 'Deluxe Apartment (2 BR)';
-  }
+  const roomTypeLabel = room.room_type_label || room.roomTypeLabel;
   return {
     id: room.id,
     building: room.building_name || room.building || 'Unknown',

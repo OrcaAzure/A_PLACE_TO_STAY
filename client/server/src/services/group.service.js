@@ -18,7 +18,7 @@ import { validateReservationDates } from './fiscalYear.service.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from './ancillary.service.js';
 import { sendGroupModifiedEmail, sendGroupConfirmationEmail, sendGuestGroupSelfModifyEmail, sendGroupBookingCancelledEmail } from './email.service.js';
-import { ensureInvoiceForBooking, ensureInvoicesForGroup, getInvoiceSnapshot } from './payment.service.js';
+import { ensureInvoiceForBooking, ensureInvoicesForGroup, getInvoiceSnapshot, deletePaymentsForGroup, deletePaymentsForRoomBooking } from './payment.service.js';
 const bookingSelect = `
   SELECT bk.*,
          r.room_number, r.room_type, r.capacity_min, r.capacity_max,
@@ -173,6 +173,17 @@ async function validateRoomAssignments({ checkIn, checkOut, rooms, excludeGroupI
   }
 }
 
+async function cancelGroupChildBookings(groupId, conn = null) {
+  const run = conn
+    ? (sql, params) => conn.query(sql, params)
+    : (sql, params) => pool.query(sql, params);
+  await run(
+    `UPDATE bookings_rooms SET status = 'Cancelled'
+     WHERE group_id = ? AND status IN ('Pending', 'Approved')`,
+    [groupId]
+  );
+}
+
 export async function saveGroupBookings({
   groupId,
   userId,
@@ -193,6 +204,10 @@ export async function saveGroupBookings({
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+    const [existingBookings] = await conn.query('SELECT id FROM bookings_rooms WHERE group_id = ?', [groupId]);
+    for (const row of existingBookings) {
+      await deletePaymentsForRoomBooking(row.id, conn);
+    }
     await conn.query('DELETE FROM bookings_rooms WHERE group_id = ?', [groupId]);
 
     let firstBookingId = null;
@@ -352,7 +367,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       });
       if (cancelError) throw new Error(cancelError);
       await pool.query('UPDATE reservation_groups SET status = ? WHERE id = ?', ['Cancelled', groupId]);
-      await pool.query('DELETE FROM bookings_rooms WHERE group_id = ?', [groupId]);
+      await cancelGroupChildBookings(groupId);
       const cancelled = await getGroupById(groupId);
       notifyGroupCancelled(cancelled, { cancelledByGuest: true });
       return cancelled;
@@ -563,7 +578,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
   }
 
   if (nextStatus === 'Rejected' || nextStatus === 'Cancelled') {
-    await pool.query('DELETE FROM bookings_rooms WHERE group_id = ?', [groupId]);
+    await cancelGroupChildBookings(groupId);
   }
 
   const result = await getGroupById(groupId);
@@ -585,5 +600,8 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
 }
 
 export async function deleteReservationGroup(groupId) {
+  const group = await getGroupById(groupId);
+  if (!group) throw new Error('Group reservation not found');
+  await deletePaymentsForGroup(groupId);
   await pool.query('DELETE FROM reservation_groups WHERE id = ?', [groupId]);
 }

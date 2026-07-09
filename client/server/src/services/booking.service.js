@@ -532,6 +532,7 @@ export async function getAvailableRooms({
       room_number: room.room_number,
       room_type: room.room_type,
       room_type_label: formatRoomTypeLabel(room),
+      rate_room_type: rateRoomType,
       bed_count: room.bed_count ?? null,
       capacity_min: physicalMin,
       capacity_max: room.capacity_max,

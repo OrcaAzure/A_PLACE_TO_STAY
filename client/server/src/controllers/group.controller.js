@@ -91,6 +91,7 @@ export const deleteGroup = async (req, res) => {
     await deleteReservationGroup(req.params.id);
     res.status(200).json({ message: 'Group reservation deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const status = error.message.includes('paid invoice') ? 409 : 500;
+    res.status(status).json({ message: error.message });
   }
 };

@@ -8,6 +8,7 @@ import {
   roomPreviewImage,
   availabilityBadge,
 } from '/assets/js/features/facility-display.js';
+import { collectRoomTypeFilters, formatRoomTypeDisplay, roomMatchesTypeFilter } from '/assets/js/features/room-types.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
 const state = {
@@ -75,23 +76,14 @@ function isDateViewActive() {
   return state.viewMode === 'dates' && hasValidDateRange() && state.availability;
 }
 
-function normalizeRoomTypeFilterLabel(room) {
-  const key = room.room_type || 'Room';
-  if (key === 'Deluxe Apartment') return 'Deluxe Apartment';
-  const raw = room.room_type_label || key;
-  return String(raw).replace(/\s*\(\d+\s*(beds?|bedrooms?)\)/i, '').trim() || key;
-}
-
 function collectRoomTypes(overview) {
-  const types = new Map();
+  const allRooms = [];
   for (const building of overview?.buildings || []) {
-    for (const room of building.rooms || []) {
-      const key = room.room_type || 'Room';
-      if (!types.has(key)) types.set(key, normalizeRoomTypeFilterLabel(room));
-    }
+    for (const room of building.rooms || []) allRooms.push(room);
   }
-  roomTypeLabels = types;
-  return [...types.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+  const types = collectRoomTypeFilters(allRooms);
+  roomTypeLabels = new Map(types);
+  return types;
 }
 
 function renderRoomTypeFilters() {
@@ -132,7 +124,7 @@ function filterRoomsClient(rooms, { includeStatus = true } = {}) {
   const q = state.filter.search.trim().toLowerCase();
   const typeFilter = state.filter.roomType;
   return (rooms || []).filter((room) => {
-    if (typeFilter && (room.room_type || 'Room') !== typeFilter) return false;
+    if (typeFilter && !roomMatchesTypeFilter(room, typeFilter)) return false;
     if (includeStatus && !matchesStatusFilter(room)) return false;
     if (!q) return true;
 
@@ -222,22 +214,16 @@ function availNoteHtml(room) {
 }
 
 function roomCardTypeLabel(room) {
-  const key = room.room_type || 'Room';
-  const friendly = {
-    Dorm: 'Dorm',
-    'Standard Apartment': 'Apartment',
-    'Superior Guest Room': 'Superior guest room',
-    VIP: 'VIP room',
-    'Deluxe Apartment': 'Deluxe apartment',
-  };
-  return friendly[key] || normalizeRoomTypeFilterLabel(room);
+  return formatRoomTypeDisplay(room);
 }
 
 function renderRoomCard(room) {
   const roomType = roomCardTypeLabel(room);
   const img = roomPreviewImage({
     roomNumber: room.room_number,
-    roomType: room.room_type_label || room.room_type || roomType,
+    room_type: room.room_type,
+    room_type_label: room.room_type_label,
+    bed_count: room.bed_count,
   });
   const badge = liveStatusBadge(room.status);
 

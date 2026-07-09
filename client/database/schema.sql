@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS rooms (
     building_id   INT NOT NULL,
     room_number   VARCHAR(50) NOT NULL,
     -- Free-form so admins can add new room categories at any time.
-    -- Built-in types (Dorm, Superior Guest Room, Standard Apartment, Deluxe Apartment)
+    -- Built-in types: Dorm, Superior Guest Room, Standard Apartment,
+    -- Deluxe Apartment (2 BR / 3 BR via bed_count), VIP.
     -- map to seasonal pricing tiers in rates_rooms; custom types are managed by admins.
     room_type     VARCHAR(100) NOT NULL,
     bed_count     TINYINT      DEFAULT NULL,
@@ -715,7 +716,14 @@ INSERT INTO rates_rooms (room_type, item, season, rate) VALUES
     ('Deluxe 3 BR', 'Single/Double Occupancy',   'Super Peak', 4450.00),
     ('Deluxe 3 BR', 'Daily Maximum',             'Regular',    4350.00),
     ('Deluxe 3 BR', 'Daily Maximum',             'Peak',       4750.00),
-    ('Deluxe 3 BR', 'Daily Maximum',             'Super Peak', 5200.00)
+    ('Deluxe 3 BR', 'Daily Maximum',             'Super Peak', 5200.00),
+
+    ('VIP', 'Single/Double Occupancy', 'Regular',    3500.00),
+    ('VIP', 'Single/Double Occupancy', 'Peak',       3850.00),
+    ('VIP', 'Single/Double Occupancy', 'Super Peak', 4200.00),
+    ('VIP', 'Daily Maximum',           'Regular',    4200.00),
+    ('VIP', 'Daily Maximum',           'Peak',       4600.00),
+    ('VIP', 'Daily Maximum',           'Super Peak', 5000.00)
 ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 -- ============================================

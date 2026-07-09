@@ -101,7 +101,8 @@ async function runDeluxeRoomTypeMigration() {
     'Dorm',
     'Superior Guest Room',
     'Standard Apartment',
-    'Deluxe Apartment'
+    'Deluxe Apartment',
+    'VIP'
   )`;
   const expandedRateEnum = `ENUM(
     'Dorm',
@@ -118,7 +119,8 @@ async function runDeluxeRoomTypeMigration() {
     'Superior Guest Room',
     'Standard Apartment',
     'Deluxe 2 BR',
-    'Deluxe 3 BR'
+    'Deluxe 3 BR',
+    'VIP'
   )`;
 
   try {
@@ -228,10 +230,23 @@ async function runVipRoomMigration() {
     [gmc.id]
   );
 
+  const vipRates = [
+    ['Single/Double Occupancy', 'Regular', 3500], ['Single/Double Occupancy', 'Peak', 3850], ['Single/Double Occupancy', 'Super Peak', 4200],
+    ['Daily Maximum', 'Regular', 4200], ['Daily Maximum', 'Peak', 4600], ['Daily Maximum', 'Super Peak', 5000],
+  ];
+  for (const [item, season, rate] of vipRates) {
+    await pool.execute(
+      `INSERT INTO rates_rooms (room_type, item, season, rate)
+       VALUES ('VIP', ?, ?, ?)
+       ON DUPLICATE KEY UPDATE rate = VALUES(rate)`,
+      [item, season, rate]
+    );
+  }
+
   if (result.affectedRows === 0) {
     console.warn('[schema] VIP room migration: GMC room 415 not found');
   } else {
-    console.log('[schema] GMC room 415 set to VIP');
+    console.log('[schema] GMC room 415 set to VIP with rate rows');
   }
 }
 

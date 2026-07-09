@@ -23,7 +23,7 @@ import {
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from '../services/ancillary.service.js';
-import { getInvoiceSnapshot, ensureInvoiceForBooking } from '../services/payment.service.js';
+import { getInvoiceSnapshot, ensureInvoiceForBooking, deletePaymentsForRoomBooking } from '../services/payment.service.js';
 
 import { isAdminRole } from '../utils/constants.js';
 
@@ -396,9 +396,11 @@ export const deleteBooking = async (req, res) => {
   try {
     const [existing] = await pool.query('SELECT id FROM bookings_rooms WHERE id = ?', [req.params.id]);
     if (!existing.length) return res.status(404).json({ message: 'Booking not found' });
+    await deletePaymentsForRoomBooking(req.params.id);
     await pool.query('DELETE FROM bookings_rooms WHERE id = ?', [req.params.id]);
     res.status(200).json({ message: 'Booking deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const status = error.message.includes('paid invoice') ? 409 : 500;
+    res.status(status).json({ message: error.message });
   }
 };

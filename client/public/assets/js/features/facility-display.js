@@ -2,13 +2,16 @@
  * Shared visuals for room & venue cards (guest browse + admin facilities).
  */
 
+import { resolveRoomVisualKey } from '/assets/js/features/room-types.js';
+
 export const ROOM_TYPE_ICON = {
   'Dorm': 'bed',
   'Superior Guest Room': 'king_bed',
   'Standard Apartment': 'apartment',
   VIP: 'workspace_premium',
-  'Deluxe 2 BR': 'meeting_room',
-  'Deluxe 3 BR': 'meeting_room',
+  'Deluxe Apartment': 'holiday_village',
+  'Deluxe 2 BR': 'holiday_village',
+  'Deluxe 3 BR': 'holiday_village',
 };
 
 export const ROOM_TYPE_IMAGE = {
@@ -16,6 +19,7 @@ export const ROOM_TYPE_IMAGE = {
   'Superior Guest Room': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1200&q=80',
   'Standard Apartment': 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
   VIP: 'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
+  'Deluxe Apartment': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
   'Deluxe 2 BR': 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1200&q=80',
   'Deluxe 3 BR': 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80',
 };
@@ -60,10 +64,18 @@ function normalizeRoomNumber(value) {
   return String(value ?? '').trim().replace(/^room\s+/i, '');
 }
 
-export function roomPreviewImage({ roomNumber, room_number, roomType, room_type } = {}) {
+export function roomPreviewImage({
+  roomNumber, room_number, roomType, room_type, room_type_label, bed_count,
+} = {}) {
   const num = normalizeRoomNumber(roomNumber ?? room_number);
   if (num && ROOM_NUMBER_IMAGE[num]) return ROOM_NUMBER_IMAGE[num];
-  return roomTypeImage(roomType ?? room_type);
+  const tier = resolveRoomVisualKey({
+    room_type: room_type ?? roomType,
+    room_type_label,
+    bed_count,
+    room_number: num,
+  });
+  return roomTypeImage(tier);
 }
 
 export function availabilityBadge(status) {

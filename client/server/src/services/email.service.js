@@ -262,7 +262,7 @@ function buildGroupStayDetailSections(group, { estimate = false } = {}) {
     const guests = b.guest_count != null ? `${b.guest_count} guest${b.guest_count === 1 ? '' : 's'}` : '';
     const cost = b.total_amount != null ? fmtPeso(b.total_amount) : '';
     return emailDetailItem(label || 'Room', [guests, cost].filter(Boolean).join(' · '));
-  }).join('');
+  }).filter(Boolean);
 
   const stayItems = emailDetailList([
     emailDetailItem('Group / organization', escapeHtml(group.group_name || '—')),
@@ -283,7 +283,7 @@ function buildGroupStayDetailSections(group, { estimate = false } = {}) {
   ].filter(Boolean));
 
   let addons = '';
-  if (roomRows) addons += emailSection('Assigned rooms', emailDetailList(roomRows));
+  if (roomRows.length) addons += emailSection('Assigned rooms', emailDetailList(roomRows));
   if (meals) addons += emailSection('Meals', `<p style="margin:0;line-height:1.6;">${meals}</p>`);
   if (fees) addons += emailSection('Extra services', `<p style="margin:0;line-height:1.6;">${fees}</p>`);
   if (group.meal_allergen_notes) {
@@ -414,7 +414,7 @@ export async function sendBookingRequestReceivedEmail(user, booking) {
         emailDetailItem('Step 1', 'Housing reviews your request for room availability and pricing.'),
         emailDetailItem('Step 2', 'You receive a confirmation email with your <strong>final total</strong> when approved.'),
         emailDetailItem('Step 3', 'Pay at the Housing office before or during check-in.'),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailFooter()}
     `,
   });
@@ -439,7 +439,7 @@ export async function sendBookingConfirmationEmail(user, booking) {
         emailDetailItem('Arrival', 'Please arrive on your check-in date. Contact Housing if your plans change.'),
         emailDetailItem('Payment', 'Settle the amount due at the Housing office (Cash, GCash, or Bank Transfer).'),
         emailDetailItem('Changes', 'Log in to AptSpace to view your reservation or submit a modification request.'),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailFooter({ includePayment: true })}
     `,
   });
@@ -497,7 +497,7 @@ export async function sendVenueBookingCancelledEmail(user, booking, { cancelledB
         emailDetailItem('Guests', escapeHtml(booking.guest_count || 1)),
         booking.total_amount != null ? emailDetailItem('Amount', fmtPeso(booking.total_amount)) : '',
         emailDetailItem('Status', 'Cancelled'),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailFooter()}
     `,
   });
@@ -549,7 +549,7 @@ export async function sendGuestRoomSelfModifyEmail(user, booking, {
     emailDetailItem('Room', escapeHtml(previousRoom || '—')),
     emailDetailItem('Check-in', escapeHtml(formatStayDate(previousCheckIn))),
     emailDetailItem('Check-out', escapeHtml(formatStayDate(previousCheckOut))),
-  ].join(''))) : '';
+  ].filter(Boolean))) : '';
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
@@ -582,7 +582,7 @@ export async function sendGuestGroupSelfModifyEmail(user, group, {
   const previousBlock = wasApproved ? emailSection('Previous request', emailDetailList([
     emailDetailItem('Dates', `${escapeHtml(formatStayDate(previousCheckIn))} to ${escapeHtml(formatStayDate(previousCheckOut))}`),
     emailDetailItem('Rooms requested', escapeHtml(previousRoomsRequested ?? '—')),
-  ].join(''))) : '';
+  ].filter(Boolean))) : '';
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
@@ -626,7 +626,7 @@ export async function sendGuestVenueSelfModifyEmail(user, booking, {
     emailDetailItem('Date', escapeHtml(formatEventDate(previousEventDate))),
     emailDetailItem('Time', escapeHtml(prevStart && prevEnd ? `${prevStart} – ${prevEnd}` : '—')),
     emailDetailItem('Guests', escapeHtml(previousGuestCount ?? '—')),
-  ].join(''))) : '';
+  ].filter(Boolean))) : '';
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
@@ -647,7 +647,7 @@ export async function sendGuestVenueSelfModifyEmail(user, booking, {
         emailDetailItem('Guests', escapeHtml(booking.guest_count || 1)),
         booking.total_amount != null ? emailDetailItem('Estimated total', fmtPeso(booking.total_amount)) : '',
         emailDetailItem('Status', 'Pending review'),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailFooter()}
     `,
   });
@@ -686,7 +686,7 @@ export async function sendPaymentReceiptEmail(user, payment) {
         emailDetailItem('Amount paid', `<strong>${fmtPeso(payment.amount)}</strong>`),
         emailDetailItem('Date paid', escapeHtml(formatEmailDateTime(payment.paid_at || payment.created_at))),
         emailDetailItem('Method', escapeHtml(payment.method || '—')),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailFooter()}
     `,
   });
@@ -727,7 +727,7 @@ export async function sendVenueInvoiceEmail(user, payment) {
         discountLine,
         emailDetailItem('Amount due', `<strong>${fmtPeso(due)}</strong>`),
         emailDetailItem('Status', 'Approved'),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailFooter({ includePayment: true })}
     `,
   });
@@ -769,7 +769,7 @@ export async function sendVenueModifiedEmail(user, booking, {
         emailDetailItem('Date', escapeHtml(formatEventDate(previousEventDate))),
         emailDetailItem('Time', escapeHtml(prevStart && prevEnd ? `${prevStart} – ${prevEnd}` : '—')),
         emailDetailItem('Guests', escapeHtml(previousGuestCount ?? '—')),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailSection('Confirmed booking', emailDetailList([
         emailDetailItem('Venue', escapeHtml(venue)),
         emailDetailItem('Event date', escapeHtml(eventDate)),
@@ -777,7 +777,7 @@ export async function sendVenueModifiedEmail(user, booking, {
         emailDetailItem('Guests', escapeHtml(booking.guest_count || 1)),
         booking.total_amount != null ? emailDetailItem('Total due', `<strong>${fmtPeso(booking.total_amount)}</strong>`) : '',
         emailDetailItem('Status', escapeHtml(booking.status || 'Approved')),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailFooter({ includePayment: true })}
     `,
   });
@@ -800,7 +800,7 @@ export async function sendBookingModifiedEmail(user, booking, { message, previou
         emailDetailItem('Room', escapeHtml(previousRoom || '—')),
         emailDetailItem('Check-in', escapeHtml(formatStayDate(previousCheckIn))),
         emailDetailItem('Check-out', escapeHtml(formatStayDate(previousCheckOut))),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailSection('Confirmed stay', details.stayItems)}
       ${details.addons}
       ${emailFooter({ includePayment: true })}
@@ -826,7 +826,7 @@ export async function sendGroupConfirmationEmail(user, group) {
       ${emailSection('Before check-in', emailDetailList([
         emailDetailItem('Arrival', 'Please coordinate with Housing if your group size or room needs change.'),
         emailDetailItem('Payment', 'Settle the group balance at the Housing office (Cash, GCash, or Bank Transfer).'),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailFooter({ includePayment: true })}
     `,
   });
@@ -848,7 +848,7 @@ export async function sendGroupModifiedEmail(user, group, { message, previousChe
       ${emailSection('Previous request', emailDetailList([
         emailDetailItem('Dates', `${escapeHtml(formatStayDate(previousCheckIn))} to ${escapeHtml(formatStayDate(previousCheckOut))}`),
         emailDetailItem('Rooms requested', escapeHtml(previousRoomsRequested ?? '—')),
-      ].join('')))}
+      ].filter(Boolean)))}
       ${emailSection('Confirmed stay', details.stayItems)}
       ${details.addons}
       ${emailFooter({ includePayment: true })}

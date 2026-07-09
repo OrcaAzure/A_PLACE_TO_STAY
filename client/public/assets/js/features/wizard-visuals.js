@@ -1,0 +1,308 @@
+/**
+ * Shared visual markup for admin & guest reservation wizards
+ * (room cards, meal grids, confirm summaries).
+ */
+
+import { roomPreviewImage } from '/assets/js/features/facility-display.js';
+import {
+  escapeHtml,
+  formatMoney,
+  MEAL_MAX_QTY,
+  clampMealQty,
+  mealTypesOrdered,
+  DORM_MIN_GUEST_COUNT,
+  dormPriceLabel,
+  availLabel,
+  recommendationReason,
+  calcMealsSubtotal,
+} from '/assets/js/features/reservation-shared.js';
+
+export const WIZARD_MEAL_META = {
+  Breakfast: { icon: 'free_breakfast', tone: 'amber' },
+  Lunch: { icon: 'lunch_dining', tone: 'orange' },
+  Dinner: { icon: 'dinner_dining', tone: 'indigo' },
+  Snack: { icon: 'cookie', tone: 'rose' },
+};
+
+export function mealMetaFor(type) {
+  return WIZARD_MEAL_META[type] || { icon: 'restaurant', tone: 'slate' };
+}
+
+export function renderWizardMealGrid(meals, mealRates, { idPrefix = 'wiz' } = {}) {
+  const cards = mealTypesOrdered(mealRates).map((type) => {
+    const qty = clampMealQty(meals[type]);
+    const price = Number(mealRates[type]) || 0;
+    const meta = mealMetaFor(type);
+    const inputId = `${idPrefix}-meal-qty-${String(type).toLowerCase().replace(/\s+/g, '-')}`;
+    return `
+      <article class="guest-meal-card guest-meal-card--${meta.tone}${qty > 0 ? ' is-active' : ''}" data-meal-type="${escapeHtml(type)}">
+        <div class="guest-meal-card__icon" aria-hidden="true">
+          <span class="material-symbols-outlined">${meta.icon}</span>
+        </div>
+        <div class="guest-meal-card__info">
+          <strong>${escapeHtml(type)}</strong>
+          <span>${formatMoney(price)} each</span>
+        </div>
+        <div class="guest-meal-card__qty">
+          <label class="res-sr-only" for="${inputId}">${escapeHtml(type)} quantity</label>
+          <input type="number" id="${inputId}" class="guest-meal-qty-input" data-meal-qty="${escapeHtml(type)}" min="0" max="${MEAL_MAX_QTY}" step="1" value="${qty}" inputmode="numeric" aria-label="${escapeHtml(type)} quantity" />
+        </div>
+        <p class="guest-meal-card__sub${qty > 0 ? '' : ' guest-meal-card__sub--empty'}" data-meal-sub="${escapeHtml(type)}">${qty > 0 ? formatMoney(price * qty) : ''}</p>
+      </article>`;
+  }).join('');
+
+  return `
+    <div class="guest-meals-grid wiz-meals-grid">
+      ${cards}
+    </div>
+    <p class="wiz-meals-total">Meals subtotal: <strong data-meals-total>${formatMoney(calcMealsSubtotal(meals, mealRates))}</strong></p>`;
+}
+
+export function renderWizardRoomTypeFilter(types, current, { idPrefix = 'wiz', attr = 'data-wiz-room-type' } = {}) {
+  if (!types.length) return '';
+  const activeLabel = current
+    ? (types.find(([key]) => key === current)?.[1] || current)
+    : 'Room type';
+  const panelId = `${idPrefix}-room-type-filter-panel`;
+  const toggleId = `${idPrefix}-room-type-filter-toggle`;
+  const labelId = `${idPrefix}-room-type-filter-label`;
+
+  return `
+    <div class="fac-filter-wrap wiz-room-type-filter">
+      <button type="button" id="${toggleId}" class="fac-filter-btn${current ? ' fac-filter-btn--active' : ''}" aria-expanded="false" aria-controls="${panelId}" aria-haspopup="true">
+        <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
+        <span id="${labelId}">${escapeHtml(activeLabel)}</span>
+      </button>
+      <div id="${panelId}" class="fac-filter-panel hidden" role="menu" aria-label="Filter by room type">
+        <p class="fac-filter-panel__title">Room type</p>
+        <button type="button" class="fac-filter-option${!current ? ' is-active' : ''}" ${attr}="" role="menuitem">All types</button>
+        ${types.map(([key, label]) => `
+          <button type="button" class="fac-filter-option${current === key ? ' is-active' : ''}" ${attr}="${escapeHtml(key)}" role="menuitem">${escapeHtml(label)}</button>
+        `).join('')}
+        <button type="button" class="fac-filter-clear${current ? '' : ' hidden'}" data-wiz-room-type-clear role="menuitem">Clear room type</button>
+      </div>
+    </div>`;
+}
+
+let wizardRoomTypeFilterDocBound = false;
+
+function resetFilterPanelStyle(panel) {
+  panel.style.position = '';
+  panel.style.top = '';
+  panel.style.left = '';
+  panel.style.right = '';
+  panel.style.zIndex = '';
+  panel.style.minWidth = '';
+}
+
+function positionFilterPanel(toggle, panel) {
+  const rect = toggle.getBoundingClientRect();
+  const panelWidth = Math.max(panel.offsetWidth || 0, 224);
+  let left = rect.right - panelWidth;
+  left = Math.max(8, Math.min(left, window.innerWidth - panelWidth - 8));
+  panel.style.position = 'fixed';
+  panel.style.top = `${rect.bottom + 6}px`;
+  panel.style.left = `${left}px`;
+  panel.style.right = 'auto';
+  panel.style.zIndex = '200';
+  panel.style.minWidth = '14rem';
+}
+
+function closeAllWizardRoomTypePanels() {
+  document.querySelectorAll('.wiz-room-type-filter .fac-filter-panel').forEach((panel) => {
+    panel.classList.add('hidden');
+    resetFilterPanelStyle(panel);
+  });
+  document.querySelectorAll('.wiz-room-type-filter .fac-filter-btn').forEach((btn) => {
+    btn.setAttribute('aria-expanded', 'false');
+  });
+}
+
+/** Dropdown room-type filter — same pattern as Facilities / Guest Access. */
+export function bindWizardRoomTypeFilter(container, { idPrefix, onChange }) {
+  if (!container) return;
+  const wrap = container.querySelector('.wiz-room-type-filter');
+  if (!wrap) return;
+
+  const toggle = wrap.querySelector(`#${idPrefix}-room-type-filter-toggle`);
+  const panel = wrap.querySelector(`#${idPrefix}-room-type-filter-panel`);
+  if (!toggle || !panel) return;
+
+  toggle.onclick = (e) => {
+    e.stopPropagation();
+    const opening = panel.classList.contains('hidden');
+    closeAllWizardRoomTypePanels();
+    if (opening) {
+      panel.classList.remove('hidden');
+      positionFilterPanel(toggle, panel);
+      toggle.setAttribute('aria-expanded', 'true');
+    }
+  };
+
+  panel.querySelectorAll('[data-wiz-room-type]').forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      onChange(btn.getAttribute('data-wiz-room-type') || '');
+      closeAllWizardRoomTypePanels();
+    };
+  });
+
+  const clearBtn = panel.querySelector('[data-wiz-room-type-clear]');
+  if (clearBtn) {
+    clearBtn.onclick = (e) => {
+      e.stopPropagation();
+      onChange('');
+      closeAllWizardRoomTypePanels();
+    };
+  }
+
+  if (!wizardRoomTypeFilterDocBound) {
+    wizardRoomTypeFilterDocBound = true;
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.wiz-room-type-filter')) return;
+      closeAllWizardRoomTypePanels();
+    });
+    window.addEventListener('resize', closeAllWizardRoomTypePanels);
+    document.querySelector('#group-wizard-body')?.closest('.res-modal-body')
+      ?.addEventListener('scroll', closeAllWizardRoomTypePanels, true);
+    document.querySelector('#reservation-wizard-body')?.closest('.res-modal-body')
+      ?.addEventListener('scroll', closeAllWizardRoomTypePanels, true);
+  }
+}
+
+export function syncWizardMealCards(root, meals, mealRates) {
+  if (!root) return;
+  mealTypesOrdered(mealRates).forEach((type) => {
+    const qty = clampMealQty(meals[type]);
+    const price = Number(mealRates[type]) || 0;
+    const card = [...root.querySelectorAll('[data-meal-type]')].find((el) => el.getAttribute('data-meal-type') === type);
+    card?.classList.toggle('is-active', qty > 0);
+    const sub = root.querySelector(`[data-meal-sub="${type}"]`);
+    if (sub) {
+      sub.textContent = qty > 0 ? formatMoney(price * qty) : '';
+      sub.classList.toggle('guest-meal-card__sub--empty', qty <= 0);
+    }
+  });
+  const total = root.querySelector('[data-meals-total]');
+  if (total) total.textContent = formatMoney(calcMealsSubtotal(meals, mealRates));
+}
+
+export function renderWizardRoomCard(room, {
+  selected = false,
+  guestCount = 1,
+  recommended = false,
+  bookable = true,
+  visible = true,
+} = {}) {
+  const av = availLabel(room.availability_status);
+  const dormMin = room.availability_status === 'dorm_min_guests';
+  const img = roomPreviewImage({
+    roomNumber: room.room_number,
+    room_type: room.room_type,
+    room_type_label: room.room_type_label,
+    bed_count: room.bed_count,
+  });
+  const perPerson = dormPriceLabel(room, guestCount, room.nights);
+  const capLabel = room.room_type === 'Dorm'
+    ? `Min ${room.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} pax · up to ${room.capacity_max} guests`
+    : `${room.capacity_min}–${room.capacity_max} guests`;
+  const topPick = recommended && room.recommendation_rank === 1;
+  const building = room.building_name ? `${escapeHtml(room.building_name)} ` : '';
+
+  const classes = [
+    'wiz-room-option',
+    selected ? 'is-selected' : '',
+    dormMin ? 'is-dorm-min' : '',
+    !bookable ? 'is-disabled' : '',
+    recommended ? 'is-recommended' : '',
+  ].filter(Boolean).join(' ');
+
+  return `
+    <button type="button" class="${classes} wiz-room-card--grid" data-room-id="${room.id}" ${visible ? '' : 'disabled tabindex="-1"'}>
+      <div class="wiz-room-option__media">
+        <img src="${escapeHtml(img)}" alt="" loading="lazy" />
+        ${topPick ? '<span class="wiz-room-option__badge">Top pick</span>' : ''}
+        ${recommended && !topPick ? '<span class="wiz-room-option__badge wiz-room-option__badge--alt">Suggested</span>' : ''}
+      </div>
+      <div class="wiz-room-option__content">
+        <div class="wiz-room-option__body">
+          <div class="wiz-room-option__head">
+            <p class="wiz-room-option__title">${building}Room ${escapeHtml(room.room_number)}</p>
+            <span class="res-pill ${av.cls}">${av.text}</span>
+          </div>
+          <p class="wiz-room-option__meta">${escapeHtml(room.room_type_label || room.room_type)} · ${capLabel}</p>
+          ${perPerson ? `<p class="wiz-room-option__hint">${escapeHtml(perPerson)}</p>` : ''}
+          ${dormMin ? `<p class="wiz-room-option__warn">Minimum ${room.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} guests required to book.</p>` : ''}
+          ${!bookable && room.availability_status === 'booked' ? '<p class="wiz-room-option__warn">Already booked on these dates.</p>' : ''}
+          ${recommended ? `<p class="wiz-room-option__reason">${escapeHtml(recommendationReason(room, guestCount))}</p>` : ''}
+        </div>
+        <div class="wiz-room-option__price">
+          <p class="wiz-room-option__amount">${room.estimated_total != null ? formatMoney(room.estimated_total) : '—'}</p>
+          ${room.nights ? `<p class="wiz-room-option__nights">${room.nights} night(s)</p>` : ''}
+        </div>
+      </div>
+    </button>`;
+}
+
+export function renderWizardGroupRoomCard(room, { selected = false, guestCount = 1 } = {}) {
+  const img = roomPreviewImage({
+    roomNumber: room.room_number,
+    room_type: room.room_type,
+    room_type_label: room.room_type_label,
+    bed_count: room.bed_count,
+  });
+  const building = room.building_name ? `${escapeHtml(room.building_name)} ` : '';
+
+  return `
+    <article class="wiz-group-room-card wiz-room-card--grid${selected ? ' is-selected' : ''}">
+      <div class="wiz-room-option__media">
+        <img src="${escapeHtml(img)}" alt="" loading="lazy" />
+      </div>
+      <div class="wiz-room-option__content">
+        <div class="wiz-group-room-card__info">
+          <p class="wiz-room-option__title">${building}Room ${escapeHtml(room.room_number)}</p>
+          <p class="wiz-room-option__meta">${escapeHtml(room.room_type_label || room.room_type)} · Fits ${room.capacity_min}–${room.capacity_max} guests</p>
+          ${room.estimated_total != null ? `<p class="wiz-group-room-card__price">${formatMoney(room.estimated_total)}</p>` : ''}
+        </div>
+        <div class="wiz-group-room-card__actions">
+          <button type="button" class="res-btn ${selected ? 'res-btn--ghost' : 'res-btn--primary'}" data-room-toggle="${room.id}">
+            ${selected ? 'Remove room' : 'Add room'}
+          </button>
+          ${selected ? `
+          <div class="wiz-group-room-card__guests">
+            <span class="res-label">Guests</span>
+            <div class="res-qty">
+              <button type="button" data-room-guest-minus="${room.id}" aria-label="Fewer guests">−</button>
+              <span>${guestCount}</span>
+              <button type="button" data-room-guest-plus="${room.id}" aria-label="More guests">+</button>
+            </div>
+          </div>` : ''}
+        </div>
+      </div>
+    </article>`;
+}
+
+export function renderWizardConfirmCard(title, bodyHtml) {
+  return `
+    <section class="wiz-confirm-card">
+      <h4 class="wiz-confirm-card__title">${escapeHtml(title)}</h4>
+      <div class="wiz-confirm-card__body">${bodyHtml}</div>
+    </section>`;
+}
+
+export function renderWizardPriceSummary({ lines = [], grandLabel = 'Grand total', grandTotal = 0 }) {
+  const rows = lines.map(({ label, value }) => `
+    <div class="guest-total-line">
+      <span>${escapeHtml(label)}</span>
+      <span>${typeof value === 'number' ? formatMoney(value) : value}</span>
+    </div>`).join('');
+
+  return `
+    <div class="guest-total-breakdown wiz-confirm-summary">
+      ${rows}
+      <div class="guest-total-line guest-total-line--grand">
+        <span>${escapeHtml(grandLabel)}</span>
+        <span>${formatMoney(grandTotal)}</span>
+      </div>
+    </div>`;
+}
