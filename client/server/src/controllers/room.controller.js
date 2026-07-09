@@ -2,6 +2,7 @@ import { pool } from '../config/db.js';
 import Room from '../models/Room.js';
 import { isEmpty } from '../utils/helpers.js';
 import { isAdminRole } from '../utils/constants.js';
+import { assertRoomDeletable } from '../services/booking.service.js';
 
 export const getAllBuildings = async (req, res) => {
   try {
@@ -298,9 +299,11 @@ export const deleteRoom = async (req, res) => {
   try {
     const [existing] = await pool.query('SELECT * FROM rooms WHERE id = ? LIMIT 1', [req.params.id]);
     if (existing.length === 0) return res.status(404).json({ message: 'Room not found' });
+    await assertRoomDeletable(req.params.id);
     await pool.query('DELETE FROM rooms WHERE id = ?', [req.params.id]);
     res.status(200).json({ message: 'Room deleted' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const status = error.message.includes('reservation') ? 409 : 500;
+    res.status(status).json({ message: error.message });
   }
 };

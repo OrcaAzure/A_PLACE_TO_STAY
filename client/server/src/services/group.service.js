@@ -13,6 +13,8 @@ import {
   hasOverlappingBooking,
   validateGuestCapacity,
   getRoomById,
+  mealsPayloadFromRows,
+  resolveMealUnitPricesForUpdate,
 } from './booking.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
@@ -204,7 +206,19 @@ export async function saveGroupBookings({
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
-    const [existingBookings] = await conn.query('SELECT id FROM bookings_rooms WHERE group_id = ?', [groupId]);
+    const [existingBookings] = await conn.query(
+      'SELECT id FROM bookings_rooms WHERE group_id = ? ORDER BY id',
+      [groupId]
+    );
+    let preservedMealRows = [];
+    if (existingBookings.length) {
+      preservedMealRows = await getBookingMeals(existingBookings[0].id);
+    }
+    const preserveMealPrices = preservedMealRows.length > 0;
+    const mealUnitPrices = preserveMealPrices
+      ? resolveMealUnitPricesForUpdate(meals || mealsPayloadFromRows(preservedMealRows), mealRates, preservedMealRows)
+      : null;
+
     for (const row of existingBookings) {
       await deletePaymentsForRoomBooking(row.id, conn);
     }
@@ -230,6 +244,7 @@ export async function saveGroupBookings({
           meals,
           fees,
           mealRates,
+          mealUnitPrices,
         });
       }
 
@@ -247,7 +262,10 @@ export async function saveGroupBookings({
 
       if (i === 0) {
         firstBookingId = result.insertId;
-        await saveBookingMeals(firstBookingId, meals, mealRates);
+        await saveBookingMeals(firstBookingId, meals, mealRates, {
+          existingRows: preservedMealRows,
+          preserveExisting: preserveMealPrices,
+        });
         await saveBookingFees(firstBookingId, fees);
       }
     }

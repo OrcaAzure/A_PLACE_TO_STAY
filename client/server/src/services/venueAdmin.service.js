@@ -153,12 +153,16 @@ async function upsertRate(conn, facilityId, season, rate, variant) {
 }
 
 async function assertNoBookings(conn, facilityId) {
-  const [rows] = await conn.query(
-    'SELECT COUNT(*) AS n FROM bookings_facilities WHERE facility_id = ?',
+  const [active] = await conn.query(
+    `SELECT COUNT(*) AS n FROM bookings_facilities
+     WHERE facility_id = ? AND status IN ('Pending', 'Approved')`,
     [facilityId]
   );
-  if (Number(rows[0].n) > 0) {
-    throw badRequest('This use has existing bookings and cannot be removed. Cancel or reassign those bookings first.');
+  if (Number(active[0].n) > 0) {
+    const n = Number(active[0].n);
+    throw badRequest(
+      `This venue use has ${n} active booking${n === 1 ? '' : 's'} (pending or approved). Cancel or reassign ${n === 1 ? 'it' : 'them'} before removing the venue.`
+    );
   }
 }
 

@@ -287,7 +287,9 @@ export const updateBooking = async (req, res) => {
         ]
       );
 
-      if (meals != null) await saveBookingMeals(req.params.id, meals, mealRates);
+      if (meals != null) {
+        await saveBookingMeals(req.params.id, meals, mealRates, { preserveExisting: true });
+      }
       if (feesToSave != null) await saveBookingFees(req.params.id, feesToSave);
 
       const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
@@ -358,7 +360,9 @@ export const updateBooking = async (req, res) => {
       ]
     );
 
-    if (meals != null) await saveBookingMeals(req.params.id, meals, mealRates);
+    if (meals != null) {
+      await saveBookingMeals(req.params.id, meals, mealRates, { preserveExisting: true });
+    }
     if (fees != null) await saveBookingFees(req.params.id, fees);
 
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);

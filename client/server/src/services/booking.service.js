@@ -190,6 +190,33 @@ export async function hasOverlappingBooking(roomId, checkIn, checkOut, excludeBo
   return rows.length > 0;
 }
 
+const ACTIVE_BOOKING_STATUSES = ['Pending', 'Approved'];
+
+/** Block room deletion when reservations still reference the inventory row. */
+export async function assertRoomDeletable(roomId) {
+  const [active] = await pool.query(
+    `SELECT COUNT(*) AS n FROM bookings_rooms
+     WHERE room_id = ? AND status IN (?, ?)`,
+    [roomId, ...ACTIVE_BOOKING_STATUSES]
+  );
+  if (Number(active[0].n) > 0) {
+    const n = Number(active[0].n);
+    throw new Error(
+      `This room has ${n} active reservation${n === 1 ? '' : 's'} (pending or approved). Cancel or reassign ${n === 1 ? 'it' : 'them'} before deleting the room.`
+    );
+  }
+
+  const [history] = await pool.query(
+    'SELECT COUNT(*) AS n FROM bookings_rooms WHERE room_id = ?',
+    [roomId]
+  );
+  if (Number(history[0].n) > 0) {
+    throw new Error(
+      'This room still has reservation records on file (cancelled, rejected, or past). Remove those records before deleting the room.'
+    );
+  }
+}
+
 export function physicalCapacityMin(room) {
   return Number(room?.capacity_min) || 1;
 }
@@ -347,6 +374,12 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
     if (totalAmount == null) {
       throw new Error('Room pricing is not configured for these dates.');
     }
+  } else if (!venueStay && body.total_amount == null) {
+    const mealRows = await getBookingMeals(existing.id);
+    const feeRows = await getBookingFees(existing.id);
+    const mealsTotal = calcMealsTotalFromRows(mealRows);
+    const feesTotal = calcFeesTotal(feeRows);
+    totalAmount = Math.round((Number(existing.total_amount) - mealsTotal - feesTotal) * 100) / 100;
   }
 
   return { checkIn, checkOut, guestCount, season, occupancyItem, totalAmount, roomId };
@@ -367,6 +400,45 @@ export function calcMealsTotal(meals = {}, rates = DEFAULT_MEAL_RATES) {
   return Math.round(total * 100) / 100;
 }
 
+/** Sum stored meal line subtotals (price locked at booking time). */
+export function calcMealsTotalFromRows(rows = []) {
+  const total = (rows || []).reduce((sum, row) => sum + Number(row.subtotal || 0), 0);
+  return Math.round(total * 100) / 100;
+}
+
+export function mealUnitPriceMap(existingRows = []) {
+  const map = {};
+  for (const row of existingRows || []) {
+    if (row.meal_type) map[row.meal_type] = Number(row.unit_price) || 0;
+  }
+  return map;
+}
+
+/**
+ * Build per-meal unit prices for an update: keep stored prices for known lines,
+ * use catalog only for newly added meal types.
+ */
+export function resolveMealUnitPricesForUpdate(meals = {}, catalogRates = {}, existingRows = []) {
+  const stored = mealUnitPriceMap(existingRows);
+  const prices = {};
+  for (const [type, qtyRaw] of Object.entries(meals || {})) {
+    const qty = Number(qtyRaw || 0);
+    if (qty <= 0) continue;
+    prices[type] = stored[type] != null ? stored[type] : (Number(catalogRates[type]) || 0);
+  }
+  return prices;
+}
+
+export function calcMealsTotalWithUnitPrices(meals = {}, unitPrices = {}) {
+  let total = 0;
+  for (const [type, qtyRaw] of Object.entries(meals || {})) {
+    const qty = Number(qtyRaw || 0);
+    if (qty <= 0) continue;
+    total += (Number(unitPrices[type]) || 0) * qty;
+  }
+  return Math.round(total * 100) / 100;
+}
+
 export function calcFeesTotal(fees = []) {
   return Math.round((fees || []).reduce((s, f) => s + Number(f.amount || 0), 0) * 100) / 100;
 }
@@ -380,12 +452,18 @@ export function mealsPayloadFromRows(rows = []) {
 }
 
 /** Recompute booking total when meals/fees change without double-counting existing add-ons. */
-export async function computeUpdatedBookingGrandTotal(existing, validated, { meals, fees, mealRates } = {}) {
+export async function computeUpdatedBookingGrandTotal(existing, validated, { meals, fees, mealRates, preserveMealPrices = true } = {}) {
   const rates = mealRates || (await getMealRates());
+  const existingMealRows = await getBookingMeals(existing.id);
 
   const mealPayload = meals != null
     ? meals
-    : mealsPayloadFromRows(await getBookingMeals(existing.id));
+    : mealsPayloadFromRows(existingMealRows);
+
+  const mealUnitPrices = preserveMealPrices && existingMealRows.length
+    ? resolveMealUnitPricesForUpdate(mealPayload, rates, existingMealRows)
+    : null;
+
   const feePayload = fees != null
     ? fees
     : (await getBookingFees(existing.id)).map((f) => ({
@@ -398,6 +476,7 @@ export async function computeUpdatedBookingGrandTotal(existing, validated, { mea
     meals: mealPayload,
     fees: feePayload,
     mealRates: rates,
+    mealUnitPrices,
   });
 }
 
@@ -440,14 +519,19 @@ export async function saveBookingFees(bookingId, fees = []) {
   } catch { /* tables may not exist yet */ }
 }
 
-export async function saveBookingMeals(bookingId, meals = {}, rates = null) {
+export async function saveBookingMeals(bookingId, meals = {}, rates = null, { existingRows = null, preserveExisting = false } = {}) {
   const mealRates = rates || (await getMealRates());
+  const storedPrices = preserveExisting
+    ? mealUnitPriceMap(existingRows ?? await getBookingMeals(bookingId))
+    : {};
   try {
     await pool.query('DELETE FROM bookings_meals WHERE bookings_room_id = ?', [bookingId]);
     for (const [type, qtyRaw] of Object.entries(meals || {})) {
       const qty = Number(qtyRaw || 0);
       if (qty <= 0) continue;
-      const unitPrice = mealRates[type] || 0;
+      const unitPrice = preserveExisting && storedPrices[type] != null
+        ? storedPrices[type]
+        : (mealRates[type] || 0);
       const subtotal = Math.round(unitPrice * qty * 100) / 100;
       await pool.query(
         'INSERT INTO bookings_meals (bookings_room_id, meal_type, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)',
@@ -457,9 +541,12 @@ export async function saveBookingMeals(bookingId, meals = {}, rates = null) {
   } catch { /* tables may not exist yet */ }
 }
 
-export async function computeGrandTotal({ roomTotal, meals, fees, mealRates = null }) {
+export async function computeGrandTotal({ roomTotal, meals, fees, mealRates = null, mealUnitPrices = null }) {
   const rates = mealRates || (await getMealRates());
-  return Math.round((Number(roomTotal || 0) + calcMealsTotal(meals, rates) + calcFeesTotal(fees)) * 100) / 100;
+  const mealsTotal = mealUnitPrices
+    ? calcMealsTotalWithUnitPrices(meals, mealUnitPrices)
+    : calcMealsTotal(meals, rates);
+  return Math.round((Number(roomTotal || 0) + mealsTotal + calcFeesTotal(fees)) * 100) / 100;
 }
 
 export async function getAvailableRooms({
