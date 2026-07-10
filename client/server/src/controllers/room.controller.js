@@ -3,6 +3,7 @@ import Room from '../models/Room.js';
 import { isEmpty } from '../utils/helpers.js';
 import { isAdminRole } from '../utils/constants.js';
 import { assertRoomDeletable } from '../services/booking.service.js';
+import { filterRoomsForGuestUser } from '../utils/guestAccess.js';
 
 export const getAllBuildings = async (req, res) => {
   try {
@@ -45,8 +46,10 @@ export const getAllRooms = async (req, res) => {
        ORDER BY buildings.name ASC, rooms.room_number ASC`,
       params
     );
-    const scopedRows = filterRoomsForGuestUser(rows, req.user?.email);
-    res.status(200).json({ rooms: scopedRows.map((r) => new Room(r)) });
+    const rooms = isAdminRole(req.user?.role)
+      ? rows
+      : filterRoomsForGuestUser(rows, req.user?.email);
+    res.status(200).json({ rooms: rooms.map((r) => new Room(r)) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
