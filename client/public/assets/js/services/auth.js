@@ -38,7 +38,7 @@ export async function requireAuth() {
       return false;
     }
 
-    if (isGuest && isAdminRole) {
+    if (isGuest && isAdminPortal) {
       window.location.href = '/admin/dashboard.html';
       return false;
     }
