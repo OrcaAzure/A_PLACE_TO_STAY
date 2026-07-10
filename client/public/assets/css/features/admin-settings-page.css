@@ -49,7 +49,7 @@
   border-radius: 0.5rem;
   background: transparent;
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 500;
   color: #475569;
   white-space: nowrap;
@@ -96,7 +96,7 @@
 
 .settings-panel__title {
   margin: 0 0 1.25rem;
-  font-size: 1.375rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--color-primary, #1a365d);
 }
@@ -111,7 +111,7 @@
 
 .settings-panel__subtitle {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 1.0625rem;
   color: #64748b;
   line-height: 1.45;
 }
@@ -128,21 +128,21 @@
   display: inline-flex;
   padding: 0.2rem 0.55rem;
   border-radius: 999px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   background: rgba(26, 54, 93, 0.1);
   color: var(--color-primary, #1a365d);
 }
 
 .settings-account-meta__item {
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   color: #94a3b8;
 }
 
 .settings-row__hint {
   display: block;
   margin-top: 0.2rem;
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   line-height: 1.4;
   color: #94a3b8;
   font-weight: 400;
@@ -151,7 +151,7 @@
 .settings-subsection__lead {
   margin: 0;
   padding: 0 1.75rem 0.75rem;
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   color: #94a3b8;
   line-height: 1.45;
 }
@@ -171,7 +171,7 @@
 }
 
 .settings-input-suffix {
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: #64748b;
 }
 
@@ -211,7 +211,7 @@
 
 .settings-account-banner__name {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1.25rem;
   font-weight: 600;
   color: #1e293b;
   line-height: 1.3;
@@ -219,7 +219,7 @@
 
 .settings-account-banner__email {
   margin: 0.2rem 0 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: #64748b;
   word-break: break-word;
 }
@@ -255,13 +255,13 @@
 }
 
 .settings-row__label {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 500;
   color: #334155;
 }
 
 .settings-row__value {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 500;
   color: #1e293b;
   word-break: break-word;
@@ -299,7 +299,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 0.75rem;
   padding: 0.875rem 1.75rem;
   border-top: 1px solid var(--color-outline-variant, #cbd5e0);
@@ -307,7 +307,7 @@
 }
 
 .settings-panel-footer .settings-feedback {
-  margin-right: auto;
+  margin: 0;
 }
 
 .settings-subsection {
@@ -317,7 +317,7 @@
 .settings-subsection__title {
   margin: 0;
   padding: 1rem 1.75rem 0.25rem;
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -342,21 +342,21 @@
 }
 
 .settings-form-group__label {
-  font-size: 0.8125rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #334155;
 }
 
 .settings-form-group__hint {
   margin: 0;
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   line-height: 1.45;
   color: #64748b;
 }
 
 .settings-form-group__value {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 500;
   color: #1e293b;
   word-break: break-word;
@@ -370,7 +370,7 @@
 
 .settings-form-section {
   margin: 0;
-  font-size: 0.9375rem;
+  font-size: 1.125rem;
   font-weight: 700;
   color: var(--color-primary, #1a365d);
 }
@@ -421,7 +421,7 @@
   border: 1px solid var(--color-outline-variant, #cbd5e0);
   border-radius: 0.5rem;
   font: inherit;
-  font-size: 0.9375rem;
+  font-size: 1rem;
   color: #1e293b;
   background: #fff;
 }
@@ -455,7 +455,7 @@
 
 .settings-inline-fields label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: #64748b;
   margin-bottom: 0.35rem;
@@ -478,7 +478,7 @@
 
 .settings-status-card__label {
   display: block;
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -488,14 +488,14 @@
 
 .settings-status-card__value {
   display: block;
-  font-size: 0.9375rem;
+  font-size: 1.0625rem;
   font-weight: 600;
   color: #1e293b;
 }
 
 .settings-status-card__hint {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: #94a3b8;
   margin-top: 0.15rem;
 }
@@ -541,7 +541,7 @@
 }
 
 .settings-season-row__head .text-body-sm {
-  font-size: 0.75rem;
+  font-size: 0.875rem;
   color: #64748b;
   line-height: 1.35;
 }
@@ -549,7 +549,7 @@
 .settings-season-badge {
   padding: 0.15rem 0.5rem;
   border-radius: 999px;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
   white-space: nowrap;
@@ -790,14 +790,14 @@
 }
 
 .rate-weekend__switch-title {
-  font-size: 0.9375rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #0f172a;
   line-height: 1.35;
 }
 
 .rate-weekend__switch-hint {
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
   color: #64748b;
   line-height: 1.4;
 }
@@ -1053,14 +1053,14 @@
 
 .rate-preview__summary {
   margin: 0 0 0.625rem;
-  font-size: 0.875rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #334155;
 }
 
 .rate-preview__message {
   margin: 0;
-  font-size: 0.875rem;
+  font-size: 1rem;
   color: #94a3b8;
 }
 
