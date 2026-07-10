@@ -4,6 +4,7 @@
 
 import { getVenueScheduleOverview } from '/assets/js/services/api.js';
 import { venueEventPhase } from '/assets/js/features/reservation-shared.js';
+import { venuePreviewImage } from '/assets/js/features/facility-display.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
 const state = {
@@ -124,7 +125,18 @@ function renderFacilityCard(f) {
   return `
     <article class="fac-venue-card${rowClass}${f.has_pending ? ' has-pending' : ''}">
       <div class="fac-venue-card__hero">
-        <span class="material-symbols-outlined" aria-hidden="true">corporate_fare</span>
+        <img
+          src="${escapeHtml(venuePreviewImage({
+            name: f.name,
+            label: f.label,
+            item: f.item,
+            category: f.category || f.facility_group,
+            facility_group: f.facility_group || f.category,
+            room_code: f.room_code,
+          }))}"
+          alt=""
+          loading="lazy"
+        />
       </div>
       <div class="fac-venue-card__body">
         <h4 class="fac-venue-card__name">${escapeHtml(f.label || f.item)}</h4>

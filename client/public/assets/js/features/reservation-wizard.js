@@ -12,7 +12,7 @@ import {
   recommendRooms, servicesToQuickFees, applyLoggedInGuestContact, filterRoomsList,
   collectWizardRoomTypes,
   DORM_MIN_GUEST_COUNT, dormPriceLabel,
-  isRoomListVisible, isRoomBookable, dormMinGuestsNotice,
+  isRoomListVisible, isRoomBookable, dormMinGuestsNotice, validateRoomGuestCapacity,
   readMealsFromInputs, clampMealQty, mealTypesOrdered, ensureMealsShape, isValidEmail,
 } from '/assets/js/features/reservation-shared.js';
 import {
@@ -427,6 +427,16 @@ async function fetchRooms() {
 }
 
 function bindEvents() {
+  const clearWizardError = () => {
+    if (!state.error) return;
+    state.error = null;
+    const err = $('reservation-wizard-error');
+    if (err) {
+      err.textContent = '';
+      err.classList.add('hidden');
+    }
+  };
+
   $('wiz-user')?.addEventListener('change', (e) => {
     const opt = e.target.selectedOptions[0];
     if (!opt?.value) return;
@@ -436,10 +446,15 @@ function bindEvents() {
     renderBody();
   });
 
+  ['wiz-name', 'wiz-email', 'wiz-phone', 'wiz-guest-message', 'wiz-notes'].forEach((id) => {
+    $(id)?.addEventListener('input', clearWizardError);
+  });
+
   const onStayChange = () => {
     readFields();
     state.roomId = '';
     state.selectedRoom = null;
+    state.error = null;
     fetchRooms();
   };
   const debouncedStayChange = debounce(onStayChange, 400);
@@ -543,9 +558,9 @@ function validate() {
     if (state.checkOut <= state.checkIn) { state.error = 'Check-out must be after check-in.'; return false; }
   }
   if (state.step === 3 && !state.roomId) { state.error = 'Please select an available room.'; return false; }
-  if (state.step === 3 && state.selectedRoom?.room_type === 'Dorm' && state.guestCount < DORM_MIN_GUEST_COUNT) {
-    state.error = dormMinGuestsNotice(state.guestCount);
-    return false;
+  if (state.step === 3 && state.selectedRoom) {
+    const capacityError = validateRoomGuestCapacity(state.selectedRoom, state.guestCount);
+    if (capacityError) { state.error = capacityError; return false; }
   }
   if (state.step === 5 && state.modifyRequest && !state.guestModify && !state.guestMessage?.trim()) {
     state.error = 'Please enter a message explaining the change for the guest.';
@@ -595,6 +610,12 @@ async function confirmSave() {
     return;
   }
   if (!state.roomId) { state.error = 'Please select a room.'; renderBody(); return; }
+  const capacityError = validateRoomGuestCapacity(state.selectedRoom, state.guestCount);
+  if (capacityError) {
+    state.step = 3;
+    showWizardError(capacityError);
+    return;
+  }
   state.saving = true;
   state.error = null;
   renderBody();

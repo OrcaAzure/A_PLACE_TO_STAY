@@ -58,11 +58,18 @@ export function renderWizardMealGrid(meals, mealRates, { idPrefix = 'wiz' } = {}
     <p class="wiz-meals-total">Meals subtotal: <strong data-meals-total>${formatMoney(calcMealsSubtotal(meals, mealRates))}</strong></p>`;
 }
 
-export function renderWizardRoomTypeFilter(types, current, { idPrefix = 'wiz', attr = 'data-wiz-room-type' } = {}) {
+export function renderWizardRoomTypeFilter(types, current, {
+  idPrefix = 'wiz',
+  attr = 'data-wiz-room-type',
+  title = 'Room type',
+  allLabel = 'All types',
+  clearLabel = 'Clear room type',
+  buttonLabel = title,
+} = {}) {
   if (!types.length) return '';
   const activeLabel = current
     ? (types.find(([key]) => key === current)?.[1] || current)
-    : 'Room type';
+    : buttonLabel;
   const panelId = `${idPrefix}-room-type-filter-panel`;
   const toggleId = `${idPrefix}-room-type-filter-toggle`;
   const labelId = `${idPrefix}-room-type-filter-label`;
@@ -73,13 +80,13 @@ export function renderWizardRoomTypeFilter(types, current, { idPrefix = 'wiz', a
         <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
         <span id="${labelId}">${escapeHtml(activeLabel)}</span>
       </button>
-      <div id="${panelId}" class="fac-filter-panel hidden" role="menu" aria-label="Filter by room type">
-        <p class="fac-filter-panel__title">Room type</p>
-        <button type="button" class="fac-filter-option${!current ? ' is-active' : ''}" ${attr}="" role="menuitem">All types</button>
+      <div id="${panelId}" class="fac-filter-panel hidden" role="menu" aria-label="Filter by ${escapeHtml(title.toLowerCase())}">
+        <p class="fac-filter-panel__title">${escapeHtml(title)}</p>
+        <button type="button" class="fac-filter-option${!current ? ' is-active' : ''}" ${attr}="" role="menuitem">${escapeHtml(allLabel)}</button>
         ${types.map(([key, label]) => `
           <button type="button" class="fac-filter-option${current === key ? ' is-active' : ''}" ${attr}="${escapeHtml(key)}" role="menuitem">${escapeHtml(label)}</button>
         `).join('')}
-        <button type="button" class="fac-filter-clear${current ? '' : ' hidden'}" data-wiz-room-type-clear role="menuitem">Clear room type</button>
+        <button type="button" class="fac-filter-clear${current ? '' : ' hidden'}" data-wiz-room-type-clear role="menuitem">${escapeHtml(clearLabel)}</button>
       </div>
     </div>`;
 }
@@ -91,21 +98,41 @@ function resetFilterPanelStyle(panel) {
   panel.style.top = '';
   panel.style.left = '';
   panel.style.right = '';
+  panel.style.bottom = '';
   panel.style.zIndex = '';
   panel.style.minWidth = '';
+  panel.style.maxHeight = '';
+  panel.style.overflowY = '';
 }
 
 function positionFilterPanel(toggle, panel) {
   const rect = toggle.getBoundingClientRect();
   const panelWidth = Math.max(panel.offsetWidth || 0, 224);
+  const gap = 6;
+  const edge = 8;
   let left = rect.right - panelWidth;
-  left = Math.max(8, Math.min(left, window.innerWidth - panelWidth - 8));
+  left = Math.max(edge, Math.min(left, window.innerWidth - panelWidth - edge));
+
+  const spaceBelow = window.innerHeight - rect.bottom - gap - edge;
+  const spaceAbove = rect.top - gap - edge;
+  const preferBelow = spaceBelow >= 12 * 16 || spaceBelow >= spaceAbove;
+  const maxHeight = Math.max(10 * 16, preferBelow ? spaceBelow : spaceAbove);
+
   panel.style.position = 'fixed';
-  panel.style.top = `${rect.bottom + 6}px`;
   panel.style.left = `${left}px`;
   panel.style.right = 'auto';
   panel.style.zIndex = '200';
   panel.style.minWidth = '14rem';
+  panel.style.maxHeight = `${maxHeight}px`;
+  panel.style.overflowY = 'auto';
+
+  if (preferBelow) {
+    panel.style.top = `${rect.bottom + gap}px`;
+    panel.style.bottom = 'auto';
+  } else {
+    panel.style.top = 'auto';
+    panel.style.bottom = `${window.innerHeight - rect.top + gap}px`;
+  }
 }
 
 function closeAllWizardRoomTypePanels() {

@@ -1,18 +1,18 @@
 <div id="venue-wizard-overlay" class="hidden fixed inset-0 bg-black/50 z-[85]"></div>
-<div id="venue-wizard-modal" class="hidden fixed inset-0 z-[90] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="venue-wizard-title">
-  <div class="res-modal res-modal--wizard bg-white rounded-xl w-full flex flex-col max-h-[92vh]">
-    <header class="res-modal-header res-modal-header--cards">
-      <div class="res-modal-header-main">
+<div id="venue-wizard-modal" class="hidden fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-5" role="dialog" aria-modal="true" aria-labelledby="venue-wizard-title">
+  <div class="res-modal res-modal--wizard res-modal--venue-wizard bg-white rounded-xl w-full flex flex-col">
+    <header class="res-modal-header res-modal-header--cards vbw-wizard-chrome">
+      <div class="res-modal-header-main vbw-wizard-chrome__titles">
         <h2 id="venue-wizard-title" class="res-modal-title">Book a venue</h2>
-        <p id="venue-wizard-subtitle" class="res-lead res-lead--compact">Step-by-step guide</p>
+        <p id="venue-wizard-subtitle" class="vbw-wizard-chrome__subtitle">Step-by-step guide</p>
       </div>
-      <button id="venue-wizard-close" type="button" class="res-icon-btn res-icon-btn--lg" aria-label="Close">
+      <button id="venue-wizard-close" type="button" class="res-icon-btn" aria-label="Close">
         <span class="material-symbols-outlined">close</span>
       </button>
     </header>
-    <div id="venue-wizard-steps" class="res-steps"></div>
+    <div id="venue-wizard-steps" class="res-steps vbw-wizard-steps"></div>
     <div id="venue-wizard-body" class="res-modal-body res-wizard-body"></div>
-    <footer class="res-modal-footer res-modal-footer--cards res-wizard-footer">
+    <footer class="res-modal-footer res-modal-footer--cards res-wizard-footer vbw-wizard-footer">
       <p id="venue-wizard-error" class="res-error hidden"></p>
       <div class="res-actions-row">
         <button type="button" id="venue-wizard-back" class="res-btn res-btn--ghost hidden">Back</button>

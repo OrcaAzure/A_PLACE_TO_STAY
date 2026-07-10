@@ -6,7 +6,17 @@ import {
   createFacilityBooking, getFacilitiesOverview, getFacilityBookingById, getUsers,
   getVenueRateQuote, updateFacilityBooking, checkVenueSlotAvailability,
 } from '/assets/js/services/api.js';
-import { escapeHtml, formatDateLong, formatMoney } from '/assets/js/features/reservation-shared.js';
+import { escapeHtml, formatDateLong, formatMoney, isValidEmail } from '/assets/js/features/reservation-shared.js';
+import { venuePreviewImage } from '/assets/js/features/facility-display.js';
+import {
+  validateVenueCapacityClient,
+  validateVenueDurationClient,
+  venueCapacityLabel,
+} from '/assets/js/features/guest-booking-flow.js';
+import {
+  renderWizardRoomTypeFilter,
+  bindWizardRoomTypeFilter,
+} from '/assets/js/features/wizard-visuals.js';
 import { refreshVenueScheduleBoard } from '/assets/js/features/admin-venue-board.js';
 
 const STEPS = [
@@ -34,11 +44,14 @@ function emptyState() {
     userId: '',
     guestName: '',
     email: '',
+    contactPhone: '',
     spaceKey: '',
     eventVenueId: '',
     facilityId: '',
     category: '',
     item: '',
+    venueSearch: '',
+    venueCategory: '',
     eventDate: '',
     startTime: '09:00',
     endTime: '13:00',
@@ -69,34 +82,165 @@ function confirmLabel() {
   return 'Confirm booking';
 }
 
+/**
+ * Collapse catalog rows that share a physical space into one venue with uses[].
+ * Same grouping as guest facilities (category + name + room_code).
+ */
 function buildVenueSpaces(catalog) {
-  const rows = [];
+  const byKey = new Map();
   for (const group of catalog?.venues || []) {
     for (const item of group.items || []) {
       const catalogId = item.facility_id ?? item.id;
-      rows.push({
-        spaceKey: catalogId ? String(catalogId) : `${group.category}\x1f${item.item}`,
+      if (!catalogId) continue;
+      const key = `${group.category}\x1f${item.name || ''}\x1f${item.room_code || ''}`;
+      if (!byKey.has(key)) {
+        byKey.set(key, {
+          spaceKey: key,
+          category: group.category,
+          name: item.name || group.category || '',
+          roomCode: item.room_code || '',
+          description: item.description || '',
+          label: item.name
+            ? (item.room_code ? `${item.name} (${item.room_code})` : item.name)
+            : (item.label || group.category),
+          uses: [],
+        });
+      }
+      const venue = byKey.get(key);
+      if (item.description && !venue.description) venue.description = item.description;
+      venue.uses.push({
         facilityId: catalogId,
         eventVenueId: catalogId,
-        category: group.category,
+        functionName: item.package_name || '',
         item: item.item,
-        label: item.label || `${group.category} — ${item.item}`,
-        description: item.description || '',
+        label: item.label || item.package_name || item.name || item.item,
+        capacity_min: item.capacity_min ?? null,
+        capacity_max: item.capacity_max ?? null,
+        min_hours: item.min_hours ?? null,
         rates: item.rates || [],
       });
+      if (venue.capacity_min == null && item.capacity_min != null) venue.capacity_min = item.capacity_min;
+      if (venue.capacity_max == null && item.capacity_max != null) venue.capacity_max = item.capacity_max;
+      if (venue.min_hours == null && item.min_hours != null) venue.min_hours = item.min_hours;
     }
   }
-  return rows.sort((a, b) => a.label.localeCompare(b.label));
+  return [...byKey.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
+function venueDisplayName(v) {
+  if (!v) return '—';
+  if (v.roomCode && v.name) return `${v.name} (${v.roomCode})`;
+  return v.name || v.label || '—';
+}
+
+function venueCardImage(v) {
+  return venuePreviewImage({
+    name: v.name,
+    label: v.label,
+    item: v.uses?.[0]?.item,
+    category: v.category,
+    facility_group: v.category,
+    room_code: v.roomCode,
+  });
+}
+
+function venueRateFromLine(v) {
+  const rates = (v.uses || [])
+    .flatMap((u) => (u.rates || []).filter((r) => r.season === 'Regular').map((r) => Number(r.rate)))
+    .filter((n) => Number.isFinite(n));
+  if (!rates.length) return '';
+  const min = Math.min(...rates);
+  const prefix = v.uses.length > 1 ? 'From ' : '';
+  return `${prefix}${formatMoney(min)}/hr`;
+}
+
+function collectVenueCategories() {
+  const map = new Map();
+  for (const v of venues) {
+    if (v.category) map.set(v.category, v.category);
+  }
+  return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
+}
+
+function getFilteredVenues() {
+  const q = String(state.venueSearch || '').trim().toLowerCase();
+  return venues.filter((v) => {
+    if (state.venueCategory && v.category !== state.venueCategory) return false;
+    if (!q) return true;
+    const hay = [
+      v.name, v.label, v.roomCode, v.category, v.description,
+      ...(v.uses || []).flatMap((u) => [u.functionName, u.item, u.label]),
+    ].join(' ').toLowerCase();
+    return hay.includes(q);
+  });
+}
+
+function selectedVenue() {
+  return venues.find((v) => v.spaceKey === state.spaceKey) || null;
+}
+
+function selectedUse() {
+  const v = selectedVenue();
+  if (!v?.uses?.length) return null;
+  return v.uses.find((u) => String(u.facilityId) === String(state.facilityId)) || v.uses[0];
+}
+
+function syncSelection() {
+  const v = selectedVenue();
+  if (!v) {
+    state.facilityId = '';
+    state.eventVenueId = '';
+    state.category = '';
+    state.item = '';
+    return;
+  }
+  state.category = v.category;
+  let use = selectedUse();
+  if (!use || !v.uses.some((u) => String(u.facilityId) === String(use.facilityId))) {
+    use = v.uses[0];
+  }
+  if (use) {
+    state.facilityId = use.facilityId;
+    state.eventVenueId = use.facilityId;
+    state.item = use.item;
+  }
+}
+
+function renderVenueOptionCard(v) {
+  const selected = v.spaceKey === state.spaceKey;
+  const img = venueCardImage(v);
+  const usesNote = v.uses.length > 1
+    ? `${v.uses.length} uses`
+    : (v.uses[0]?.functionName || '');
+  const rateLine = venueRateFromLine(v);
+
+  return `
+    <button type="button"
+      class="wiz-room-option wiz-room-card--grid vbw-venue-card${selected ? ' is-selected' : ''}"
+      data-vbw-venue="${escapeHtml(v.spaceKey)}"
+      aria-pressed="${selected ? 'true' : 'false'}">
+      <div class="wiz-room-option__media">
+        <img src="${escapeHtml(img)}" alt="" loading="lazy" />
+      </div>
+      <div class="wiz-room-option__content">
+        <div class="wiz-room-option__body">
+          <p class="wiz-room-option__title">${escapeHtml(venueDisplayName(v))}</p>
+          <p class="wiz-room-option__meta">${escapeHtml(v.category)}${usesNote ? ` · ${escapeHtml(usesNote)}` : ''}</p>
+          ${rateLine ? `<p class="wiz-room-option__hint">${escapeHtml(rateLine)}</p>` : ''}
+        </div>
+      </div>
+    </button>`;
 }
 
 function findSpaceByFacilityId(facilityId) {
   if (!facilityId) return null;
-  return venues.find((v) => String(v.facilityId) === String(facilityId)
-    || v.rates?.some((r) => String(r.id) === String(facilityId))) || null;
-}
-
-function selectedVenue() {
-  return venues.find((v) => v.spaceKey === state.spaceKey);
+  const id = String(facilityId);
+  for (const v of venues) {
+    const use = v.uses.find((u) => String(u.facilityId) === id
+      || u.rates?.some((r) => String(r.id) === id));
+    if (use) return { venue: v, use };
+  }
+  return null;
 }
 
 function normalizeTime(value) {
@@ -167,10 +311,12 @@ function renderStep1() {
     <p class="res-lead">Enter the guest or group leader who will use this venue.</p>
     <label class="res-label">Select existing guest (optional)</label>
     <select id="vbw-user" class="res-input"><option value="">— Type new guest below —</option>${opts}</select>
-    <label class="res-label">Guest name</label>
+    <label class="res-label" for="vbw-name">Guest name</label>
     <input id="vbw-name" class="res-input" type="text" value="${escapeHtml(state.guestName)}" placeholder="Full name" required />
-    <label class="res-label">Email (optional)</label>
-    <input id="vbw-email" class="res-input" type="email" value="${escapeHtml(state.email)}" placeholder="email@example.com" />`;
+    <label class="res-label" for="vbw-email">Email <span class="res-label-required">(required)</span></label>
+    <input id="vbw-email" class="res-input" type="email" value="${escapeHtml(state.email)}" placeholder="email@example.com" autocomplete="email" required />
+    <label class="res-label" for="vbw-phone">Contact number <span class="res-label-optional">(optional)</span></label>
+    <input id="vbw-phone" class="res-input" type="tel" value="${escapeHtml(state.contactPhone)}" placeholder="09XX XXX XXXX" autocomplete="tel" />`;
 }
 
 function renderStep2() {
@@ -181,42 +327,118 @@ function renderStep2() {
         Add venue rates in system settings, then try again.
       </div>`;
   }
-  const venueOpts = venues.map((v) =>
-    `<option value="${escapeHtml(v.spaceKey)}"${v.spaceKey === state.spaceKey ? ' selected' : ''}>${escapeHtml(v.label)}</option>`
-  ).join('');
+
+  const filtered = getFilteredVenues();
+  const selected = selectedVenue();
+  const use = selectedUse();
   const today = new Date().toISOString().slice(0, 10);
+  const categories = collectVenueCategories();
+
+  const useOptions = selected?.uses?.length
+    ? selected.uses.map((u) => `
+        <option value="${escapeHtml(u.facilityId)}"${String(u.facilityId) === String(state.facilityId) ? ' selected' : ''}>
+          ${escapeHtml(u.functionName || u.label || 'Standard booking')}
+        </option>`).join('')
+    : '';
+
+  const detailsPanel = selected ? `
+    <div class="vbw-details-panel">
+      <div class="vbw-selected-panel__head">
+        <div class="wiz-room-option__thumb">
+          <img src="${escapeHtml(venueCardImage(selected))}" alt="" loading="lazy" />
+        </div>
+        <div>
+          <p class="vbw-selected-panel__title">${escapeHtml(venueDisplayName(selected))}</p>
+          <p class="vbw-selected-panel__meta">${escapeHtml(selected.category)}</p>
+        </div>
+      </div>
+
+      ${selected.uses.length > 1 ? `
+        <label class="res-label" for="vbw-use">Use / function</label>
+        <select id="vbw-use" class="res-input">${useOptions}</select>
+      ` : `
+        <input type="hidden" id="vbw-use" value="${escapeHtml(use?.facilityId || '')}" />
+        ${use?.functionName ? `<p class="res-hint vbw-use-hint">Use: ${escapeHtml(use.functionName)}</p>` : ''}
+      `}
+
+      <label class="res-label" for="vbw-date">Event date</label>
+      <input id="vbw-date" class="res-input" type="date" min="${today}" value="${escapeHtml(state.eventDate)}" required />
+      ${rateHintHtml()}
+
+      <div class="res-row">
+        <div>
+          <label class="res-label" for="vbw-start">Start time</label>
+          <input id="vbw-start" class="res-input" type="time" value="${escapeHtml(state.startTime)}" required />
+        </div>
+        <div>
+          <label class="res-label" for="vbw-end">End time</label>
+          <input id="vbw-end" class="res-input" type="time" value="${escapeHtml(state.endTime)}" required />
+        </div>
+      </div>
+      <p id="vbw-slot-error" class="res-error res-slot-error${slotInlineError() ? '' : ' hidden'}" role="alert">${escapeHtml(slotInlineError())}</p>
+
+      <label class="res-label" for="vbw-guests">Number of guests</label>
+      <input id="vbw-guests" class="res-input res-input--short" type="number" min="${use?.capacity_min || 1}" max="${use?.capacity_max || 500}" value="${state.guestCount}" />
+      ${venueCapacityLabel(use || selected) ? `<p class="res-hint">${escapeHtml(venueCapacityLabel(use || selected))}${use?.min_hours ? ` · ${use.min_hours}-hr minimum` : ''}</p>` : (use?.min_hours ? `<p class="res-hint">${use.min_hours}-hour minimum booking</p>` : '')}
+
+      <label class="res-label" for="vbw-notes">Notes (optional)</label>
+      <textarea id="vbw-notes" class="res-input vbw-notes" rows="4" placeholder="Setup needs, contact person, etc.">${escapeHtml(state.notes)}</textarea>
+    </div>` : `
+    <div class="vbw-details-panel vbw-details-panel--empty">
+      <span class="material-symbols-outlined" aria-hidden="true">meeting_room</span>
+      <p class="vbw-details-panel__empty-title">Select a venue</p>
+      <p class="res-hint">Choose a space on the left. Use, date, time, and notes will appear here.</p>
+      <input type="hidden" id="vbw-use" value="" />
+      <input type="hidden" id="vbw-date" value="${escapeHtml(state.eventDate)}" />
+      <input type="hidden" id="vbw-start" value="${escapeHtml(state.startTime)}" />
+      <input type="hidden" id="vbw-end" value="${escapeHtml(state.endTime)}" />
+      <input type="hidden" id="vbw-guests" value="${state.guestCount}" />
+      <input type="hidden" id="vbw-notes" value="${escapeHtml(state.notes)}" />
+      <p id="vbw-slot-error" class="hidden"></p>
+      <p id="vbw-rate-hint" class="hidden"></p>
+    </div>`;
+
   return `
-    <p class="res-lead">Choose the venue space, event date, and time block.</p>
-    <label class="res-label">Venue space</label>
-    <select id="vbw-space" class="res-input" required>${venueOpts}</select>
-    <label class="res-label">Event date</label>
-    <input id="vbw-date" class="res-input" type="date" min="${today}" value="${escapeHtml(state.eventDate)}" required />
-    ${rateHintHtml()}
-    <div class="res-row">
-      <div>
-        <label class="res-label">Start time</label>
-        <input id="vbw-start" class="res-input" type="time" value="${escapeHtml(state.startTime)}" required />
-      </div>
-      <div>
-        <label class="res-label">End time</label>
-        <input id="vbw-end" class="res-input" type="time" value="${escapeHtml(state.endTime)}" required />
-      </div>
-    </div>
-    <p id="vbw-slot-error" class="res-error res-slot-error${slotInlineError() ? '' : ' hidden'}" role="alert">${escapeHtml(slotInlineError())}</p>
-    <label class="res-label">Number of guests</label>
-    <input id="vbw-guests" class="res-input res-input--short" type="number" min="1" max="500" value="${state.guestCount}" />
-    <label class="res-label">Notes (optional)</label>
-    <textarea id="vbw-notes" class="res-input" rows="3" placeholder="Setup needs, contact person, etc.">${escapeHtml(state.notes)}</textarea>`;
+    <p class="res-lead">Pick a venue on the left, then set use and schedule on the right.</p>
+    <div class="vbw-split">
+      <section class="vbw-split__venues" aria-label="Venue list">
+        <div class="wiz-room-filters vbw-filters">
+          <div class="wiz-room-toolbar">
+            <input id="vbw-venue-search" type="search" class="res-input" placeholder="Search venues…" value="${escapeHtml(state.venueSearch)}" />
+            ${renderWizardRoomTypeFilter(categories, state.venueCategory, {
+              idPrefix: 'vbw',
+              title: 'Category',
+              buttonLabel: 'Category',
+              allLabel: 'All categories',
+              clearLabel: 'Clear category',
+            })}
+          </div>
+        </div>
+        <input type="hidden" id="vbw-space" value="${escapeHtml(state.spaceKey)}" />
+        <div class="vbw-venue-list-wrap" role="listbox" aria-label="Venue spaces">
+          <div class="wiz-room-list vbw-venue-list">
+            ${filtered.length
+    ? filtered.map(renderVenueOptionCard).join('')
+    : '<div class="res-empty-box"><span class="material-symbols-outlined">search_off</span><p>No venues match your search.</p></div>'}
+          </div>
+        </div>
+      </section>
+      <section class="vbw-split__details" aria-label="Booking details">
+        ${detailsPanel}
+      </section>
+    </div>`;
 }
 
 function renderStep3() {
   const v = selectedVenue();
+  const use = selectedUse();
   const rateLine = state.rateQuote
     ? `${state.rateQuote.calendar_season || state.rateQuote.season} rate · ${formatMoney(state.rateQuote.rate)}/hr`
     : '';
   const estimatedTotal = state.rateQuote?.estimated_total != null
     ? formatMoney(state.rateQuote.estimated_total)
     : null;
+  const useLine = use?.functionName ? `<br>${escapeHtml(use.functionName)}` : '';
   const modifyBlock = state.modifyRequest ? `
     <div class="res-banner res-banner--warn">
       You are approving this request with changes. The guest will receive an email explaining what changed.
@@ -234,11 +456,17 @@ function renderStep3() {
     ${modifyBlock}
     <div class="res-review">
       <h4>Guest</h4>
-      <p><strong>${escapeHtml(state.guestName || '—')}</strong>${state.email ? `<br>${escapeHtml(state.email)}` : ''}</p>
+      <p><strong>${escapeHtml(state.guestName || '—')}</strong><br>${escapeHtml(state.contactPhone || '—')}<br>${escapeHtml(state.email || '—')}</p>
     </div>
     <div class="res-review">
       <h4>Venue</h4>
-      <p><strong>${escapeHtml(v?.label || '—')}</strong>${rateLine ? `<br>${escapeHtml(rateLine)}` : ''}</p>
+      ${v ? `
+      <div class="vbw-review-venue">
+        <div class="wiz-room-option__thumb">
+          <img src="${escapeHtml(venueCardImage(v))}" alt="" loading="lazy" />
+        </div>
+        <p><strong>${escapeHtml(venueDisplayName(v))}</strong>${useLine}${rateLine ? `<br>${escapeHtml(rateLine)}` : ''}</p>
+      </div>` : `<p><strong>—</strong></p>`}
     </div>
     <div class="res-review">
       <h4>Schedule</h4>
@@ -250,13 +478,7 @@ function renderStep3() {
 }
 
 function syncSpaceFromKey() {
-  const v = selectedVenue();
-  if (v) {
-    state.facilityId = v.facilityId || v.eventVenueId || '';
-    state.eventVenueId = state.facilityId;
-    state.category = v.category;
-    state.item = v.item;
-  }
+  syncSelection();
 }
 
 /** Only update fields that exist in the DOM (avoids wiping state on review step). */
@@ -270,11 +492,19 @@ function readForm() {
   const emailEl = $('vbw-email');
   if (emailEl) state.email = emailEl.value.trim();
 
+  const phoneEl = $('vbw-phone');
+  if (phoneEl) state.contactPhone = phoneEl.value.trim();
+
   const spaceEl = $('vbw-space');
-  if (spaceEl) {
-    state.spaceKey = spaceEl.value || '';
-    syncSpaceFromKey();
-  }
+  if (spaceEl) state.spaceKey = spaceEl.value || '';
+
+  const useEl = $('vbw-use');
+  if (useEl && useEl.value) state.facilityId = useEl.value;
+
+  if (spaceEl || useEl) syncSelection();
+
+  const searchEl = $('vbw-venue-search');
+  if (searchEl) state.venueSearch = searchEl.value || '';
 
   const dateEl = $('vbw-date');
   if (dateEl) state.eventDate = dateEl.value || '';
@@ -333,6 +563,7 @@ async function refreshRateQuote() {
   if ((!state.facilityId && !state.eventVenueId && (!state.category || !state.item)) || !state.eventDate) {
     state.rateQuote = null;
     if (hint) hint.textContent = 'Rate is based on the event date (Regular or Peak).';
+    await refreshSlotAvailability();
     return;
   }
   if (hint) hint.textContent = 'Checking rate for this date…';
@@ -341,7 +572,6 @@ async function refreshRateQuote() {
     state.rateQuote = catalogId
       ? await getVenueRateQuote({ facility_id: catalogId, date: state.eventDate })
       : await getVenueRateQuote(state.category, state.item, state.eventDate);
-    await refreshSlotAvailability();
     if (hint) {
       const label = state.rateQuote.calendar_season || state.rateQuote.season;
       hint.innerHTML = `<strong>${escapeHtml(label)}</strong> rate: ${formatMoney(state.rateQuote.rate)}/hr`;
@@ -350,9 +580,14 @@ async function refreshRateQuote() {
     state.rateQuote = null;
     if (hint) hint.textContent = 'Could not load rate for this date.';
   }
+  await refreshSlotAvailability();
 }
 
 function bindStep1() {
+  const clearStepError = () => {
+    if (state.formError) showError('');
+  };
+
   $('vbw-user')?.addEventListener('change', () => {
     const sel = $('vbw-user');
     const opt = sel?.selectedOptions?.[0];
@@ -362,19 +597,91 @@ function bindStep1() {
     state.email = opt.getAttribute('data-email') || '';
     if ($('vbw-name')) $('vbw-name').value = state.guestName;
     if ($('vbw-email')) $('vbw-email').value = state.email;
+    clearStepError();
+  });
+
+  ['vbw-name', 'vbw-email', 'vbw-phone'].forEach((id) => {
+    $(id)?.addEventListener('input', clearStepError);
   });
 }
 
+function refreshVenueListDom() {
+  const list = document.querySelector('.vbw-venue-list');
+  if (!list) return;
+  const filtered = getFilteredVenues();
+  list.innerHTML = filtered.length
+    ? filtered.map(renderVenueOptionCard).join('')
+    : '<div class="res-empty-box"><span class="material-symbols-outlined">search_off</span><p>No venues match your search.</p></div>';
+
+  list.querySelectorAll('[data-vbw-venue]').forEach((btn) => {
+    btn.addEventListener('click', onVenueCardClick);
+  });
+}
+
+async function onVenueCardClick(e) {
+  const btn = e.currentTarget;
+  const key = btn.getAttribute('data-vbw-venue') || '';
+  readForm();
+  state.spaceKey = key;
+  const venue = selectedVenue();
+  state.facilityId = venue?.uses?.[0]?.facilityId || '';
+  syncSelection();
+  state.formError = '';
+  renderBody();
+  await refreshRateQuote();
+}
+
 function bindStep2() {
+  const clearStepError = () => {
+    if (state.formError) showError('');
+  };
+
   const onScheduleChange = async () => {
     readForm();
-    state.formError = '';
+    clearStepError();
     await refreshRateQuote();
   };
-  $('vbw-space')?.addEventListener('change', onScheduleChange);
+
+  $('vbw-venue-search')?.addEventListener('input', (e) => {
+    state.venueSearch = e.target.value || '';
+    refreshVenueListDom();
+  });
+
+  bindWizardRoomTypeFilter($('venue-wizard-body'), {
+    idPrefix: 'vbw',
+    onChange: (value) => {
+      readForm();
+      state.venueCategory = value || '';
+      refreshVenueListDom();
+    },
+  });
+
+  document.querySelectorAll('[data-vbw-venue]').forEach((btn) => {
+    btn.addEventListener('click', onVenueCardClick);
+  });
+
+  $('vbw-use')?.addEventListener('change', async () => {
+    state.facilityId = $('vbw-use')?.value || '';
+    syncSelection();
+    clearStepError();
+    await refreshRateQuote();
+  });
+
   $('vbw-date')?.addEventListener('change', onScheduleChange);
   $('vbw-start')?.addEventListener('change', onScheduleChange);
   $('vbw-end')?.addEventListener('change', onScheduleChange);
+
+  const onGuestsChange = () => {
+    readForm();
+    clearStepError();
+  };
+  $('vbw-guests')?.addEventListener('input', onGuestsChange);
+  $('vbw-guests')?.addEventListener('change', onGuestsChange);
+  $('vbw-notes')?.addEventListener('input', clearStepError);
+
+  if (state.spaceKey || state.facilityId) {
+    refreshRateQuote().catch(() => {});
+  }
 }
 
 function showError(msg) {
@@ -411,24 +718,30 @@ function renderBody() {
   showError(state.formError);
 
   if (state.step === 1) bindStep1();
-  if (state.step === 2) {
-    bindStep2();
-    refreshRateQuote().catch(() => {});
-  }
+  if (state.step === 2) bindStep2();
 }
 
 function validateStep1() {
   if (!state.guestName && !state.userId) return 'Please enter a guest name.';
+  if (!isValidEmail(state.email)) return 'Please enter a valid email address for the guest.';
   return '';
 }
 
 function validateStep2() {
   if (!venues.length) return 'No venue spaces configured.';
-  if (!state.spaceKey) return 'Please select a venue space.';
+  if (!state.spaceKey) return 'Please select a venue.';
+  if (!state.facilityId) return 'Please choose a use / function for this venue.';
   if (!state.eventDate) return 'Please pick an event date.';
   if (!state.startTime || !state.endTime) return 'Please set start and end times.';
   if (state.endTime <= state.startTime) return 'End time must be after start time.';
   if (state.guestCount < 1) return 'Guest count must be at least 1.';
+
+  const use = selectedUse() || selectedVenue();
+  const capacityError = validateVenueCapacityClient(use, state.guestCount);
+  if (capacityError) return capacityError;
+  const durationError = validateVenueDurationClient(use, state.startTime, state.endTime);
+  if (durationError) return durationError;
+
   if (state.slotCheck.checked && !state.slotCheck.available) {
     return state.slotCheck.message || 'This time slot is not available.';
   }
@@ -456,7 +769,21 @@ function validateCurrentStep() {
 async function goNext() {
   readForm();
   if (state.step === 2 && venues.length) {
+    const use = selectedUse() || selectedVenue();
+    const ruleError = (!state.spaceKey && 'Please select a venue.')
+      || (!state.facilityId && 'Please choose a use / function for this venue.')
+      || (!state.eventDate && 'Please pick an event date.')
+      || ((!state.startTime || !state.endTime) && 'Please set start and end times.')
+      || (state.endTime <= state.startTime && 'End time must be after start time.')
+      || (state.guestCount < 1 && 'Guest count must be at least 1.')
+      || validateVenueCapacityClient(use, state.guestCount)
+      || validateVenueDurationClient(use, state.startTime, state.endTime);
+    if (ruleError) {
+      showError(ruleError);
+      return;
+    }
     await refreshRateQuote();
+    if (!state.slotCheck.checked) await refreshSlotAvailability();
   }
   const err = validateCurrentStep();
   if (err) { showError(err); return; }
@@ -474,16 +801,14 @@ function goBack() {
 function applySpaceFromFacilityId(facilityId) {
   if (!facilityId) return;
   const id = String(facilityId);
-  const match = venues.find((v) => String(v.facilityId) === id || String(v.eventVenueId) === id)
-    || findSpaceByFacilityId(id);
+  const match = findSpaceByFacilityId(id);
   if (match) {
-    state.spaceKey = match.spaceKey;
-    state.facilityId = match.facilityId || match.eventVenueId || id;
-    state.eventVenueId = state.facilityId;
-    state.category = match.category;
-    state.item = match.item;
+    state.spaceKey = match.venue.spaceKey;
+    state.facilityId = match.use.facilityId;
+    state.eventVenueId = match.use.facilityId;
+    state.category = match.venue.category;
+    state.item = match.use.item;
   } else {
-    state.spaceKey = id;
     state.facilityId = id;
     state.eventVenueId = id;
   }
@@ -530,6 +855,7 @@ async function confirmSave() {
       user_id: state.userId ? Number(state.userId) : null,
       guest_name: state.guestName,
       email: state.email || null,
+      contact_phone: state.contactPhone || null,
       status: state.modifyRequest ? 'Approved' : (state.originalStatus || 'Approved'),
       modification_message: state.modifyRequest ? state.guestMessage?.trim() : undefined,
       notify_guest: Boolean(state.modifyRequest),
@@ -605,6 +931,7 @@ export async function openVenueBookingWizard(detail = {}) {
     state.userId = p.userId || state.userId;
     state.guestName = p.guestName || state.guestName;
     state.email = p.email || state.email;
+    state.contactPhone = p.contactPhone || p.contact_phone || state.contactPhone;
     state.eventDate = p.eventDate || state.eventDate;
     state.startTime = normalizeTime(p.startTime || state.startTime);
     state.endTime = normalizeTime(p.endTime || state.endTime);
@@ -638,6 +965,7 @@ export async function openVenueBookingWizard(detail = {}) {
       state.userId = booking.user_id || '';
       state.guestName = booking.guest_name || '';
       state.email = booking.guest_email || '';
+      state.contactPhone = booking.contact_phone || '';
       state.eventDate = String(booking.event_date).slice(0, 10);
       state.startTime = normalizeTime(booking.start_time);
       state.endTime = normalizeTime(booking.end_time);
@@ -648,20 +976,30 @@ export async function openVenueBookingWizard(detail = {}) {
     } else if (detail.facility_id || detail.facilityId || detail.event_venue_id || detail.eventVenueId) {
       applySpaceFromFacilityId(detail.facility_id || detail.facilityId || detail.event_venue_id || detail.eventVenueId);
     } else if (detail.category && detail.item) {
-      const match = venues.find((v) => v.category === detail.category && v.item === detail.item);
-      state.spaceKey = match?.spaceKey || `${detail.category}\x1f${detail.item}`;
-      state.facilityId = match?.facilityId || match?.eventVenueId || '';
-      state.eventVenueId = state.facilityId;
-      state.category = detail.category;
-      state.item = detail.item;
+      const match = venues.find((v) =>
+        v.category === detail.category
+        && v.uses.some((u) => u.item === detail.item));
+      if (match) {
+        state.spaceKey = match.spaceKey;
+        const use = match.uses.find((u) => u.item === detail.item) || match.uses[0];
+        state.facilityId = use?.facilityId || '';
+        state.eventVenueId = state.facilityId;
+        state.category = match.category;
+        state.item = use?.item || detail.item;
+      } else {
+        state.category = detail.category;
+        state.item = detail.item;
+      }
+    } else if (detail.prefill?.facilityId) {
+      applySpaceFromFacilityId(detail.prefill.facilityId);
     }
 
     if (!state.spaceKey && venues.length === 1) {
       state.spaceKey = venues[0].spaceKey;
-      state.facilityId = venues[0].facilityId || venues[0].eventVenueId || '';
-      state.eventVenueId = state.facilityId;
-      state.category = venues[0].category;
-      state.item = venues[0].item;
+      state.facilityId = venues[0].uses[0]?.facilityId || '';
+      syncSelection();
+    } else if (state.spaceKey || state.facilityId) {
+      syncSelection();
     }
   } catch (err) {
     users = [];

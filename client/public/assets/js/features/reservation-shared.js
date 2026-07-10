@@ -115,6 +115,24 @@ export function dormMinGuestsNotice(guestCount) {
   return `Dorm bookings require at least ${DORM_MIN_GUEST_COUNT} guests. Increase the guest count to book.`;
 }
 
+/** Client-side room capacity check (mirrors server validateGuestCapacity). */
+export function validateRoomGuestCapacity(room, guestCount) {
+  if (!room) return 'Please select a room.';
+  const count = Number(guestCount) || 0;
+  const minGuests = effectiveCapacityMin(room);
+  if (count < minGuests) {
+    if (room.room_type === 'Dorm' && minGuests === DORM_MIN_GUEST_COUNT) {
+      return dormMinGuestsNotice(count) || `Minimum ${DORM_MIN_GUEST_COUNT} guest(s) required for dorm bookings`;
+    }
+    return `Minimum ${minGuests} guest(s) required for this room`;
+  }
+  const max = Number(room.capacity_max);
+  if (Number.isFinite(max) && count > max) {
+    return `Maximum ${max} guest(s) allowed for this room`;
+  }
+  return null;
+}
+
 export function dormPriceLabel(room, guestCount, nights) {
   if (room?.room_type !== 'Dorm' && !room?.per_person_pricing) return null;
   const requested = Number(guestCount) || 1;

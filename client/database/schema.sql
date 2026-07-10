@@ -453,6 +453,7 @@ CREATE TABLE IF NOT EXISTS bookings_facilities (
                    'Cancelled'
                  ) NOT NULL DEFAULT 'Pending',
     notes        TEXT DEFAULT NULL,
+    contact_phone VARCHAR(30) DEFAULT NULL,
 
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

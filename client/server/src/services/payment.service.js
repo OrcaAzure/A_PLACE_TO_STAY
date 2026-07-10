@@ -52,7 +52,7 @@ export const paymentVenueDetailSelect = `
          p.amount, p.method, p.status, p.paid_at, p.invoice_sent_at, p.billing_invoice_sent_at, p.created_at, p.updated_at,
          fb.user_id, NULL AS check_in, NULL AS check_out, fb.status AS booking_status, fb.guest_count,
          fb.total_amount AS booking_total, NULL AS group_id, fb.season, NULL AS occupancy_item,
-         fb.notes, NULL AS contact_phone, NULL AS meal_allergen_notes,
+         fb.notes, fb.contact_phone, NULL AS meal_allergen_notes,
          u.full_name AS guest_name, u.email AS guest_email,
          NULL AS room_id, NULL AS room_number, NULL AS room_type, NULL AS room_status, NULL AS building_name,
          NULL AS group_name,

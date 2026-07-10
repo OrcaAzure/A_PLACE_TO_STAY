@@ -187,6 +187,58 @@ export function venueCapacityLabel(space) {
   return '';
 }
 
+function toOptionalInt(value) {
+  if (value == null || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Hours between HH:MM times (same calendar day). */
+export function venueDurationHours(startTime, endTime) {
+  const start = String(startTime || '').slice(0, 5);
+  const end = String(endTime || '').slice(0, 5);
+  if (!/^\d{2}:\d{2}$/.test(start) || !/^\d{2}:\d{2}$/.test(end) || end <= start) return 0;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  return ((eh * 60 + em) - (sh * 60 + sm)) / 60;
+}
+
+/**
+ * Client-side venue capacity check (mirrors server validateVenueCapacity).
+ * @param {{ capacity_min?: number|null, capacity_max?: number|null, capacityMin?: number|null, capacityMax?: number|null }} space
+ */
+export function validateVenueCapacityClient(space, guestCount) {
+  const count = Number(guestCount);
+  if (!Number.isFinite(count) || count < 1) return 'Guest count must be at least 1.';
+  const min = toOptionalInt(space?.capacity_min ?? space?.capacityMin);
+  const max = toOptionalInt(space?.capacity_max ?? space?.capacityMax);
+  if (min != null && count < min) {
+    return `This venue requires at least ${min} guest${min === 1 ? '' : 's'}.`;
+  }
+  if (max != null && count > max) {
+    return `This venue accommodates up to ${max} guests.`;
+  }
+  return null;
+}
+
+/**
+ * Client-side minimum-hours check (mirrors server validateVenueDuration).
+ * @param {{ min_hours?: number|null, minHours?: number|null, package_name?: string, item?: string }} space
+ */
+export function validateVenueDurationClient(space, startTime, endTime) {
+  const hours = venueDurationHours(startTime, endTime);
+  if (hours <= 0) return 'End time must be after start time.';
+  let minHours = toOptionalInt(space?.min_hours ?? space?.minHours);
+  if (minHours === 1) minHours = null;
+  if (minHours == null || minHours <= 1) {
+    minHours = parsePackageHours(space?.package_name || space?.item) || null;
+  }
+  if (minHours && hours < minHours) {
+    return `This venue has a ${minHours}-hour minimum booking. Please select at least ${minHours} hours.`;
+  }
+  return null;
+}
+
 /** Map DB facility category → guest browse tab(s). */
 const VENUE_BROWSE_BY_CATEGORY = {
   GMC: 'conference-classrooms',

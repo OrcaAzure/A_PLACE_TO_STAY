@@ -749,5 +749,17 @@ export async function runSchemaPatches() {
   } catch (err) {
     console.warn('[schema] users.role simplification skipped:', err.message);
   }
+
+  try {
+    if (await tableExists('bookings_facilities') && !(await columnExists('bookings_facilities', 'contact_phone'))) {
+      await pool.execute(
+        `ALTER TABLE bookings_facilities
+         ADD COLUMN contact_phone VARCHAR(30) DEFAULT NULL AFTER notes`
+      );
+      console.log('[schema] Added bookings_facilities.contact_phone');
+    }
+  } catch (err) {
+    console.warn('[schema] bookings_facilities.contact_phone skipped:', err.message);
+  }
 }
 

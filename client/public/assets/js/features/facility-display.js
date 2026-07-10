@@ -33,6 +33,45 @@ export const ROOM_NUMBER_IMAGE = {
 const DEFAULT_ROOM_IMAGE =
   'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=1200&q=80';
 
+/** Local / stock placeholders until real venue photos are uploaded. */
+export const VENUE_CATEGORY_IMAGE = {
+  'GMC Chapel': 'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1200&q=80',
+  'Burdine Commons': 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+  'GMC Conference Rooms': 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+  GMC: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+  'Prayer Mountain': '/images/PrayerMountainPreview.jpg',
+  'Prayer Tower': '/images/PrayerTower.jpg',
+  Garden: '/images/Garden.jpg',
+  Recreation: '/images/RecEntrancePreview.jpg',
+  'Basketball Court': '/images/RecEntrancePreview.jpg',
+  'Childrens Playground': '/images/RecEntrancePreview.jpg',
+  'Recreational Center': '/images/RecEntrancePreview.jpg',
+};
+
+/**
+ * Exact venue name / room code / package overrides.
+ * Add real campus photos here as they become available (same pattern as ROOM_NUMBER_IMAGE).
+ */
+export const VENUE_NAME_IMAGE = {
+  'GMC Chapel': 'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1200&q=80',
+  'Burdine Commons': 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=1200&q=80',
+  'Prayer Mountain': '/images/PrayerMountainPreview.jpg',
+  'Prayer Tower': '/images/PrayerTower.jpg',
+  Garden: '/images/Garden.jpg',
+  'Osgood Hall': '/images/Garden.jpg',
+  'Basketball Court': '/images/RecEntrancePreview.jpg',
+  'Childrens Playground': '/images/RecEntrancePreview.jpg',
+  'Recreational Center': '/images/RecEntrancePreview.jpg',
+  'A-101': 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80',
+  'A-504': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+  'A-505': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+  'A-506': 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+  'A-507': 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+};
+
+const DEFAULT_VENUE_IMAGE =
+  'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80';
+
 /** @type {Record<string, { label: string, badge: string }>} */
 const AVAIL_BADGES = {
   available: { label: 'Available', badge: 'fac-badge--available' },
@@ -76,6 +115,55 @@ export function roomPreviewImage({
     room_number: num,
   });
   return roomTypeImage(tier);
+}
+
+function normalizeVenueKey(value) {
+  return String(value ?? '').trim();
+}
+
+/**
+ * Resolve a venue photo placeholder.
+ * Priority: room_code → exact name/item/label → facility_group/category → default.
+ */
+export function venuePreviewImage({
+  name, label, item, category, facility_group, room_code, roomCode,
+} = {}) {
+  const code = normalizeVenueKey(room_code ?? roomCode);
+  if (code && VENUE_NAME_IMAGE[code]) return VENUE_NAME_IMAGE[code];
+
+  const candidates = [name, label, item, facility_group, category]
+    .map(normalizeVenueKey)
+    .filter(Boolean);
+
+  for (const key of candidates) {
+    if (VENUE_NAME_IMAGE[key]) return VENUE_NAME_IMAGE[key];
+  }
+
+  for (const key of candidates) {
+    if (VENUE_CATEGORY_IMAGE[key]) return VENUE_CATEGORY_IMAGE[key];
+  }
+
+  const blob = candidates.join(' ').toLowerCase();
+  if (/chapel|church|wedding|baptism/.test(blob)) {
+    return VENUE_CATEGORY_IMAGE['GMC Chapel'];
+  }
+  if (/prayer mountain|retreat/.test(blob)) {
+    return VENUE_CATEGORY_IMAGE['Prayer Mountain'];
+  }
+  if (/prayer tower/.test(blob)) {
+    return VENUE_CATEGORY_IMAGE['Prayer Tower'];
+  }
+  if (/garden|osgood/.test(blob)) {
+    return VENUE_CATEGORY_IMAGE.Garden;
+  }
+  if (/basketball|playground|recreation|sport|court|gym/.test(blob)) {
+    return VENUE_CATEGORY_IMAGE.Recreation;
+  }
+  if (/conference|classroom|commons|meeting|a-\d{3}/.test(blob)) {
+    return VENUE_CATEGORY_IMAGE['GMC Conference Rooms'];
+  }
+
+  return DEFAULT_VENUE_IMAGE;
 }
 
 export function availabilityBadge(status) {

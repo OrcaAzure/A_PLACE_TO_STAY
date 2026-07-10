@@ -5,7 +5,7 @@ import { applyRoleUI } from '/assets/js/services/auth.js';
 import {
 getBookings, getGroups, createBooking, updateBooking, updateGroup,
 getRoomAvailability, normalizeBooking, formatGroupId,
-getFacilityBookings, updateFacilityBooking, normalizeFacilityBooking,
+getFacilityBookings, updateFacilityBooking, normalizeFacilityBooking, checkVenueSlotAvailability,
 getFiscalYear, getSupportContact,
 } from '/assets/js/services/api.js';
 import {
@@ -14,7 +14,10 @@ canGuestCancelRoomBooking, canGuestCancelVenueBooking, canGuestModifyRoomBooking
 lifecyclePhaseForBooking, venuePhaseLabel, normStatus,
 DORM_MIN_GUEST_COUNT, dormPriceLabel, isRoomBookable, isRoomListVisible, dormMinGuestsNotice,
 } from '/assets/js/features/reservation-shared.js';
-import { parseBookQuery, priceNoticeHtml, hasCompleteBookIntent } from '/assets/js/features/guest-booking-flow.js';
+import {
+  parseBookQuery, priceNoticeHtml, hasCompleteBookIntent,
+  validateVenueCapacityClient, validateVenueDurationClient,
+} from '/assets/js/features/guest-booking-flow.js';
 import { createGuestBookingExtras } from '/assets/js/features/guest-booking-extras.js';
 import { loadGuestInvoices } from '/assets/js/features/guest-invoices.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
@@ -1065,15 +1068,43 @@ export async function bootstrapGuestMyStaysPage() {
         errorEl.classList.remove('hidden');
         return;
       }
+      const eventDate = document.getElementById('venue-modify-date').value;
+      const startTime = document.getElementById('venue-modify-start').value;
+      const endTime = document.getElementById('venue-modify-end').value;
+      const guestCount = Number(document.getElementById('venue-modify-guests').value) || 1;
+      if (!eventDate || !startTime || !endTime) {
+        errorEl.textContent = 'Please set the event date and times.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+      if (endTime <= startTime) {
+        errorEl.textContent = 'End time must be after start time.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
       const submitBtn = document.getElementById('venue-modify-submit');
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Saving…';
+      submitBtn.textContent = 'Checking…';
       try {
+        const slot = await checkVenueSlotAvailability({
+          facility_id: venueModifyTarget.facilityId,
+          event_date: eventDate,
+          start_time: startTime,
+          end_time: endTime,
+          exclude_booking_id: venueModifyTarget.id,
+        });
+        const capacityError = validateVenueCapacityClient(slot, guestCount);
+        if (capacityError) throw new Error(capacityError);
+        const durationError = validateVenueDurationClient(slot, startTime, endTime);
+        if (durationError) throw new Error(durationError);
+        if (!slot.available) throw new Error(slot.message || 'This time slot is not available.');
+
+        submitBtn.textContent = 'Saving…';
         await updateFacilityBooking(venueModifyTarget.id, {
-          event_date: document.getElementById('venue-modify-date').value,
-          start_time: document.getElementById('venue-modify-start').value,
-          end_time: document.getElementById('venue-modify-end').value,
-          guest_count: Number(document.getElementById('venue-modify-guests').value) || 1,
+          event_date: eventDate,
+          start_time: startTime,
+          end_time: endTime,
+          guest_count: guestCount,
           modification_message: approved ? message : (message || undefined),
         });
         closeVenueModifyModal();

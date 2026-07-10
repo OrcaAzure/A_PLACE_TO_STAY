@@ -1243,6 +1243,15 @@
   font-size: 1rem;
 }
 
+#fac-panel-venue-spaces .fac-venue-card__hero {
+  min-height: 12.5rem;
+  aspect-ratio: 4 / 3;
+}
+
+#fac-panel-venue-spaces .fac-venue-card__hero img {
+  min-height: 12.5rem;
+}
+
 #fac-panel-venue-spaces .fac-venue-card__link,
 #fac-panel-venue-spaces .fac-room-card__link {
   font-size: 0.9375rem;

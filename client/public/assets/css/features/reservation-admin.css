@@ -2060,6 +2060,10 @@ body.guest-wizard-open #group-wizard-modal:not(.hidden) .res-modal {
   right: 0;
   z-index: 50;
   min-width: 14rem;
+  max-height: min(22rem, 60vh);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0.5rem;
   background: #fff;
   border: 1px solid #e2e8f0;
@@ -2433,5 +2437,298 @@ body.guest-wizard-open #group-wizard-modal:not(.hidden) .res-modal {
   .wiz-room-toolbar .fac-filter-btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+.vbw-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  align-items: stretch;
+  min-height: 0;
+}
+
+/* Venue wizard: one size for every step — roomy enough for the split, not full-screen */
+.admin-shell .res-modal--venue-wizard,
+.res-modal--venue-wizard {
+  max-width: min(70rem, calc(100vw - 2.5rem));
+  width: 100%;
+  height: min(78vh, 42rem);
+  max-height: 90vh;
+}
+
+/* Tight header — cut the empty band under the subtitle */
+.admin-shell .res-modal--venue-wizard > .res-modal-header.vbw-wizard-chrome,
+.res-modal--venue-wizard > .res-modal-header.vbw-wizard-chrome {
+  padding: 0.85rem 1.5rem 0.55rem;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.admin-shell .res-modal--venue-wizard .vbw-wizard-chrome__titles,
+.res-modal--venue-wizard .vbw-wizard-chrome__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.admin-shell .res-modal--venue-wizard .res-modal-title,
+.res-modal--venue-wizard .res-modal-title {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.admin-shell .res-modal--venue-wizard .vbw-wizard-chrome__subtitle,
+.res-modal--venue-wizard .vbw-wizard-chrome__subtitle {
+  margin: 0;
+  padding: 0;
+  font-size: 1rem;
+  font-weight: 400;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+.admin-shell .res-modal--venue-wizard .vbw-wizard-steps,
+.res-modal--venue-wizard .vbw-wizard-steps {
+  padding: 0.5rem 1.5rem;
+  min-height: 0;
+}
+
+.admin-shell .res-modal--venue-wizard .res-step,
+.res-modal--venue-wizard .res-step {
+  font-size: 0.9375rem;
+}
+
+.admin-shell .res-modal--venue-wizard .res-step-num,
+.res-modal--venue-wizard .res-step-num {
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.8125rem;
+}
+
+.admin-shell .res-modal--venue-wizard .vbw-wizard-footer,
+.res-modal--venue-wizard .vbw-wizard-footer {
+  padding: 0.9rem 1.5rem;
+}
+
+.admin-shell .res-modal--venue-wizard .vbw-wizard-footer .res-btn,
+.res-modal--venue-wizard .vbw-wizard-footer .res-btn {
+  min-height: 2.85rem;
+  font-size: 1rem;
+}
+
+.admin-shell .res-modal--venue-wizard .res-modal-body,
+.res-modal--venue-wizard .res-modal-body {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: 1.1rem 1.5rem;
+}
+
+.admin-shell .res-modal--venue-wizard .res-wizard-body,
+.res-modal--venue-wizard .res-wizard-body {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-shell .res-modal--venue-wizard .res-lead,
+.res-modal--venue-wizard .res-lead {
+  font-size: 1.0625rem;
+  margin-bottom: 0.85rem;
+  flex-shrink: 0;
+}
+
+@media (min-width: 900px) {
+  .admin-shell .res-modal--venue-wizard:has(.vbw-split) .res-modal-body {
+    overflow: hidden;
+  }
+
+  .vbw-split {
+    grid-template-columns: minmax(0, 1.1fr) minmax(20rem, 0.9fr);
+    gap: 1.25rem;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .vbw-split__venues,
+  .vbw-split__details {
+    min-height: 0;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+.vbw-split__venues {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #fff;
+}
+
+.vbw-filters {
+  margin-bottom: 1rem;
+  flex-shrink: 0;
+}
+
+.vbw-venue-list-wrap {
+  flex: 1;
+  min-height: 16rem;
+  overflow-y: auto;
+  padding-right: 0.35rem;
+}
+
+.vbw-venue-list {
+  margin: 0;
+  gap: 1rem;
+  grid-template-columns: 1fr !important;
+}
+
+@media (min-width: 1100px) {
+  .vbw-venue-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+.vbw-venue-card {
+  min-height: 100%;
+}
+
+.vbw-venue-card .wiz-room-option__media,
+.vbw-venue-card .wiz-room-option__media img {
+  min-height: 9rem;
+}
+
+.vbw-venue-card .wiz-room-option__content {
+  padding: 0.9rem 1rem 1rem;
+}
+
+.vbw-venue-card .wiz-room-option__title {
+  font-size: 1.0625rem;
+}
+
+.vbw-split__details {
+  min-width: 0;
+}
+
+.vbw-details-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-height: 0;
+  padding: 1.35rem 1.5rem 1.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #f8fafc;
+  overflow-y: auto;
+}
+
+.vbw-details-panel .res-label {
+  margin-top: 0.85rem;
+  margin-bottom: 0.35rem;
+}
+
+.vbw-details-panel .res-label:first-of-type {
+  margin-top: 0.5rem;
+}
+
+.vbw-details-panel .res-input,
+.vbw-details-panel .res-row {
+  margin-bottom: 0.15rem;
+}
+
+.vbw-details-panel .res-row {
+  margin-top: 0.15rem;
+  gap: 1rem;
+}
+
+.admin-shell .res-modal--venue-wizard .vbw-details-panel .res-input {
+  min-height: 3.25rem;
+}
+
+.vbw-details-panel--empty {
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.65rem;
+  min-height: 22rem;
+  color: #64748b;
+}
+
+.vbw-details-panel--empty .material-symbols-outlined {
+  font-size: 3rem;
+  color: #94a3b8;
+}
+
+.vbw-details-panel__empty-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #334155;
+}
+
+.vbw-selected-panel__head {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.vbw-selected-panel__head .wiz-room-option__thumb {
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 0.75rem;
+}
+
+.vbw-selected-panel__title {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1a365d;
+  line-height: 1.3;
+}
+
+.vbw-selected-panel__meta {
+  margin: 0.25rem 0 0;
+  font-size: 0.9375rem;
+  color: #64748b;
+}
+
+.vbw-use-hint {
+  margin: 0.35rem 0 0.5rem;
+}
+
+.vbw-details-panel .vbw-notes {
+  min-height: 6.5rem;
+  resize: vertical;
+}
+
+.vbw-review-venue {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+}
+
+.vbw-review-venue p {
+  margin: 0;
+}
+
+@media (max-width: 959px) {
+  .vbw-venue-list-wrap {
+    max-height: 26rem;
+  }
+
+  .vbw-split__venues {
+    padding: 0.85rem;
   }
 }

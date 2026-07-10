@@ -86,7 +86,7 @@ export const createFacilityBooking = async (req, res) => {
     const { id: userId, role } = req.user;
     const {
       facility_id, event_venue_id, room_code, category, item, event_date, start_time, end_time, guest_count, notes,
-      user_id, guest_name, email, status,
+      user_id, guest_name, email, contact_phone, status,
     } = req.body;
 
     if (isEmpty(event_date) || isEmpty(start_time) || isEmpty(end_time)) {
@@ -147,10 +147,10 @@ export const createFacilityBooking = async (req, res) => {
 
     const [result] = await pool.query(
       `INSERT INTO bookings_facilities
-         (user_id, facility_id, event_date, start_time, end_time, guest_count, season, total_amount, status, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+         (user_id, facility_id, event_date, start_time, end_time, guest_count, season, total_amount, status, notes, contact_phone)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [effectiveUserId, catalogFacilityId, event_date, startTime, endTime, guest_count || 1,
-       season, total_amount, bookingStatus, notes || null]
+       season, total_amount, bookingStatus, notes || null, contact_phone || null]
     );
 
     const [rows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [result.insertId]);
@@ -265,9 +265,11 @@ export const updateFacilityBooking = async (req, res) => {
            season = ?,
            total_amount = ?,
            status = ?,
-           notes = ?
+           notes = ?,
+           contact_phone = COALESCE(?, contact_phone)
          WHERE id = ?`,
-        [nextDate, nextStart, nextEnd, nextGuests, season, total_amount, nextStatus, combinedNotes, req.params.id]
+        [nextDate, nextStart, nextEnd, nextGuests, season, total_amount, nextStatus, combinedNotes,
+          req.body.contact_phone, req.params.id]
       );
 
       const [guestRows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
@@ -290,12 +292,12 @@ export const updateFacilityBooking = async (req, res) => {
     } else {
       const {
         status, notes, event_date, start_time, end_time, guest_count, facility_id,
-        user_id, guest_name, email, notify_guest, notify_modification, modification_message,
+        user_id, guest_name, email, contact_phone, notify_guest, notify_modification, modification_message,
       } = req.body;
 
       const hasScheduleChange = event_date != null || start_time != null || end_time != null
         || guest_count != null || facility_id != null;
-      const hasGuestChange = user_id != null || guest_name != null || email != null;
+      const hasGuestChange = user_id != null || guest_name != null || email != null || contact_phone != null;
 
       if (status === 'Cancelled' && !hasScheduleChange && !hasGuestChange) {
         const cancelError = assertCanCancelVenueBooking({
@@ -386,10 +388,11 @@ export const updateFacilityBooking = async (req, res) => {
              season = ?,
              total_amount = ?,
              status = ?,
-             notes = ?
+             notes = ?,
+             contact_phone = COALESCE(?, contact_phone)
            WHERE id = ?`,
           [resolvedUserId, nextFacilityId, nextDate, nextStart, nextEnd, nextGuests,
-            season, total_amount, nextStatus, combinedNotes, req.params.id]
+            season, total_amount, nextStatus, combinedNotes, contact_phone, req.params.id]
         );
 
         const [rows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
