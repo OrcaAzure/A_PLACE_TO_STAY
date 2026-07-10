@@ -2071,7 +2071,23 @@ body.guest-wizard-open #group-wizard-modal:not(.hidden) .res-modal {
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
 }
 
-.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-panel__title {
+/* Portaled outside the modal so transform/overflow cannot clip it */
+.wiz-room-type-filter-panel--portal {
+  z-index: 320;
+  min-width: 14rem;
+  padding: 0.5rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-panel__title,
+.wiz-room-type-filter-panel--portal .fac-filter-panel__title {
   margin: 0;
   padding: 0.375rem 0.625rem 0.5rem;
   font-size: 0.8125rem;
@@ -2081,7 +2097,8 @@ body.guest-wizard-open #group-wizard-modal:not(.hidden) .res-modal {
   color: #94a3b8;
 }
 
-.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-option {
+.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-option,
+.wiz-room-type-filter-panel--portal .fac-filter-option {
   display: block;
   width: 100%;
   padding: 0.75rem 1rem;
@@ -2095,17 +2112,20 @@ body.guest-wizard-open #group-wizard-modal:not(.hidden) .res-modal {
   cursor: pointer;
 }
 
-.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-option:hover {
+.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-option:hover,
+.wiz-room-type-filter-panel--portal .fac-filter-option:hover {
   background: #f1f5f9;
 }
 
-.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-option.is-active {
+.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-option.is-active,
+.wiz-room-type-filter-panel--portal .fac-filter-option.is-active {
   font-weight: 700;
   color: #1a365d;
   background: #eff6ff;
 }
 
-.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-clear {
+.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-clear,
+.wiz-room-type-filter-panel--portal .fac-filter-clear {
   display: block;
   width: 100%;
   margin-top: 0.375rem;
@@ -2121,7 +2141,8 @@ body.guest-wizard-open #group-wizard-modal:not(.hidden) .res-modal {
   cursor: pointer;
 }
 
-.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-clear:hover {
+.admin-shell .res-modal--wizard .wiz-room-type-filter .fac-filter-clear:hover,
+.wiz-room-type-filter-panel--portal .fac-filter-clear:hover {
   color: #1a365d;
   background: #f8fafc;
 }

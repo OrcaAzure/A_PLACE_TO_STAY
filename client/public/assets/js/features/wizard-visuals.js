@@ -101,8 +101,10 @@ function resetFilterPanelStyle(panel) {
   panel.style.bottom = '';
   panel.style.zIndex = '';
   panel.style.minWidth = '';
+  panel.style.width = '';
   panel.style.maxHeight = '';
   panel.style.overflowY = '';
+  panel.style.overscrollBehavior = '';
 }
 
 function positionFilterPanel(toggle, panel) {
@@ -115,16 +117,19 @@ function positionFilterPanel(toggle, panel) {
 
   const spaceBelow = window.innerHeight - rect.bottom - gap - edge;
   const spaceAbove = rect.top - gap - edge;
-  const preferBelow = spaceBelow >= 12 * 16 || spaceBelow >= spaceAbove;
-  const maxHeight = Math.max(10 * 16, preferBelow ? spaceBelow : spaceAbove);
+  const preferBelow = spaceBelow >= spaceAbove;
+  const available = Math.max(preferBelow ? spaceBelow : spaceAbove, 0);
+  const maxHeight = Math.min(available || 12 * 16, window.innerHeight * 0.7);
 
   panel.style.position = 'fixed';
   panel.style.left = `${left}px`;
   panel.style.right = 'auto';
-  panel.style.zIndex = '200';
+  panel.style.zIndex = '320';
   panel.style.minWidth = '14rem';
+  panel.style.width = `${panelWidth}px`;
   panel.style.maxHeight = `${maxHeight}px`;
   panel.style.overflowY = 'auto';
+  panel.style.overscrollBehavior = 'contain';
 
   if (preferBelow) {
     panel.style.top = `${rect.bottom + gap}px`;
@@ -135,14 +140,39 @@ function positionFilterPanel(toggle, panel) {
   }
 }
 
+function restoreFilterPanel(panel) {
+  const homeId = panel.dataset.filterHome;
+  const home = homeId ? document.getElementById(homeId) : null;
+  panel.classList.add('hidden');
+  panel.classList.remove('wiz-room-type-filter-panel--portal');
+  resetFilterPanelStyle(panel);
+  if (home && panel.parentElement !== home) home.appendChild(panel);
+  delete panel.dataset.filterHome;
+}
+
 function closeAllWizardRoomTypePanels() {
+  document.querySelectorAll('.wiz-room-type-filter-panel--portal').forEach(restoreFilterPanel);
   document.querySelectorAll('.wiz-room-type-filter .fac-filter-panel').forEach((panel) => {
-    panel.classList.add('hidden');
-    resetFilterPanelStyle(panel);
+    if (!panel.classList.contains('hidden')) restoreFilterPanel(panel);
+    else {
+      panel.classList.add('hidden');
+      resetFilterPanelStyle(panel);
+    }
   });
   document.querySelectorAll('.wiz-room-type-filter .fac-filter-btn').forEach((btn) => {
     btn.setAttribute('aria-expanded', 'false');
   });
+}
+
+function openFilterPanel(toggle, panel, wrap, idPrefix) {
+  if (!wrap.id) wrap.id = `${idPrefix}-room-type-filter-home`;
+  panel.dataset.filterHome = wrap.id;
+  // Escape modal overflow/transform so the menu can scroll fully.
+  document.body.appendChild(panel);
+  panel.classList.add('wiz-room-type-filter-panel--portal');
+  panel.classList.remove('hidden');
+  positionFilterPanel(toggle, panel);
+  toggle.setAttribute('aria-expanded', 'true');
 }
 
 /** Dropdown room-type filter — same pattern as Facilities / Guest Access. */
@@ -152,48 +182,51 @@ export function bindWizardRoomTypeFilter(container, { idPrefix, onChange }) {
   if (!wrap) return;
 
   const toggle = wrap.querySelector(`#${idPrefix}-room-type-filter-toggle`);
-  const panel = wrap.querySelector(`#${idPrefix}-room-type-filter-panel`);
+  const panel = wrap.querySelector(`#${idPrefix}-room-type-filter-panel`)
+    || document.querySelector(`#${idPrefix}-room-type-filter-panel`);
   if (!toggle || !panel) return;
 
   toggle.onclick = (e) => {
     e.stopPropagation();
-    const opening = panel.classList.contains('hidden');
+    const isOpen = panel.classList.contains('wiz-room-type-filter-panel--portal')
+      && !panel.classList.contains('hidden');
     closeAllWizardRoomTypePanels();
-    if (opening) {
-      panel.classList.remove('hidden');
-      positionFilterPanel(toggle, panel);
-      toggle.setAttribute('aria-expanded', 'true');
-    }
+    if (!isOpen) openFilterPanel(toggle, panel, wrap, idPrefix);
   };
 
-  panel.querySelectorAll('[data-wiz-room-type]').forEach((btn) => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      onChange(btn.getAttribute('data-wiz-room-type') || '');
-      closeAllWizardRoomTypePanels();
-    };
-  });
-
-  const clearBtn = panel.querySelector('[data-wiz-room-type-clear]');
-  if (clearBtn) {
-    clearBtn.onclick = (e) => {
-      e.stopPropagation();
-      onChange('');
-      closeAllWizardRoomTypePanels();
-    };
-  }
+  const bindOptionClicks = () => {
+    panel.querySelectorAll('[data-wiz-room-type]').forEach((btn) => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        const value = btn.getAttribute('data-wiz-room-type') || '';
+        closeAllWizardRoomTypePanels();
+        onChange(value);
+      };
+    });
+    const clearBtn = panel.querySelector('[data-wiz-room-type-clear]');
+    if (clearBtn) {
+      clearBtn.onclick = (e) => {
+        e.stopPropagation();
+        closeAllWizardRoomTypePanels();
+        onChange('');
+      };
+    }
+  };
+  bindOptionClicks();
 
   if (!wizardRoomTypeFilterDocBound) {
     wizardRoomTypeFilterDocBound = true;
     document.addEventListener('click', (e) => {
       if (e.target.closest('.wiz-room-type-filter')) return;
+      if (e.target.closest('.wiz-room-type-filter-panel--portal')) return;
       closeAllWizardRoomTypePanels();
     });
     window.addEventListener('resize', closeAllWizardRoomTypePanels);
-    document.querySelector('#group-wizard-body')?.closest('.res-modal-body')
-      ?.addEventListener('scroll', closeAllWizardRoomTypePanels, true);
-    document.querySelector('#reservation-wizard-body')?.closest('.res-modal-body')
-      ?.addEventListener('scroll', closeAllWizardRoomTypePanels, true);
+    document.addEventListener('scroll', (e) => {
+      if (!document.querySelector('.wiz-room-type-filter-panel--portal')) return;
+      if (e.target?.closest?.('.wiz-room-type-filter-panel--portal')) return;
+      closeAllWizardRoomTypePanels();
+    }, true);
   }
 }
 
