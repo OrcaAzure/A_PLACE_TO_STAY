@@ -35,20 +35,23 @@
   <header class="browse-hero reveal">
     <p class="browse-kicker">Browse</p>
     <h2 class="font-headline-xl text-headline-xl text-on-surface" id="rooms">Find your space</h2>
-    <p id="browse-subtitle" class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Pick a category, set your dates, and reserve what is open for your account.</p>
+    <p id="browse-subtitle" class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Choose a category below, then set your dates and reserve what is open for your account.</p>
   </header>
 
   <div id="guest-access-notice" class="reveal"></div>
 
-  <section class="reveal space-y-3" style="animation-delay:.03s">
-    <div class="flex items-end justify-between gap-3">
+  <section class="browse-categories reveal" style="animation-delay:.03s" aria-labelledby="browse-categories-heading">
+    <div class="browse-categories__head">
       <div>
-        <p class="text-label-sm text-outline uppercase tracking-wider mb-1">Categories</p>
-        <p id="active-category-label" class="text-body-sm text-on-surface-variant"></p>
+        <p class="browse-categories__eyebrow">What&rsquo;s available</p>
+        <h3 id="browse-categories-heading" class="browse-categories__title">Pick a category</h3>
       </div>
+      <p id="active-category-label" class="browse-categories__active" aria-live="polite"></p>
     </div>
-    <div id="browse-category-cards" class="browse-category-strip"></div>
+    <div id="browse-category-cards" class="browse-category-mosaic" role="list"></div>
   </section>
+
+  <div id="browse-flow-anchor" class="browse-flow-anchor" tabindex="-1"></div>
 
   <div id="browse-price-notice" class="reveal" style="animation-delay:.05s"></div>
 
@@ -522,12 +525,12 @@
     if (subtitle) {
       subtitle.textContent = categoryShowsRooms(selectedCategory)
         ? (isInternal
-          ? 'Set your stay dates above, then browse open rooms across campus guest houses.'
-          : 'Set your stay dates above, then browse open Global Missions Center rooms for your trip.')
-        : `Pick your event date above, then browse ${meta.label.toLowerCase()} and submit a request.`;
+          ? 'Set your stay dates below, then browse open rooms across campus guest houses.'
+          : 'Set your stay dates below, then browse open Global Missions Center rooms for your trip.')
+        : `Set your event date below, then browse ${meta.label.toLowerCase()} and submit a request.`;
     }
     if (roomsHeading) {
-      roomsHeading.textContent = categoryShowsRooms(selectedCategory) ? meta.label : 'Find your space';
+      roomsHeading.textContent = 'Find your space';
     }
   }
 
@@ -536,28 +539,44 @@
     const label = document.getElementById('active-category-label');
     if (!mount) return;
 
+    const layoutClass = {
+      hero: 'browse-category-card--hero',
+      tall: 'browse-category-card--tall',
+      standard: '',
+    };
+
     mount.innerHTML = browseCategories.map((cat) => {
       const meta = getBrowseCategoryMeta(cat.id, isInternal);
+      const active = selectedCategory === cat.id;
+      const tag = meta.tag
+        ? `<span class="browse-category-card__tag">${escapeHtml(meta.tag)}</span>`
+        : '';
       return `
       <button
         type="button"
-        data-category="${cat.id}"
-        class="browse-category-card ${selectedCategory === cat.id ? 'is-active' : ''}"
-        aria-pressed="${selectedCategory === cat.id ? 'true' : 'false'}"
+        role="listitem"
+        data-category="${escapeHtml(cat.id)}"
+        class="browse-category-card ${layoutClass[cat.layout] || ''} ${active ? 'is-active' : ''}"
+        aria-pressed="${active ? 'true' : 'false'}"
+        aria-label="${escapeHtml(meta.label)}${active ? ' (selected)' : ''}"
       >
-        <div class="browse-category-card__media">
-          <img src="${cat.image}" alt="${meta.label}" loading="lazy" />
-          <div class="browse-category-card__overlay"></div>
-          <div class="browse-category-card__text">
-            <strong>${meta.label}</strong>
-            <span>${meta.description}</span>
-          </div>
+        <img src="${escapeHtml(cat.image)}" alt="" loading="lazy" />
+        <span class="browse-category-card__icon material-symbols-outlined" aria-hidden="true">${escapeHtml(cat.icon || 'place')}</span>
+        ${active ? '<span class="browse-category-card__selected" aria-hidden="true"><span class="material-symbols-outlined">check</span></span>' : ''}
+        <div class="browse-category-card__body">
+          ${tag}
+          <strong class="browse-category-card__title">${escapeHtml(meta.label)}</strong>
+          <span class="browse-category-card__blurb">${escapeHtml(meta.blurb || meta.description || '')}</span>
+          <span class="browse-category-card__cta">
+            ${escapeHtml(cat.cta || 'Browse')}
+            <span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </span>
         </div>
       </button>`;
     }).join('');
 
     if (label) {
-      label.textContent = `Showing ${categoryMeta(selectedCategory).label}`;
+      label.textContent = `Selected · ${categoryMeta(selectedCategory).label}`;
     }
     updateBrowseHeadings();
     applyCategoryVisibility();
@@ -570,11 +589,11 @@
     render();
     renderVenues();
     if (scroll) {
-      if (categoryShowsRooms(selectedCategory)) {
-        document.getElementById('rooms')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      } else {
-        document.getElementById('venues')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      const anchor = document.getElementById('browse-flow-anchor')
+        || (categoryShowsRooms(selectedCategory)
+          ? document.getElementById('browse-stay-planner')
+          : document.getElementById('browse-venue-planner'));
+      anchor?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   }
 

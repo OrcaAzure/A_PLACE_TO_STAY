@@ -23,36 +23,59 @@ export const BROWSE_CATEGORIES = [
     externalLabel: 'Global Missions Center Guest Rooms',
     description: 'Overnight stays',
     externalDescription: 'Global Missions Center only',
+    blurb: 'Superior, standard, deluxe, and dorm units at GMC — for individuals, families, and ministry groups.',
+    externalBlurb: 'GMC lodging for approved guests — set your dates to see open rooms.',
+    tag: 'Global Missions Center',
+    icon: 'bed',
+    cta: 'View rooms',
     image: '/images/RoomsPreview.jpg',
     showsRooms: true,
+    layout: 'hero',
   },
   {
     id: 'conference-classrooms',
     label: 'Conference & Classrooms',
     description: 'Meetings and events',
-    image: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+    blurb: 'A-101 and A-504–A-507 — hourly and half-day blocks for classes, meetings, and events.',
+    tag: 'Russ Turney Center',
+    icon: 'meeting_room',
+    cta: 'Check availability',
+    image: '/images/416Preview.jpg',
     showsRooms: false,
+    layout: 'tall',
   },
   {
     id: 'chapel-garden',
-    label: 'Chapel & Garden',
-    description: 'Services and outdoor events',
-    image: 'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1200&q=80',
+    label: 'Chapel, Burdine & Garden',
+    description: 'Worship and outdoor events',
+    blurb: 'Worship, receptions, and outdoor gatherings across GMC spaces.',
+    icon: 'church',
+    cta: 'See rates',
+    image: '/images/PrayerTower.jpg',
     showsRooms: false,
+    layout: 'standard',
   },
   {
     id: 'prayer-mountain',
-    label: 'Prayer Mountain',
+    label: 'Prayer Mountain & Tower',
     description: 'Retreat spaces',
+    blurb: 'Retreat and prayer spaces — flexible hourly booking for ministry teams.',
+    icon: 'landscape',
+    cta: 'Book now',
     image: '/images/PrayerMountainPreview.jpg',
     showsRooms: false,
+    layout: 'standard',
   },
   {
     id: 'sports-rec',
-    label: 'Sports & Rec',
+    label: 'Sports & Recreation',
     description: 'Courts and recreation',
+    blurb: 'Basketball court, playground, and Rec Center — reserved in 4-hour blocks.',
+    icon: 'sports_basketball',
+    cta: 'Reserve',
     image: '/images/RecEntrancePreview.jpg',
     showsRooms: false,
+    layout: 'standard',
   },
 ];
 
@@ -139,11 +162,20 @@ export function resolveBrowseCategory(categoryId) {
 export function getBrowseCategoryMeta(categoryId, isInternal = isInternalGuest()) {
   const cat = BROWSE_CATEGORIES.find((c) => c.id === categoryId)
     || getBrowseCategories()[0];
-  if (!cat) return { id: 'guest-houses', label: 'Guest Houses', description: '', showsRooms: true };
+  if (!cat) {
+    return {
+      id: 'guest-houses',
+      label: 'Guest Houses',
+      description: '',
+      blurb: '',
+      showsRooms: true,
+    };
+  }
   return {
     ...cat,
     label: !isInternal && cat.externalLabel ? cat.externalLabel : cat.label,
     description: !isInternal && cat.externalDescription ? cat.externalDescription : cat.description,
+    blurb: !isInternal && cat.externalBlurb ? cat.externalBlurb : (cat.blurb || cat.description || ''),
   };
 }
 
