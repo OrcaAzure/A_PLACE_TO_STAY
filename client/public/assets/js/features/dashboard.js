@@ -225,7 +225,7 @@ export async function loadDashboard({ background = false } = {}) {
     setText('kpi-total-rooms', String(kpis.totalRooms));
     setText('kpi-occupancy', `${kpis.occupancyPct}%`);
     setText('kpi-revenue', formatPHP(kpis.paidRevenue));
-    await renderBookingUsageChart(bookingUsage);
+    await renderBookingUsageChart(bookingUsage, { silent: true });
     renderRecentActivity(recentActivity);
     setText('chart-period-label', 'Last 30 days · rooms & venues');
     return;
@@ -249,7 +249,7 @@ export async function loadDashboard({ background = false } = {}) {
   revealPageContent();
 }
 
-async function renderBookingUsageChart(bookingUsage) {
+async function renderBookingUsageChart(bookingUsage, { silent = false } = {}) {
   const mount = document.getElementById('booking-usage-chart-mount');
   if (!mount) return;
 
@@ -276,6 +276,13 @@ async function renderBookingUsageChart(bookingUsage) {
         <span class="text-body-sm text-on-surface-variant">${row.booking_count}</span>
       </div>`;
   }).join('');
+
+  if (silent) {
+    mount.querySelectorAll('.chart-bar').forEach((bar) => {
+      bar.style.height = bar.dataset.height || '0px';
+    });
+    return;
+  }
 
   await animateChartBars('.chart-bar', mount);
 }

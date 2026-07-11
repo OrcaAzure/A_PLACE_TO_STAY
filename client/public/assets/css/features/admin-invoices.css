@@ -790,6 +790,12 @@
   color: #78350f;
 }
 
+.billing-res-confirm__item--info {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e3a8a;
+}
+
 .billing-res-confirm__check {
   display: flex;
   align-items: flex-start;

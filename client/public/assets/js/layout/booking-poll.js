@@ -1,14 +1,19 @@
-import { BOOKING_REFRESH_MS } from '/assets/js/config/booking-refresh.js';
+import { BOOKING_POLL_ENABLED, BOOKING_REFRESH_MS } from '/assets/js/config/booking-refresh.js';
 
 /**
  * Poll booking/availability data on a safe interval. Pauses while the tab is hidden
- * and skips overlapping requests.
+ * and skips overlapping requests. Refresh handlers should pass `{ background: true }`
+ * and use silent-refresh helpers to avoid replaying entry animations.
  *
  * @param {() => void | Promise<void>} refreshFn
  * @param {{ intervalMs?: number, shouldPoll?: () => boolean }} [options]
  * @returns {() => void} teardown
  */
 export function createBookingPoll(refreshFn, { intervalMs = BOOKING_REFRESH_MS, shouldPoll } = {}) {
+  if (!BOOKING_POLL_ENABLED) {
+    return () => {};
+  }
+
   let timer = null;
   let inFlight = false;
 

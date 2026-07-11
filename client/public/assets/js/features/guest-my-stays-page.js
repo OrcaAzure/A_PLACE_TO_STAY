@@ -21,6 +21,7 @@ import {
 import { createGuestBookingExtras } from '/assets/js/features/guest-booking-extras.js';
 import { loadGuestInvoices } from '/assets/js/features/guest-invoices.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
+import { jsonFingerprint, updateStat } from '/assets/js/layout/silent-refresh.js';
 import { openGuestModifyWizard, confirmGuestCancelReservation, cancelRoomReservation, cancelVenueReservation } from '/assets/js/features/booking-actions.js';
 import { roomPreviewImage } from '/assets/js/features/facility-display.js';
 
@@ -111,22 +112,16 @@ export async function bootstrapGuestMyStaysPage() {
       return map[status] || 'bg-surface-container text-on-surface-variant';
     }
   
-    /* Smooth count-up for stat numbers */
-    function countTo(el, target) {
-      const dur = 700;
-      const start = performance.now();
-      const from = 0;
-      function tick(t) {
-        const p = Math.min(1, (t - start) / dur);
-        const eased = 1 - Math.pow(1 - p, 3);
-        el.textContent = Math.round(from + (target - from) * eased);
-        if (p < 1) requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
+    /* Smooth count-up for stat numbers (initial load only; polls update silently) */
+    function countTo(el, target, { animate = true } = {}) {
+      updateStat(el, target, { animate });
     }
   
+    let lastBookingsFingerprint = '';
+    let lastVenueBookingsFingerprint = '';
+  
     /* ---------- Featured (next active/upcoming) card ---------- */
-    function renderFeatured(bookings) {
+    function renderFeatured(bookings, { silent = false } = {}) {
       const wrap = document.getElementById('featured-card');
       const candidates = bookings
         .filter((b) => b.status === 'approved' && b.endDate >= todayStr)
@@ -142,13 +137,15 @@ export async function bootstrapGuestMyStaysPage() {
       const isGroup = feat.kind === 'group';
       const idLabel = isGroup ? formatGroupId(feat.id) : `#APT-${feat.id}`;
   
-      wrap.className = 'relative overflow-hidden bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg p-6 reveal';
+      wrap.className = silent
+        ? 'relative overflow-hidden bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg p-6'
+        : 'relative overflow-hidden bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg p-6 reveal';
       wrap.innerHTML = `
-        <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl float-blob"></div>
+        <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl${silent ? '' : ' float-blob'}"></div>
         <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div class="flex items-center gap-2 mb-2">
-              <span class="w-2 h-2 rounded-full bg-emerald-300 live-dot"></span>
+              <span class="w-2 h-2 rounded-full bg-emerald-300${silent ? '' : ' live-dot'}"></span>
               <span class="text-[11px] font-bold uppercase tracking-widest text-white/80">${isActive ? 'Active stay' : 'Approved & upcoming'}</span>
             </div>
             <h3 class="font-headline-md text-headline-md">${feat.facilityLabel || feat.title}</h3>
@@ -179,7 +176,7 @@ export async function bootstrapGuestMyStaysPage() {
       return `<span class="${styles[phase] || 'bg-surface-container text-on-surface-variant'} px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">${venuePhaseLabel(phase)}</span>`;
     }
   
-    function renderCard(b, index) {
+    function renderCard(b, index, { silent = false } = {}) {
       const isGroup = b.kind === 'group';
       const idLabel = isGroup ? formatGroupId(b.id) : `#APT-${b.id}`;
       const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
@@ -190,8 +187,10 @@ export async function bootstrapGuestMyStaysPage() {
       const typeBadge = isGroup
         ? '<span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">Group</span>'
         : '<span class="bg-surface-container text-on-surface-variant px-2 py-0.5 rounded text-[10px] font-bold uppercase mr-2">Single</span>';
+      const revealCls = silent ? '' : ' reveal';
+      const revealDelay = silent ? '' : ` style="animation-delay:${0.05 * index}s"`;
       return `
-        <div class="group bg-white p-5 rounded-2xl border border-outline-variant hover:border-primary/40 hover:shadow-lg lift reveal" style="animation-delay:${0.05 * index}s" data-booking-id="${b.id}" data-kind="${b.kind || 'single'}">
+        <div class="group bg-white p-5 rounded-2xl border border-outline-variant hover:border-primary/40 hover:shadow-lg lift${revealCls}"${revealDelay} data-booking-id="${b.id}" data-kind="${b.kind || 'single'}">
           <div class="flex flex-col sm:flex-row gap-6">
             <div class="flex-1">
               <div class="flex justify-between items-start mb-2">
@@ -253,20 +252,26 @@ export async function bootstrapGuestMyStaysPage() {
           totalAmount: g.grand_total,
         }));
         allBookings = [...singles, ...groupItems].sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)));
-  
+
         const venueBookingsForStats = (venueRows || []).map(normalizeFacilityBooking);
         const combinedForStats = [...allBookings, ...venueBookingsForStats];
-  
-        countTo(document.getElementById('stat-total'), combinedForStats.length);
-        countTo(document.getElementById('stat-pending'), combinedForStats.filter((b) => normStatus(b.status) === 'pending').length);
-        countTo(document.getElementById('stat-approved'), combinedForStats.filter((b) => normStatus(b.status) === 'approved').length);
+        const fp = jsonFingerprint(combinedForStats);
+        if (background && fp === lastBookingsFingerprint) return;
+        lastBookingsFingerprint = fp;
+
+        const animateStats = !background;
+
+        countTo(document.getElementById('stat-total'), combinedForStats.length, { animate: animateStats });
+        countTo(document.getElementById('stat-pending'), combinedForStats.filter((b) => normStatus(b.status) === 'pending').length, { animate: animateStats });
+        countTo(document.getElementById('stat-approved'), combinedForStats.filter((b) => normStatus(b.status) === 'approved').length, { animate: animateStats });
         countTo(
           document.getElementById('stat-upcoming'),
-          combinedForStats.filter((b) => normStatus(b.status) === 'approved' && String(b.startDate || '') >= todayStr).length
+          combinedForStats.filter((b) => normStatus(b.status) === 'approved' && String(b.startDate || '') >= todayStr).length,
+          { animate: animateStats },
         );
-  
-        renderFeatured(allBookings);
-        applyAndRender();
+
+        renderFeatured(allBookings, { silent: background });
+        applyAndRender({ silent: background });
         if (!background) await loadGuestInvoices();
       } catch (err) {
         if (background) return;
@@ -275,7 +280,7 @@ export async function bootstrapGuestMyStaysPage() {
       }
     }
   
-    function applyAndRender() {
+    function applyAndRender({ silent = false } = {}) {
       let items = allBookings;
       if (activeStatus) items = items.filter((b) => b.status === activeStatus);
       if (searchTerm) {
@@ -286,10 +291,10 @@ export async function bootstrapGuestMyStaysPage() {
           (b.title || '').toLowerCase().includes(q) ||
           (b.status || '').toLowerCase().includes(q));
       }
-      renderList(items);
+      renderList(items, { silent });
     }
   
-    function renderList(bookings) {
+    function renderList(bookings, { silent = false } = {}) {
       const list = document.getElementById('reservations-list');
       if (!bookings.length) {
         list.innerHTML = `
@@ -300,7 +305,7 @@ export async function bootstrapGuestMyStaysPage() {
           </div>`;
         return;
       }
-      list.innerHTML = bookings.map((b, i) => renderCard(b, i)).join('');
+      list.innerHTML = bookings.map((b, i) => renderCard(b, i, { silent })).join('');
     }
   
     document.getElementById('reservations-list')?.addEventListener('click', async (e) => {
@@ -898,26 +903,29 @@ export async function bootstrapGuestMyStaysPage() {
     let venueSearchTerm = '';
     let venueBookingsLoaded = false;
   
-    function refreshVenueCountsInStats() {
+    function refreshVenueCountsInStats({ animate = true } = {}) {
       // Keep the top summary in sync when the venue tab loads/cancels.
       const combinedForStats = [...allBookings, ...allVenueBookings];
-      countTo(document.getElementById('stat-total'), combinedForStats.length);
-      countTo(document.getElementById('stat-pending'), combinedForStats.filter((b) => normStatus(b.status) === 'pending').length);
-      countTo(document.getElementById('stat-approved'), combinedForStats.filter((b) => normStatus(b.status) === 'approved').length);
+      countTo(document.getElementById('stat-total'), combinedForStats.length, { animate });
+      countTo(document.getElementById('stat-pending'), combinedForStats.filter((b) => normStatus(b.status) === 'pending').length, { animate });
+      countTo(document.getElementById('stat-approved'), combinedForStats.filter((b) => normStatus(b.status) === 'approved').length, { animate });
       countTo(
         document.getElementById('stat-upcoming'),
-        combinedForStats.filter((b) => normStatus(b.status) === 'approved' && String(b.startDate || '') >= todayStr).length
+        combinedForStats.filter((b) => normStatus(b.status) === 'approved' && String(b.startDate || '') >= todayStr).length,
+        { animate },
       );
     }
   
-    function renderVenueCard(b, index) {
+    function renderVenueCard(b, index, { silent = false } = {}) {
       const idLabel = `#VEN-${b.id}`;
       const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
       const phaseBadge = lifecycleGuestBadge(b);
       const canCancel = !readOnly && canGuestCancelVenueBooking(b, { cutoffHours: cancellationCutoffHours });
       const canModify = !readOnly && canGuestModifyVenueBooking(b, { cutoffHours: cancellationCutoffHours });
+      const revealCls = silent ? '' : ' reveal';
+      const revealDelay = silent ? '' : ` style="animation-delay:${0.05 * index}s"`;
       return `
-        <div class="group bg-white p-5 rounded-2xl border border-outline-variant hover:border-primary/40 hover:shadow-lg lift reveal" style="animation-delay:${0.05 * index}s" data-venue-id="${b.id}">
+        <div class="group bg-white p-5 rounded-2xl border border-outline-variant hover:border-primary/40 hover:shadow-lg lift${revealCls}"${revealDelay} data-venue-id="${b.id}">
           <div class="flex flex-col sm:flex-row gap-6">
             <div class="flex-1">
               <div class="flex justify-between items-start mb-2">
@@ -956,7 +964,7 @@ export async function bootstrapGuestMyStaysPage() {
         </div>`;
     }
   
-    function applyAndRenderVenues() {
+    function applyAndRenderVenues({ silent = false } = {}) {
       let items = allVenueBookings;
       if (venueActiveStatus) items = items.filter((b) => normStatus(b.status) === venueActiveStatus);
       if (venueSearchTerm) {
@@ -967,10 +975,10 @@ export async function bootstrapGuestMyStaysPage() {
           (b.venueCategory || '').toLowerCase().includes(q) ||
           normStatus(b.status).includes(q));
       }
-      renderVenueList(items);
+      renderVenueList(items, { silent });
     }
   
-    function renderVenueList(bookings) {
+    function renderVenueList(bookings, { silent = false } = {}) {
       const mount = document.getElementById('venue-bookings-list');
       if (!mount) return;
       if (!bookings.length) {
@@ -982,7 +990,7 @@ export async function bootstrapGuestMyStaysPage() {
           </div>`;
         return;
       }
-      mount.innerHTML = bookings.map((b, i) => renderVenueCard(b, i)).join('');
+      mount.innerHTML = bookings.map((b, i) => renderVenueCard(b, i, { silent })).join('');
     }
   
     async function loadVenueBookings({ background = false } = {}) {
@@ -997,9 +1005,14 @@ export async function bootstrapGuestMyStaysPage() {
         const rows = await getFacilityBookings();
         allVenueBookings = rows.map(normalizeFacilityBooking)
           .sort((a, b) => `${b.eventDate}${b.startTime}`.localeCompare(`${a.eventDate}${a.startTime}`));
+
+        const fp = jsonFingerprint(allVenueBookings);
+        if (background && fp === lastVenueBookingsFingerprint) return;
+        lastVenueBookingsFingerprint = fp;
+
         venueBookingsLoaded = true;
-        refreshVenueCountsInStats();
-        applyAndRenderVenues();
+        refreshVenueCountsInStats({ animate: !background });
+        applyAndRenderVenues({ silent: background });
       } catch (err) {
         if (background) return;
         mount.innerHTML = `<div class="text-center py-12 text-error animate-fade-in"><span class="material-symbols-outlined text-[40px] mb-2 block">error</span><p>${escapeHtml(err.message)}</p></div>`;

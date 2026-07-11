@@ -21,6 +21,7 @@ import {
   canAdminModifyVenueBooking,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
+import { jsonFingerprint } from '/assets/js/layout/silent-refresh.js';
 
 export const DAY_WIDTH = 80;
 
@@ -1043,6 +1044,7 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
   }
 
   let allBookings = [];
+  let lastRefreshFingerprint = '';
   let rawBookingsById = {};
   let rawVenueById = {};
   let seasonCalendar = normalizeSeasonCalendar({});
@@ -1163,7 +1165,7 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
     bindMiniCalendarEvents();
   }
 
-  async function refresh() {
+  async function refresh({ background = false } = {}) {
     try {
       const [rawBookings, rawVenues] = await Promise.all([getBookings(), getFacilityBookings()]);
       const roomRows = rawBookings
@@ -1172,7 +1174,12 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
       const venueRows = rawVenues
         .filter((b) => ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
         .map(normalizeFacilityBooking);
-      allBookings = [...roomRows, ...venueRows];
+      const nextBookings = [...roomRows, ...venueRows];
+      const fp = jsonFingerprint(nextBookings);
+      if (background && fp === lastRefreshFingerprint) return;
+      lastRefreshFingerprint = fp;
+
+      allBookings = nextBookings;
       rawBookingsById = Object.fromEntries(rawBookings.map((b) => [String(b.id), b]));
       rawVenueById = Object.fromEntries(rawVenues.map((b) => [String(b.id), b]));
 
@@ -1243,7 +1250,7 @@ export async function mountBookingTimeline({ mountEl, title, onData }) {
   await controller.refresh();
   const onUpdate = () => controller.refresh();
   window.addEventListener('booking:updated', onUpdate);
-  const stopPoll = createBookingPoll(() => controller.refresh());
+  const stopPoll = createBookingPoll(() => controller.refresh({ background: true }));
   return () => {
     stopPoll();
     window.removeEventListener('booking:updated', onUpdate);
@@ -1256,7 +1263,7 @@ export async function mountAdminCalendar({ mountEl, title = 'Calendar', onData }
   await controller.refresh();
   const onUpdate = () => controller.refresh();
   window.addEventListener('booking:updated', onUpdate);
-  const stopPoll = createBookingPoll(() => controller.refresh());
+  const stopPoll = createBookingPoll(() => controller.refresh({ background: true }));
   return () => {
     stopPoll();
     window.removeEventListener('booking:updated', onUpdate);

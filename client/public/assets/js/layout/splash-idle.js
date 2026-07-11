@@ -3,7 +3,6 @@
  * Vanilla JS; clocks use local 24-hour HH:MM:SS with no timezone labels.
  */
 
-import { BOOKING_REFRESH_MS } from '/assets/js/config/booking-refresh.js';
 
 const SPLASH_DURATION_MS = 1500;
 const IDLE_TIMEOUT_MS = 300_000;
@@ -15,6 +14,7 @@ const GUEST_LOTTIE_SRC = '/assets/animations/splash-animation.lottie';
 const GUEST_IDLE_LOTTIE_SRC = '/assets/animations/idle-magnifier-animation.lottie';
 const DOTLOTTIE_PLAYER_CDN = 'https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs';
 const DOTLOTTIE_LOAD_TIMEOUT_MS = 8000;
+const GUEST_IDLE_SLIDE_MS = 8000;
 
 /** @type {Promise<void> | null} */
 let dotLottiePromise = null;
@@ -417,7 +417,7 @@ function startGuestSlideShow(overlay) {
     slides[index]?.classList.remove('is-active');
     index = (index + 1) % slides.length;
     slides[index]?.classList.add('is-active');
-  }, BOOKING_REFRESH_MS);
+  }, GUEST_IDLE_SLIDE_MS);
 }
 
 function stopGuestSlideShow() {

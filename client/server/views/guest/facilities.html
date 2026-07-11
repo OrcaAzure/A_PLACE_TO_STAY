@@ -227,6 +227,7 @@
   import { initAppLayout } from '/assets/js/layout/ui.js';
   import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
   import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
+  import { jsonFingerprint } from '/assets/js/layout/silent-refresh.js';
   import { getRooms, getRoomAvailability, normalizeRoom, getVenueFacilities, getVenueRateQuote, createFacilityBooking, checkVenueSlotAvailability } from '/assets/js/services/api.js';
   import {
     buildBookReservationUrl,
@@ -403,6 +404,7 @@
 
   let allRooms = [];
   let availability = null;
+  let lastAvailabilityFingerprint = '';
   let lastSearchedStay = null;
   let filters = { building: '', type: '', search: '' };
   let selectedCategory = resolveBrowseCategory(readBrowseQuery().category);
@@ -666,7 +668,7 @@
       types.map((t) => typeBtn(filters.type === t, t, t)).join('');
   }
 
-  function roomCard(room) {
+  function roomCard(room, { silent = false } = {}) {
     const avail = availabilityForRoom(room.id);
     const st = statusInfo(room);
     const price = priceFor(room);
@@ -693,7 +695,7 @@
       reserveBtn = `<button disabled class="mt-auto w-full py-3 bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md cursor-not-allowed">${st.label}</button>`;
     }
     return `
-      <article class="browse-room-card reveal">
+      <article class="browse-room-card${silent ? '' : ' reveal'}">
         <div class="browse-room-card__media">
           <img src="${img}" alt="${room.roomType} room ${room.roomNumber}" loading="lazy" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent"></div>
@@ -723,7 +725,7 @@
       </article>`;
   }
 
-  function render() {
+  function render({ silent = false } = {}) {
     const mount = document.getElementById('rooms-mount');
     if (!mount) return;
     applyCategoryVisibility();
@@ -754,7 +756,7 @@
           <div class="h-[1px] w-full bg-outline-variant/30"></div>
         </div>
         <div class="grid grid-cols-1 gap-5">
-          ${groups[building].map(roomCard).join('')}
+          ${groups[building].map((room) => roomCard(room, { silent })).join('')}
         </div>
       </div>`).join('');
   }
@@ -798,6 +800,9 @@
     try {
       const data = await getRoomAvailability({ check_in: checkIn, check_out: checkOut, guest_count: guests });
       availability = new Map((data.rooms || []).map((r) => [String(r.id), r]));
+      const fp = jsonFingerprint(data.rooms || []);
+      if (background && fp === lastAvailabilityFingerprint) return;
+      lastAvailabilityFingerprint = fp;
       lastSearchedStay = readStaySnapshot();
       const availCount = (data.rooms || []).filter(
         (r) => isAvailabilityVisible(r.availability_status)
@@ -810,8 +815,8 @@
           && roomAllowedForGuest({ building: r.building_name }, isInternal),
       ).length;
       updateRoomBrowseVisibility();
-      renderFilters();
-      render();
+      if (!background) renderFilters();
+      render({ silent: background });
       if (!background) {
         persistStayCriteria();
         setStayStatus(`${bookCount} room${bookCount === 1 ? '' : 's'} ready to book`, bookCount > 0 ? 'success' : 'warn');

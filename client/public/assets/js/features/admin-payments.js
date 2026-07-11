@@ -1672,9 +1672,11 @@ function readReservationEditForm(form) {
     ...base,
     check_in: form.querySelector('[name="check_in"]')?.value,
     check_out: form.querySelector('[name="check_out"]')?.value,
-    stay_total: Math.round(Number(form.querySelector('[name="stay_total"]')?.value || 0) * 100) / 100,
     contact_phone: form.querySelector('[name="contact_phone"]')?.value?.trim() || undefined,
     meal_allergen_notes: form.querySelector('[name="meal_allergen_notes"]')?.value?.trim() || undefined,
+    ...(form.querySelector('[name="stay_total"]')
+      ? { stay_total: Math.round(Number(form.querySelector('[name="stay_total"]')?.value || 0) * 100) / 100 }
+      : {}),
   };
 }
 
@@ -1699,8 +1701,17 @@ function buildReservationChangeSummary(p, draft) {
     if (draft.check_in !== sliceDate(p.check_in) || draft.check_out !== sliceDate(p.check_out)) {
       lines.push({ level: 'warn', text: 'Stay dates change — invoice subtotal may update.' });
     }
-    if (draft.stay_total && Number(draft.stay_total) !== Number(p.subtotal ?? p.booking_total ?? 0)) {
+    if (draft.stay_total != null && Number(draft.stay_total) !== Number(p.subtotal ?? p.booking_total ?? 0)) {
       lines.push({ level: 'warn', text: `Stay total set to ${fmt(draft.stay_total)} — invoice subtotal will update.` });
+    }
+    if (Number(draft.guest_count) !== Number(p.guest_count || 1)) {
+      lines.push({ level: 'info', text: `Guest count changes to ${draft.guest_count}.` });
+    }
+    if ((draft.contact_phone || '') !== String(p.contact_phone || '')) {
+      lines.push({ level: 'info', text: 'Contact phone updates.' });
+    }
+    if ((draft.meal_allergen_notes || '') !== String(p.meal_allergen_notes || '')) {
+      lines.push({ level: 'info', text: 'Allergen notes update.' });
     }
   }
   if (draft.invoice_kind === 'venue') {
@@ -1813,13 +1824,18 @@ function setReservationRevertMode(detailEl, reverting) {
 }
 
 function showReservationConfirmDialog(detailEl, summaryLines, { converting = false, reverting = false } = {}) {
-  const overlay = detailEl?.querySelector('[data-res-confirm]');
+  const scope = detailEl?.querySelector('.billing-detail') || detailEl;
+  const overlay = scope?.querySelector('[data-res-confirm]');
   const titleEl = overlay?.querySelector('#billing-res-confirm-title');
   const listEl = overlay?.querySelector('[data-res-confirm-list]');
   const check = overlay?.querySelector('[data-res-confirm-check]');
   const applyBtn = overlay?.querySelector('[data-res-confirm-apply]');
   const cancelBtn = overlay?.querySelector('[data-res-confirm-cancel]');
   if (!overlay || !listEl || !check || !applyBtn || !cancelBtn) return Promise.resolve(false);
+
+  const lines = summaryLines?.length
+    ? summaryLines
+    : [{ level: 'info', text: 'Save reservation details as entered.' }];
 
   if (titleEl) {
     titleEl.textContent = reverting
@@ -1830,7 +1846,7 @@ function showReservationConfirmDialog(detailEl, summaryLines, { converting = fal
     ? 'Revert to venue booking'
     : (converting ? 'Convert to overnight stay' : 'Apply changes');
 
-  listEl.innerHTML = summaryLines.map(({ level, text }) => `
+  listEl.innerHTML = lines.map(({ level, text }) => `
     <li class="billing-res-confirm__item billing-res-confirm__item--${level}">${escapeHtml(text)}</li>`).join('');
   check.checked = false;
   applyBtn.disabled = true;
@@ -2018,6 +2034,7 @@ function bindReservationEdit(p, detailEl) {
     const formOrigKind = form.getAttribute('data-res-orig-kind') || 'room';
     const converting = formOrigKind === 'venue' && draft.invoice_kind === 'room' && canConvertVenueToStay(p);
     const updatingOvernightBilling = formOrigKind === 'venue_overnight';
+    const needsStayTotal = updatingOvernightBilling || converting || isVenueConvertedToStay(p);
 
     if (converting && !canConvertVenueToStay(p)) {
       showFeedback(detailFeedback, 'This venue cannot convert to an overnight stay. Only coded conference/classroom venue rooms support conversion — not recreation or outdoor spaces.', 'error');
@@ -2035,7 +2052,7 @@ function bindReservationEdit(p, detailEl) {
         showFeedback(detailFeedback, 'Check-in and check-out are required.', 'error');
         return;
       }
-      if (!Number.isFinite(draft.stay_total) || draft.stay_total <= 0) {
+      if (needsStayTotal && (!Number.isFinite(draft.stay_total) || draft.stay_total <= 0)) {
         showFeedback(detailFeedback, 'Enter a stay total for the overnight stay.', 'error');
         form.querySelector('[name="stay_total"]')?.focus();
         return;
@@ -2580,6 +2597,49 @@ function isBillingInvoiceModalOpen() {
   return Boolean(modal && !modal.hidden && !modal.classList.contains('is-hidden'));
 }
 
+/** True when the open invoice modal has unsaved edits or an active sub-dialog. */
+function isBillingInvoiceModalBusy() {
+  if (!isBillingInvoiceModalOpen()) return false;
+  const detailEl = document.getElementById('invoice-detail');
+  if (!detailEl) return true;
+
+  const confirmOpen = detailEl.querySelector('[data-res-confirm]');
+  if (confirmOpen && !confirmOpen.classList.contains('hidden') && !confirmOpen.hidden) return true;
+
+  const editForm = detailEl.querySelector('[data-res-edit-form]');
+  if (editForm && !editForm.classList.contains('hidden') && !editForm.hidden) return true;
+
+  const revertForm = detailEl.querySelector('[data-res-revert-form]');
+  if (revertForm && !revertForm.classList.contains('hidden') && !revertForm.hidden) return true;
+
+  const p = selectedPayment();
+  const billingForm = getBillingForm(detailEl);
+  if (p && billingForm && hasUnsavedBillingChanges(p, billingForm)) return true;
+  if (p && hasUnsavedFeeChanges(detailEl, p.id)) return true;
+  return false;
+}
+
+async function refreshOpenInvoiceQuietly(id) {
+  if (isBillingInvoiceModalBusy()) return;
+
+  const detailEl = document.getElementById('invoice-detail');
+  if (!detailEl) return;
+
+  try {
+    const fresh = await getPaymentById(id);
+    const idx = state.payments.findIndex((x) => String(x.id) === String(id));
+    if (idx >= 0) state.payments[idx] = fresh;
+    else state.payments.push(fresh);
+
+    detailEl.innerHTML = renderDetailPanel(fresh);
+    bindDetailActions(fresh);
+    initBillingFeeEditor(fresh, detailEl);
+    bindReservationEdit(fresh, detailEl);
+  } catch {
+    /* keep current panel on background refresh failure */
+  }
+}
+
 async function openInvoiceModal(id) {
   state.selectedId = id;
   renderList();
@@ -2826,17 +2886,19 @@ async function reload({ keepSelection = false, keepModalOpen = false, background
   const modalOpen = isBillingInvoiceModalOpen();
   const feedback = document.getElementById('payments-feedback');
 
+  if (modalOpen) keepModalOpen = true;
+
   try {
     state.payments = await getPayments();
     updateSummary();
     renderList();
 
     if (keepModalOpen && prevId && modalOpen && state.payments.some((x) => String(x.id) === String(prevId))) {
-      if (!background) {
+      if (background) {
+        await refreshOpenInvoiceQuietly(prevId);
+      } else {
         await openInvoiceModal(prevId);
       }
-    } else if (!keepModalOpen) {
-      closeInvoiceModal();
     }
   } catch (err) {
     if (background) return;
@@ -2920,7 +2982,7 @@ export async function loadPaymentsPage() {
     window.removeEventListener('booking:updated', onBookingUpdated);
   }
   onBookingUpdated = () => {
-    if (isBillingInvoiceModalOpen()) return;
+    if (isBillingInvoiceModalBusy()) return;
     reload({ keepSelection: true, background: true });
   };
   window.addEventListener('booking:updated', onBookingUpdated);
