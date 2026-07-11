@@ -11,6 +11,7 @@ import { initAdminEnhancements, lockStaticChrome, releaseChromeBoot, animateDraw
 import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/assets/js/layout/page-transitions.js';
 import { initGuestPortalChrome } from '/assets/js/layout/guest-portal.js';
 import { initSplashIdle, dismissAptSplash } from '/assets/js/layout/splash-idle.js';
+import { bindNotificationBell } from '/assets/js/layout/notifications.js';
 import { formatRoleLabel, getCurrentUser } from '/assets/js/services/auth.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 import {
@@ -647,6 +648,7 @@ export async function initAppLayout(config = {}) {
         initReservationWizard();
         initGroupWizard();
       }
+      bindLayoutEvents({ isGuest: true });
       releaseChromeBoot();
       return;
     }
@@ -856,7 +858,6 @@ function bindLayoutEvents({ isGuest = false } = {}) {
     });
   });
 
-  const { bindNotificationBell } = await import('/assets/js/layout/notifications.js');
   bindNotificationBell({ isGuest });
 
   document.getElementById('drawer-close')?.addEventListener('click', closeDrawer);
