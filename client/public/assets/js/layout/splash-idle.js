@@ -7,9 +7,6 @@
 const SPLASH_DURATION_MS = 1500;
 const IDLE_TIMEOUT_MS = 300_000;
 const IDLE_PREVIEW_PARAM = 'previewIdle';
-const KIOSK_CORNER_CLICKS = 3;
-const KIOSK_LONG_PRESS_MS = 900;
-const KIOSK_PIN = '2468';
 const GUEST_LOTTIE_SRC = '/assets/animations/splash-animation.lottie';
 const GUEST_IDLE_LOTTIE_SRC = '/assets/animations/idle-magnifier-animation.lottie';
 const DOTLOTTIE_PLAYER_CDN = 'https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs';
@@ -94,12 +91,12 @@ function guestSplashLottieMarkup() {
         style="width: min(18rem, 78vw); height: min(18rem, 52vh);"
       ></dotlottie-player>
     </div>
-    <p class="apt-splash--guest__brand" data-apt-kiosk-logo>APTSpace</p>`;
+    <p class="apt-splash--guest__brand">APTSpace</p>`;
 }
 
 function guestIdleLottieMarkup() {
   return `
-    <div class="apt-idle--guest__lottie-wrap" data-apt-kiosk-logo role="img" aria-label="APTSpace mascot">
+    <div class="apt-idle--guest__lottie-wrap" role="img" aria-label="APTSpace mascot">
       <dotlottie-player
         class="apt-idle--guest__lottie"
         src="${GUEST_IDLE_LOTTIE_SRC}"
@@ -130,7 +127,7 @@ function guestCloudCatMarkup({ compact = false } = {}) {
     ? 'apt-cloud-cat apt-cloud-cat--compact'
     : 'apt-cloud-cat apt-cloud-cat--splash';
   return `
-    <div class="${rootClass}" data-apt-kiosk-logo role="img" aria-label="APTSpace cloud cat mascot">
+    <div class="${rootClass}" role="img" aria-label="APTSpace cloud cat mascot">
       <div class="apt-cloud-cat__scene">
         <div class="apt-cloud-cat__sign" aria-hidden="true">
           <span class="apt-cloud-cat__brand">APTSpace</span>
@@ -195,9 +192,6 @@ let clockInterval = null;
 let idleTimer = null;
 let slideInterval = null;
 let splashDismissTimer = null;
-let kioskCornerCount = 0;
-let kioskCornerResetTimer = null;
-
 /** @returns {string} 24-hour clock, e.g. 14:05:09 — no timezone suffix */
 export function formatClock24(date = new Date()) {
   const h = String(date.getHours()).padStart(2, '0');
@@ -210,13 +204,39 @@ function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+/** Hide overlays before CSS arrives — guest dashboard does not preload splash-idle.css. */
+function setOverlayHidden(el, hidden, { displayWhenVisible = 'flex' } = {}) {
+  if (!el) return;
+  el.classList.toggle('is-hidden', hidden);
+  el.setAttribute('aria-hidden', hidden ? 'true' : 'false');
+  if (hidden) {
+    el.setAttribute('hidden', '');
+    el.style.display = 'none';
+  } else {
+    el.removeAttribute('hidden');
+    el.style.display = displayWhenVisible;
+  }
+}
+
 function ensureStylesheet() {
-  if (document.querySelector('link[data-apt-splash-idle]')) return;
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.href = '/assets/css/global/splash-idle.css';
-  link.setAttribute('data-apt-splash-idle', '1');
-  document.head.appendChild(link);
+  const existing = document.querySelector('link[data-apt-splash-idle]');
+  if (existing) {
+    if (existing.sheet) return Promise.resolve();
+    return new Promise((resolve) => {
+      existing.addEventListener('load', () => resolve(), { once: true });
+      existing.addEventListener('error', () => resolve(), { once: true });
+    });
+  }
+
+  return new Promise((resolve) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = '/assets/css/global/splash-idle.css';
+    link.setAttribute('data-apt-splash-idle', '1');
+    link.addEventListener('load', () => resolve(), { once: true });
+    link.addEventListener('error', () => resolve(), { once: true });
+    document.head.appendChild(link);
+  });
 }
 
 function bindLiveClock(el) {
@@ -237,7 +257,7 @@ function buildGuestSplash({ useLottie = true } = {}) {
   overlay.setAttribute('aria-label', 'Loading APTSpace');
   const mascot = useLottie
     ? guestSplashLottieMarkup()
-    : `${guestCloudCatMarkup()}<p class="apt-splash--guest__brand" data-apt-kiosk-logo>APTSpace</p>`;
+    : `${guestCloudCatMarkup()}<p class="apt-splash--guest__brand">APTSpace</p>`;
   overlay.innerHTML = `
     <div class="apt-splash--guest__inner">
       ${mascot}
@@ -295,8 +315,7 @@ function guestIdleSceneInnerMarkup({ useLottie = true, showHint = true } = {}) {
       ${mascot}
       <h2>Welcome to APTSpace – Tap to explore.</h2>
       ${hint}
-    </div>
-    <div class="apt-idle--guest__kiosk-zone" data-apt-kiosk-corner aria-hidden="true"></div>`;
+    </div>`;
 }
 
 function buildGuestIdle({ useLottie = true } = {}) {
@@ -305,6 +324,8 @@ function buildGuestIdle({ useLottie = true } = {}) {
   overlay.className = 'apt-overlay apt-idle apt-idle--guest is-hidden';
   overlay.setAttribute('data-layout-preserve', '');
   overlay.setAttribute('aria-hidden', 'true');
+  overlay.setAttribute('hidden', '');
+  overlay.style.display = 'none';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-label', 'APTSpace screensaver');
   overlay.innerHTML = guestIdleSceneInnerMarkup({ useLottie, showHint: true });
@@ -317,6 +338,8 @@ function buildAdminIdle() {
   overlay.className = 'apt-overlay apt-idle apt-idle--admin is-hidden';
   overlay.setAttribute('data-layout-preserve', '');
   overlay.setAttribute('aria-hidden', 'true');
+  overlay.setAttribute('hidden', '');
+  overlay.style.display = 'none';
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-label', 'Admin screensaver');
   overlay.innerHTML = `
@@ -353,7 +376,7 @@ export function dismissAptSplash() {
  */
 export async function showAptIdlePreview({ portal = 'guest' } = {}) {
   const isGuest = portal !== 'admin';
-  ensureStylesheet();
+  await ensureStylesheet();
 
   let guestUseLottie = false;
   if (isGuest) {
@@ -367,9 +390,8 @@ export async function showAptIdlePreview({ portal = 'guest' } = {}) {
   if (!idle) {
     idle = isGuest ? buildGuestIdle({ useLottie: guestUseLottie }) : buildAdminIdle();
     document.body.appendChild(idle);
-    ensureKioskModal();
     if (!idle.dataset.activityBound) {
-      bindIdleActivity(idle, { isGuest });
+      bindIdleActivity(idle);
       idle.dataset.activityBound = '1';
     }
   }
@@ -390,8 +412,7 @@ function delay(ms) {
 
 function showIdle(overlay) {
   if (!overlay || !overlay.classList.contains('is-hidden')) return;
-  overlay.classList.remove('is-hidden');
-  overlay.setAttribute('aria-hidden', 'false');
+  setOverlayHidden(overlay, false);
   bindLiveClock(overlay.querySelector('[data-apt-clock]'));
 
   if (overlay.classList.contains('apt-idle--guest')) {
@@ -402,8 +423,7 @@ function showIdle(overlay) {
 
 function hideIdle(overlay) {
   if (!overlay || overlay.classList.contains('is-hidden')) return;
-  overlay.classList.add('is-hidden');
-  overlay.setAttribute('aria-hidden', 'true');
+  setOverlayHidden(overlay, true);
   stopGuestSlideShow();
   resetIdleTimer(overlay);
 }
@@ -432,145 +452,26 @@ function resetIdleTimer(idleOverlay) {
   idleTimer = window.setTimeout(() => showIdle(idleOverlay), IDLE_TIMEOUT_MS);
 }
 
-function ensureKioskModal() {
-  let overlay = document.getElementById('apt-kiosk-modal-overlay');
-  if (overlay) return overlay;
-
-  overlay = document.createElement('div');
-  overlay.id = 'apt-kiosk-modal-overlay';
-  overlay.className = 'apt-kiosk-modal-overlay is-hidden';
-  overlay.setAttribute('data-layout-preserve', '');
-  overlay.setAttribute('aria-hidden', 'true');
-  overlay.innerHTML = `
-    <div class="apt-kiosk-modal" role="dialog" aria-modal="true" aria-labelledby="apt-kiosk-title">
-      <h3 id="apt-kiosk-title">Staff access</h3>
-      <p>Enter the admin PIN or sign in with your credentials.</p>
-      <div id="apt-kiosk-error" class="apt-kiosk-modal__error hidden" role="alert"></div>
-      <form id="apt-kiosk-form">
-        <label for="apt-kiosk-pin">Admin PIN</label>
-        <input id="apt-kiosk-pin" type="password" inputmode="numeric" autocomplete="off" maxlength="8" placeholder="••••" />
-        <div class="apt-kiosk-modal__actions">
-          <button type="button" class="apt-kiosk-modal__btn apt-kiosk-modal__btn--ghost" data-apt-kiosk-cancel>Cancel</button>
-          <button type="submit" class="apt-kiosk-modal__btn apt-kiosk-modal__btn--primary">Unlock</button>
-        </div>
-      </form>
-      <p style="margin-top:0.85rem;font-size:0.75rem;text-align:center;">
-        <a href="/login.html" class="text-primary font-semibold no-underline">Sign in with email</a>
-      </p>
-    </div>`;
-
-  document.body.appendChild(overlay);
-
-  const hide = () => {
-    overlay.classList.add('is-hidden');
-    overlay.setAttribute('aria-hidden', 'true');
-    const err = document.getElementById('apt-kiosk-error');
-    err?.classList.add('hidden');
-    const pin = document.getElementById('apt-kiosk-pin');
-    if (pin) pin.value = '';
-  };
-
-  overlay.querySelector('[data-apt-kiosk-cancel]')?.addEventListener('click', hide);
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) hide();
-  });
-
-  document.getElementById('apt-kiosk-form')?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const pin = document.getElementById('apt-kiosk-pin')?.value?.trim() || '';
-    const err = document.getElementById('apt-kiosk-error');
-    if (pin === KIOSK_PIN) {
-      hide();
-      const idle = document.getElementById('apt-idle');
-      hideIdle(idle);
-      window.location.href = '/login.html';
-      return;
-    }
-    if (err) {
-      err.textContent = 'Invalid PIN. Try again or use email sign-in.';
-      err.classList.remove('hidden');
-    }
-  });
-
-  return overlay;
-}
-
-export function openKioskAdminModal() {
-  const overlay = ensureKioskModal();
-  overlay.classList.remove('is-hidden');
-  overlay.setAttribute('aria-hidden', 'false');
-  document.getElementById('apt-kiosk-pin')?.focus();
-}
-
-function onKioskCornerTap() {
-  kioskCornerCount += 1;
-  if (kioskCornerResetTimer) clearTimeout(kioskCornerResetTimer);
-  kioskCornerResetTimer = window.setTimeout(() => { kioskCornerCount = 0; }, 1200);
-  if (kioskCornerCount >= KIOSK_CORNER_CLICKS) {
-    kioskCornerCount = 0;
-    openKioskAdminModal();
-  }
-}
-
-function bindKioskLongPress(el) {
-  if (!el) return;
-  let pressTimer = null;
-
-  const clear = () => {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      pressTimer = null;
-    }
-  };
-
-  el.addEventListener('pointerdown', () => {
-    clear();
-    pressTimer = window.setTimeout(() => {
-      pressTimer = null;
-      openKioskAdminModal();
-    }, KIOSK_LONG_PRESS_MS);
-  });
-  ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => {
-    el.addEventListener(ev, clear);
-  });
-}
-
-function bindIdleActivity(idleOverlay, { isGuest }) {
+function bindIdleActivity(idleOverlay) {
   const onActivity = () => {
     if (!idleOverlay.classList.contains('is-hidden')) return;
     resetIdleTimer(idleOverlay);
   };
 
-  const wake = (e) => {
+  const wake = () => {
     if (idleOverlay.classList.contains('is-hidden')) return;
-    if (e?.type === 'click' && e.target?.closest?.('[data-apt-kiosk-corner]')) return;
-    if (document.getElementById('apt-kiosk-modal-overlay')?.classList.contains('is-hidden') === false) return;
     hideIdle(idleOverlay);
   };
 
   const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'wheel'];
   events.forEach((ev) => {
-    document.addEventListener(ev, (e) => {
+    document.addEventListener(ev, () => {
       onActivity();
-      wake(e);
+      wake();
     }, { passive: true });
   });
 
-  if (isGuest) {
-    idleOverlay.addEventListener('click', (e) => {
-      if (e.target.closest('[data-apt-kiosk-corner]')) return;
-      hideIdle(idleOverlay);
-    });
-    idleOverlay.querySelector('[data-apt-kiosk-corner]')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      onKioskCornerTap();
-    });
-    bindKioskLongPress(idleOverlay.querySelector('[data-apt-kiosk-logo]'));
-    bindKioskLongPress(document.querySelector('.lp-nav-brand, .guest-top-nav .lp-nav-brand'));
-  } else {
-    idleOverlay.addEventListener('click', () => hideIdle(idleOverlay));
-  }
-
+  idleOverlay.addEventListener('click', () => hideIdle(idleOverlay));
   resetIdleTimer(idleOverlay);
 }
 
@@ -590,7 +491,7 @@ export async function initSplashIdle({
   skipIdle = false,
   autoDismiss = true,
 } = {}) {
-  ensureStylesheet();
+  await ensureStylesheet();
 
   const isAdmin = portal === 'admin';
   const isGuest = !isAdmin;
@@ -616,32 +517,37 @@ export async function initSplashIdle({
     if (!autoDismiss) splash.classList.add('apt-splash--hold');
     document.body.appendChild(splash);
     bindLiveClock(splash.querySelector('[data-apt-clock]'));
-    if (isGuest) {
-      bindKioskLongPress(splash.querySelector('[data-apt-kiosk-logo]'));
-      if (guestUseLottie) startGuestLottiePlayer(splash);
+    if (isGuest && guestUseLottie) {
+      startGuestLottiePlayer(splash);
     }
   } else if (!showSplash && splash) {
-    splash.remove();
-    splash = null;
-    document.body.classList.remove('is-splash-active');
-    document.querySelector('.admin-shell')?.classList.remove('is-splash-active');
+    // initAppLayout re-enters after the page already started splash — keep it.
+    if (!autoDismiss) {
+      splash.classList.add('apt-splash--hold');
+    } else {
+      splash.remove();
+      splash = null;
+      document.body.classList.remove('is-splash-active');
+      document.querySelector('.admin-shell')?.classList.remove('is-splash-active');
+    }
   }
 
   let idle = document.getElementById('apt-idle');
   if (!idle) {
     idle = isAdmin ? buildAdminIdle() : buildGuestIdle({ useLottie: guestUseLottie });
     document.body.appendChild(idle);
-    ensureKioskModal();
     if (!skipIdle && !idle.dataset.activityBound) {
-      bindIdleActivity(idle, { isGuest });
+      bindIdleActivity(idle);
       idle.dataset.activityBound = '1';
     }
+  } else if (idle.classList.contains('is-hidden')) {
+    setOverlayHidden(idle, true);
   }
 
   if (splash && showSplash && autoDismiss) {
     if (splashDismissTimer) clearTimeout(splashDismissTimer);
     splashDismissTimer = window.setTimeout(() => dismissSplash(splash), SPLASH_DURATION_MS);
-  } else if (!showSplash) {
+  } else if (!showSplash && !splash) {
     document.body.classList.remove('is-splash-active');
     document.querySelector('.admin-shell')?.classList.remove('is-splash-active');
   }
