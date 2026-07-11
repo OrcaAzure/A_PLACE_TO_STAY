@@ -96,11 +96,12 @@ App HTML lives in `client/server/views/`; CSS/JS live under `client/public/asset
 | GET | `/api/health` | DB connectivity check |
 | POST | `/api/auth/login` | Returns JWT + user |
 | GET | `/api/auth/me` | Current user profile |
-| PATCH | `/api/auth/me` | Update name |
+| PATCH | `/api/auth/me` | Update name and email notification preferences |
 | PATCH | `/api/auth/me/password` | Change password (logged in) |
 | POST | `/api/auth/forgot-password` | Sends reset email |
 | POST | `/api/auth/reset-password` | Reset with token |
 | GET | `/api/stats/summary` | Admin dashboard KPIs |
+| GET | `/api/notifications` | In-app notification feed (admin + guest) |
 | GET/PATCH | `/api/settings/fiscal-year` | Fiscal year config |
 | GET/POST/PATCH/DELETE | `/api/bookings` | Room reservations |
 | GET/POST/PATCH/DELETE | `/api/groups` | Group reservations |
@@ -113,22 +114,22 @@ App HTML lives in `client/server/views/`; CSS/JS live under `client/public/asset
 
 Bookings auto-calculate price, season, and check room availability.
 
-## Project status (~89% complete)
+## Project status (~91% complete)
 
 | Area | Done | Notes |
 |------|------|-------|
-| Admin portal | ~88% | Dashboard, reservations, facilities, guest access, billing wired to API |
-| Guest portal | ~90% | Book, modify, cancel reservations; venue bookings; profile saves |
-| Backend API | ~88% | Core flows done; room/venue rates and seasonal periods in Settings |
-| Auth & email | ~92% | 12 automated email templates; needs production SMTP to deliver |
-| Dev tooling | ~90% | Setup, Docker, GitHub Actions CI, health check, `npm test` |
+| Admin portal | ~90% | Dashboard, reservations, facilities, guest access, billing, in-app notifications |
+| Guest portal | ~92% | Book, modify, cancel reservations; venue bookings; profile; notification prefs; live bell feed |
+| Backend API | ~89% | Core flows done; room/venue rates and seasonal periods in Settings |
+| Auth & email | ~93% | 12 automated email templates; guest email prefs; needs production SMTP to deliver |
+| Dev tooling | ~90% | Setup, Docker, GitHub Actions CI, health check, `npm test` (60/61 passing) |
 | Deployment / ops | ~65% | Docs and configs ready; staging/prod not validated with IT yet |
 
-**Product overall ~89% · production-ready ~75%** (blocked mainly on IT: DB, SSL, SMTP, smoke test).
+**Product overall ~91% · production-ready ~78%** (blocked mainly on IT: DB, SSL, SMTP, staging smoke test).
 
-**Still in progress:** guest notification prefs (UI only), admin venue modify UI, in-app notification feed.
+**Still in progress:** admin venue modify UI, landing page smoke test update.
 
-**Recently shipped:** guest self-modify (room/group/venue), self-modify confirmation emails, landing page polish, multiple seasonal rate periods, automated tests.
+**Recently shipped:** in-app notification feed (admin + guest bell), guest email notification preferences, silent background polling (no pulse animations), billing modal stability and confirm-dialog fixes, guest self-modify (room/group/venue), landing page polish, privacy/terms legal pages.
 
 ## Automated tests
 
@@ -145,6 +146,8 @@ Integration tests use `client/server/.env` and seeded users (`admin@aptspace.com
 ## Automated emails
 
 Templates live in `client/server/src/services/email.service.js`. In development without SMTP, bodies are logged to the console (`[email dev]`).
+
+Guests can turn off email in **Account → Notifications** (`email_notifications_enabled`, `email_modification_notices_enabled` on `PATCH /api/auth/me`). Password reset and guest-access invite emails always send regardless of prefs.
 
 | Email | When |
 |-------|------|

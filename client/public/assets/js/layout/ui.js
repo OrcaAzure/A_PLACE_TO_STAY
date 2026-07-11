@@ -856,73 +856,8 @@ function bindLayoutEvents({ isGuest = false } = {}) {
     });
   });
 
-  document.getElementById('notifications-btn')?.addEventListener('click', async () => {
-    const panel = document.getElementById('notifications-panel');
-    const list  = document.getElementById('notifications-list');
-    if (!panel) return;
-
-    const isHidden = panel.classList.contains('hidden');
-    panel.classList.toggle('hidden', !isHidden);
-
-    if (isHidden && list) {
-      list.innerHTML = '<div class="p-4 text-body-sm text-on-surface-variant text-center">Loading…</div>';
-      try {
-        if (isGuest) {
-          const items = [
-            { icon: 'event_available', text: 'Reservation updates', sub: 'Check My Stays for status changes' },
-            { icon: 'info', text: 'Need help?', sub: 'Contact facility staff from your dashboard' },
-            { icon: 'wifi', text: 'Portal status: Live', sub: 'Guest services are available' },
-          ];
-          list.innerHTML = items.map((item) => `
-          <div class="p-4 border-b border-outline-variant/30 hover:bg-surface-container-low/50 flex items-start gap-3">
-            <span class="material-symbols-outlined text-[18px] text-on-surface-variant mt-0.5">${item.icon}</span>
-            <div>
-              <p class="text-body-sm font-medium text-on-surface">${item.text}</p>
-              <p class="text-[11px] text-on-surface-variant mt-0.5">${item.sub}</p>
-            </div>
-          </div>`).join('');
-          return;
-        }
-
-        const { getAdminSummary } = await import('/assets/js/services/api.js');
-        const summary = await getAdminSummary();
-        const kpis    = summary?.kpis || {};
-        const pending  = Number(kpis.pending || 0);
-        const arriving = Number(kpis.upcoming || 0);
-
-        const items = [
-          pending > 0
-            ? { icon: 'pending_actions', text: `${pending} pending reservation${pending === 1 ? '' : 's'}`, sub: 'Requires admin review' }
-            : { icon: 'check_circle', text: 'No pending reservations', sub: 'All clear' },
-          { icon: 'login', text: `${arriving} upcoming check-in${arriving === 1 ? '' : 's'}`, sub: 'Approved reservations ahead' },
-        ];
-
-        list.innerHTML = items.map(item => `
-          <div class="p-4 border-b border-outline-variant/30 hover:bg-surface-container-low/50 flex items-start gap-3">
-            <span class="material-symbols-outlined text-[18px] text-on-surface-variant mt-0.5">${item.icon}</span>
-            <div>
-              <p class="text-body-sm font-medium text-on-surface">${item.text}</p>
-              <p class="text-[11px] text-on-surface-variant mt-0.5">${item.sub}</p>
-            </div>
-          </div>`).join('');
-
-        const dot = document.querySelector('.admin-notif-dot');
-        dot?.classList.toggle('hidden', pending <= 0);
-      } catch {
-        list.innerHTML = '<div class="p-4 text-body-sm text-error text-center">Could not load notifications.</div>';
-      }
-    }
-  });
-
-  if (!isGuest) {
-    syncAdminNotificationDot();
-    window.addEventListener('booking:updated', syncAdminNotificationDot);
-  }
-
-  document.getElementById('close-notifications')?.addEventListener('click', () => {
-    const panel = document.getElementById('notifications-panel');
-    if (panel) panel.classList.add('hidden');
-  });
+  const { bindNotificationBell } = await import('/assets/js/layout/notifications.js');
+  bindNotificationBell({ isGuest });
 
   document.getElementById('drawer-close')?.addEventListener('click', closeDrawer);
   document.getElementById('drawerOverlay')?.addEventListener('click', closeDrawer);
@@ -1159,19 +1094,6 @@ export function promptModal({
       document.getElementById('modal-overlay')?.addEventListener('click', () => finish(null), { once: true });
     });
   })).catch(() => null);
-}
-
-async function syncAdminNotificationDot() {
-  const dot = document.querySelector('.admin-notif-dot');
-  if (!dot) return;
-  try {
-    const { getAdminSummary } = await import('/assets/js/services/api.js');
-    const summary = await getAdminSummary();
-    const pending = Number(summary?.kpis?.pending || 0);
-    dot.classList.toggle('hidden', pending <= 0);
-  } catch {
-    dot.classList.add('hidden');
-  }
 }
 
 export function switchDrawerTab(tabId) {

@@ -56,6 +56,41 @@ body.guest-shell {
   min-width: 0;
 }
 
+.guest-notif-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.guest-notif-dot {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  background: var(--color-secondary, #A81D23);
+  border: 2px solid #fff;
+  pointer-events: none;
+}
+
+#notifications-list .notif-item-link:focus-visible {
+  outline: 2px solid var(--color-primary, #1A365D);
+  outline-offset: -2px;
+}
+
+#notifications-list .notif-item--warn .material-symbols-outlined {
+  color: var(--color-secondary, #A81D23);
+}
+
+#notifications-list .notif-item--critical .material-symbols-outlined {
+  color: #c53030;
+}
+
 /* Guest home hero — smaller collage (matches public landing comfort scale) */
 @media (min-width: 1024px) {
   .guest-landing .lp-hero-visual-col {

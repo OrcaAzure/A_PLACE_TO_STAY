@@ -93,15 +93,49 @@ export const getMe = async (userId) => {
     throw new Error('User not found');
   }
 
-  return safeUser(rows[0]);
+  return normalizeUserPrefs(safeUser(rows[0]));
 };
 
-export const updateMe = async (userId, { full_name }) => {
-  if (isEmpty(full_name)) {
-    throw new Error('Name is required');
+function normalizeUserPrefs(user) {
+  if (!user) return user;
+  return {
+    ...user,
+    email_notifications_enabled: user.email_notifications_enabled !== 0,
+    email_modification_notices_enabled: user.email_modification_notices_enabled !== 0,
+  };
+}
+
+export const updateMe = async (userId, body = {}) => {
+  const { full_name, email_notifications_enabled, email_modification_notices_enabled } = body;
+
+  const [existing] = await pool.query('SELECT full_name FROM users WHERE id = ? LIMIT 1', [userId]);
+  if (!existing.length) throw new Error('User not found');
+
+  const sets = [];
+  const params = [];
+
+  if (full_name !== undefined) {
+    if (isEmpty(full_name)) throw new Error('Name is required');
+    sets.push('full_name = ?');
+    params.push(full_name.trim());
   }
 
-  await pool.query('UPDATE users SET full_name = ? WHERE id = ?', [full_name.trim(), userId]);
+  if (email_notifications_enabled !== undefined) {
+    sets.push('email_notifications_enabled = ?');
+    params.push(email_notifications_enabled ? 1 : 0);
+  }
+
+  if (email_modification_notices_enabled !== undefined) {
+    sets.push('email_modification_notices_enabled = ?');
+    params.push(email_modification_notices_enabled ? 1 : 0);
+  }
+
+  if (!sets.length) {
+    throw new Error('No profile fields to update');
+  }
+
+  params.push(userId);
+  await pool.query(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`, params);
   return getMe(userId);
 };
 

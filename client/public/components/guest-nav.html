@@ -12,7 +12,10 @@
 
     <div class="lp-nav-actions guest-top-nav-actions flex items-center gap-1.5 sm:gap-2 shrink-0 z-[1] ml-auto">
       <div class="lp-nav-desktop-extras hidden lg:flex items-center gap-0.5">
-        <button type="button" id="notifications-btn" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all" aria-label="Notifications">notifications</button>
+        <button type="button" id="notifications-btn" class="guest-notif-btn text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all" aria-label="Notifications">
+          <span class="material-symbols-outlined text-[22px]">notifications</span>
+          <span class="guest-notif-dot hidden" aria-hidden="true"></span>
+        </button>
         <a href="/guest/settings.html" class="material-symbols-outlined text-on-surface-variant p-2 hover:bg-surface-container-low rounded-full transition-all no-underline" aria-label="Account settings">settings</a>
       </div>
 

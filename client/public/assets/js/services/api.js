@@ -96,6 +96,10 @@ export async function getAdminSummary() {
   return apiRequest('/stats/summary');
 }
 
+export async function getNotifications() {
+  return apiRequest('/notifications');
+}
+
 export async function getFiscalYear() {
   return apiRequest('/settings/fiscal-year');
 }

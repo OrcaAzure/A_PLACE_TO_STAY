@@ -90,14 +90,28 @@
             <div class="space-y-md">
                 <div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
                     <div>
-                        <p class="font-label-md text-label-md">Email Notifications</p>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant">Receive reservation confirmations via email.</p>
+                        <p class="font-label-md text-label-md">Email notifications</p>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">Confirmations, approvals, and booking status updates.</p>
                     </div>
                     <label class="relative inline-flex items-center cursor-pointer">
-                        <input checked="" class="sr-only peer" type="checkbox"/>
+                        <input id="pref-email-notifications" class="sr-only peer" type="checkbox" checked />
                         <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                     </label>
                 </div>
+                <div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
+                    <div>
+                        <p class="font-label-md text-label-md">Modification notices</p>
+                        <p class="font-body-sm text-body-sm text-on-surface-variant">When staff or you change dates, guests, or venue details.</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input id="pref-email-modifications" class="sr-only peer" type="checkbox" checked />
+                        <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+            </div>
+            <div id="notif-prefs-feedback" class="hidden mt-lg text-body-sm rounded-lg px-3 py-2"></div>
+            <div class="mt-xl pt-lg border-t border-outline-variant flex justify-end js-requires-write">
+                <button id="notif-prefs-save-btn" type="button" class="bg-primary text-on-primary px-xl py-md rounded-lg font-label-md text-label-md hover:opacity-95 shadow-md active:scale-95 transition-all">Save preferences</button>
             </div>
         </div>
     </section>
@@ -155,8 +169,9 @@
 
   const { readOnly } = applyRoleUI();
   if (readOnly) {
-    document.querySelectorAll('[data-guest-panel="profile"] input, [data-guest-panel="profile"] select, [data-guest-panel="security"] input')
+    document.querySelectorAll('[data-guest-panel="profile"] input, [data-guest-panel="profile"] select, [data-guest-panel="security"] input, [data-guest-panel="notifications"] input')
       .forEach((el) => { el.setAttribute('disabled', 'disabled'); });
+    document.getElementById('notif-prefs-save-btn')?.setAttribute('disabled', 'disabled');
   }
 
   initTabGroup({
