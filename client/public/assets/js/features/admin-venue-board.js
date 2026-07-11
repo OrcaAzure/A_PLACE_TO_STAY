@@ -58,9 +58,11 @@ function hasSlotCheck() {
 
 function formatRateLine(f) {
   const label = f.calendar_season || f.season || 'Regular';
-  const price = `₱${Number(f.rate).toLocaleString('en-PH')}`;
+  const prefix = f.rate_from ? 'From ' : '';
+  const price = `${prefix}₱${Number(f.rate).toLocaleString('en-PH')}`;
+  const uses = Number(f.uses_count) > 1 ? ` · ${f.uses_count} uses` : '';
   const unit = f.min_hours ? ` · ${f.min_hours}-hr min` : '/hr';
-  return `${label} · ${price}${unit}`;
+  return `${label} · ${price}${unit}${uses}`;
 }
 
 function spaceBadge(f) {

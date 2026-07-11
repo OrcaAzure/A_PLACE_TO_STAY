@@ -33,6 +33,8 @@ function venueKey(facility) {
   return `${facility.facility_group || ''}\x1f${facility.name || ''}\x1f${facility.room_code || ''}`;
 }
 
+export { venueKey };
+
 function toRate(value) {
   if (value === '' || value == null) return null;
   const n = Number(value);

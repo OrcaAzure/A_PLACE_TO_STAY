@@ -20,7 +20,8 @@ import {
   venueRateMeta,
   bookingDurationHours,
 } from '../services/facility.service.js';
-import { fetchFacilitiesWithRates, FACILITY_GROUP_ICONS } from '../services/facilityCatalog.service.js';
+import { fetchFacilitiesWithRates, FACILITY_GROUP_ICONS, formatFacilityLabel } from '../services/facilityCatalog.service.js';
+import { venueKey } from '../services/venueAdmin.service.js';
 import { sendGuestVenueSelfModifyEmail, sendVenueModifiedEmail } from '../services/email.service.js';
 import { notifyVenueBookingCancelled } from '../services/booking.service.js';
 
@@ -585,13 +586,52 @@ export const getVenueScheduleOverview = async (req, res) => {
     const byCategory = new Map();
     let noBookingsCount = 0;
     let freeForSlotCount = 0;
+    let totalSpaces = 0;
 
+    // Collapse package/use rows into one physical venue (group + name + room_code).
+    const byVenue = new Map();
     for (const space of venueCatalog) {
-      const resolved = await resolveVenueFacilityRowByFacilityId(space.id, date);
-      if (!resolved) continue;
+      const key = venueKey(space);
+      if (!byVenue.has(key)) {
+        byVenue.set(key, {
+          key,
+          name: space.name,
+          facility_group: space.facility_group,
+          room_code: space.room_code,
+          description: space.description,
+          icon: space.icon,
+          spaces: [],
+        });
+      }
+      byVenue.get(key).spaces.push(space);
+    }
 
-      const bookings = bookingsByFacility.get(space.id) || [];
-      bookings.sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)));
+    for (const venue of byVenue.values()) {
+      const facilityIds = venue.spaces.map((s) => s.id);
+      const resolvedRows = [];
+      for (const space of venue.spaces) {
+        const resolved = await resolveVenueFacilityRowByFacilityId(space.id, date);
+        if (resolved) resolvedRows.push(resolved);
+      }
+      if (!resolvedRows.length) continue;
+
+      const bookingMap = new Map();
+      for (const facilityId of facilityIds) {
+        for (const booking of bookingsByFacility.get(facilityId) || []) {
+          bookingMap.set(booking.id, booking);
+        }
+      }
+      const bookings = [...bookingMap.values()]
+        .sort((a, b) => String(a.start_time).localeCompare(String(b.start_time)));
+
+      const rates = resolvedRows.map((r) => Number(r.rate)).filter((n) => Number.isFinite(n));
+      const minRate = rates.length ? Math.min(...rates) : Number(resolvedRows[0].rate) || 0;
+      const rateFrom = rates.some((r) => r !== minRate);
+      const primary = resolvedRows[0];
+      const displayLabel = formatFacilityLabel({
+        room_code: venue.room_code,
+        name: venue.name,
+      });
 
       const is_free = bookings.length === 0;
       if (is_free) noBookingsCount += 1;
@@ -602,28 +642,31 @@ export const getVenueScheduleOverview = async (req, res) => {
         if (is_free_for_slot) freeForSlotCount += 1;
       }
 
-      const groupKey = space.facility_group || 'Facilities';
+      const groupKey = venue.facility_group || 'Facilities';
       if (!byCategory.has(groupKey)) {
         byCategory.set(groupKey, {
           category: groupKey,
-          icon: VENUE_CATEGORY_ICONS[groupKey] || space.icon || 'place',
+          icon: VENUE_CATEGORY_ICONS[groupKey] || venue.icon || 'place',
           facilities: [],
         });
       }
 
       byCategory.get(groupKey).facilities.push({
-        id: resolved.rate_id,
-        facility_id: space.id,
+        id: primary.rate_id,
+        facility_id: facilityIds[0],
+        facility_ids: facilityIds,
+        uses_count: venue.spaces.length,
         category: groupKey,
-        item: space.room_code || space.name,
-        label: space.label,
-        name: space.name,
-        room_code: space.room_code,
-        description: space.description,
-        season: resolved.season,
-        calendar_season: resolved.calendar_season,
-        rate: resolved.rate,
-        min_hours: resolved.min_hours,
+        item: venue.room_code || venue.name,
+        label: displayLabel,
+        name: venue.name,
+        room_code: venue.room_code,
+        description: venue.description,
+        season: primary.season,
+        calendar_season: primary.calendar_season,
+        rate: minRate,
+        rate_from: rateFrom,
+        min_hours: primary.min_hours,
         bookings: bookings.map((b) => ({
           ...b,
           conflicts_slot: slotValid ? bookingOverlapsSlot(b, checkStart, checkEnd) : false,
@@ -632,6 +675,7 @@ export const getVenueScheduleOverview = async (req, res) => {
         is_free_for_slot,
         has_pending: bookings.some((b) => b.status === 'Pending'),
       });
+      totalSpaces += 1;
     }
 
     const venues = [...byCategory.values()];
@@ -643,7 +687,7 @@ export const getVenueScheduleOverview = async (req, res) => {
       check_start: slotValid ? checkStart.slice(0, 5) : null,
       check_end: slotValid ? checkEnd.slice(0, 5) : null,
       summary: {
-        totalSpaces: venueCatalog.length,
+        totalSpaces,
         noBookingsToday: noBookingsCount,
         freeForSlot: slotValid ? freeForSlotCount : null,
         bookedToday: bookedCount,
