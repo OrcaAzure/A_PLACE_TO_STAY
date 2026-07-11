@@ -1,434 +1,236 @@
 /**
- * Admin dashboard — KPIs, activity feed, action queue, and building chart.
+ * Admin dashboard — calm, plain-language ops overview.
  */
 
-import {
-  getAdminSummary, getBookings, getGroups,
-  normalizeBooking, normalizeManageRequest, normalizeManageGroupRequest,
-} from '/assets/js/services/api.js';
-import { approveRequest, rejectRequest } from '/assets/js/features/booking-actions.js';
-import { showAlertModal } from '/assets/js/layout/ui.js';
-import { normStatus, escapeHtml, stayNights, formatDateLong } from '/assets/js/features/reservation-shared.js';
-import { animateStatCards, animateChartBars, staggerReveal, animateCountUp, revealPageContent } from '/assets/js/layout/animations.js';
+import { getAdminSummary } from '/assets/js/services/api.js';
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
+import { animateCountUp, revealPageContent, staggerReveal } from '/assets/js/layout/animations.js';
 
 function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
 }
 
-function formatPHP(amount) {
-  return `₱${Number(amount || 0).toLocaleString('en-PH', { maximumFractionDigits: 0 })}`;
-}
-
-function dateOnly(value) {
-  if (!value) return '';
-  const raw = String(value);
-  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
-  const d = new Date(raw);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toISOString().slice(0, 10);
-}
-
-function initials(name) {
-  if (!name) return '?';
-  return name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase();
-}
-
-function formatDateRange(start, end) {
-  const a = formatDateLong(dateOnly(start));
-  const b = formatDateLong(dateOnly(end));
-  return `${a} – ${b}`;
-}
-
-function statusPill(status) {
-  const s = normStatus(status);
-  const map = {
-    pending: 'dashboard-pill dashboard-pill--pending',
-    approved: 'dashboard-pill dashboard-pill--approved',
-    rejected: 'dashboard-pill dashboard-pill--rejected',
-    cancelled: 'dashboard-pill dashboard-pill--cancelled',
-  };
-  const label = s.charAt(0).toUpperCase() + s.slice(1);
-  return `<span class="${map[s] || map.pending}">${escapeHtml(label)}</span>`;
-}
-
-function relativeTime(iso) {
+function waitingLabel(iso) {
   if (!iso) return '';
   const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
+  const hrs = Math.floor(diff / 3600000);
+  if (hrs < 1) return 'Just now';
+  if (hrs < 24) return `${hrs}h waiting`;
+  return `${Math.floor(hrs / 24)}d waiting`;
 }
 
-function activityIcon(status) {
-  const s = normStatus(status);
-  const map = {
-    pending: { bg: 'bg-primary/10 text-primary', icon: 'person' },
-    approved: { bg: 'bg-emerald-50 text-emerald-700', icon: 'verified' },
-    rejected: { bg: 'bg-rose-50 text-rose-600', icon: 'cancel' },
-    cancelled: { bg: 'bg-slate-50 text-slate-500', icon: 'event_busy' },
-  };
-  return map[s] || map.pending;
+function kindLabel(kind) {
+  if (kind === 'venue') return 'Venue';
+  if (kind === 'group') return 'Group';
+  return 'Room';
 }
 
-function facilityLabelForBooking(b) {
-  if (b.kind === 'venue' || b.facility_name) {
-    return [b.facility_category, b.facility_name].filter(Boolean).join(' — ') || 'Venue space';
+function todayRows(rows, emptyText, href, mapRow) {
+  if (!rows.length) {
+    return `<p class="dashboard-today__empty">${escapeHtml(emptyText)}</p>`;
   }
-  const norm = normalizeBooking(b);
-  if (norm.facilityLabel && norm.facilityLabel !== `Booking #${norm.id}`) return norm.facilityLabel;
-  if (b.room_number || b.building_name) {
-    return b.room_number ? `Room ${b.room_number}` : (b.building_name || 'Room pending');
-  }
-  return 'Room not assigned yet';
-}
-
-function activityDateLabel(b) {
-  if (b.kind === 'venue' || b.event_date) {
-    return formatDateLong(String(b.event_date).slice(0, 10));
-  }
-  return formatDateRange(b.check_in, b.check_out);
-}
-
-function activityActionText(b, status, facility) {
-  const name = escapeHtml(b.guest_name || 'Guest');
-  const place = escapeHtml(facility);
-  const dates = escapeHtml(activityDateLabel(b));
-  if (status === 'pending') {
-    return `<span class="font-bold text-on-surface">${name}</span> requested <span class="font-semibold text-primary">${place}</span>`;
-  }
-  if (status === 'approved') {
-    return `<span class="font-bold text-on-surface">${name}</span> — <span class="font-semibold text-emerald-700">${place}</span> approved`;
-  }
-  if (status === 'cancelled') {
-    return `<span class="font-bold text-on-surface">${name}</span> cancelled <span class="font-semibold text-slate-600 line-through">${place}</span> <span class="text-on-surface-variant">(${dates})</span>`;
-  }
-  if (status === 'rejected') {
-    return `<span class="font-bold text-on-surface">Request denied:</span> ${place} (${name})`;
-  }
-  return `<span class="font-bold text-on-surface">${name}</span> — ${place} ${escapeHtml(status)}`;
-}
-
-function buildQueueItems(bookingsRaw, groupsRaw) {
-  const today = dateOnly(new Date());
-
-  const singles = (bookingsRaw || [])
-    .filter((b) => !b.group_id)
-    .filter((b) => {
-      const s = normStatus(b.status);
-      if (s === 'pending') return true;
-      if (s === 'approved' && dateOnly(b.check_out) >= today) return true;
-      return false;
-    })
-    .map((b) => ({
-      key: `b-${b.id}`,
-      type: 'single',
-      raw: b,
-      sortDate: dateOnly(b.check_in),
-      pending: normStatus(b.status) === 'pending',
-      name: b.guest_name || 'Unknown guest',
-      facility: facilityLabelForBooking(b),
-      checkIn: b.check_in,
-      checkOut: b.check_out,
-      guests: b.guest_count || 1,
-      status: b.status,
-      submittedAt: b.created_at || b.updated_at,
-    }));
-
-  const groups = (groupsRaw || [])
-    .filter((g) => {
-      const s = normStatus(g.status);
-      if (s === 'pending') return true;
-      if (s === 'approved' && dateOnly(g.check_out) >= today) return true;
-      return false;
-    })
-    .map((g) => ({
-      key: `g-${g.id}`,
-      type: 'group',
-      raw: g,
-      sortDate: dateOnly(g.check_in),
-      pending: normStatus(g.status) === 'pending',
-      name: g.group_name || g.contact_name || 'Group stay',
-      role: 'Group',
-      facility: `${g.rooms_requested ?? '?'} rooms requested`,
-      checkIn: g.check_in,
-      checkOut: g.check_out,
-      guests: g.total_guests || 1,
-      status: g.status,
-      submittedAt: g.created_at || g.updated_at,
-    }));
-
-  return [...singles, ...groups]
-    .sort((a, b) => {
-      if (a.pending !== b.pending) return a.pending ? -1 : 1;
-      return a.sortDate.localeCompare(b.sortDate);
-    });
-}
-
-function renderQueueItem(item) {
-  const nights = stayNights(item.checkIn, item.checkOut);
-
   return `
-    <article class="dashboard-queue-item${item.pending ? ' is-pending' : ''}" data-queue-key="${escapeHtml(item.key)}">
-      <div class="dashboard-queue-item__main">
-        <div class="dashboard-queue-item__avatar" aria-hidden="true">${escapeHtml(initials(item.name))}</div>
-        <div class="dashboard-queue-item__body">
-          <div class="dashboard-queue-item__head">
-            <h3 class="dashboard-queue-item__name">${escapeHtml(item.name)}</h3>
-            ${statusPill(item.status)}
-          </div>
-          <p class="dashboard-queue-item__facility">
-            <span class="material-symbols-outlined" aria-hidden="true">meeting_room</span>
-            ${escapeHtml(item.facility)}
-          </p>
-          <div class="dashboard-queue-item__meta">
-            <span><span class="material-symbols-outlined" aria-hidden="true">calendar_month</span>${escapeHtml(formatDateRange(item.checkIn, item.checkOut))}</span>
-            <span><span class="material-symbols-outlined" aria-hidden="true">group</span>${escapeHtml(String(item.guests))} guest${item.guests === 1 ? '' : 's'}${nights ? ` · ${nights} night${nights === 1 ? '' : 's'}` : ''}</span>
-          </div>
+    <ul class="dashboard-today__list">
+      ${rows.slice(0, 3).map((row) => `
+        <li>
+          <a href="${escapeHtml(href)}" class="dashboard-today__row">
+            <span class="dashboard-today__name">${escapeHtml(row.guest_name || 'Guest')}</span>
+            <span class="dashboard-today__place">${escapeHtml(mapRow(row))}</span>
+          </a>
+        </li>`).join('')}
+    </ul>
+    ${rows.length > 3 ? `<p class="dashboard-more">+${rows.length - 3} more</p>` : ''}`;
+}
+
+function renderTodayBoard(board = {}) {
+  const mount = document.getElementById('today-mount');
+  if (!mount) return;
+
+  const arriving = board.arriving || [];
+  const departing = board.departing || [];
+  const venues = board.venues || [];
+  const total = arriving.length + departing.length + venues.length;
+
+  setText('today-summary', total
+    ? `${arriving.length} coming in · ${departing.length} leaving`
+    : 'Nothing scheduled');
+
+  mount.innerHTML = `
+    <div class="dashboard-today">
+      <div class="dashboard-today__col">
+        <h3 class="dashboard-today__heading">Coming in</h3>
+        ${todayRows(arriving, 'None today', 'calendar.html', (r) => r.label || 'Room')}
+      </div>
+      <div class="dashboard-today__col">
+        <h3 class="dashboard-today__heading">Leaving</h3>
+        ${todayRows(departing, 'None today', 'calendar.html', (r) => r.label || 'Room')}
+      </div>
+      <div class="dashboard-today__col">
+        <h3 class="dashboard-today__heading">Events</h3>
+        ${todayRows(
+    venues,
+    'None today',
+    'calendar.html',
+    (r) => r.when_label || r.label || 'Venue'
+  )}
+      </div>
+    </div>`;
+}
+
+function renderActionQueue(items, kpis) {
+  const mount = document.getElementById('action-queue-mount');
+  if (!mount) return;
+
+  const summary = document.getElementById('queue-summary');
+  if (summary) {
+    summary.textContent = kpis.pending
+      ? `${kpis.pending} to review`
+      : 'Nothing waiting';
+  }
+
+  if (!items?.length) {
+    mount.innerHTML = `
+      <div class="dashboard-empty">
+        <p class="dashboard-empty__title">All caught up</p>
+        <p class="dashboard-empty__text">No guest requests need your review right now.</p>
+      </div>`;
+    return;
+  }
+
+  const shown = items.slice(0, 5);
+  mount.innerHTML = `
+    <div class="dashboard-action-list">
+      ${shown.map((item) => {
+        const wait = waitingLabel(item.submitted_at);
+        const urgent = item.submitted_at
+          && (Date.now() - new Date(item.submitted_at).getTime()) >= 24 * 3600000;
+        return `
+          <a href="${escapeHtml(item.href || 'reservations.html')}" class="dashboard-action-item${urgent ? ' is-urgent' : ''}">
+            <div class="dashboard-action-item__body">
+              <div class="dashboard-action-item__head">
+                <strong>${escapeHtml(item.guest_name || 'Guest')}</strong>
+                <span class="dashboard-action-item__kind">${escapeHtml(kindLabel(item.kind))}</span>
+              </div>
+              <p class="dashboard-action-item__label">${escapeHtml(item.label || '')}</p>
+              <p class="dashboard-action-item__meta">${escapeHtml(wait)}</p>
+            </div>
+          </a>`;
+      }).join('')}
+    </div>
+    ${items.length > 5 ? `<p class="dashboard-more"><a href="reservations.html?tab=pending">See ${items.length - 5} more</a></p>` : ''}`;
+
+  staggerReveal('.dashboard-action-item', mount).catch(() => {});
+}
+
+function renderHouse(kpis = {}, analytics = {}) {
+  const mount = document.getElementById('house-mount');
+  if (!mount) return;
+
+  const ready = Number(kpis.availableRooms) || 0;
+  const occupied = Number(kpis.occupiedRooms) || 0;
+  const repair = Number(kpis.maintenanceRooms) || 0;
+  const rate = Number(analytics.occupancyRate) || 0;
+  const circumference = 2 * Math.PI * 42;
+  const offset = circumference - (rate / 100) * circumference;
+
+  mount.innerHTML = `
+    <div class="dashboard-house">
+      <div class="dashboard-house__ring" aria-label="${rate} percent of rooms are occupied">
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          <circle class="dashboard-house__track" cx="50" cy="50" r="42" />
+          <circle class="dashboard-house__progress" cx="50" cy="50" r="42"
+            stroke-dasharray="${circumference.toFixed(1)}"
+            stroke-dashoffset="${offset.toFixed(1)}" />
+        </svg>
+        <div class="dashboard-house__ring-label">
+          <strong>${rate}%</strong>
+          <span>Full</span>
         </div>
       </div>
-      <div class="dashboard-queue-item__actions">
-        ${item.pending ? `
-          <button type="button" class="dashboard-queue-btn dashboard-queue-btn--approve queue-approve" data-queue-key="${escapeHtml(item.key)}" title="Approve request">
-            <span class="material-symbols-outlined" aria-hidden="true">check_circle</span>
-            Approve
-          </button>
-          <button type="button" class="dashboard-queue-btn dashboard-queue-btn--decline queue-reject" data-queue-key="${escapeHtml(item.key)}" title="Decline request">
-            <span class="material-symbols-outlined" aria-hidden="true">cancel</span>
-            Decline
-          </button>
-          <a href="reservations.html" class="dashboard-queue-btn dashboard-queue-btn--ghost">Review</a>
-        ` : `
-          <span class="dashboard-queue-item__upcoming-label">Upcoming stay</span>
-          <a href="reservations.html" class="dashboard-queue-btn dashboard-queue-btn--ghost">View</a>
-        `}
+      <div class="dashboard-house__stats">
+        <div class="dashboard-house__stat">
+          <strong>${ready}</strong>
+          <span>Ready</span>
+        </div>
+        <div class="dashboard-house__stat">
+          <strong>${occupied}</strong>
+          <span>In use</span>
+        </div>
+        <div class="dashboard-house__stat${repair ? ' is-warn' : ''}">
+          <strong>${repair}</strong>
+          <span>Repair</span>
+        </div>
       </div>
-    </article>`;
+    </div>`;
+}
+
+function renderHousekeepingLoad(days = [], analytics = {}) {
+  const mount = document.getElementById('load-mount');
+  if (!mount) return;
+
+  const turns = Number(analytics.turnoverWeek) || 0;
+  const peak = analytics.peakLoadDay;
+
+  setText('load-summary', turns
+    ? (peak ? `Busiest day: ${peak}` : 'Check-ins and check-outs')
+    : 'A quiet week ahead');
+
+  if (!days.length) {
+    mount.innerHTML = '<p class="dashboard-muted">Nothing to show yet.</p>';
+    return;
+  }
+
+  const max = Math.max(...days.map((d) => Number(d.turnover) || 0), 1);
+
+  mount.innerHTML = `
+    <div class="dashboard-load">
+      ${days.map((day) => {
+        const turnover = Number(day.turnover) || 0;
+        const h = Math.round((turnover / max) * 100);
+        return `
+          <div class="dashboard-load__day${day.is_today ? ' is-today' : ''}"
+            title="${escapeHtml(day.label)}: ${turnover} room move${turnover === 1 ? '' : 's'}">
+            <div class="dashboard-load__bars" aria-hidden="true">
+              <span class="dashboard-load__bar" style="height:${Math.max(h, turnover ? 14 : 3)}%"></span>
+            </div>
+            <p class="dashboard-load__total">${turnover}</p>
+            <p class="dashboard-load__label">${escapeHtml(day.label)}</p>
+          </div>`;
+      }).join('')}
+    </div>`;
+}
+
+function applyKpis(kpis, { animate = false } = {}) {
+  const values = [
+    ['kpi-pending', String(kpis.pending ?? 0)],
+    ['kpi-arriving', String(kpis.arrivingToday ?? 0)],
+    ['kpi-departing', String(kpis.departingToday ?? 0)],
+    ['kpi-unpaid', String(kpis.unpaidInvoices ?? 0)],
+  ];
+
+  if (!animate) {
+    values.forEach(([id, value]) => setText(id, value));
+    return Promise.resolve();
+  }
+
+  return Promise.all(values.map(([id, value]) => animateCountUp(document.getElementById(id), value)));
 }
 
 export async function loadDashboard({ background = false } = {}) {
   const summary = await getAdminSummary();
-  const { kpis, bookingUsage, recentActivity } = summary;
+  const { kpis, actionItems, todayBoard, weekOutlook, analytics } = summary;
 
-  setText('kpi-upcoming-label', 'Approved');
-  setText('kpi-rooms-available-label', `${kpis.availableRooms} ready`);
-  setText('kpi-maintenance-label', `${kpis.maintenanceRooms} in repair`);
-  setText('kpi-approval-rate', `${kpis.approvalRate}% rate`);
+  renderActionQueue(actionItems, kpis);
+  renderTodayBoard(todayBoard);
+  renderHouse(kpis, analytics || {});
+  renderHousekeepingLoad(weekOutlook || [], analytics || {});
 
   if (background) {
-    setText('kpi-upcoming', String(kpis.upcoming));
-    setText('kpi-pending-count', String(kpis.pending));
-    setText('kpi-approved', String(kpis.approved));
-    setText('kpi-total-rooms', String(kpis.totalRooms));
-    setText('kpi-occupancy', `${kpis.occupancyPct}%`);
-    setText('kpi-revenue', formatPHP(kpis.paidRevenue));
-    await renderBookingUsageChart(bookingUsage, { silent: true });
-    renderRecentActivity(recentActivity);
-    setText('chart-period-label', 'Last 30 days · rooms & venues');
+    await applyKpis(kpis, { animate: false });
     return;
   }
 
-  await animateStatCards();
-
-  await Promise.all([
-    animateCountUp(document.getElementById('kpi-upcoming'), String(kpis.upcoming)),
-    animateCountUp(document.getElementById('kpi-pending-count'), String(kpis.pending)),
-    animateCountUp(document.getElementById('kpi-approved'), String(kpis.approved)),
-    animateCountUp(document.getElementById('kpi-total-rooms'), String(kpis.totalRooms)),
-    animateCountUp(document.getElementById('kpi-occupancy'), `${kpis.occupancyPct}%`),
-    animateCountUp(document.getElementById('kpi-revenue'), formatPHP(kpis.paidRevenue)),
-  ]);
-
-  await renderBookingUsageChart(bookingUsage);
-  renderRecentActivity(recentActivity);
-
-  setText('chart-period-label', 'Last 30 days · rooms & venues');
+  await applyKpis(kpis, { animate: true });
   revealPageContent();
-}
-
-async function renderBookingUsageChart(bookingUsage, { silent = false } = {}) {
-  const mount = document.getElementById('booking-usage-chart-mount');
-  if (!mount) return;
-
-  if (!bookingUsage?.length) {
-    mount.innerHTML = '<p class="text-body-sm text-on-surface-variant absolute inset-0 flex items-center justify-center px-6 text-center">No room or facility bookings in the last 30 days yet.</p>';
-    return;
-  }
-
-  const max = Math.max(...bookingUsage.map((b) => Number(b.booking_count)), 1);
-
-  mount.innerHTML = bookingUsage.map((row) => {
-    const height = Math.round((Number(row.booking_count) / max) * 140);
-    const isRoom = row.kind === 'room';
-    const color = isRoom ? 'bg-primary' : 'bg-emerald-600';
-    const kindLabel = isRoom ? 'Rooms' : 'Venue';
-    const label = row.label || (isRoom ? 'Lodging' : 'Facility');
-    return `
-      <div class="flex-none w-[5.5rem] sm:flex-1 sm:min-w-0 flex flex-col items-center gap-2 group relative z-10">
-        <div class="w-full bg-surface-container rounded-t-lg relative overflow-hidden h-[180px]">
-          <div class="chart-bar absolute bottom-0 w-full ${color} rounded-t-lg" style="height: 0px;" data-height="${height}px" title="${row.booking_count} approved (30d)"></div>
-        </div>
-        <span class="text-[0.6875rem] font-bold uppercase tracking-wide ${isRoom ? 'text-primary' : 'text-emerald-700'}">${kindLabel}</span>
-        <span class="text-body-sm font-semibold text-on-surface-variant truncate max-w-full px-1 text-center" title="${escapeHtml(label)}">${escapeHtml(label)}</span>
-        <span class="text-body-sm text-on-surface-variant">${row.booking_count}</span>
-      </div>`;
-  }).join('');
-
-  if (silent) {
-    mount.querySelectorAll('.chart-bar').forEach((bar) => {
-      bar.style.height = bar.dataset.height || '0px';
-    });
-    return;
-  }
-
-  await animateChartBars('.chart-bar', mount);
-}
-
-function renderRecentActivity(bookingsRaw) {
-  const mount = document.getElementById('recent-activity-mount');
-  if (!mount) return;
-
-  if (!bookingsRaw?.length) {
-    mount.innerHTML = '<p class="text-body-sm text-on-surface-variant">No recent activity.</p>';
-    return;
-  }
-
-  mount.innerHTML = bookingsRaw.slice(0, 6).map((b) => {
-    const status = normStatus(b.status);
-    const { bg, icon } = activityIcon(status);
-    const facility = facilityLabelForBooking(b);
-    const action = activityActionText(b, status, facility);
-    const typeNote = b.kind === 'venue' ? ' · Venue' : '';
-
-    return `
-      <div class="flex gap-4${status === 'cancelled' ? ' opacity-90' : ''}">
-        <div class="w-11 h-11 rounded-full ${bg} flex items-center justify-center shrink-0">
-          <span class="material-symbols-outlined text-[1.35rem]">${icon}</span>
-        </div>
-        <div>
-          <p class="text-body-sm text-on-surface leading-relaxed">${action}</p>
-          <p class="text-body-sm text-on-surface-variant mt-1">${relativeTime(b.updated_at || b.created_at)}${typeNote}${status === 'cancelled' ? ' · <span class="font-semibold text-slate-600">Cancelled</span>' : ''}</p>
-        </div>
-      </div>`;
-  }).join('');
-
-  staggerReveal('#recent-activity-mount > div', document).catch(() => {});
-}
-
-async function renderQueue(kpis = {}) {
-  const mount = document.getElementById('queue-mount');
-  if (!mount) return;
-
-  mount.innerHTML = '<p class="dashboard-queue-loading">Loading reservation queue…</p>';
-
-  let bookingsRaw = [];
-  let groupsRaw = [];
-  try {
-    [bookingsRaw, groupsRaw] = await Promise.all([getBookings(), getGroups()]);
-  } catch (err) {
-    mount.innerHTML = `<p class="dashboard-queue-error">${escapeHtml(err.message || 'Could not load reservations.')}</p>`;
-    return;
-  }
-
-  const queue = buildQueueItems(bookingsRaw, groupsRaw);
-  const pending = queue.filter((q) => q.pending);
-  const upcoming = queue.filter((q) => !q.pending);
-
-  setText('queue-pending-count', String(pending.length));
-  setText('queue-upcoming-count', String(upcoming.length));
-
-  const summaryEl = document.getElementById('queue-summary');
-  if (summaryEl) {
-    if (!queue.length) {
-      summaryEl.textContent = 'No pending requests or upcoming stays right now.';
-    } else if (pending.length) {
-      summaryEl.textContent = `${pending.length} request${pending.length === 1 ? '' : 's'} need your approval · ${upcoming.length} upcoming approved stay${upcoming.length === 1 ? '' : 's'}`;
-    } else {
-      summaryEl.textContent = `${upcoming.length} upcoming approved stay${upcoming.length === 1 ? '' : 's'} — nothing waiting for approval`;
-    }
-  }
-
-  if (!queue.length) {
-    mount.innerHTML = `
-      <div class="dashboard-queue-empty">
-        <span class="material-symbols-outlined" aria-hidden="true">event_available</span>
-        <p class="dashboard-queue-empty__title">All clear</p>
-        <p class="dashboard-queue-empty__text">There are no pending guest requests and no upcoming approved stays on the calendar.</p>
-        <a href="reservations.html" class="btn-primary">Open Reservations</a>
-      </div>`;
-    return;
-  }
-
-  const sections = [];
-
-  if (pending.length) {
-    sections.push(`
-      <div class="dashboard-queue-section">
-        <h3 class="dashboard-queue-section__title">
-          <span class="material-symbols-outlined" aria-hidden="true">assignment_late</span>
-          Needs approval (${pending.length})
-        </h3>
-        <div class="dashboard-queue-list">
-          ${pending.map(renderQueueItem).join('')}
-        </div>
-      </div>`);
-  }
-
-  if (upcoming.length) {
-    sections.push(`
-      <div class="dashboard-queue-section">
-        <h3 class="dashboard-queue-section__title dashboard-queue-section__title--muted">
-          <span class="material-symbols-outlined" aria-hidden="true">upcoming</span>
-          Upcoming approved (${upcoming.length})
-        </h3>
-        <div class="dashboard-queue-list">
-          ${upcoming.map(renderQueueItem).join('')}
-        </div>
-      </div>`);
-  }
-
-  mount.innerHTML = sections.join('');
-
-  const queueByKey = Object.fromEntries(queue.map((q) => [q.key, q]));
-
-  mount.querySelectorAll('.queue-approve').forEach((btn) => {
-    btn.addEventListener('click', () => handleQueueApprove(queueByKey[btn.dataset.queueKey]));
-  });
-  mount.querySelectorAll('.queue-reject').forEach((btn) => {
-    btn.addEventListener('click', () => handleQueueReject(queueByKey[btn.dataset.queueKey]));
-  });
-}
-
-async function handleQueueApprove(item) {
-  if (!item) return;
-  try {
-    const request = item.type === 'group'
-      ? normalizeManageGroupRequest(item.raw)
-      : normalizeManageRequest(item.raw);
-    const approved = await approveRequest(request);
-    if (!approved) return;
-    await loadDashboard();
-    window.dispatchEvent(new CustomEvent('booking:updated'));
-  } catch (err) {
-    await showAlertModal('Could not approve request', err.message || 'Could not approve this request.');
-  }
-}
-
-async function handleQueueReject(item) {
-  if (!item) return;
-  const name = item.name;
-  if (!window.confirm(`Decline this request for ${name}?`)) return;
-  try {
-    const request = item.type === 'group'
-      ? normalizeManageGroupRequest(item.raw)
-      : normalizeManageRequest(item.raw);
-    await rejectRequest(request, '');
-    await loadDashboard();
-    window.dispatchEvent(new CustomEvent('booking:updated'));
-  } catch (err) {
-    await showAlertModal('Could not decline request', err.message || 'Could not decline this request.');
-  }
 }

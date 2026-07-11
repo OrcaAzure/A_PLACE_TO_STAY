@@ -14,103 +14,86 @@
   <link rel="stylesheet" href="/assets/css/global/responsive.css" />
   <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
   <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
-  <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
-  <link rel="stylesheet" href="/assets/css/features/admin-crud-modal.css" />
   <link rel="stylesheet" href="/assets/css/features/dashboard-queue.css" />
 </head>
 <body>
 
-  <div id="page-content">
+  <div id="page-content" class="dashboard-page">
 
-    <section class="kpi-grid kpi-grid--6" data-no-page-enter>
-      <article class="kpi-card">
-        <div class="flex justify-between items-start mb-2">
-          <div class="p-2.5 bg-primary/10 text-primary rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[1.35rem]">calendar_today</span>
-          </div>
-          <span class="kpi-badge bg-primary/10 text-primary" id="kpi-upcoming-label">Live</span>
-        </div>
-        <p class="kpi-label">Upcoming Stays</p>
-        <p class="kpi-value" id="kpi-upcoming">—</p>
-      </article>
-      <article class="kpi-card">
-        <div class="flex justify-between items-start mb-2">
-          <div class="p-2.5 bg-secondary/10 text-secondary rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[1.35rem]">assignment_late</span>
-          </div>
-          <span class="kpi-badge bg-secondary/10 text-secondary">Action needed</span>
-        </div>
-        <p class="kpi-label">Pending Requests</p>
-        <p class="kpi-value" id="kpi-pending-count">—</p>
-      </article>
-      <article class="kpi-card">
-        <div class="flex justify-between items-start mb-2">
-          <div class="p-2.5 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[1.35rem]">verified</span>
-          </div>
-          <span class="kpi-badge bg-emerald-50 text-emerald-700" id="kpi-approval-rate">—</span>
-        </div>
-        <p class="kpi-label">Approved Total</p>
-        <p class="kpi-value" id="kpi-approved">—</p>
-      </article>
-      <article class="kpi-card">
-        <div class="flex justify-between items-start mb-2">
-          <div class="p-2.5 bg-surface-container text-on-surface-variant rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[1.35rem]">meeting_room</span>
-          </div>
-          <span class="kpi-badge bg-surface-container text-on-surface-variant" id="kpi-rooms-available-label">—</span>
-        </div>
-        <p class="kpi-label">Total Rooms</p>
-        <p class="kpi-value" id="kpi-total-rooms">—</p>
-      </article>
-      <article class="kpi-card">
-        <div class="flex justify-between items-start mb-2">
-          <div class="p-2.5 bg-emerald-50 text-emerald-700 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[1.35rem]">bed</span>
-          </div>
-          <span class="kpi-badge bg-emerald-50 text-emerald-700" id="kpi-maintenance-label">—</span>
-        </div>
-        <p class="kpi-label">Occupancy</p>
-        <p class="kpi-value" id="kpi-occupancy">—</p>
-      </article>
-      <article class="kpi-card">
-        <div class="flex justify-between items-start mb-2">
-          <div class="p-2.5 bg-amber-50 text-amber-700 rounded-lg flex items-center justify-center">
-            <span class="material-symbols-outlined text-[1.35rem]">payments</span>
-          </div>
-          <span class="kpi-badge bg-amber-50 text-amber-700" id="kpi-revenue-label">Collected</span>
-        </div>
-        <p class="kpi-label">Paid Revenue</p>
-        <p class="kpi-value" id="kpi-revenue">—</p>
-      </article>
+    <section class="dashboard-kpi-row" data-no-page-enter>
+      <a href="reservations.html?tab=pending" class="dashboard-kpi dashboard-kpi--amber">
+        <p class="dashboard-kpi__label">Waiting</p>
+        <p class="dashboard-kpi__value" id="kpi-pending">—</p>
+      </a>
+      <a href="reservations.html?tab=rooms" class="dashboard-kpi dashboard-kpi--blue">
+        <p class="dashboard-kpi__label">Coming in</p>
+        <p class="dashboard-kpi__value" id="kpi-arriving">—</p>
+      </a>
+      <a href="reservations.html?tab=rooms" class="dashboard-kpi dashboard-kpi--slate">
+        <p class="dashboard-kpi__label">Leaving</p>
+        <p class="dashboard-kpi__value" id="kpi-departing">—</p>
+      </a>
+      <a href="payments.html" class="dashboard-kpi dashboard-kpi--rose">
+        <p class="dashboard-kpi__label">Unpaid</p>
+        <p class="dashboard-kpi__value" id="kpi-unpaid">—</p>
+      </a>
     </section>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start" data-no-page-enter>
-      <section class="lg:col-span-2 admin-panel">
-        <div class="admin-panel-header">
+    <div class="dashboard-split" data-no-page-enter>
+      <section class="dashboard-card">
+        <header class="dashboard-card__head">
           <div>
-            <h2>Rooms &amp; Facilities Booked</h2>
-            <p>Approved lodging and venue bookings (last 30 days)</p>
+            <h2>Waiting for you</h2>
+            <p id="queue-summary">Guest requests to review</p>
           </div>
-          <span class="text-body-sm text-on-surface-variant font-medium px-3 py-2 bg-surface-container-low rounded-lg border border-outline-variant" id="chart-period-label">Loading…</span>
-        </div>
-        <div class="admin-panel-body h-[340px] relative flex items-end justify-between gap-3 overflow-x-auto" id="booking-usage-chart-mount">
-          <p class="text-body-sm text-on-surface-variant absolute inset-0 flex items-center justify-center">Loading bookings…</p>
+          <a href="reservations.html?tab=pending" class="dashboard-card__link">See all</a>
+        </header>
+        <div class="dashboard-card__body" id="action-queue-mount">
+          <p class="dashboard-muted">Loading…</p>
         </div>
       </section>
-      <section class="admin-panel flex flex-col">
-        <div class="admin-panel-header">
-          <h2>Recent Activity</h2>
-          <a href="calendar.html" class="text-primary font-bold text-body-sm hover:underline">View calendar</a>
-        </div>
-        <div class="admin-panel-body space-y-5" id="recent-activity-mount">
-          <p class="text-body-sm text-on-surface-variant">Loading activity…</p>
+
+      <section class="dashboard-card">
+        <header class="dashboard-card__head">
+          <div>
+            <h2>Today</h2>
+            <p id="today-summary">Who is coming and going</p>
+          </div>
+          <a href="calendar.html" class="dashboard-card__link">Calendar</a>
+        </header>
+        <div class="dashboard-card__body" id="today-mount">
+          <p class="dashboard-muted">Loading…</p>
         </div>
       </section>
     </div>
 
-    <div id="action-cards-mount" class="hidden"></div>
-    <div id="timeline-mount" class="hidden"></div>
+    <div class="dashboard-analytics-row" data-no-page-enter>
+      <section class="dashboard-card">
+        <header class="dashboard-card__head">
+          <div>
+            <h2>Your rooms</h2>
+            <p>How full the house is</p>
+          </div>
+          <a href="facilities.html?tab=rooms" class="dashboard-card__link">Manage</a>
+        </header>
+        <div class="dashboard-card__body" id="house-mount">
+          <p class="dashboard-muted">Loading…</p>
+        </div>
+      </section>
+
+      <section class="dashboard-card">
+        <header class="dashboard-card__head">
+          <div>
+            <h2>This week</h2>
+            <p id="load-summary">Rooms turning over each day</p>
+          </div>
+        </header>
+        <div class="dashboard-card__body" id="load-mount">
+          <p class="dashboard-muted">Loading…</p>
+        </div>
+      </section>
+    </div>
+
   </div>
 
   <script type="module">
@@ -128,7 +111,7 @@
       portal:     'admin',
       activePage: 'dashboard',
       title:      'Dashboard',
-      subtitle:   'Overview of bookings and activity',
+      subtitle:   'A simple look at today',
       deferEnhancements: true,
     });
 
