@@ -1,8 +1,8 @@
-# How to Run AptSpace (Server Guide)
+# How to Run APTSpace (Server Guide)
 
-Hi! This guide is for **running the AptSpace server on your computer**. You do not need to write code — just follow the steps below.
+Hi! This guide is for **running the APTSpace server on your computer**. You do not need to write code — just follow the steps below.
 
-AptSpace is the APTS housing and room booking web app. Once the server is running, open it in Chrome or Edge.
+APTSpace is the APTS housing and room booking web app. Once the server is running, open it in Chrome or Edge.
 
 ---
 
@@ -246,4 +246,4 @@ APSTPACE/
 
 ---
 
-*AptSpace — Asia Pacific Theological Seminary · housing & accommodation management*
+*APTSpace — Asia Pacific Theological Seminary · housing & accommodation management*

@@ -199,7 +199,7 @@ function emailFooter({ includePayment = false } = {}) {
   return `
     ${paymentBlock}
     <p style="margin:1.25rem 0 0.5rem;">
-      <a href="${appUrl}/guest/reservations.html">View your reservations in AptSpace</a>
+      <a href="${appUrl}/guest/reservations.html">View your reservations in APTSpace</a>
     </p>
     <p style="margin:0.5rem 0 0;color:#718096;font-size:0.9em;">
       Questions? Contact Housing at <a href="mailto:${support}">${support}</a>.
@@ -407,9 +407,9 @@ export async function sendGuestAccessEmail(user, tempPassword) {
   const appUrl = process.env.APP_URL || 'http://localhost:3000';
   return sendMail({
     to: user.email,
-    subject: 'Your AptSpace Guest Access — APTS Housing',
+    subject: 'Your APTSpace Guest Access — APTS Housing',
     html: `
-      <h2>Welcome to AptSpace, ${name}</h2>
+      <h2>Welcome to APTSpace, ${name}</h2>
       <p>The APTS Housing Department has created a guest account for you. You can now log in and submit reservation requests online.</p>
       <p><strong>Login email:</strong> ${user.email}</p>
       <p><strong>Temporary password:</strong> ${tempPassword}</p>
@@ -432,7 +432,7 @@ export async function sendBookingRequestReceivedEmail(user, booking) {
   return sendMail({
     to: user.email || user.guest_email,
     prefType: 'general',
-    subject: `Reservation request received ${details.reference || ''} — AptSpace`.trim(),
+    subject: `Reservation request received ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>Reservation Request Received</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -459,7 +459,7 @@ export async function sendBookingConfirmationEmail(user, booking) {
   return sendMail({
     to: user.email || user.guest_email,
     prefType: 'general',
-    subject: `Reservation confirmed ${details.reference || ''} — AptSpace`.trim(),
+    subject: `Reservation confirmed ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>Reservation Confirmed</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -471,7 +471,7 @@ export async function sendBookingConfirmationEmail(user, booking) {
       ${emailSection('Before check-in', emailDetailList([
         emailDetailItem('Arrival', 'Please arrive on your check-in date. Contact Housing if your plans change.'),
         emailDetailItem('Payment', 'Settle the amount due at the Housing office (Cash, GCash, or Bank Transfer).'),
-        emailDetailItem('Changes', 'Log in to AptSpace to view your reservation or submit a modification request.'),
+        emailDetailItem('Changes', 'Log in to APTSpace to view your reservation or submit a modification request.'),
       ].filter(Boolean)))}
       ${emailFooter({ includePayment: true })}
     `,
@@ -493,7 +493,7 @@ export async function sendRoomBookingCancelledEmail(user, booking, { cancelledBy
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
     prefType: 'general',
-    subject: `Room reservation cancelled${ref} — AptSpace`.trim(),
+    subject: `Room reservation cancelled${ref} — APTSpace`.trim(),
     html: `
       <h2>Room Reservation Cancelled</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -519,7 +519,7 @@ export async function sendVenueBookingCancelledEmail(user, booking, { cancelledB
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
     prefType: 'general',
-    subject: `Venue booking cancelled${ref ? ` ${ref}` : ''} — AptSpace`.trim(),
+    subject: `Venue booking cancelled${ref ? ` ${ref}` : ''} — APTSpace`.trim(),
     html: `
       <h2>Venue Booking Cancelled</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -546,7 +546,7 @@ export async function sendGroupBookingCancelledEmail(user, group, { cancelledByG
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
     prefType: 'general',
-    subject: `Group reservation cancelled${ref} — AptSpace`.trim(),
+    subject: `Group reservation cancelled${ref} — APTSpace`.trim(),
     html: `
       <h2>Group Reservation Cancelled</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -591,8 +591,8 @@ export async function sendGuestRoomSelfModifyEmail(user, booking, {
     to: resolveGuestRecipientEmail({ user, booking }),
     prefType: 'general',
     subject: wasApproved
-      ? `Modification request received ${details.reference || ''} — AptSpace`.trim()
-      : `Reservation updated ${details.reference || ''} — AptSpace`.trim(),
+      ? `Modification request received ${details.reference || ''} — APTSpace`.trim()
+      : `Reservation updated ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>${wasApproved ? 'Modification Request Received' : 'Reservation Updated'}</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -625,8 +625,8 @@ export async function sendGuestGroupSelfModifyEmail(user, group, {
     to: resolveGuestRecipientEmail({ user, group }),
     prefType: 'general',
     subject: wasApproved
-      ? `Group modification request received ${details.reference || ''} — AptSpace`.trim()
-      : `Group reservation updated ${details.reference || ''} — AptSpace`.trim(),
+      ? `Group modification request received ${details.reference || ''} — APTSpace`.trim()
+      : `Group reservation updated ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>${wasApproved ? 'Group Modification Request Received' : 'Group Reservation Updated'}</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -670,8 +670,8 @@ export async function sendGuestVenueSelfModifyEmail(user, booking, {
     to: resolveGuestRecipientEmail({ user, booking }),
     prefType: 'general',
     subject: wasApproved
-      ? `Venue modification request received${ref ? ` ${ref}` : ''} — AptSpace`.trim()
-      : `Venue booking updated${ref ? ` ${ref}` : ''} — AptSpace`.trim(),
+      ? `Venue modification request received${ref ? ` ${ref}` : ''} — APTSpace`.trim()
+      : `Venue booking updated${ref ? ` ${ref}` : ''} — APTSpace`.trim(),
     html: `
       <h2>${wasApproved ? 'Venue Modification Request Received' : 'Venue Booking Updated'}</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -711,8 +711,8 @@ export async function sendPaymentReceiptEmail(user, payment) {
     to: user.email || user.guest_email,
     prefType: 'general',
     subject: isVenue
-      ? `Venue payment confirmed${invoiceRef ? ` ${invoiceRef}` : ''} — AptSpace`.trim()
-      : `Housing payment confirmed${invoiceRef ? ` ${invoiceRef}` : ''} — AptSpace`.trim(),
+      ? `Venue payment confirmed${invoiceRef ? ` ${invoiceRef}` : ''} — APTSpace`.trim()
+      : `Housing payment confirmed${invoiceRef ? ` ${invoiceRef}` : ''} — APTSpace`.trim(),
     html: `
       <h2>${isVenue ? 'Venue Payment Confirmed' : 'Housing Payment Confirmed'}</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -751,7 +751,7 @@ export async function sendVenueInvoiceEmail(user, payment) {
   return sendMail({
     to: user.email || user.guest_email,
     prefType: 'general',
-    subject: `Venue booking confirmed #${payment.id} — ${payment.facility_name || 'Facility'} | AptSpace`,
+    subject: `Venue booking confirmed #${payment.id} — ${payment.facility_name || 'Facility'} | APTSpace`,
     html: `
       <h2>Venue Booking Confirmed</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -799,7 +799,7 @@ export async function sendVenueModifiedEmail(user, booking, {
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
     prefType: 'modification',
-    subject: `Venue booking updated${ref ? ` ${ref}` : ''} — AptSpace`.trim(),
+    subject: `Venue booking updated${ref ? ` ${ref}` : ''} — APTSpace`.trim(),
     html: `
       <h2>Venue Booking Updated</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -832,7 +832,7 @@ export async function sendBookingModifiedEmail(user, booking, { message, previou
   return sendMail({
     to: user.email || user.guest_email,
     prefType: 'modification',
-    subject: `Reservation updated ${details.reference || ''} — AptSpace`.trim(),
+    subject: `Reservation updated ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>Reservation Updated</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -858,7 +858,7 @@ export async function sendGroupConfirmationEmail(user, group) {
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
     prefType: 'general',
-    subject: `Group reservation confirmed ${details.reference || ''} — AptSpace`.trim(),
+    subject: `Group reservation confirmed ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>Group Reservation Confirmed</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -883,7 +883,7 @@ export async function sendGroupModifiedEmail(user, group, { message, previousChe
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
     prefType: 'modification',
-    subject: `Group reservation updated ${details.reference || ''} — AptSpace`.trim(),
+    subject: `Group reservation updated ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>Group Reservation Updated</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -912,7 +912,7 @@ export async function sendSupportMessageEmail({ guestName, guestEmail, subject, 
   return sendMail({
     to,
     replyTo: guestEmail || undefined,
-    subject: `[AptSpace Support] ${subject}`,
+    subject: `[APTSpace Support] ${subject}`,
     text: [
       `From: ${guestName || 'Guest'} <${guestEmail || 'unknown'}>`,
       page ? `Page: ${page}` : '',
@@ -935,7 +935,7 @@ export async function sendPasswordResetEmail(user, resetLink) {
   const name = user.full_name || 'User';
   return sendMail({
     to: user.email,
-    subject: 'Reset Your AptSpace Password',
+    subject: 'Reset Your APTSpace Password',
     html: `
       <h2>Password Reset Request</h2>
       <p>Hi ${name},</p>

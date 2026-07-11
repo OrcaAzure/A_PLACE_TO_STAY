@@ -1,5 +1,5 @@
 /**
- * AptSpace GSAP animation API
+ * APTSpace GSAP animation API
  * Chrome (sidebar + header) stays static — only page content animates.
  */
 

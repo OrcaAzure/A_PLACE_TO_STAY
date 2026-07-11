@@ -1,6 +1,6 @@
 /**
  * Landing welcome after the greeting preloader.
- * Preloader → "Welcome to AptSpace" → landing page.
+ * Preloader → "Welcome to APTSpace" → landing page.
  */
 
 const IDLE_LOTTIE_SRC = '/assets/animations/idle-magnifier-animation.lottie';
@@ -116,7 +116,7 @@ function buildWelcomeOverlay() {
   el.className = 'lp-welcome is-entering';
   el.setAttribute('role', 'status');
   el.setAttribute('aria-live', 'polite');
-  el.setAttribute('aria-label', 'Welcome to AptSpace');
+  el.setAttribute('aria-label', 'Welcome to APTSpace');
   el.innerHTML = `
     <div class="lp-welcome__bg-grid" aria-hidden="true"></div>
     <div class="lp-welcome__bg-smoke" aria-hidden="true">
@@ -129,7 +129,7 @@ function buildWelcomeOverlay() {
         <div class="lp-welcome__search-zone">
           <div class="lp-welcome__search-text">
             <p class="lp-welcome__title-line">Welcome to</p>
-            <h1 class="lp-welcome__brand" aria-label="AptSpace">
+            <h1 class="lp-welcome__brand" aria-label="APTSpace">
               <span class="lp-welcome__apts">APTS</span><span class="lp-welcome__pace">pace</span>
             </h1>
           </div>

@@ -9,7 +9,7 @@ const logsDir = path.join(root, 'client/server/logs');
 
 fs.mkdirSync(logsDir, { recursive: true });
 
-console.log('AptSpace staging setup\n');
+console.log('APTSpace staging setup\n');
 console.log('This does NOT change your local dev .env — npm run dev still uses client/server/.env\n');
 
 if (!fs.existsSync(target)) {

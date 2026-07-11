@@ -1,5 +1,5 @@
 /**
- * AptSpace API client — auth via httpOnly cookie (credentials: include).
+ * APTSpace API client — auth via httpOnly cookie (credentials: include).
  */
 export const API_URL = `${window.location.origin}/api`;
 

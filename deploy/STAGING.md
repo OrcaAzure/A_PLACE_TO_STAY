@@ -1,4 +1,4 @@
-# Staging readiness — AptSpace
+# Staging readiness — APTSpace
 
 Use this while still developing locally. **Local dev is unchanged.**
 

@@ -7,7 +7,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const example = path.join(root, '.env.staging.local.example');
 const target = path.join(root, 'client/server/.env.staging.local');
 
-console.log('AptSpace — local staging practice setup\n');
+console.log('APTSpace — local staging practice setup\n');
 
 let content = fs.readFileSync(example, 'utf8');
 

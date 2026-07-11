@@ -1,6 +1,6 @@
-# AptSpace
+# APTSpace
 
-AptSpace is a web-based housing and accommodation management system for Asia Pacific Theological Seminary (APTS).
+APTSpace is a web-based housing and accommodation management system for Asia Pacific Theological Seminary (APTS).
 
 **New to the project and need to run the server?** → see **[RUN-SERVER.md](RUN-SERVER.md)** (step-by-step guide for teammates).
 

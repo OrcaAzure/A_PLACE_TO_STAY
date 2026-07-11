@@ -2,7 +2,7 @@
  * Landing page preloader:
  * 1) Greetings on white (no circle)
  * 2) Namaste → Welcome finale with proper holds
- * 3) Circle wipe into AptSpace welcome screen
+ * 3) Circle wipe into APTSpace welcome screen
  */
 
 const CYCLE_MS = 420;

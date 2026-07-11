@@ -78,7 +78,7 @@ if (!fs.existsSync(stagingEnv)) {
   }
 }
 
-console.log('\nAptSpace staging config verification\n');
+console.log('\nAPTSpace staging config verification\n');
 for (const c of checks) {
   console.log(`${c.ok ? '✓' : '✗'} ${c.msg}`);
 }

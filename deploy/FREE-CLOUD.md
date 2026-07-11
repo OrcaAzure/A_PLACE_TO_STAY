@@ -1,4 +1,4 @@
-# Free cloud server practice — AptSpace
+# Free cloud server practice — APTSpace
 
 Practice real deployment before APTS IT gives you access. **Local dev (`npm run dev`) is unchanged.**
 

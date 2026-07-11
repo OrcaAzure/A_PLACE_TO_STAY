@@ -59,7 +59,7 @@ export const GUEST_NEW_RESERVATION_FOOTER = `
   </div>`;
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v19';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v20';
 const COMPONENT_FETCH_MS = 10000;
 const BOOT_LOADER_ID = 'apt-boot-loader';
 const SHELL_BOOT_TIMEOUT_MS = 8000;
@@ -79,12 +79,12 @@ function ensureBootLoader() {
     loader.className = 'apt-boot-loader';
     loader.setAttribute('role', 'status');
     loader.setAttribute('aria-live', 'polite');
-    loader.setAttribute('aria-label', 'Loading AptSpace');
+    loader.setAttribute('aria-label', 'Loading APTSpace');
     loader.innerHTML = `
       <div class="apt-boot-loader__inner">
         <div class="apt-boot-loader__spinner" aria-hidden="true"></div>
         <p class="apt-boot-loader__text">
-          Loading AptSpace
+          Loading APTSpace
           <span class="apt-boot-loader__dots" aria-hidden="true">
             <span>.</span><span>.</span><span>.</span>
           </span>

@@ -1,5 +1,5 @@
 -- ============================================
--- AptSpace Database Schema v2
+-- APTSpace Database Schema v2
 -- ============================================
 
 CREATE DATABASE IF NOT EXISTS aptspace;

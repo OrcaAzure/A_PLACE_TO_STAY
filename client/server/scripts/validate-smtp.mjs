@@ -9,7 +9,7 @@ import { SMTP_USER, SMTP_PASS, SMTP_FROM } from '../src/config/env.js';
 
 const sendTest = process.argv.includes('--send-test');
 
-console.log('=== AptSpace SMTP validation ===\n');
+console.log('=== APTSpace SMTP validation ===\n');
 console.log('Configured:      ', isSmtpConfigured());
 console.log('Dev mode:        ', isEmailDevMode());
 console.log('From matches user:', SMTP_USER === SMTP_FROM);
@@ -33,8 +33,8 @@ if (sendTest) {
   const info = await transport.sendMail({
     from: SMTP_FROM,
     to: SMTP_USER,
-    subject: 'AptSpace — SMTP test OK',
-    html: '<p>Gmail SMTP is working. AptSpace can send housing invoices automatically.</p>',
+    subject: 'APTSpace — SMTP test OK',
+    html: '<p>Gmail SMTP is working. APTSpace can send housing invoices automatically.</p>',
   });
   console.log('Test email sent: ', SMTP_USER);
   console.log('Message ID:      ', info.messageId || '(ok)');

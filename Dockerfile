@@ -1,4 +1,4 @@
-# AptSpace — production-style container (practice / cloud deploy)
+# APTSpace — production-style container (practice / cloud deploy)
 FROM node:22-alpine
 
 WORKDIR /app

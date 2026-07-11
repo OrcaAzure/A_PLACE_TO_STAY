@@ -1,7 +1,7 @@
 {
   "name": "aptspace",
   "private": true,
-  "description": "AptSpace — APTS housing and facility management",
+  "description": "APTSpace — APTS housing and facility management",
   "scripts": {
     "dev": "npm run dev --prefix client/server",
     "start": "npm start --prefix client/server",

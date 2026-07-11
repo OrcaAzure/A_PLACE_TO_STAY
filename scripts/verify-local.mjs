@@ -49,7 +49,7 @@ if (fs.existsSync(envPath)) {
   }
 }
 
-console.log('\nAptSpace local verification\n');
+console.log('\nAPTSpace local verification\n');
 for (const c of checks) {
   console.log(`${c.ok ? '✓' : '✗'} ${c.msg}`);
 }

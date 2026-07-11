@@ -1,5 +1,5 @@
 /**
- * AptSpace landing page — GSAP entrance + scroll animations
+ * APTSpace landing page — GSAP entrance + scroll animations
  */
 
 const GSAP_URL = 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js';

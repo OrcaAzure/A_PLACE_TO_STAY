@@ -1,5 +1,5 @@
 /**
- * AptSpace design system — shared Tailwind theme tokens
+ * APTSpace design system — shared Tailwind theme tokens
  * Primary: #1A365D | Secondary: #A81D23 | Tertiary: #F8FAFC | Neutral: #4A5568
  */
 window.APTSPACE_THEME_EXTEND = {
