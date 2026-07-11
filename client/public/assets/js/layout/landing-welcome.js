@@ -130,7 +130,7 @@ function buildWelcomeOverlay() {
           <div class="lp-welcome__search-text">
             <p class="lp-welcome__title-line">Welcome to</p>
             <h1 class="lp-welcome__brand" aria-label="AptSpace">
-              <span class="lp-welcome__apt">Apt</span><span class="lp-welcome__space">Space</span>
+              <span class="lp-welcome__apts">APTS</span><span class="lp-welcome__pace">pace</span>
             </h1>
           </div>
           <div class="lp-welcome__icon-track" aria-hidden="true">
@@ -215,6 +215,3 @@ export async function runLandingWelcome() {
   welcome.remove();
   document.body.classList.remove('lp-welcome-active');
 }
-
-/** @deprecated Use runLandingWelcome */
-export const runLandingIdleWelcome = runLandingWelcome;

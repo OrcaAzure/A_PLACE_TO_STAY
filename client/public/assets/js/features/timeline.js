@@ -782,9 +782,6 @@ export function openBookingModal(rawBooking, { onRefresh } = {}) {
   bindDetailActions(onRefresh || (() => {}));
 }
 
-/** @deprecated Use openBookingModal */
-export const openBookingDrawer = openBookingModal;
-
 function renderVenueDetailBody(raw, { busy = false, error = '' } = {}) {
   const b = normalizeFacilityBooking(raw);
   const pending = normStatus(b.status) === 'pending';

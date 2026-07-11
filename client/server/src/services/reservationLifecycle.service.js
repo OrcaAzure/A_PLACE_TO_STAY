@@ -158,12 +158,6 @@ export async function getGuestCancellationCutoffHours() {
   return Number(settings.guest_cancellation_cutoff_hours);
 }
 
-/** @deprecated Use getGuestCancellationCutoffHours */
-export async function getGuestCancellationCutoffDays() {
-  const hours = await getGuestCancellationCutoffHours();
-  return Math.ceil(hours / 24);
-}
-
 export async function getCancellationPolicyLabel() {
   const settings = await getFiscalYearSettings();
   return formatCancellationPolicyLabel(settings.guest_cancellation_cutoff_hours);

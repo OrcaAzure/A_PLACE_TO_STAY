@@ -44,6 +44,13 @@ async function boot() {
   const params = new URLSearchParams(window.location.search);
   const previewIdle = params.has('previewIdle') || params.get('idle') === 'preview';
 
+  try {
+    const { mountPublicLandingContent } = await import('/assets/js/layout/landing-content.js');
+    await mountPublicLandingContent();
+  } catch (err) {
+    console.error('[landing] content mount failed:', err);
+  }
+
   if (previewIdle) {
     document.getElementById('lp-preloader')?.remove();
     document.getElementById('lp-welcome')?.remove();

@@ -68,9 +68,6 @@ export const paymentVenueDetailSelect = `
   LEFT JOIN rates_facilities rf ON rf.facility_id = f.id AND rf.season = fb.season
 `;
 
-/** @deprecated use paymentRoomDetailSelect */
-export const paymentDetailSelect = paymentRoomDetailSelect;
-
 function sortPaymentRows(rows) {
   return [...rows].sort((a, b) => {
     const openStatuses = ['Pending', 'Partially Paid'];

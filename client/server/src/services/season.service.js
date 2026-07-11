@@ -367,13 +367,6 @@ export function describeSeasonPeriods(periods = [], weekendRule = null) {
   return parts.join(' · ');
 }
 
-/** @deprecated alias — season for today (date-based). */
-export async function getActiveLodgingSeason() {
-  const today = new Date();
-  const todayStr = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
-  return resolveLodgingSeasonForDate(todayStr);
-}
-
 export async function setActiveLodgingSeason(season) {
   const next = normalizeLodgingSeason(season);
   await pool.query(

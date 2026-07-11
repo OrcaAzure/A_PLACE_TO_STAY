@@ -119,11 +119,6 @@ export async function resolveOccupancyItem({ roomType, guestCount, explicitItem 
   return preferred;
 }
 
-/** @deprecated Use resolveOccupancyItem — kept for callers that only need a dorm vs room default. */
-export function defaultOccupancyItem(roomType) {
-  return roomType === 'Dorm' ? PER_PERSON_NIGHT_ITEM : SINGLE_DOUBLE_OCCUPANCY_ITEM;
-}
-
 export async function calculateTotalAmount({
   roomType,
   occupancyItem,

@@ -223,13 +223,11 @@ async function loadGuestTemplates() {
     guestTemplatesPromise = Promise.all([
       loadComponent('/components/guest-nav.html'),
       loadComponent('/components/guest-footer.html'),
-      loadComponent('/components/guest-landing-body.html'),
       loadComponent('/components/notifications.html'),
       loadComponent('/components/modal.html'),
-    ]).then(([guestNav, guestFooter, guestLandingBody, notifications, modal]) => ({
+    ]).then(([guestNav, guestFooter, notifications, modal]) => ({
       guestNav,
       guestFooter,
-      guestLandingBody,
       notifications,
       modal,
     }));
@@ -467,11 +465,7 @@ function buildGuestShell({
   landingHome = false,
 }) {
   const homeHref = '/guest/dashboard.html';
-  const firstName = userName.split(' ')[0] || 'Guest';
   let content = pageContent;
-  if (landingHome && templates.guestLandingBody) {
-    content = templates.guestLandingBody.replace(/\{\{FIRST_NAME\}\}/g, firstName);
-  }
   const pageClass = landingHome ? 'guest-landing' : 'guest-app-page';
 
   const nav = templates.guestNav
@@ -627,6 +621,12 @@ export async function initAppLayout(config = {}) {
     document.documentElement.classList.add('admin-chrome-boot');
 
     const savedContent = document.getElementById('page-content')?.innerHTML || '';
+    let pageContent = savedContent;
+    if (isGuest && landingHome) {
+      const { buildLandingContent } = await import('/assets/js/layout/landing-content.js');
+      const firstName = userName.split(' ')[0] || 'Guest';
+      pageContent = await buildLandingContent({ variant: 'guest', firstName });
+    }
     const preservedNodes = extractPreservedLayoutNodes();
     const existingSidebar = document.getElementById('app-sidebar');
     const existingGuestNav = document.querySelector('.guest-top-nav');
@@ -677,7 +677,7 @@ export async function initAppLayout(config = {}) {
     const shellHtml = isGuest
       ? buildGuestShell({
           templates,
-          pageContent: savedContent,
+          pageContent,
           activePage,
           userName,
           userRole,
@@ -1127,11 +1127,6 @@ export function switchDrawerTab(tabId) {
     panelAttr: 'data-drawer-panel',
     useHiddenClass: true,
   });
-}
-
-/** @deprecated Use switchDrawerTab — kept for backward compatibility */
-export function switchTab(tabId) {
-  switchDrawerTab(tabId);
 }
 
 export function syncTimelineScroll() {

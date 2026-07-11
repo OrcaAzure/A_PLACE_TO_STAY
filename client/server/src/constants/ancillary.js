@@ -48,10 +48,6 @@ export const DEFAULT_ACCOMMODATION_SEASONAL_RATES = {
   Peak: 500,
   'Super Peak': 550,
 };
-
-/** @deprecated alias */
-export const DEFAULT_LODGING_EXTRA_RATES = DEFAULT_ACCOMMODATION_SEASONAL_RATES;
-
 export const ACCOMMODATION_SEASONAL_ITEMS = [PER_PERSON_NIGHT_ITEM, LODGING_EXTRA_ITEM];
 
 export const EXTRA_SERVICE_SEASONS = ['Regular', 'Peak', 'Super Peak', 'N/A'];

@@ -306,11 +306,6 @@ export function cutoffHoursError(cutoffHours) {
   return `Cancellations must be made at least ${hours} hours before check-in or the event start.`;
 }
 
-/** @deprecated Use cutoffHoursError */
-export function cutoffDaysError(cutoffDays) {
-  return cutoffHoursError(Number(cutoffDays) * 24);
-}
-
 export function canGuestCancelRoomBooking(booking, { now = new Date(), cutoffHours = 24 } = {}) {
   const status = normStatus(booking.status);
   if (!['pending', 'approved'].includes(status)) return false;

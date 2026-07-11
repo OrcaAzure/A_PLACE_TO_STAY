@@ -88,9 +88,6 @@ export async function resolveVenueFacilityRowByFacilityId(facilityId, eventDate)
   return pickRateRowForFacility(facilityId, eventDate);
 }
 
-/** @deprecated alias */
-export const resolveVenueFacilityRowByEventVenueId = resolveVenueFacilityRowByFacilityId;
-
 export async function resolveVenueFacilityRow(category, item, eventDate) {
   const facility = await getFacilityByLegacyKeys(category, item);
   if (facility) {

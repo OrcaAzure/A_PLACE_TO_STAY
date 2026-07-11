@@ -41,10 +41,17 @@ describe('Pages smoke (public)', () => {
   it('GET /index.html includes comfort hero and scroll showcase', async () => {
     const res = await agent.get('/index.html');
     assert.equal(res.status, 200);
-    assert.match(res.text, /lp-hero--comfort/);
-    assert.match(res.text, /lp-scroll-section/);
-    assert.match(res.text, /comfort75n/);
-    assert.match(res.text, /id="explore"/);
+    assert.match(res.text, /lp-main-mount/);
+
+    const hero = await agent.get('/components/landing-hero-public.html');
+    assert.equal(hero.status, 200);
+    assert.match(hero.text, /lp-hero--comfort/);
+    assert.match(hero.text, /comfort-centered/);
+
+    const sections = await agent.get('/components/landing-sections.html');
+    assert.equal(sections.status, 200);
+    assert.match(sections.text, /lp-scroll-section/);
+    assert.match(sections.text, /id="explore"/);
   });
 
   it('GET landing.css is served', async () => {
@@ -86,7 +93,7 @@ describe('Pages smoke (public)', () => {
     assert.ok('db' in res.body || res.body.status === 'ok');
   });
 
-  it('GET shared guest-access module is served', async () => {
+  it('GET guest-access config module is served', async () => {
     const res = await agent.get('/assets/js/config/guest-access.js');
     assert.equal(res.status, 200);
     assert.match(res.text, /EXTERNAL_ROOM_BUILDINGS/);

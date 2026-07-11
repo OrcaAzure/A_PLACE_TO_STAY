@@ -108,9 +108,3 @@ export function bindNotificationBell({ isGuest = false } = {}) {
     window.addEventListener('booking:updated', () => syncNotificationDotFromApi({ admin: false }));
   }
 }
-
-export function teardownNotificationBell() {
-  stopPoll?.();
-  stopPoll = null;
-  bellBound = false;
-}

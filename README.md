@@ -69,8 +69,6 @@ APSTPACE/
 │   ├── verify-local.mjs      ← local setup checks
 │   └── run-server.mjs        ← staging / production server launcher
 └── client/
-    ├── shared/               ← cross-stack constants (served at /shared/)
-    │   └── guest-access.js
     ├── database/schema.sql
     ├── public/               ← static assets only (marketing + shared files)
     │   ├── index.html
@@ -78,6 +76,7 @@ APSTPACE/
     │   └── assets/
     │       ├── css/global|components|features/
     │       └── js/config|layout|services|features/
+    │           └── config/guest-access.js  ← shared client/server guest rules
     └── server/
         ├── views/            ← app pages (served at same URLs as before)
         │   ├── auth/login.html
@@ -122,12 +121,12 @@ Bookings auto-calculate price, season, and check room availability.
 | Guest portal | ~92% | Book, modify, cancel reservations; venue bookings; profile; notification prefs; live bell feed |
 | Backend API | ~89% | Core flows done; room/venue rates and seasonal periods in Settings |
 | Auth & email | ~93% | 12 automated email templates; guest email prefs; needs production SMTP to deliver |
-| Dev tooling | ~90% | Setup, Docker, GitHub Actions CI, health check, `npm test` (60/61 passing) |
+| Dev tooling | ~90% | Setup, Docker, GitHub Actions CI, health check, `npm test` (61/61 passing) |
 | Deployment / ops | ~65% | Docs and configs ready; staging/prod not validated with IT yet |
 
 **Product overall ~91% · production-ready ~78%** (blocked mainly on IT: DB, SSL, SMTP, staging smoke test).
 
-**Still in progress:** admin venue modify UI, landing page smoke test update.
+**Still in progress:** admin venue modify UI.
 
 **Recently shipped:** in-app notification feed (admin + guest bell), guest email notification preferences, silent background polling (no pulse animations), billing modal stability and confirm-dialog fixes, guest self-modify (room/group/venue), landing page polish, privacy/terms legal pages.
 

@@ -25,15 +25,9 @@ export async function getAccommodationExtraRate(season, item) {
   return match ? Number(match.rate) : null;
 }
 
-/** @deprecated alias */
-export async function getLodgingExtraRate(season, item = LODGING_EXTRA_ITEM) {
-  return getAccommodationExtraRate(season, item);
-}
-
 export {
   LODGING_EXTRA_ITEM,
   PER_PERSON_NIGHT_ITEM,
   DEFAULT_ACCOMMODATION_SEASONAL_RATES,
-  DEFAULT_ACCOMMODATION_SEASONAL_RATES as DEFAULT_LODGING_EXTRA_RATES,
   ACCOMMODATION_EXTRAS_CATEGORY,
 };

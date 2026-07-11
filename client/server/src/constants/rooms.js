@@ -72,10 +72,6 @@ export function roomRateTierLabel(tier) {
   if (tier === 'VIP') return 'VIP Room';
   return tier;
 }
-
-/** @deprecated alias */
-export const DELUXE_3_BED_ROOM_NUMBERS = DELUXE_3_BEDROOM_ROOM_NUMBERS;
-
 /** FY26 pricelist — dorm bookings require at least this many guests. */
 export const DORM_MIN_GUEST_COUNT = 5;
 
@@ -101,12 +97,6 @@ export function deluxeBedroomCount(room) {
   if (room.bedroom_count != null) return Number(room.bedroom_count);
   return DELUXE_3_BEDROOM_ROOM_NUMBERS.has(String(room.room_number)) ? 3 : 2;
 }
-
-/** @deprecated alias — use deluxeBedroomCount */
-export function deluxeBedCount(room) {
-  return deluxeBedroomCount(room);
-}
-
 /** Friendly label for deluxe units and built-in types. BR = bedrooms. */
 export function formatRoomTypeLabel(room) {
   if (!room?.room_type) return 'Room';

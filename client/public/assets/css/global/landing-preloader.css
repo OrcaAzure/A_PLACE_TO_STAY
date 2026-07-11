@@ -235,10 +235,8 @@ body.lp-welcome-active > #lp-welcome {
   text-align: center;
 }
 
-.lp-welcome__apt,
-.lp-welcome__space {
-  font-family: 'Rillosta', 'Segoe Script', cursive;
-  font-weight: 400;
+.lp-welcome__apts,
+.lp-welcome__pace {
   font-size: var(--lp-brand-size);
   letter-spacing: 0;
   opacity: 0;
@@ -246,21 +244,26 @@ body.lp-welcome-active > #lp-welcome {
   transform: translateY(0.2em);
 }
 
-.lp-welcome:not(.is-entering) .lp-welcome__apt {
+.lp-welcome:not(.is-entering) .lp-welcome__apts {
   animation: lp-welcome-word-in 1.05s var(--lp-cine-ease) 0.32s forwards;
 }
 
-.lp-welcome:not(.is-entering) .lp-welcome__space {
+.lp-welcome:not(.is-entering) .lp-welcome__pace {
   animation: lp-welcome-space-in 1.05s var(--lp-cine-ease) 0.48s forwards;
 }
 
-.lp-welcome__apt {
+.lp-welcome__apts {
+  font-family: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   color: #ffffff;
   text-shadow: 0 4px 48px rgba(0, 0, 0, 0.35);
 }
 
-.lp-welcome__space {
-  margin-left: 0.12em;
+.lp-welcome__pace {
+  margin-left: -0.02em;
+  font-family: 'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  font-weight: 700;
   background: linear-gradient(
     175deg,
     var(--lp-accent-light) 0%,
@@ -426,8 +429,8 @@ body.lp-welcome-active > #lp-welcome {
   }
 
   .lp-welcome__title-line,
-  .lp-welcome__apt,
-  .lp-welcome__space,
+  .lp-welcome__apts,
+  .lp-welcome__pace,
   .lp-welcome__icon-track,
   .lp-welcome__icon {
     opacity: 1;
