@@ -11,6 +11,7 @@ import {
   runSeasonSettingsMigration,
   runLodgingExtrasMigration,
   runRoomGuestCopyMigration,
+  runCampusPolicyDefaultsMigration,
 } from './rooms.js';
 import { runGuestOnlyRateCleanup } from './guest-only-rates-cleanup.js';
 import { runMealTypeVarcharMigration } from './meal-type-varchar.js';
@@ -424,6 +425,12 @@ export async function runSchemaPatches() {
     await runRoomGuestCopyMigration();
   } catch (err) {
     console.warn('[schema] room guest copy migration skipped:', err.message);
+  }
+
+  try {
+    await runCampusPolicyDefaultsMigration();
+  } catch (err) {
+    console.warn('[schema] campus policy defaults migration skipped:', err.message);
   }
 
   try {

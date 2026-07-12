@@ -403,7 +403,7 @@ function renderDetail() {
     <section class="mv-section">
       <p class="mv-section-title">Shown to guests</p>
       <p class="mf-field-hint mv-hint" style="margin-top:-0.35rem;margin-bottom:0.75rem">
-        These texts appear in the guest browse details panel (carousel view) before they request a booking.
+        These texts appear in the guest browse details panel before they request a booking. If policies are empty, campus venue guidelines are shown automatically.
       </p>
       <div class="admin-crud-form-grid mv-form">
         ${useSelectorHtml()}

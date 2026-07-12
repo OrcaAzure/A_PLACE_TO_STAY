@@ -1502,6 +1502,186 @@ body.browse-preview-open {
   margin: 0;
 }
 
+/* Campus guidelines accordion + policy cards */
+.browse-guidelines {
+  margin: 0 0 1.25rem;
+  border: 1px solid rgba(203, 213, 224, 0.85);
+  border-radius: 1.15rem;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 55%);
+  overflow: hidden;
+}
+
+.browse-guidelines__summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  user-select: none;
+}
+
+.browse-guidelines__summary::-webkit-details-marker {
+  display: none;
+}
+
+.browse-guidelines__summary-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.browse-guidelines__summary-main > .material-symbols-outlined {
+  color: #2c5282;
+  margin-top: 0.1rem;
+}
+
+.browse-guidelines__summary strong {
+  display: block;
+  color: #1a202c;
+  font-size: 0.95rem;
+}
+
+.browse-guidelines__summary-sub {
+  display: block;
+  margin-top: 0.15rem;
+  color: #718096;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+}
+
+.browse-guidelines__chevron {
+  color: #718096;
+  transition: transform 0.2s ease;
+}
+
+.browse-guidelines[open] .browse-guidelines__chevron {
+  transform: rotate(180deg);
+}
+
+.browse-guidelines__body {
+  padding: 0 1.15rem 1.2rem;
+  border-top: 1px solid rgba(203, 213, 224, 0.65);
+}
+
+.browse-guidelines__lead {
+  margin: 0.9rem 0 0.85rem;
+  color: #718096;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.browse-policy-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 0.65rem;
+}
+
+.browse-policy-card {
+  display: flex;
+  gap: 0.65rem;
+  align-items: flex-start;
+  padding: 0.8rem 0.85rem;
+  border-radius: 0.9rem;
+  background: #fff;
+  border: 1px solid rgba(203, 213, 224, 0.8);
+}
+
+.browse-policy-card > .material-symbols-outlined {
+  color: #2c5282;
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.browse-policy-card h4 {
+  margin: 0 0 0.2rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.browse-policy-card p {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #4a5568;
+}
+
+.browse-contact-card {
+  margin-top: 0.9rem;
+  padding: 0.95rem 1rem;
+  border-radius: 1rem;
+  background: rgba(26, 54, 93, 0.05);
+  border: 1px solid rgba(26, 54, 93, 0.12);
+}
+
+.browse-contact-card__head {
+  display: flex;
+  gap: 0.7rem;
+  align-items: flex-start;
+}
+
+.browse-contact-card__head > .material-symbols-outlined {
+  color: #1a365d;
+  font-size: 1.4rem;
+}
+
+.browse-contact-card__label {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #2c5282;
+}
+
+.browse-contact-card__name {
+  margin: 0.15rem 0 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.browse-contact-card__title {
+  margin: 0.1rem 0 0;
+  font-size: 0.8125rem;
+  color: #718096;
+}
+
+.browse-contact-card__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem 0.85rem;
+  margin-top: 0.7rem;
+}
+
+.browse-contact-card__links a {
+  color: #1a365d;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.browse-contact-card__links a:hover {
+  text-decoration: underline;
+}
+
+.browse-contact-card__hours {
+  margin: 0.65rem 0 0;
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+.browse-preview__section .browse-policy-grid {
+  margin-top: 0.15rem;
+}
+
+.browse-preview__section .browse-contact-card {
+  margin-top: 0.35rem;
+}
+
 /* Guest booking — meals & extras */
 .guest-booking-extras {
   display: flex;

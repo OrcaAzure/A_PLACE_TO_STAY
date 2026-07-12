@@ -322,7 +322,7 @@ export function getSupportEmail() {
   if (configured) return configured;
   const smtpUser = String(SMTP_USER || '').trim();
   if (smtpUser && !PLACEHOLDER_USERS.has(smtpUser.toLowerCase())) return smtpUser;
-  return 'facilities@apts.edu.ph';
+  return 'guestservices@apts.edu';
 }
 
 async function guestAcceptsEmail(email, { type = 'general' } = {}) {

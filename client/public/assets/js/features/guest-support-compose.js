@@ -79,8 +79,8 @@ export function initGuestSupportCompose({ trigger } = {}) {
   const minimizeBtn = root.querySelector('[data-compose-minimize]');
   const closeBtn = root.querySelector('[data-compose-close]');
 
-  let contactEmail = 'facilities@apts.edu.ph';
-  let contactLabel = 'Facilities team';
+  let contactEmail = 'guestservices@apts.edu';
+  let contactLabel = 'Housing & Guest Services';
   let senderLabel = '';
 
   async function loadContact() {

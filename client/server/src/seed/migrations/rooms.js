@@ -6,6 +6,10 @@ import {
   LODGING_EXTRA_ITEM,
   PER_PERSON_NIGHT_ITEM,
 } from '../../constants/ancillary.js';
+import {
+  DEFAULT_ROOM_POLICIES_TEXT,
+  DEFAULT_VENUE_POLICIES_TEXT,
+} from '../../config/housing-policies.js';
 
 const DELUXE_2BR_RATES = [
   ['Single/Double Occupancy', 'Regular', 3000], ['Single/Double Occupancy', 'Peak', 3275], ['Single/Double Occupancy', 'Super Peak', 3650],
@@ -397,6 +401,33 @@ async function runRoomGuestCopyMigration() {
   }
 }
 
+/** Fill empty room/venue policies with distilled campus defaults (admin can edit afterward). */
+async function runCampusPolicyDefaultsMigration() {
+  if (await tableExists('rooms') && await columnExists('rooms', 'policies')) {
+    const [result] = await pool.execute(
+      `UPDATE rooms
+       SET policies = ?
+       WHERE policies IS NULL OR TRIM(policies) = ''`,
+      [DEFAULT_ROOM_POLICIES_TEXT]
+    );
+    if (result.affectedRows) {
+      console.log(`[schema] Applied campus lodging policies to ${result.affectedRows} room(s)`);
+    }
+  }
+
+  if (await tableExists('facilities') && await columnExists('facilities', 'policies')) {
+    const [result] = await pool.execute(
+      `UPDATE facilities
+       SET policies = ?
+       WHERE policies IS NULL OR TRIM(policies) = ''`,
+      [DEFAULT_VENUE_POLICIES_TEXT]
+    );
+    if (result.affectedRows) {
+      console.log(`[schema] Applied campus venue policies to ${result.affectedRows} facility row(s)`);
+    }
+  }
+}
+
 export {
   upsertDeluxeRoomRates,
   runDeluxeRoomTypeMigration,
@@ -406,4 +437,5 @@ export {
   runSeasonSettingsMigration,
   runLodgingExtrasMigration,
   runRoomGuestCopyMigration,
+  runCampusPolicyDefaultsMigration,
 };
