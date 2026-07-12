@@ -10,6 +10,7 @@ import {
   runVipRoomMigration,
   runSeasonSettingsMigration,
   runLodgingExtrasMigration,
+  runRoomGuestCopyMigration,
 } from './rooms.js';
 import { runGuestOnlyRateCleanup } from './guest-only-rates-cleanup.js';
 import { runMealTypeVarcharMigration } from './meal-type-varchar.js';
@@ -417,6 +418,12 @@ export async function runSchemaPatches() {
     await runLodgingExtrasMigration();
   } catch (err) {
     console.warn('[schema] lodging extras migration skipped:', err.message);
+  }
+
+  try {
+    await runRoomGuestCopyMigration();
+  } catch (err) {
+    console.warn('[schema] room guest copy migration skipped:', err.message);
   }
 
   try {

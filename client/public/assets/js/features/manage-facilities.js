@@ -125,6 +125,9 @@ function emptyForm() {
     capacity_max: first.capacity.max,
     occupancy: 0,
     status: 'Available',
+    description: '',
+    inclusions: '',
+    policies: '',
   };
 }
 
@@ -142,6 +145,9 @@ function roomToForm(r) {
     capacity_max: r.capacity_max ?? 1,
     occupancy: r.occupancy ?? 0,
     status: r.status ?? 'Available',
+    description: r.description ?? '',
+    inclusions: r.inclusions || r.highlights || '',
+    policies: r.policies ?? '',
   };
 }
 
@@ -348,6 +354,25 @@ function renderStatusPills() {
     </div>`;
 }
 
+function renderGuestCopyFields() {
+  return `
+    <div class="admin-crud-field span-full">
+      <label for="mf-description">Description <span class="text-slate-400 font-normal">(optional)</span></label>
+      <textarea id="mf-description" name="description" rows="3" placeholder="Short overview of the room for guests.">${escapeHtml(state.form.description || '')}</textarea>
+      <p class="mf-field-hint">Shown at the top of the guest details panel.</p>
+    </div>
+    <div class="admin-crud-field span-full">
+      <label for="mf-inclusions">What's included <span class="text-slate-400 font-normal">(optional)</span></label>
+      <textarea id="mf-inclusions" name="inclusions" rows="4" placeholder="One item per line, e.g.&#10;Private bathroom&#10;Air-conditioning&#10;Wi‑Fi">${escapeHtml(state.form.inclusions || '')}</textarea>
+      <p class="mf-field-hint">Amenities and inclusions. One item per line shows as chips for guests.</p>
+    </div>
+    <div class="admin-crud-field span-full">
+      <label for="mf-policies">Policies <span class="text-slate-400 font-normal">(optional)</span></label>
+      <textarea id="mf-policies" name="policies" rows="3" placeholder="House rules, quiet hours, check-in notes…">${escapeHtml(state.form.policies || '')}</textarea>
+      <p class="mf-field-hint">Rules guests should know before reserving.</p>
+    </div>`;
+}
+
 function renderFormFields() {
   const singleBuilding = state.buildings.length <= 1;
   const bldgOpts = state.buildings.map((b) =>
@@ -375,6 +400,7 @@ function renderFormFields() {
       ${renderBedField()}
       ${renderCapacityFields()}
       ${renderStatusPills()}
+      ${renderGuestCopyFields()}
     </form>`;
 }
 
@@ -386,6 +412,14 @@ function renderDetailView(r) {
   const capMax = r.capacity_max ?? capMin;
   const capLabel = capMin === capMax ? `${capMax} guest${capMax === 1 ? '' : 's'}` : `${capMin}–${capMax} guests`;
   const bedrooms = r.room_type === 'Dorm' ? null : (r.bed_count != null ? Number(r.bed_count) : null);
+  const inclusionLines = String(r.inclusions || r.highlights || '')
+    .split(/\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const policyLines = String(r.policies || '')
+    .split(/\n+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 
   return `
     <div class="mf-detail">
@@ -404,7 +438,24 @@ function renderDetailView(r) {
         <div><dt><span class="material-symbols-outlined text-[18px]">login</span> Checked in</dt><dd>${r.occupancy ?? 0}</dd></div>
       </dl>
 
-      <p class="mf-detail-note">Use <strong>Edit room</strong> to change the type, capacity, or status.</p>
+      ${r.description ? `
+        <div class="mf-detail-copy">
+          <h4>Description</h4>
+          <p>${escapeHtml(r.description)}</p>
+        </div>` : ''}
+      ${inclusionLines.length ? `
+        <div class="mf-detail-copy">
+          <h4>What's included</h4>
+          <ul>${inclusionLines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+        </div>` : ''}
+      ${policyLines.length ? `
+        <div class="mf-detail-copy">
+          <h4>Policies</h4>
+          <ul>${policyLines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+        </div>` : ''}
+      ${!r.description && !inclusionLines.length && !policyLines.length ? `
+        <p class="mf-detail-note">No guest description, inclusions, or policies yet. Use <strong>Edit room</strong> to add text shown in the browse details panel.</p>` : `
+        <p class="mf-detail-note">Use <strong>Edit room</strong> to change setup or guest-facing copy.</p>`}
     </div>`;
 }
 
@@ -456,7 +507,7 @@ function renderDetail() {
           <span class="material-symbols-outlined text-[18px]">arrow_back</span> Back
         </button>
         <h3 class="font-headline-sm text-on-surface">Edit room — ${escapeHtml(r?.room_number || '')}</h3>
-        <p class="text-body-sm text-on-surface-variant">Change the type, capacity, status, or building.</p>
+        <p class="text-body-sm text-on-surface-variant">Change the type, capacity, status, description, inclusions, or policies.</p>
       </div>
       ${renderFormFields()}`;
     actions.innerHTML = `
@@ -514,6 +565,9 @@ function captureForm() {
     state.form.newTypeName = el('mf-new-type').value;
     state.form.room_type = el('mf-new-type').value.trim();
   }
+  if (el('mf-description')) state.form.description = el('mf-description').value;
+  if (el('mf-inclusions')) state.form.inclusions = el('mf-inclusions').value;
+  if (el('mf-policies')) state.form.policies = el('mf-policies').value;
 }
 
 function readFormForSave() {
@@ -530,6 +584,9 @@ function readFormForSave() {
     capacity_max: Number(state.form.capacity_max) || 0,
     occupancy: Number(state.form.occupancy) || 0,
     status: state.form.status || 'Available',
+    description: String(state.form.description || '').trim(),
+    inclusions: String(state.form.inclusions || '').trim(),
+    policies: String(state.form.policies || '').trim(),
   };
 }
 

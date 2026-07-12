@@ -117,6 +117,159 @@ export function roomPreviewImage({
   return roomTypeImage(tier);
 }
 
+/** Extra gallery shots per room type until multi-upload exists. */
+const ROOM_TYPE_GALLERY = {
+  'Dorm': [
+    'https://images.unsplash.com/photo-1555854877-bab0e5b6b4f5?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1400&q=80',
+  ],
+  'Superior Guest Room': [
+    'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1400&q=80',
+  ],
+  'Standard Apartment': [
+    'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1400&q=80',
+  ],
+  VIP: [
+    'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=1400&q=80',
+  ],
+  'Deluxe Apartment': [
+    'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1400&q=80',
+  ],
+  'Deluxe 2 BR': [
+    'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1560185127-6ed189bf02f4?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1400&q=80',
+  ],
+  'Deluxe 3 BR': [
+    'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1560448204-603b3fc33ddc?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1493809842364-78817add7ffb?auto=format&fit=crop&w=1400&q=80',
+  ],
+};
+
+/** Optional multi-photo overrides keyed by room number (extend as uploads arrive). */
+export const ROOM_NUMBER_GALLERY = {
+  '413': ['/images/413Preview.jpg'],
+  '416': ['/images/416Preview.jpg'],
+};
+
+const VENUE_CATEGORY_GALLERY = {
+  'GMC Chapel': [
+    'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1519167758481-83f29da8e3a3?auto=format&fit=crop&w=1400&q=80',
+    '/images/PrayerTower.jpg',
+  ],
+  'Burdine Commons': [
+    'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1400&q=80',
+  ],
+  'GMC Conference Rooms': [
+    'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1400&q=80',
+  ],
+  'Prayer Mountain': [
+    '/images/PrayerMountainPreview.jpg',
+    '/images/PrayerTower.jpg',
+    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1400&q=80',
+  ],
+  'Prayer Tower': [
+    '/images/PrayerTower.jpg',
+    '/images/PrayerMountainPreview.jpg',
+    'https://images.unsplash.com/photo-1519817650390-64a5db0bcab3?auto=format&fit=crop&w=1400&q=80',
+  ],
+  Garden: [
+    '/images/Garden.jpg',
+    'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1400&q=80',
+  ],
+  Recreation: [
+    '/images/RecEntrancePreview.jpg',
+    'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1400&q=80',
+    'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1400&q=80',
+  ],
+};
+
+function uniqueUrls(urls = []) {
+  const seen = new Set();
+  const out = [];
+  for (const url of urls) {
+    const clean = String(url || '').trim();
+    if (!clean || seen.has(clean)) continue;
+    seen.add(clean);
+    out.push(clean);
+  }
+  return out;
+}
+
+/**
+ * Gallery list for a room card/detail modal.
+ * Uses room-specific photos first, then type gallery placeholders.
+ */
+export function roomGalleryImages(room = {}) {
+  const num = normalizeRoomNumber(room.roomNumber ?? room.room_number);
+  const tier = resolveRoomVisualKey({
+    room_type: room.room_type ?? room.roomType,
+    room_type_label: room.room_type_label,
+    bed_count: room.bed_count,
+    room_number: num,
+  });
+  const primary = roomPreviewImage(room);
+  const extras = [
+    ...(ROOM_NUMBER_GALLERY[num] || []),
+    ...(ROOM_TYPE_GALLERY[tier] || [roomTypeImage(tier)]),
+    DEFAULT_ROOM_IMAGE,
+  ];
+  return uniqueUrls([primary, ...extras]).slice(0, 5);
+}
+
+/**
+ * Gallery list for a venue card/detail modal.
+ */
+export function venueGalleryImages(venue = {}) {
+  const primary = venuePreviewImage(venue);
+  const code = normalizeVenueKey(venue.room_code ?? venue.roomCode);
+  const candidates = [venue.name, venue.label, venue.item, venue.facility_group, venue.category]
+    .map(normalizeVenueKey)
+    .filter(Boolean);
+
+  let categoryKey = '';
+  for (const key of candidates) {
+    if (VENUE_CATEGORY_GALLERY[key] || VENUE_CATEGORY_IMAGE[key]) {
+      categoryKey = key;
+      break;
+    }
+  }
+  if (!categoryKey) {
+    const blob = candidates.join(' ').toLowerCase();
+    if (/chapel|church|wedding|baptism/.test(blob)) categoryKey = 'GMC Chapel';
+    else if (/prayer mountain|retreat/.test(blob)) categoryKey = 'Prayer Mountain';
+    else if (/prayer tower/.test(blob)) categoryKey = 'Prayer Tower';
+    else if (/garden|osgood/.test(blob)) categoryKey = 'Garden';
+    else if (/basketball|playground|recreation|sport|court|gym/.test(blob)) categoryKey = 'Recreation';
+    else if (/conference|classroom|commons|meeting|a-\d{3}/.test(blob)) categoryKey = 'GMC Conference Rooms';
+  }
+
+  const extras = [
+    code && VENUE_NAME_IMAGE[code],
+    ...(VENUE_CATEGORY_GALLERY[categoryKey] || []),
+    VENUE_CATEGORY_IMAGE[categoryKey],
+    DEFAULT_VENUE_IMAGE,
+  ].filter(Boolean);
+
+  return uniqueUrls([primary, ...extras]).slice(0, 5);
+}
+
 function normalizeVenueKey(value) {
   return String(value ?? '').trim();
 }
@@ -176,4 +329,91 @@ export function liveStatusBadge(status) {
 
 export function formatPeso(n) {
   return `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
+}
+
+/** Guest-facing amenity chips by room type — fallback only when DB inclusions are empty. */
+const ROOM_TYPE_HIGHLIGHTS = {
+  Dorm: [
+    { icon: 'bed', label: 'Shared bunk beds' },
+    { icon: 'bathroom', label: 'Shared bath' },
+    { icon: 'groups', label: 'Ideal for teams' },
+    { icon: 'wifi', label: 'Wi‑Fi' },
+  ],
+  'Superior Guest Room': [
+    { icon: 'king_bed', label: 'Private room' },
+    { icon: 'bathroom', label: 'Private bath' },
+    { icon: 'ac_unit', label: 'Air-conditioned' },
+    { icon: 'wifi', label: 'Wi‑Fi' },
+  ],
+  'Standard Apartment': [
+    { icon: 'apartment', label: 'Apartment stay' },
+    { icon: 'kitchen', label: 'Kitchenette' },
+    { icon: 'bathroom', label: 'Private bath' },
+    { icon: 'wifi', label: 'Wi‑Fi' },
+  ],
+  VIP: [
+    { icon: 'workspace_premium', label: 'VIP suite' },
+    { icon: 'king_bed', label: 'Premium bedding' },
+    { icon: 'living', label: 'Sitting area' },
+    { icon: 'wifi', label: 'Wi‑Fi' },
+  ],
+  'Deluxe Apartment': [
+    { icon: 'holiday_village', label: 'Multi-room apt' },
+    { icon: 'kitchen', label: 'Full kitchen' },
+    { icon: 'living', label: 'Living area' },
+    { icon: 'wifi', label: 'Wi‑Fi' },
+  ],
+  'Deluxe 2 BR': [
+    { icon: 'holiday_village', label: '2 bedrooms' },
+    { icon: 'kitchen', label: 'Full kitchen' },
+    { icon: 'living', label: 'Living area' },
+    { icon: 'wifi', label: 'Wi‑Fi' },
+  ],
+  'Deluxe 3 BR': [
+    { icon: 'holiday_village', label: '3 bedrooms' },
+    { icon: 'kitchen', label: 'Full kitchen' },
+    { icon: 'living', label: 'Living area' },
+    { icon: 'wifi', label: 'Wi‑Fi' },
+  ],
+};
+
+/** Parse admin-entered inclusions / amenities (one per line, or comma / semicolon separated). */
+export function parseHighlightLines(text) {
+  return String(text || '')
+    .split(/\n+|;\s*/)
+    .flatMap((chunk) => chunk.includes(',') && !/\d,\d/.test(chunk)
+      ? chunk.split(/,\s*/).map((s) => s.trim())
+      : [chunk.trim()])
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+function roomInclusionsText(room = {}) {
+  return room.inclusions || room.highlights || '';
+}
+
+/**
+ * Guest chips for a room. Prefers DB `inclusions` (legacy: highlights);
+ * falls back to type defaults only when empty.
+ */
+export function roomTypeHighlights(room = {}) {
+  const fromDb = parseHighlightLines(roomInclusionsText(room));
+  if (fromDb.length) {
+    return fromDb.map((label) => ({ icon: 'check_circle', label }));
+  }
+
+  const tier = resolveRoomVisualKey({
+    room_type: room.room_type ?? room.roomType,
+    room_type_label: room.room_type_label,
+    bed_count: room.bed_count,
+    room_number: room.roomNumber ?? room.room_number,
+  });
+  return ROOM_TYPE_HIGHLIGHTS[tier] || [
+    { icon: 'meeting_room', label: 'Campus lodging' },
+    { icon: 'wifi', label: 'Wi‑Fi' },
+  ];
+}
+
+export function roomHasCustomHighlights(room = {}) {
+  return parseHighlightLines(roomInclusionsText(room)).length > 0;
 }

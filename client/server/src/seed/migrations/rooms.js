@@ -1,5 +1,5 @@
 import { pool } from '../../config/db.js';
-import { tableExists } from '../helpers.js';
+import { tableExists, columnExists } from '../helpers.js';
 import {
   ACCOMMODATION_EXTRAS_CATEGORY,
   DEFAULT_ACCOMMODATION_SEASONAL_RATES,
@@ -367,6 +367,36 @@ async function runLodgingExtrasMigration() {
   console.log('[schema] dorm and lodging extra rates moved to rates_extra_services');
 }
 
+/** Guest browse copy shared with venues: description + inclusions + policies. */
+async function runRoomGuestCopyMigration() {
+  if (!(await tableExists('rooms'))) return;
+
+  const columns = [
+    ['description', 'ALTER TABLE rooms ADD COLUMN description TEXT DEFAULT NULL AFTER status'],
+    ['inclusions', 'ALTER TABLE rooms ADD COLUMN inclusions TEXT DEFAULT NULL AFTER description'],
+    ['policies', 'ALTER TABLE rooms ADD COLUMN policies TEXT DEFAULT NULL AFTER inclusions'],
+  ];
+
+  for (const [column, sql] of columns) {
+    if (!(await columnExists('rooms', column))) {
+      await pool.execute(sql);
+      console.log(`[schema] rooms.${column} column added`);
+    }
+  }
+
+  // Older installs used `highlights`; fold into inclusions once.
+  if (await columnExists('rooms', 'highlights')) {
+    await pool.execute(
+      `UPDATE rooms
+       SET inclusions = highlights
+       WHERE (inclusions IS NULL OR TRIM(inclusions) = '')
+         AND highlights IS NOT NULL
+         AND TRIM(highlights) <> ''`
+    );
+    console.log('[schema] rooms.highlights copied into inclusions where needed');
+  }
+}
+
 export {
   upsertDeluxeRoomRates,
   runDeluxeRoomTypeMigration,
@@ -375,4 +405,5 @@ export {
   runVipRoomMigration,
   runSeasonSettingsMigration,
   runLodgingExtrasMigration,
+  runRoomGuestCopyMigration,
 };

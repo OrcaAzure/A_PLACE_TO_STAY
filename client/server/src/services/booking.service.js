@@ -620,6 +620,9 @@ export async function getAvailableRooms({
       capacity_max: room.capacity_max,
       dorm_booking_minimum: room.room_type === 'Dorm' ? DORM_MIN_GUEST_COUNT : null,
       status: room.status,
+      description: room.description ?? null,
+      inclusions: room.inclusions ?? room.highlights ?? null,
+      policies: room.policies ?? null,
       availability_status: availabilityStatus,
       fits_capacity: (room.room_type === 'Dorm'
         ? count <= room.capacity_max

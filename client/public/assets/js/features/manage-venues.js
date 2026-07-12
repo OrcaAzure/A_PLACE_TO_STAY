@@ -304,7 +304,7 @@ function useSelectorHtml() {
     <div class="admin-crud-field span-full">
       <label for="mv-use-select">Which use are you editing?</label>
       <select id="mv-use-select">${opts}</select>
-      <p class="mf-field-hint mv-hint">Inclusions and policies below apply only to this use. Rename or price uses under <strong>Venue prices</strong>.</p>
+      <p class="mf-field-hint mv-hint">What's included and policies below apply only to this use. Rename or price uses under <strong>Venue prices</strong>.</p>
     </div>`;
 }
 
@@ -370,8 +370,8 @@ function renderDetail() {
           <p class="mf-field-hint mv-hint">Only for spaces with a fixed staff code (like GMC conference rooms). A coded venue can only have one use.</p>
         </div>
         <div class="admin-crud-field span-full">
-          <label for="mv-description">Short description <span class="text-slate-400 font-normal">(optional)</span></label>
-          <textarea id="mv-description" rows="2" placeholder="A short line shown to guests.">${escapeHtml(draft.description)}</textarea>
+          <label for="mv-description">Description <span class="text-slate-400 font-normal">(optional)</span></label>
+          <textarea id="mv-description" rows="2" placeholder="Short overview of the venue for guests.">${escapeHtml(draft.description)}</textarea>
         </div>
       </div>
     </section>
@@ -402,15 +402,18 @@ function renderDetail() {
 
     <section class="mv-section">
       <p class="mv-section-title">Shown to guests</p>
+      <p class="mf-field-hint mv-hint" style="margin-top:-0.35rem;margin-bottom:0.75rem">
+        These texts appear in the guest browse details panel (carousel view) before they request a booking.
+      </p>
       <div class="admin-crud-form-grid mv-form">
         ${useSelectorHtml()}
         <div class="admin-crud-field span-full">
-          <label for="mv-inclusions">Inclusions</label>
-          <textarea id="mv-inclusions" rows="3" placeholder="What's included, e.g. sound system, chairs, air-conditioning, parking…">${escapeHtml(use?.inclusions || '')}</textarea>
+          <label for="mv-inclusions">What's included</label>
+          <textarea id="mv-inclusions" rows="3" placeholder="Equipment and inclusions, e.g. sound system, chairs, air-conditioning, parking…">${escapeHtml(use?.inclusions || '')}</textarea>
         </div>
         <div class="admin-crud-field span-full">
           <label for="mv-policies">Policies</label>
-          <textarea id="mv-policies" rows="3" placeholder="House rules, cancellation notes, cleaning fees, curfews…">${escapeHtml(use?.policies || '')}</textarea>
+          <textarea id="mv-policies" rows="3" placeholder="House rules, setup/cleanup, cancellation notes…">${escapeHtml(use?.policies || '')}</textarea>
         </div>
       </div>
     </section>

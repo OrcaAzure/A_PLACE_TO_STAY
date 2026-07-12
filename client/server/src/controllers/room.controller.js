@@ -3,7 +3,7 @@ import Room from '../models/Room.js';
 import { isEmpty } from '../utils/helpers.js';
 import { isAdminRole } from '../utils/constants.js';
 import { assertRoomDeletable } from '../services/booking.service.js';
-import { filterRoomsForGuestUser } from '../utils/guestAccess.js';
+import { filterRoomsForGuestUser, canGuestAccessBuilding } from '../utils/guestAccess.js';
 
 export const getAllBuildings = async (req, res) => {
   try {
@@ -181,6 +181,14 @@ export const getRoomById = async (req, res) => {
 
 const ALLOWED_STATUSES = ['Available', 'Occupied', 'Dirty', 'Maintenance'];
 
+function cleanOptionalText(value, { maxLen = 4000 } = {}) {
+  if (value == null) return null;
+  const text = String(value).trim();
+  if (!text) return null;
+  if (text.length > maxLen) return { error: `Text is too long (max ${maxLen} characters).` };
+  return text;
+}
+
 /** Validate & normalize a room payload. Returns { error } or { values }. */
 function normalizeRoomInput(body, existing = null) {
   const roomType = body.room_type != null ? String(body.room_type).trim() : existing?.room_type;
@@ -218,6 +226,30 @@ function normalizeRoomInput(body, existing = null) {
     bedCount = n;
   }
 
+  const description = Object.prototype.hasOwnProperty.call(body, 'description')
+    ? cleanOptionalText(body.description)
+    : (existing?.description ?? null);
+  if (description && typeof description === 'object' && description.error) {
+    return { error: `Description: ${description.error}` };
+  }
+
+  const inclusionsRaw = Object.prototype.hasOwnProperty.call(body, 'inclusions')
+    ? body.inclusions
+    : (Object.prototype.hasOwnProperty.call(body, 'highlights') ? body.highlights : undefined);
+  const inclusions = inclusionsRaw !== undefined
+    ? cleanOptionalText(inclusionsRaw)
+    : (existing?.inclusions ?? existing?.highlights ?? null);
+  if (inclusions && typeof inclusions === 'object' && inclusions.error) {
+    return { error: `Inclusions: ${inclusions.error}` };
+  }
+
+  const policies = Object.prototype.hasOwnProperty.call(body, 'policies')
+    ? cleanOptionalText(body.policies)
+    : (existing?.policies ?? null);
+  if (policies && typeof policies === 'object' && policies.error) {
+    return { error: `Policies: ${policies.error}` };
+  }
+
   return {
     values: {
       building_id: buildingId,
@@ -228,6 +260,9 @@ function normalizeRoomInput(body, existing = null) {
       capacity_max: capMax,
       occupancy,
       status: status || 'Available',
+      description: description ?? null,
+      inclusions: inclusions ?? null,
+      policies: policies ?? null,
     },
   };
 }
@@ -241,9 +276,15 @@ export const createRoom = async (req, res) => {
     if (error) return res.status(400).json({ message: error });
 
     const [result] = await pool.query(
-      `INSERT INTO rooms (building_id, room_number, room_type, bed_count, capacity_min, capacity_max, occupancy, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [values.building_id, values.room_number, values.room_type, values.bed_count, values.capacity_min, values.capacity_max, values.occupancy, values.status]
+      `INSERT INTO rooms (
+         building_id, room_number, room_type, bed_count, capacity_min, capacity_max,
+         occupancy, status, description, inclusions, policies
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        values.building_id, values.room_number, values.room_type, values.bed_count,
+        values.capacity_min, values.capacity_max, values.occupancy, values.status,
+        values.description, values.inclusions, values.policies,
+      ]
     );
     const [newRoom] = await pool.query(
       `SELECT rooms.*, buildings.name AS building_name
@@ -278,9 +319,16 @@ export const updateRoom = async (req, res) => {
         capacity_min = ?,
         capacity_max = ?,
         occupancy    = ?,
-        status       = ?
+        status       = ?,
+        description  = ?,
+        inclusions   = ?,
+        policies     = ?
       WHERE id = ?`,
-      [values.building_id, values.room_number, values.room_type, values.bed_count, values.capacity_min, values.capacity_max, values.occupancy, values.status, req.params.id]
+      [
+        values.building_id, values.room_number, values.room_type, values.bed_count,
+        values.capacity_min, values.capacity_max, values.occupancy, values.status,
+        values.description, values.inclusions, values.policies, req.params.id,
+      ]
     );
     const [updated] = await pool.query(
       `SELECT rooms.*, buildings.name AS building_name

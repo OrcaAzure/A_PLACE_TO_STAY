@@ -470,6 +470,43 @@
   line-height: 1.5;
 }
 
+.mf-detail-copy {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.85rem;
+  background: #f7fafc;
+  border: 1px solid rgba(203, 213, 224, 0.7);
+}
+
+.mf-detail-copy h4 {
+  margin: 0 0 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #718096;
+}
+
+.mf-detail-copy p {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #2d3748;
+  line-height: 1.5;
+  white-space: pre-line;
+}
+
+.mf-detail-copy ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.9375rem;
+  color: #2d3748;
+  line-height: 1.5;
+}
+
+.mf-detail-copy li + li {
+  margin-top: 0.25rem;
+}
+
 .mf-switch-row {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

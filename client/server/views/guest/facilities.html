@@ -154,6 +154,38 @@
 
 </div>
 
+<!-- Browse space preview (photos + details) -->
+<div id="browse-preview-modal" class="browse-preview" hidden aria-hidden="true">
+  <button type="button" class="browse-preview__backdrop" data-preview-close aria-label="Close preview"></button>
+  <div class="browse-preview__panel" role="dialog" aria-modal="true" aria-labelledby="browse-preview-title">
+    <button type="button" class="browse-preview__close" data-preview-close aria-label="Close">
+      <span class="material-symbols-outlined">close</span>
+    </button>
+    <div class="browse-preview__layout">
+      <div class="browse-preview__gallery">
+        <div class="browse-preview__stage">
+          <img id="browse-preview-image" src="" alt="" />
+          <button type="button" class="browse-preview__nav browse-preview__nav--prev" data-preview-prev aria-label="Previous photo">
+            <span class="material-symbols-outlined">chevron_left</span>
+          </button>
+          <button type="button" class="browse-preview__nav browse-preview__nav--next" data-preview-next aria-label="Next photo">
+            <span class="material-symbols-outlined">chevron_right</span>
+          </button>
+          <p class="browse-preview__counter" id="browse-preview-counter"></p>
+        </div>
+        <div class="browse-preview__thumbs" id="browse-preview-thumbs" role="tablist" aria-label="Photos"></div>
+      </div>
+      <div class="browse-preview__details">
+        <p class="browse-preview__eyebrow" id="browse-preview-eyebrow"></p>
+        <h3 class="browse-preview__title" id="browse-preview-title"></h3>
+        <div class="browse-preview__meta" id="browse-preview-meta"></div>
+        <div class="browse-preview__body" id="browse-preview-body"></div>
+        <div class="browse-preview__actions" id="browse-preview-actions"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Venue Booking Modal -->
 <div id="venue-booking-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
   <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 space-y-4">
@@ -252,7 +284,13 @@
     validateVenueCapacityClient,
     validateVenueDurationClient,
   } from '/assets/js/features/guest-booking-flow.js';
-  import { roomPreviewImage, venuePreviewImage } from '/assets/js/features/facility-display.js';
+  import {
+    roomPreviewImage,
+    venuePreviewImage,
+    roomGalleryImages,
+    venueGalleryImages,
+    roomTypeHighlights,
+  } from '/assets/js/features/facility-display.js';
 
   await initSplashIdle({ portal: 'guest' });
   if (!(await requireAuth())) throw new Error('Not authenticated');
@@ -618,6 +656,9 @@
       status: entry.status,
       capacityMin: entry.capacity_min,
       capacityMax: entry.capacity_max,
+      description: entry.description || '',
+      inclusions: entry.inclusions || entry.highlights || '',
+      policies: entry.policies || '',
     };
   }
 
@@ -687,40 +728,73 @@
       types.map((t) => typeBtn(filters.type === t, t, t)).join('');
   }
 
+  function roomReserveControl(room, { compact = false } = {}) {
+    const avail = availabilityForRoom(room.id);
+    const st = statusInfo(room);
+    const cardBase = 'mt-auto w-full py-3 rounded-xl font-bold text-label-md';
+    if (readOnly) {
+      return compact
+        ? `<div class="browse-preview__cta text-center bg-surface-container-low text-outline border border-outline-variant/50 flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">visibility</span>View only</div>`
+        : `<div class="${cardBase} text-center bg-surface-container-low text-outline border border-outline-variant/50 flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">visibility</span>View only</div>`;
+    }
+    if (st.bookable && stayMatchesLastSearch()) {
+      const href = buildBookReservationUrl({
+        roomId: room.id,
+        checkIn: checkInEl.value,
+        checkOut: checkOutEl.value,
+        guests: guestsEl.value || '1',
+      });
+      return `<a href="${href}" class="browse-preview__cta browse-preview__cta--primary" data-preview-stop>Reserve this room</a>`;
+    }
+    if (st.bookable && !stayMatchesLastSearch()) {
+      return `<button type="button" class="browse-preview__ghost" data-refresh-stay-search data-preview-stop>Update search to reserve</button>`;
+    }
+    const dormNote = avail?.availability_status === 'dorm_min_guests'
+      ? ` · Min ${avail?.dorm_booking_minimum || 5} guests`
+      : '';
+    return `<button disabled class="browse-preview__ghost">${st.label}${dormNote}</button>`;
+  }
+
+  function roomViewDetailsControl() {
+    return `<button type="button" class="mt-auto w-full py-3 rounded-xl font-bold text-label-md border border-primary text-primary hover:bg-primary hover:text-white transition-colors cursor-pointer" data-preview-open>
+      <span class="inline-flex items-center justify-center gap-1.5">
+        <span class="material-symbols-outlined text-[18px]" aria-hidden="true">photo_library</span>
+        View details
+      </span>
+    </button>`;
+  }
+
   function roomCard(room, { silent = false } = {}) {
     const avail = availabilityForRoom(room.id);
     const st = statusInfo(room);
     const price = priceFor(room);
     const icon = TYPE_ICON[room.roomType] || 'meeting_room';
     const img = roomPreviewImage({ roomNumber: room.roomNumber, roomType: room.roomType });
+    const galleryCount = roomGalleryImages(room).length;
     const priceLine = price && price.perNight != null
       ? `<p class="text-body-sm text-on-surface-variant mb-4">${peso(price.perNight)} / night · ${price.nights} night(s)</p>`
       : '<div class="mb-4"></div>';
     const dormNotice = avail?.availability_status === 'dorm_min_guests'
       ? `<p class="text-body-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">Minimum ${avail?.dorm_booking_minimum || 5} guests required to book this dorm.</p>`
       : '';
-    let reserveBtn;
-    if (readOnly) {
-      reserveBtn = `<div class="mt-auto w-full py-3 text-center bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[18px]">visibility</span>View only</div>`;
-    } else if (st.bookable && stayMatchesLastSearch()) {
-      const checkIn = checkInEl.value;
-      const checkOut = checkOutEl.value;
-      const guests = guestsEl.value || '1';
-      const href = buildBookReservationUrl({ roomId: room.id, checkIn, checkOut, guests });
-      reserveBtn = `<a href="${href}" class="mt-auto block text-center w-full py-3 bg-primary text-white rounded-xl font-bold text-label-md hover:brightness-110 transition-all shadow-md active:scale-95 no-underline">Reserve</a>`;
-    } else if (st.bookable && !stayMatchesLastSearch()) {
-      reserveBtn = `<button type="button" class="mt-auto w-full py-3 bg-amber-50 text-amber-900 border border-amber-200 rounded-xl font-bold text-label-md cursor-pointer" data-refresh-stay-search>Update search to reserve</button>`;
-    } else {
-      reserveBtn = `<button disabled class="mt-auto w-full py-3 bg-surface-container-low text-outline border border-outline-variant/50 rounded-xl font-bold text-label-md cursor-not-allowed">${st.label}</button>`;
-    }
     return `
-      <article class="browse-room-card${silent ? '' : ' reveal'}">
+      <article
+        class="browse-room-card browse-space-card${silent ? '' : ' reveal'}"
+        data-preview-room="${escapeHtml(String(room.id))}"
+        tabindex="0"
+        role="button"
+        aria-label="View photos and details for Room ${escapeHtml(String(room.roomNumber))}"
+      >
         <div class="browse-room-card__media">
           <img src="${img}" alt="${room.roomType} room ${room.roomNumber}" loading="lazy" />
           <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/15 to-transparent"></div>
           <div class="absolute top-3 left-3">
             <span class="${st.cls} px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest shadow">${st.label}</span>
           </div>
+          <span class="browse-space-card__photos">
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">photo_library</span>
+            ${galleryCount} photos
+          </span>
         </div>
         <div class="browse-room-card__body">
           <div class="flex justify-between items-start gap-3 mb-1">
@@ -739,7 +813,7 @@
           <p class="text-body-sm text-on-surface-variant mb-1">${room.roomType}</p>
           ${dormNotice}
           ${priceLine}
-          ${reserveBtn}
+          ${roomViewDetailsControl()}
         </div>
       </article>`;
   }
@@ -931,8 +1005,35 @@
   });
   document.getElementById('rooms-mount')?.addEventListener('click', (e) => {
     if (e.target.closest('[data-refresh-stay-search]')) {
+      e.stopPropagation();
       checkAvailability();
+      return;
     }
+    if (e.target.closest('a[href], [data-preview-stop]')) return;
+    const card = e.target.closest('[data-preview-room]');
+    if (card) openRoomPreview(card.dataset.previewRoom);
+  });
+  document.getElementById('rooms-mount')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest('a, button')) return;
+    const card = e.target.closest('[data-preview-room]');
+    if (!card) return;
+    e.preventDefault();
+    openRoomPreview(card.dataset.previewRoom);
+  });
+
+  document.getElementById('venues-mount')?.addEventListener('click', (e) => {
+    if (e.target.closest('[data-preview-stop]')) return;
+    const card = e.target.closest('[data-preview-venue]');
+    if (card) openVenuePreview(card.dataset.previewVenue);
+  });
+  document.getElementById('venues-mount')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest('a, button')) return;
+    const card = e.target.closest('[data-preview-venue]');
+    if (!card) return;
+    e.preventDefault();
+    openVenuePreview(card.dataset.previewVenue);
   });
 
   let searchTimer;
@@ -962,6 +1063,7 @@
             category: group.category,
             name: item.name,
             room_code: item.room_code,
+            description: item.description || '',
             capacity_min: item.capacity_min ?? null,
             capacity_max: item.capacity_max ?? null,
             min_hours: item.min_hours ?? null,
@@ -970,6 +1072,11 @@
             policies: item.policies || '',
             uses: [],
           });
+        } else {
+          const existing = byKey.get(key);
+          if (!existing.description && item.description) existing.description = item.description;
+          if (!existing.inclusions && item.inclusions) existing.inclusions = item.inclusions;
+          if (!existing.policies && item.policies) existing.policies = item.policies;
         }
         byKey.get(key).uses.push({
           facilityId: item.facility_id,
@@ -979,6 +1086,8 @@
           capacity_min: item.capacity_min ?? null,
           capacity_max: item.capacity_max ?? null,
           min_hours: item.min_hours ?? null,
+          inclusions: item.inclusions || '',
+          policies: item.policies || '',
           regularRate: regular?.rate ?? null,
           peakRate: peak?.rate ?? null,
         });
@@ -1011,8 +1120,9 @@
     const usesNote = venue.uses.length > 1
       ? `<p class="text-label-sm text-on-surface-variant mb-2"><span class="material-symbols-outlined text-[15px] align-middle">tune</span> ${venue.uses.length} uses available</p>`
       : '';
-    const inclusionsNote = venue.inclusions
-      ? `<p class="text-body-sm text-on-surface-variant mb-2 line-clamp-2"><span class="font-medium text-on-surface">Includes:</span> ${escapeHtml(venue.inclusions)}</p>`
+    const blurb = venue.description || venue.inclusions;
+    const blurbNote = blurb
+      ? `<p class="text-body-sm text-on-surface-variant mb-2 line-clamp-2">${escapeHtml(blurb)}</p>`
       : '';
     const img = venuePreviewImage({
       name: venue.name,
@@ -1022,10 +1132,27 @@
       room_code: venue.room_code,
       item: venue.uses?.[0]?.item,
     });
+    const galleryCount = venueGalleryImages({
+      name: venue.name,
+      category: venue.category,
+      facility_group: venue.category,
+      room_code: venue.room_code,
+      item: venue.uses?.[0]?.item,
+    }).length;
     return `
-      <div class="flex flex-col bg-white rounded-2xl overflow-hidden border border-outline-variant hover:border-primary/40 hover:shadow-xl transition-all duration-300 reveal">
+      <article
+        class="browse-venue-card browse-space-card flex flex-col bg-white rounded-2xl overflow-hidden border border-outline-variant hover:border-primary/40 hover:shadow-xl transition-all duration-300 reveal"
+        data-preview-venue="${escapeHtml(venue.key)}"
+        tabindex="0"
+        role="button"
+        aria-label="View photos and details for ${escapeHtml(venue.name)}"
+      >
         <div class="browse-venue-card__media">
           <img src="${escapeHtml(img)}" alt="" loading="lazy" class="w-full h-full object-cover" />
+          <span class="browse-space-card__photos">
+            <span class="material-symbols-outlined text-[16px]" aria-hidden="true">photo_library</span>
+            ${galleryCount} photos
+          </span>
         </div>
         <div class="p-5 flex flex-col flex-1">
           <p class="text-label-sm text-primary font-medium mb-1">${escapeHtml(venue.category)}</p>
@@ -1033,14 +1160,17 @@
           <p class="text-body-sm text-on-surface-variant mb-1">${venueRateSummary(venue)}</p>
           ${cap ? `<p class="text-label-sm text-on-surface-variant mb-2"><span class="material-symbols-outlined text-[15px] align-middle">group</span> ${escapeHtml(cap)}</p>` : ''}
           ${usesNote}
-          ${inclusionsNote}
-          ${!readOnly ? `<button type="button"
-            class="book-venue-btn mt-auto w-full border border-primary text-primary rounded-lg py-2 text-label-sm hover:bg-primary hover:text-white transition-colors"
-            data-venue-key="${escapeHtml(venue.key)}">
-            Book this venue
-          </button>` : `<div class="mt-auto w-full py-2 text-center bg-surface-container-low text-outline border border-outline-variant/50 rounded-lg text-label-sm">View only</div>`}
+          ${blurbNote}
+          <button type="button"
+            class="mt-auto w-full border border-primary text-primary rounded-lg py-2 text-label-sm hover:bg-primary hover:text-white transition-colors"
+            data-preview-open>
+            <span class="inline-flex items-center justify-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px]" aria-hidden="true">photo_library</span>
+              View details
+            </span>
+          </button>
         </div>
-      </div>`;
+      </article>`;
   }
 
   let allVenues = [];
@@ -1085,6 +1215,316 @@
       mount.innerHTML = `<div class="text-center py-8 text-error"><p>${err.message}</p></div>`;
     }
   }
+
+  // ---- Browse preview (photos + details) ----
+  const previewModal = document.getElementById('browse-preview-modal');
+  const previewImage = document.getElementById('browse-preview-image');
+  const previewThumbs = document.getElementById('browse-preview-thumbs');
+  const previewCounter = document.getElementById('browse-preview-counter');
+  const previewEyebrow = document.getElementById('browse-preview-eyebrow');
+  const previewTitle = document.getElementById('browse-preview-title');
+  const previewMeta = document.getElementById('browse-preview-meta');
+  const previewBody = document.getElementById('browse-preview-body');
+  const previewActions = document.getElementById('browse-preview-actions');
+  const previewPrevBtn = previewModal?.querySelector('[data-preview-prev]');
+  const previewNextBtn = previewModal?.querySelector('[data-preview-next]');
+
+  const previewState = {
+    kind: null,
+    images: [],
+    index: 0,
+    roomId: null,
+    venueKey: null,
+  };
+
+  function splitDetailLines(text) {
+    return String(text || '')
+      .split(/\n+|;\s*|,\s+(?=[A-Z])/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+
+  function highlightChipsHtml(items) {
+    if (!items?.length) return '';
+    return `<ul class="browse-preview__chips">${items.map((item) => `
+      <li>
+        <span class="material-symbols-outlined" aria-hidden="true">${escapeHtml(item.icon || 'check')}</span>
+        ${escapeHtml(item.label)}
+      </li>`).join('')}</ul>`;
+  }
+
+  function detailBlockHtml(title, text, { list = false } = {}) {
+    if (!text) return '';
+    if (list) {
+      const lines = splitDetailLines(text);
+      if (!lines.length) return '';
+      return `<section class="browse-preview__section">
+        <h4>${escapeHtml(title)}</h4>
+        <ul class="browse-preview__list">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
+      </section>`;
+    }
+    return `<section class="browse-preview__section">
+      <h4>${escapeHtml(title)}</h4>
+      <p>${escapeHtml(text)}</p>
+    </section>`;
+  }
+
+  function paintPreviewImage() {
+    const { images, index } = previewState;
+    if (!images.length || !previewImage) return;
+    const src = images[index];
+    previewImage.src = src;
+    previewImage.alt = `Photo ${index + 1} of ${images.length}`;
+    if (previewCounter) previewCounter.textContent = `${index + 1} / ${images.length}`;
+    previewThumbs?.querySelectorAll('[data-preview-thumb]').forEach((btn) => {
+      const active = Number(btn.dataset.previewThumb) === index;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    const multi = images.length > 1;
+    previewPrevBtn?.classList.toggle('is-hidden', !multi);
+    previewNextBtn?.classList.toggle('is-hidden', !multi);
+    if (previewCounter) previewCounter.classList.toggle('is-hidden', !multi);
+  }
+
+  function renderPreviewThumbs() {
+    if (!previewThumbs) return;
+    previewThumbs.innerHTML = previewState.images.map((src, i) => `
+      <button
+        type="button"
+        class="browse-preview__thumb${i === previewState.index ? ' is-active' : ''}"
+        data-preview-thumb="${i}"
+        role="tab"
+        aria-selected="${i === previewState.index ? 'true' : 'false'}"
+        aria-label="Photo ${i + 1}"
+      >
+        <img src="${escapeHtml(src)}" alt="" loading="lazy" />
+      </button>`).join('');
+  }
+
+  function stepPreview(delta) {
+    const len = previewState.images.length;
+    if (len < 2) return;
+    previewState.index = (previewState.index + delta + len) % len;
+    paintPreviewImage();
+  }
+
+  function openBrowsePreview() {
+    if (!previewModal) return;
+    previewModal.hidden = false;
+    previewModal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('browse-preview-open');
+    previewModal.querySelector('[data-preview-close]')?.focus?.();
+  }
+
+  function closeBrowsePreview() {
+    if (!previewModal || previewModal.hidden) return;
+    previewModal.hidden = true;
+    previewModal.setAttribute('aria-hidden', 'true');
+    document.body.classList.remove('browse-preview-open');
+    previewState.kind = null;
+    previewState.images = [];
+    previewState.index = 0;
+    previewState.roomId = null;
+    previewState.venueKey = null;
+  }
+
+  function openRoomPreview(roomId) {
+    const room = visibleRooms().find((r) => String(r.id) === String(roomId))
+      || roomsForFilters().find((r) => String(r.id) === String(roomId));
+    if (!room) return;
+    const st = statusInfo(room);
+    const price = priceFor(room);
+    const highlights = roomTypeHighlights(room);
+    const avail = availabilityForRoom(room.id);
+    const description = String(room.description || '').trim();
+    const policies = String(room.policies || '').trim();
+
+    previewState.kind = 'room';
+    previewState.roomId = room.id;
+    previewState.venueKey = null;
+    previewState.images = roomGalleryImages(room);
+    previewState.index = 0;
+
+    if (previewEyebrow) previewEyebrow.textContent = room.building || 'Guest lodging';
+    if (previewTitle) previewTitle.textContent = `Room ${room.roomNumber}`;
+    if (previewMeta) {
+      previewMeta.innerHTML = `
+        <span class="browse-preview__pill ${st.bookable ? 'is-ok' : ''}">${escapeHtml(st.label)}</span>
+        <span class="browse-preview__pill"><span class="material-symbols-outlined">hotel</span>${escapeHtml(room.roomType)}</span>
+        <span class="browse-preview__pill"><span class="material-symbols-outlined">group</span>${room.capacityMin}–${room.capacityMax} guests</span>
+        ${price?.perNight != null ? `<span class="browse-preview__pill is-price">${peso(price.perNight)} / night</span>` : ''}
+      `;
+    }
+    if (previewBody) {
+      const dorm = avail?.availability_status === 'dorm_min_guests'
+        ? `<p class="browse-preview__alert">Minimum ${avail?.dorm_booking_minimum || 5} guests required to book this dorm.</p>`
+        : '';
+      const stay = price?.nights
+        ? `<p class="browse-preview__lead">${peso(price.total)} estimated for ${price.nights} night(s) with your current search.</p>`
+        : `<p class="browse-preview__lead">Set stay dates above to see live availability and pricing for this room.</p>`;
+      const about = description
+        ? `<section class="browse-preview__section"><h4>Description</h4><p>${escapeHtml(description)}</p></section>`
+        : '';
+      previewBody.innerHTML = `
+        ${stay}
+        ${dorm}
+        ${about}
+        <section class="browse-preview__section">
+          <h4>What's included</h4>
+          ${highlightChipsHtml(highlights)}
+        </section>
+        ${detailBlockHtml('Policies', policies, { list: true })}
+        <section class="browse-preview__section">
+          <h4>Good to know</h4>
+          <ul class="browse-preview__list">
+            <li>Located in ${escapeHtml(room.building)}</li>
+            <li>Sleeps ${room.capacityMin}–${room.capacityMax} guests</li>
+            <li>Photos are representative — layout may vary by room</li>
+          </ul>
+        </section>
+      `;
+    }
+    if (previewActions) {
+      previewActions.innerHTML = `
+        <button type="button" class="browse-preview__ghost" data-preview-close>Keep browsing</button>
+        ${roomReserveControl(room, { compact: true })}
+      `;
+    }
+
+    renderPreviewThumbs();
+    paintPreviewImage();
+    openBrowsePreview();
+  }
+
+  function openVenuePreview(venueKey) {
+    const venue = allVenues.find((v) => v.key === venueKey);
+    if (!venue) return;
+    const cap = venueCapacityText(venue);
+    const galleryVenue = {
+      name: venue.name,
+      category: venue.category,
+      facility_group: venue.category,
+      room_code: venue.room_code,
+      item: venue.uses?.[0]?.item,
+    };
+
+    previewState.kind = 'venue';
+    previewState.venueKey = venue.key;
+    previewState.roomId = null;
+    previewState.images = venueGalleryImages(galleryVenue);
+    previewState.index = 0;
+
+    if (previewEyebrow) previewEyebrow.textContent = venue.category || 'Venue';
+    if (previewTitle) {
+      previewTitle.textContent = venue.room_code
+        ? `${venue.name} (${venue.room_code})`
+        : venue.name;
+    }
+    if (previewMeta) {
+      previewMeta.innerHTML = `
+        <span class="browse-preview__pill is-price">${escapeHtml(venueRateSummary(venue))}</span>
+        ${cap ? `<span class="browse-preview__pill"><span class="material-symbols-outlined">group</span>${escapeHtml(cap)}</span>` : ''}
+        ${venue.min_hours ? `<span class="browse-preview__pill"><span class="material-symbols-outlined">schedule</span>${venue.min_hours}-hr minimum</span>` : ''}
+        ${venue.uses.length > 1 ? `<span class="browse-preview__pill"><span class="material-symbols-outlined">tune</span>${venue.uses.length} uses</span>` : ''}
+      `;
+    }
+    if (previewBody) {
+      const usesDiffer = venue.uses.some((u) =>
+        (u.inclusions && u.inclusions !== venue.inclusions)
+        || (u.policies && u.policies !== venue.policies)
+      );
+      const usesList = venue.uses.length
+        ? `<section class="browse-preview__section">
+            <h4>Available uses</h4>
+            <ul class="browse-preview__list">${venue.uses.map((u) => {
+              const rate = u.regularRate != null
+                ? ` · from ₱${Number(u.regularRate).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+                : '';
+              const useNote = usesDiffer && (u.inclusions || u.policies)
+                ? `<div class="browse-preview__use-notes">${u.inclusions ? `<p><strong>Includes:</strong> ${escapeHtml(u.inclusions)}</p>` : ''}${u.policies ? `<p><strong>Policies:</strong> ${escapeHtml(u.policies)}</p>` : ''}</div>`
+                : '';
+              return `<li><span>${escapeHtml(u.functionName || u.item || 'Standard booking')}${rate}</span>${useNote}</li>`;
+            }).join('')}</ul>
+          </section>`
+        : '';
+      const about = venue.description
+        ? `<section class="browse-preview__section"><h4>Description</h4><p>${escapeHtml(venue.description)}</p></section>`
+        : '';
+      const sharedInclusions = !usesDiffer ? detailBlockHtml("What's included", venue.inclusions, { list: true }) : '';
+      const sharedPolicies = !usesDiffer ? detailBlockHtml('Policies', venue.policies, { list: true }) : '';
+      previewBody.innerHTML = `
+        <p class="browse-preview__lead">Review the description, what's included, and policies — then continue to request your preferred date and time.</p>
+        ${about}
+        ${sharedInclusions}
+        ${sharedPolicies}
+        ${usesList}
+      `;
+    }
+    if (previewActions) {
+      previewActions.innerHTML = readOnly
+        ? `<button type="button" class="browse-preview__ghost" data-preview-close>Close</button>
+           <div class="browse-preview__cta text-center bg-surface-container-low text-outline border border-outline-variant/50">View only</div>`
+        : `<button type="button" class="browse-preview__ghost" data-preview-close>Keep browsing</button>
+           <button type="button" class="browse-preview__cta browse-preview__cta--primary" data-venue-key="${escapeHtml(venue.key)}" data-preview-book>Request this venue</button>`;
+    }
+
+    renderPreviewThumbs();
+    paintPreviewImage();
+    openBrowsePreview();
+  }
+
+  previewModal?.addEventListener('click', (e) => {
+    if (e.target.closest('[data-preview-close]')) {
+      closeBrowsePreview();
+      return;
+    }
+    if (e.target.closest('[data-refresh-stay-search]')) {
+      closeBrowsePreview();
+      checkAvailability();
+      return;
+    }
+    if (e.target.closest('[data-preview-prev]')) {
+      stepPreview(-1);
+      return;
+    }
+    if (e.target.closest('[data-preview-next]')) {
+      stepPreview(1);
+      return;
+    }
+    const thumb = e.target.closest('[data-preview-thumb]');
+    if (thumb) {
+      previewState.index = Number(thumb.dataset.previewThumb) || 0;
+      paintPreviewImage();
+      return;
+    }
+    if (e.target.closest('[data-preview-book]')) {
+      const key = e.target.closest('[data-venue-key]')?.dataset.venueKey || previewState.venueKey;
+      closeBrowsePreview();
+      if (key) openVenueModal(key);
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (previewModal?.hidden) return;
+    if (e.key === 'Escape') {
+      closeBrowsePreview();
+      return;
+    }
+    if (e.key === 'ArrowLeft') stepPreview(-1);
+    if (e.key === 'ArrowRight') stepPreview(1);
+  });
+
+  let previewTouchX = null;
+  previewModal?.querySelector('.browse-preview__stage')?.addEventListener('touchstart', (e) => {
+    previewTouchX = e.changedTouches[0]?.clientX ?? null;
+  }, { passive: true });
+  previewModal?.querySelector('.browse-preview__stage')?.addEventListener('touchend', (e) => {
+    if (previewTouchX == null) return;
+    const dx = (e.changedTouches[0]?.clientX ?? previewTouchX) - previewTouchX;
+    if (Math.abs(dx) > 40) stepPreview(dx < 0 ? 1 : -1);
+    previewTouchX = null;
+  }, { passive: true });
 
   // ---- Venue booking modal ----
   const modal    = document.getElementById('venue-booking-modal');

@@ -566,6 +566,9 @@ export function normalizeRoom(room) {
     status: room.status,
     capacityMax: room.capacity_max,
     occupancy: room.occupancy,
+    description: room.description || '',
+    inclusions: room.inclusions || room.highlights || '',
+    policies: room.policies || '',
   };
 }
 

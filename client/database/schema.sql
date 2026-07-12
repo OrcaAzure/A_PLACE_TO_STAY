@@ -40,6 +40,12 @@ CREATE TABLE IF NOT EXISTS rooms (
                     'Dirty',
                     'Maintenance'
                   ) NOT NULL DEFAULT 'Available',
+    -- Guest-facing copy shown in browse preview (Manage rooms).
+    description   TEXT         DEFAULT NULL,
+    -- Amenities / what's included (one item per line works best).
+    inclusions    TEXT         DEFAULT NULL,
+    -- House rules shown to guests before they reserve.
+    policies      TEXT         DEFAULT NULL,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 

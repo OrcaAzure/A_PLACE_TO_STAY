@@ -13,6 +13,11 @@ export default class Room {
     this.capacity_max  = data.capacity_max;
     this.occupancy     = data.occupancy;
     this.status        = data.status;
+    this.description   = data.description ?? null;
+    this.inclusions    = data.inclusions ?? null;
+    this.policies      = data.policies ?? null;
+    // Legacy column — prefer inclusions
+    this.highlights    = data.highlights ?? null;
     this.created_at    = data.created_at;
     this.updated_at    = data.updated_at;
   }
