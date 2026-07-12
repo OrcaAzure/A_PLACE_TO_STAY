@@ -55,20 +55,6 @@
 
   <div id="browse-price-notice" class="reveal" style="animation-delay:.05s"></div>
 
-  <details class="browse-guidelines reveal" style="animation-delay:.06s" id="browse-guidelines">
-    <summary class="browse-guidelines__summary">
-      <span class="browse-guidelines__summary-main">
-        <span class="material-symbols-outlined" aria-hidden="true">policy</span>
-        <span>
-          <strong>Campus booking guidelines</strong>
-          <span class="browse-guidelines__summary-sub">Deposits, cancellation, check-in &amp; venue use — tap to review</span>
-        </span>
-      </span>
-      <span class="material-symbols-outlined browse-guidelines__chevron" aria-hidden="true">expand_more</span>
-    </summary>
-    <div class="browse-guidelines__body" id="browse-guidelines-body"></div>
-  </details>
-
   <div id="browse-room-tools" class="space-y-5 reveal" style="animation-delay:.08s">
     <section class="browse-stay-planner browse-panel" id="browse-stay-planner">
       <div class="browse-stay-planner-top">
@@ -305,13 +291,6 @@
     venueGalleryImages,
     roomTypeHighlights,
   } from '/assets/js/features/facility-display.js';
-  import {
-    HOUSING_CONTACT,
-    ROOM_POLICY_HIGHLIGHTS,
-    VENUE_POLICY_HIGHLIGHTS,
-    resolvePoliciesText,
-    housingContactMailto,
-  } from '/assets/js/config/housing-policies.js';
 
   await initSplashIdle({ portal: 'guest' });
   if (!(await requireAuth())) throw new Error('Not authenticated');
@@ -326,49 +305,6 @@
   document.getElementById('browse-price-notice').innerHTML = priceNoticeHtml();
   document.getElementById('vbm-price-notice').innerHTML = priceNoticeHtml('mt-1');
   document.getElementById('guest-access-notice').innerHTML = guestAccessNoticeHtml(isInternal);
-
-  function policyHighlightsHtml(kind) {
-    const items = kind === 'venue' ? VENUE_POLICY_HIGHLIGHTS : ROOM_POLICY_HIGHLIGHTS;
-    return `<div class="browse-policy-grid">${items.map((item) => `
-      <article class="browse-policy-card">
-        <span class="material-symbols-outlined" aria-hidden="true">${escapeHtml(item.icon)}</span>
-        <div>
-          <h4>${escapeHtml(item.title)}</h4>
-          <p>${escapeHtml(item.text)}</p>
-        </div>
-      </article>`).join('')}</div>`;
-  }
-
-  function housingContactCardHtml() {
-    const c = HOUSING_CONTACT;
-    return `<aside class="browse-contact-card">
-      <div class="browse-contact-card__head">
-        <span class="material-symbols-outlined" aria-hidden="true">support_agent</span>
-        <div>
-          <p class="browse-contact-card__label">${escapeHtml(c.label)}</p>
-          <p class="browse-contact-card__name">${escapeHtml(c.name)}</p>
-          <p class="browse-contact-card__title">${escapeHtml(c.title)}</p>
-        </div>
-      </div>
-      <div class="browse-contact-card__links">
-        <a href="${housingContactMailto()}">${escapeHtml(c.email)}</a>
-        <a href="${escapeHtml(c.mobileTel)}">${escapeHtml(c.mobileDisplay)}</a>
-        <a href="${escapeHtml(c.phonePrimaryTel)}">${escapeHtml(c.phoneDisplay)}</a>
-      </div>
-      <p class="browse-contact-card__hours">${escapeHtml(c.officeHours)} · ${escapeHtml(c.officeHoursNote)}</p>
-    </aside>`;
-  }
-
-  function renderBrowseGuidelines() {
-    const mount = document.getElementById('browse-guidelines-body');
-    if (!mount) return;
-    const kind = categoryShowsRooms(selectedCategory) ? 'room' : 'venue';
-    mount.innerHTML = `
-      <p class="browse-guidelines__lead">Key points from APTS Housing &amp; Guest Services. Space-specific notes may also appear when you open a room or venue.</p>
-      ${policyHighlightsHtml(kind)}
-      ${housingContactCardHtml()}
-    `;
-  }
 
   const BLOCKED_BUILDINGS = [];
   const isBlocked = (n) => BLOCKED_BUILDINGS.includes(String(n || '').trim());
@@ -688,7 +624,6 @@
   function setSelectedCategory(categoryId, { scroll = false } = {}) {
     selectedCategory = resolveBrowseCategory(categoryId);
     renderCategoryCards();
-    renderBrowseGuidelines();
     render();
     renderVenues();
     if (scroll) {
@@ -1403,7 +1338,7 @@
     const highlights = roomTypeHighlights(room);
     const avail = availabilityForRoom(room.id);
     const description = String(room.description || '').trim();
-    const policies = resolvePoliciesText(room.policies, 'room');
+    const policies = String(room.policies || '').trim();
 
     previewState.kind = 'room';
     previewState.roomId = room.id;
@@ -1439,12 +1374,15 @@
           <h4>What's included</h4>
           ${highlightChipsHtml(highlights)}
         </section>
-        <section class="browse-preview__section">
-          <h4>Stay guidelines</h4>
-          ${policyHighlightsHtml('room')}
-        </section>
         ${detailBlockHtml('Policies', policies, { list: true })}
-        ${housingContactCardHtml()}
+        <section class="browse-preview__section">
+          <h4>Good to know</h4>
+          <ul class="browse-preview__list">
+            <li>Located in ${escapeHtml(room.building)}</li>
+            <li>Sleeps ${room.capacityMin}–${room.capacityMax} guests</li>
+            <li>Photos are representative — layout may vary by room</li>
+          </ul>
+        </section>
       `;
     }
     if (previewActions) {
@@ -1514,21 +1452,13 @@
         ? `<section class="browse-preview__section"><h4>Description</h4><p>${escapeHtml(venue.description)}</p></section>`
         : '';
       const sharedInclusions = !usesDiffer ? detailBlockHtml("What's included", venue.inclusions, { list: true }) : '';
-      const policiesText = resolvePoliciesText(venue.policies, 'venue');
-      const sharedPolicies = !usesDiffer
-        ? detailBlockHtml('Policies', policiesText, { list: true })
-        : '';
+      const sharedPolicies = !usesDiffer ? detailBlockHtml('Policies', venue.policies, { list: true }) : '';
       previewBody.innerHTML = `
-        <p class="browse-preview__lead">Review the space, guidelines, and inclusions — then continue to request your preferred date and time.</p>
+        <p class="browse-preview__lead">Review the description, what's included, and policies — then continue to request your preferred date and time.</p>
         ${about}
         ${sharedInclusions}
-        <section class="browse-preview__section">
-          <h4>Venue guidelines</h4>
-          ${policyHighlightsHtml('venue')}
-        </section>
         ${sharedPolicies}
         ${usesList}
-        ${housingContactCardHtml()}
       `;
     }
     if (previewActions) {
@@ -1623,7 +1553,7 @@
     if (cap) parts.push(`<p class="text-body-sm text-on-surface-variant"><span class="material-symbols-outlined text-[15px] align-middle">group</span> ${escapeHtml(cap)}</p>`);
     if (venue.min_hours) parts.push(`<p class="text-body-sm text-on-surface-variant"><span class="material-symbols-outlined text-[15px] align-middle">schedule</span> ${venue.min_hours}-hour minimum booking</p>`);
     if (venue.inclusions) parts.push(`<div><p class="text-label-sm font-medium text-on-surface mb-0.5">What's included</p><p class="text-body-sm text-on-surface-variant whitespace-pre-line">${escapeHtml(venue.inclusions)}</p></div>`);
-    parts.push(`<div><p class="text-label-sm font-medium text-on-surface mb-0.5">Policies</p><p class="text-body-sm text-on-surface-variant whitespace-pre-line">${escapeHtml(resolvePoliciesText(venue.policies, 'venue'))}</p></div>`);
+    if (venue.policies) parts.push(`<div><p class="text-label-sm font-medium text-on-surface mb-0.5">Policies</p><p class="text-body-sm text-on-surface-variant whitespace-pre-line">${escapeHtml(venue.policies)}</p></div>`);
     if (!parts.length) { infoEl.classList.add('hidden'); infoEl.innerHTML = ''; return; }
     infoEl.innerHTML = parts.join('');
     infoEl.classList.remove('hidden');
@@ -1880,7 +1810,6 @@
   const browseQ = readBrowseQuery();
   selectedCategory = resolveBrowseCategory(browseQ.category);
   renderCategoryCards();
-  renderBrowseGuidelines();
   loadRooms();
   loadVenues();
   if (browseQ.checkIn || browseQ.checkOut) {

@@ -32,13 +32,13 @@ export async function bootstrapGuestMyStaysPage() {
       if (!link || !text) return;
       try {
         const contact = await getSupportContact();
-        const email = contact.email || 'guestservices@apts.edu';
+        const email = contact.email || 'facilities@apts.edu.ph';
         text.textContent = email;
         link.href = `mailto:${encodeURIComponent(email)}`;
-        link.title = `Email ${contact.label || 'Housing & Guest Services'} at ${email}`;
+        link.title = `Email ${contact.label || 'facilities team'} at ${email}`;
       } catch {
-        text.textContent = 'guestservices@apts.edu';
-        link.href = 'mailto:guestservices@apts.edu';
+        text.textContent = 'facilities@apts.edu.ph';
+        link.href = 'mailto:facilities@apts.edu.ph';
       }
     }
     loadSupportReplyMail();
@@ -67,12 +67,8 @@ export async function bootstrapGuestMyStaysPage() {
         ?? (settings.guest_cancellation_cutoff_days != null ? settings.guest_cancellation_cutoff_days * 24 : 24)
       );
       const policyEl = document.getElementById('res-policy-text');
-      if (policyEl) {
-        const campus = '25% deposit on approval · additional 50% by 30 days before (or 50% if booking within 30 days). Cancel more than 30 days ahead: 10% of deposit deducted; within 30 days: 50% forfeited. Lodging check-in/out is 12:00 noon. Quiet hours 10:00 PM–7:00 AM · non-smoking campus.';
-        const online = fyInfo.cancellationPolicyLabel
-          ? ` Online cancellations: ${fyInfo.cancellationPolicyLabel} Events or stays that have already started cannot be cancelled online.`
-          : '';
-        policyEl.textContent = `${campus}${online}`;
+      if (policyEl && fyInfo.cancellationPolicyLabel) {
+        policyEl.textContent = `${fyInfo.cancellationPolicyLabel} Events or stays that have already started cannot be cancelled online.`;
       }
     } catch (err) {
       console.warn('Cancellation policy unavailable', err);

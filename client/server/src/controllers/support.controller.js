@@ -4,22 +4,14 @@ import {
   isEmailDevMode,
   sendSupportMessageEmail,
 } from '../services/email.service.js';
-import { HOUSING_CONTACT } from '../config/housing-policies.js';
 
 const MAX_SUBJECT_LEN = 160;
 const MAX_MESSAGE_LEN = 4000;
 
 export const getSupportContact = async (_req, res) => {
   res.status(200).json({
-    email: getSupportEmail() || HOUSING_CONTACT.email,
-    label: HOUSING_CONTACT.label,
-    name: HOUSING_CONTACT.name,
-    title: HOUSING_CONTACT.title,
-    phone: HOUSING_CONTACT.phoneDisplay,
-    mobile: HOUSING_CONTACT.mobileDisplay,
-    fax: HOUSING_CONTACT.fax,
-    website: HOUSING_CONTACT.website,
-    officeHours: HOUSING_CONTACT.officeHours,
+    email: getSupportEmail(),
+    label: 'Facilities team',
   });
 };
 

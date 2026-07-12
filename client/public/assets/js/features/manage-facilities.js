@@ -369,7 +369,7 @@ function renderGuestCopyFields() {
     <div class="admin-crud-field span-full">
       <label for="mf-policies">Policies <span class="text-slate-400 font-normal">(optional)</span></label>
       <textarea id="mf-policies" name="policies" rows="3" placeholder="House rules, quiet hours, check-in notes…">${escapeHtml(state.form.policies || '')}</textarea>
-      <p class="mf-field-hint">If left blank, campus lodging guidelines (deposits, cancellation, check-in noon, quiet hours) are shown to guests.</p>
+      <p class="mf-field-hint">Rules guests should know before reserving.</p>
     </div>`;
 }
 
