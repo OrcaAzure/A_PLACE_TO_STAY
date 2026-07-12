@@ -16,7 +16,7 @@ DORM_MIN_GUEST_COUNT, dormPriceLabel, isRoomBookable, isRoomListVisible, dormMin
 } from '/assets/js/features/reservation-shared.js';
 import {
   parseBookQuery, priceNoticeHtml, hasCompleteBookIntent,
-  validateVenueCapacityClient, validateVenueDurationClient,
+  validateVenueCapacityClient, validateVenueDurationClient, buildRoomPreviewUrl,
 } from '/assets/js/features/guest-booking-flow.js';
 import { createGuestBookingExtras } from '/assets/js/features/guest-booking-extras.js';
 import { loadGuestInvoices } from '/assets/js/features/guest-invoices.js';
@@ -364,6 +364,7 @@ export async function bootstrapGuestMyStaysPage() {
   
     /* ---------- Booking modal ---------- */
     const modal = document.getElementById('booking-modal-overlay');
+    let browseReturnTo = null;
     const form = document.getElementById('booking-form');
     const roomInput = document.getElementById('booking-room');
     const submitBtn = document.getElementById('booking-submit-btn');
@@ -561,6 +562,10 @@ export async function bootstrapGuestMyStaysPage() {
     }
   
     function closeBookingModal() {
+      if (browseReturnTo) {
+        window.location.href = buildRoomPreviewUrl(browseReturnTo);
+        return;
+      }
       closeModal(modal);
       form.reset();
       resetBookingResults();
@@ -621,6 +626,12 @@ export async function bootstrapGuestMyStaysPage() {
       openModal(modal);
       submitBtn.disabled = true;
   
+      browseReturnTo = { roomId, checkIn, checkOut, guests: guests || '1' };
+      const closeBtn = document.getElementById('booking-modal-close');
+      closeBtn.querySelector('.material-symbols-outlined').textContent = 'arrow_back';
+      closeBtn.setAttribute('aria-label', 'Back to room details');
+      closeBtn.title = 'Back to room details';
+      
       const previewWrap = document.getElementById('booking-selected-room-wrap');
       const previewMount = document.getElementById('booking-selected-room');
       previewWrap?.classList.remove('hidden');

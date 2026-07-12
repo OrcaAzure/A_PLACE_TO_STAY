@@ -189,9 +189,14 @@
 <!-- Venue Booking Modal -->
 <div id="venue-booking-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
   <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
-    <div class="flex items-center justify-between">
-      <h3 class="font-headline-sm text-on-surface" id="vbm-title">Book Venue</h3>
-      <button id="vbm-close" type="button" class="text-on-surface-variant hover:text-on-surface">
+    <div class="flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2 min-w-0">
+        <button type="button" id="vbm-back" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-full p-1 transition-colors shrink-0" aria-label="Back to details">
+          <span class="material-symbols-outlined">arrow_back</span>
+        </button>
+        <h3 class="font-headline-sm text-on-surface truncate" id="vbm-title">Book Venue</h3>
+      </div>
+      <button id="vbm-close" type="button" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-full p-1 transition-colors shrink-0" aria-label="Close">
         <span class="material-symbols-outlined">close</span>
       </button>
     </div>
@@ -1660,10 +1665,12 @@
   }
 
   document.getElementById('vbm-close')?.addEventListener('click', closeVenueModal);
-  document.getElementById('vbm-info')?.addEventListener('click', (e) => {
-  if (!e.target.closest('#vbm-view-policies') || !currentVenue) return;closeVenueModal();openVenuePreview(currentVenue.key);
-  });
   document.getElementById('vbm-cancel-btn')?.addEventListener('click', closeVenueModal);
+  document.getElementById('vbm-back')?.addEventListener('click', () => {
+    const key = currentVenue?.key;
+    closeVenueModal();
+    if (key) openVenuePreview(key);
+  });
   modal?.addEventListener('click', (e) => { if (e.target === modal) closeVenueModal(); });
 
   document.getElementById('vbm-date')?.addEventListener('change', () => {
@@ -1843,6 +1850,12 @@
     checkAvailability();
   } else if (browseQ.focus === 'venues' || !categoryShowsRooms(selectedCategory)) {
     document.getElementById('venues')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  if (browseQ.previewRoom) {
+    const reopen = () => openRoomPreview(browseQ.previewRoom);
+    browseQ.checkIn && browseQ.checkOut ? setTimeout(reopen, 300) : reopen();
+    window.history.replaceState({}, '', window.location.pathname);
   }
 
   createBookingPoll(

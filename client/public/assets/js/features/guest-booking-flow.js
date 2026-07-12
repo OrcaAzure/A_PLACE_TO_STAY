@@ -97,6 +97,16 @@ export function buildBookReservationUrl({ roomId, checkIn, checkOut, guests } = 
   return `/guest/reservations.html?${params.toString()}`;
 }
 
+export function buildRoomPreviewUrl({ roomId, checkIn, checkOut, guests } = {}) {
+  const params = new URLSearchParams();
+  if (roomId != null && roomId !== '') params.set('preview_room', String(roomId));
+  if (checkIn) params.set('check_in', checkIn);
+  if (checkOut) params.set('check_out', checkOut);
+  if (guests != null && guests !== '') params.set('guests', String(guests));
+  const qs = params.toString();
+  return `/guest/facilities.html${qs ? `?${qs}` : ''}`;
+}
+
 export function buildBrowseUrl(category, extra = {}) {
   const params = new URLSearchParams();
   if (category) params.set('category', category);
@@ -145,6 +155,7 @@ export function readBrowseQuery() {
     guests: params.get('guests') || '1',
     category: params.get('category') || '',
     focus: params.get('focus') || '',
+    previewRoom: params.get('preview_room') || '',
   };
 }
 
