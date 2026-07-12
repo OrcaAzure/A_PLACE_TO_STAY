@@ -1218,6 +1218,7 @@
 
   // ---- Browse preview (photos + details) ----
   const previewModal = document.getElementById('browse-preview-modal');
+  if (previewModal && previewModal.parentElement !== document.body) {document.body.appendChild(previewModal);}
   const previewImage = document.getElementById('browse-preview-image');
   const previewThumbs = document.getElementById('browse-preview-thumbs');
   const previewCounter = document.getElementById('browse-preview-counter');
@@ -1528,6 +1529,7 @@
 
   // ---- Venue booking modal ----
   const modal    = document.getElementById('venue-booking-modal');
+  if (modal && modal.parentElement !== document.body) {document.body.appendChild(modal);}
   const titleEl  = document.getElementById('vbm-title');
   const catEl    = document.getElementById('vbm-category');
   const itemEl   = document.getElementById('vbm-item');
