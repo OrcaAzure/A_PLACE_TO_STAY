@@ -1618,7 +1618,7 @@ function renderReservationConfirmDialog() {
   return `
     <div class="billing-res-confirm hidden" data-res-confirm hidden aria-hidden="true">
       <div class="billing-res-confirm__card" role="dialog" aria-modal="true" aria-labelledby="billing-res-confirm-title">
-        <h3 id="billing-res-confirm-title" class="billing-res-confirm__title">Confirm reservation changes</h3>
+        <h3 id="billing-res-confirm-title" data-billing-res-confirm-title class="billing-res-confirm__title">Confirm reservation changes</h3>
         <p class="billing-res-confirm__lead">These updates apply to the linked booking and may recalculate the invoice subtotal in billing.</p>
         <ul class="billing-res-confirm__list" data-res-confirm-list></ul>
         <label class="billing-res-confirm__check">
@@ -1680,6 +1680,46 @@ function readReservationEditForm(form) {
   };
 }
 
+function normalizeConfirmSummaryLines(summaryLines) {
+  const lines = (Array.isArray(summaryLines) ? summaryLines : [])
+    .map((line) => ({
+      level: ['critical', 'warn', 'info'].includes(line?.level) ? line.level : 'info',
+      text: String(line?.text || '').trim(),
+    }))
+    .filter((line) => line.text.length > 0);
+  if (!lines.length) {
+    lines.push({ level: 'info', text: 'Save reservation details as entered.' });
+  }
+  return lines;
+}
+
+function reservationEditHasChanges(p, draft) {
+  const origKind = reservationKind(p);
+  if (draft.invoice_kind !== origKind) return true;
+  if (isVenueConvertedToStay(p) || (origKind === 'venue' && draft.invoice_kind === 'room')) {
+    return draft.check_in !== sliceDate(p.check_in)
+      || draft.check_out !== sliceDate(p.check_out)
+      || Number(draft.stay_total || 0) !== Number(p.subtotal ?? p.booking_total ?? 0);
+  }
+  if (draft.invoice_kind === 'room') {
+    return draft.check_in !== sliceDate(p.check_in)
+      || draft.check_out !== sliceDate(p.check_out)
+      || Number(draft.guest_count) !== Number(p.guest_count || 1)
+      || (draft.stay_total != null && Number(draft.stay_total) !== Number(p.subtotal ?? p.booking_total ?? 0))
+      || (draft.contact_phone || '') !== String(p.contact_phone || '')
+      || (draft.meal_allergen_notes || '') !== String(p.meal_allergen_notes || '');
+  }
+  if (draft.invoice_kind === 'venue') {
+    return String(draft.facility_id) !== String(p.facility_id)
+      || draft.event_date !== sliceDate(p.event_date)
+      || draft.start_time !== sliceTime(p.start_time)
+      || draft.end_time !== sliceTime(p.end_time)
+      || Number(draft.guest_count) !== Number(p.guest_count || 1);
+  }
+  return (draft.notes || '') !== (parseBookingNotes(p.notes).guestNotes || '')
+    || Boolean(draft.modification_message);
+}
+
 function buildReservationChangeSummary(p, draft) {
   const lines = [];
   const origKind = reservationKind(p);
@@ -1691,21 +1731,30 @@ function buildReservationChangeSummary(p, draft) {
   }
   if (isVenueConvertedToStay(p) && draft.invoice_kind === 'room') {
     if (draft.check_in !== sliceDate(p.check_in) || draft.check_out !== sliceDate(p.check_out)) {
-      lines.push({ level: 'warn', text: 'Stay dates will update in billing.' });
+      lines.push({
+        level: 'warn',
+        text: `Stay dates: ${formatDateLongSingle(sliceDate(p.check_in))} – ${formatDateLongSingle(sliceDate(p.check_out))} → ${formatDateLongSingle(draft.check_in)} – ${formatDateLongSingle(draft.check_out)}.`,
+      });
     }
     const currentTotal = Number(p.subtotal ?? p.booking_total ?? 0);
     if (draft.stay_total && Number(draft.stay_total) !== currentTotal) {
-      lines.push({ level: 'warn', text: `Stay total set to ${fmt(draft.stay_total)} — invoice subtotal will update.` });
+      lines.push({ level: 'warn', text: `Stay total: ${fmt(currentTotal)} → ${fmt(draft.stay_total)} — invoice subtotal will update.` });
     }
   } else if (draft.invoice_kind === 'room') {
     if (draft.check_in !== sliceDate(p.check_in) || draft.check_out !== sliceDate(p.check_out)) {
-      lines.push({ level: 'warn', text: 'Stay dates change — invoice subtotal may update.' });
+      lines.push({
+        level: 'warn',
+        text: `Stay dates: ${formatDateLongSingle(sliceDate(p.check_in))} – ${formatDateLongSingle(sliceDate(p.check_out))} → ${formatDateLongSingle(draft.check_in)} – ${formatDateLongSingle(draft.check_out)}.`,
+      });
     }
     if (draft.stay_total != null && Number(draft.stay_total) !== Number(p.subtotal ?? p.booking_total ?? 0)) {
-      lines.push({ level: 'warn', text: `Stay total set to ${fmt(draft.stay_total)} — invoice subtotal will update.` });
+      lines.push({
+        level: 'warn',
+        text: `Stay total: ${fmt(p.subtotal ?? p.booking_total ?? 0)} → ${fmt(draft.stay_total)} — invoice subtotal will update.`,
+      });
     }
     if (Number(draft.guest_count) !== Number(p.guest_count || 1)) {
-      lines.push({ level: 'info', text: `Guest count changes to ${draft.guest_count}.` });
+      lines.push({ level: 'info', text: `Guest count: ${p.guest_count || 1} → ${draft.guest_count}.` });
     }
     if ((draft.contact_phone || '') !== String(p.contact_phone || '')) {
       lines.push({ level: 'info', text: 'Contact phone updates.' });
@@ -1715,11 +1764,23 @@ function buildReservationChangeSummary(p, draft) {
     }
   }
   if (draft.invoice_kind === 'venue') {
-    if (String(draft.facility_id) !== String(p.facility_id)) lines.push({ level: 'warn', text: 'Venue space changes.' });
-    if (draft.event_date !== sliceDate(p.event_date)
-      || draft.start_time !== sliceTime(p.start_time)
-      || draft.end_time !== sliceTime(p.end_time)) {
-      lines.push({ level: 'warn', text: 'Event schedule changes — venue total may recalculate.' });
+    if (String(draft.facility_id) !== String(p.facility_id)) {
+      lines.push({ level: 'warn', text: `Venue space changes from ${venueLabel(p)}.` });
+    }
+    if (draft.event_date !== sliceDate(p.event_date)) {
+      lines.push({
+        level: 'warn',
+        text: `Event date: ${formatDateLongSingle(sliceDate(p.event_date))} → ${formatDateLongSingle(draft.event_date)}.`,
+      });
+    }
+    if (draft.start_time !== sliceTime(p.start_time) || draft.end_time !== sliceTime(p.end_time)) {
+      lines.push({
+        level: 'warn',
+        text: `Event time: ${formatTime12(p.start_time)} – ${formatTime12(p.end_time)} → ${formatTime12(draft.start_time)} – ${formatTime12(draft.end_time)}.`,
+      });
+    }
+    if (Number(draft.guest_count) !== Number(p.guest_count || 1)) {
+      lines.push({ level: 'info', text: `Guest count: ${p.guest_count || 1} → ${draft.guest_count}.` });
     }
   }
   if ((draft.notes || '') !== (parseBookingNotes(p.notes).guestNotes || '')) {
@@ -1728,8 +1789,7 @@ function buildReservationChangeSummary(p, draft) {
   if (draft.modification_message) {
     lines.push({ level: 'info', text: 'Admin change note will be logged for fast tracking.' });
   }
-  if (!lines.length) lines.push({ level: 'info', text: 'Save reservation details as entered.' });
-  return lines;
+  return normalizeConfirmSummaryLines(lines);
 }
 
 function syncReservationKindPanels(form, p) {
@@ -1823,19 +1883,24 @@ function setReservationRevertMode(detailEl, reverting) {
   if (revertBtn) revertBtn.hidden = reverting;
 }
 
+function resolveBillingDetailRoot(detailEl) {
+  const liveRoot = document.getElementById('invoice-detail');
+  const scoped = detailEl?.querySelector?.('.billing-detail')
+    || liveRoot?.querySelector('.billing-detail');
+  return scoped || detailEl || liveRoot;
+}
+
 function showReservationConfirmDialog(detailEl, summaryLines, { converting = false, reverting = false } = {}) {
-  const scope = detailEl?.querySelector('.billing-detail') || detailEl;
+  const scope = resolveBillingDetailRoot(detailEl);
   const overlay = scope?.querySelector('[data-res-confirm]');
-  const titleEl = overlay?.querySelector('#billing-res-confirm-title');
+  const titleEl = overlay?.querySelector('[data-billing-res-confirm-title]');
   const listEl = overlay?.querySelector('[data-res-confirm-list]');
   const check = overlay?.querySelector('[data-res-confirm-check]');
   const applyBtn = overlay?.querySelector('[data-res-confirm-apply]');
   const cancelBtn = overlay?.querySelector('[data-res-confirm-cancel]');
   if (!overlay || !listEl || !check || !applyBtn || !cancelBtn) return Promise.resolve(false);
 
-  const lines = summaryLines?.length
-    ? summaryLines
-    : [{ level: 'info', text: 'Save reservation details as entered.' }];
+  const lines = normalizeConfirmSummaryLines(summaryLines);
 
   if (titleEl) {
     titleEl.textContent = reverting
@@ -1846,8 +1911,12 @@ function showReservationConfirmDialog(detailEl, summaryLines, { converting = fal
     ? 'Revert to venue booking'
     : (converting ? 'Convert to overnight stay' : 'Apply changes');
 
-  listEl.innerHTML = lines.map(({ level, text }) => `
-    <li class="billing-res-confirm__item billing-res-confirm__item--${level}">${escapeHtml(text)}</li>`).join('');
+  listEl.replaceChildren(...lines.map(({ level, text }) => {
+    const item = document.createElement('li');
+    item.className = `billing-res-confirm__item billing-res-confirm__item--${level}`;
+    item.textContent = text;
+    return item;
+  }));
   check.checked = false;
   applyBtn.disabled = true;
   overlay.classList.remove('hidden');
@@ -2064,9 +2133,14 @@ function bindReservationEdit(p, detailEl) {
 
     const summary = buildReservationChangeSummary(p, draft);
     const needsConfirm = converting
+      || reservationEditHasChanges(p, draft)
       || summary.some((line) => line.level === 'critical' || line.level === 'warn');
     if (needsConfirm) {
-      const ok = await showReservationConfirmDialog(detailEl, summary, { converting });
+      const ok = await showReservationConfirmDialog(
+        document.getElementById('invoice-detail') || detailEl,
+        summary,
+        { converting },
+      );
       if (!ok) return;
     }
 
@@ -2128,7 +2202,11 @@ function bindReservationEdit(p, detailEl) {
       level: 'critical',
       text: `Revert ${venueSpaceLabel(p)} from overnight billing back to a venue event on ${draft.event_date} (${formatTime12(draft.start_time)}–${formatTime12(draft.end_time)}). Invoice subtotal will update.`,
     }];
-    const ok = await showReservationConfirmDialog(detailEl, summary, { reverting: true });
+    const ok = await showReservationConfirmDialog(
+      document.getElementById('invoice-detail') || detailEl,
+      summary,
+      { reverting: true },
+    );
     if (!ok) return;
 
     const submitBtn = revertForm.querySelector('[type="submit"]');

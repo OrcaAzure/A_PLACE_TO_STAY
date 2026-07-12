@@ -929,6 +929,7 @@
   list-style: none;
   display: grid;
   gap: 0.5rem;
+  min-height: 2.5rem;
 }
 
 .billing-res-confirm__item {

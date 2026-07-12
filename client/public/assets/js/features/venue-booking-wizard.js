@@ -972,7 +972,21 @@ export async function openVenueBookingWizard(detail = {}) {
       state.guestCount = booking.guest_count || 1;
       state.notes = booking.notes || '';
       state.originalStatus = booking.status || 'Approved';
+      state.category = booking.facility_category || booking.category || state.category;
+      state.item = booking.item || state.item;
       applySpaceFromFacilityId(booking.facility_id);
+      if (!state.spaceKey && state.category && state.item) {
+        const match = venues.find((v) =>
+          v.category === state.category
+          && v.uses.some((u) => u.item === state.item));
+        if (match) {
+          state.spaceKey = match.spaceKey;
+          const use = match.uses.find((u) => u.item === state.item) || match.uses[0];
+          state.facilityId = use?.facilityId || state.facilityId;
+          state.eventVenueId = state.facilityId;
+          state.item = use?.item || state.item;
+        }
+      }
     } else if (detail.facility_id || detail.facilityId || detail.event_venue_id || detail.eventVenueId) {
       applySpaceFromFacilityId(detail.facility_id || detail.facilityId || detail.event_venue_id || detail.eventVenueId);
     } else if (detail.category && detail.item) {

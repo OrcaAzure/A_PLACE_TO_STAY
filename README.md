@@ -113,22 +113,22 @@ App HTML lives in `client/server/views/`; CSS/JS live under `client/public/asset
 
 Bookings auto-calculate price, season, and check room availability.
 
-## Project status (~91% complete)
+## Project status (~92% complete)
 
 | Area | Done | Notes |
 |------|------|-------|
-| Admin portal | ~90% | Dashboard, reservations, facilities, guest access, billing, in-app notifications |
-| Guest portal | ~92% | Book, modify, cancel reservations; venue bookings; profile; notification prefs; live bell feed |
+| Admin portal | ~91% | Dashboard, reservations, venue booking wizard (edit/modify), billing, in-app notifications |
+| Guest portal | ~93% | Redesigned browse, room/venue detail views, book/modify/cancel, notification prefs, live bell feed |
 | Backend API | ~89% | Core flows done; room/venue rates and seasonal periods in Settings |
 | Auth & email | ~93% | 12 automated email templates; guest email prefs; needs production SMTP to deliver |
-| Dev tooling | ~90% | Setup, Docker, GitHub Actions CI, health check, `npm test` (61/61 passing) |
+| Dev tooling | ~90% | Setup, Docker, GitHub Actions CI, health check, `npm test` (65/65 passing) |
 | Deployment / ops | ~65% | Docs and configs ready; staging/prod not validated with IT yet |
 
-**Product overall ~91% · production-ready ~78%** (blocked mainly on IT: DB, SSL, SMTP, staging smoke test).
+**Product overall ~92% · production-ready ~79%** (blocked mainly on IT: DB, SSL, SMTP, staging smoke test).
 
-**Still in progress:** admin venue modify UI.
+**Still in progress:** IT staging deploy and production SMTP validation.
 
-**Recently shipped:** in-app notification feed (admin + guest bell), guest email notification preferences, silent background polling (no pulse animations), billing modal stability and confirm-dialog fixes, guest self-modify (room/group/venue), landing page polish, privacy/terms legal pages.
+**Recently shipped:** guest room/facility browse redesign, guest room and venue detail views, billing reservation confirm dialog with field-level change summaries, in-app notification feed (admin + guest bell), guest email notification preferences, admin venue modify/edit via booking wizard (pending + approved), landing shared partials, silent background polling.
 
 ## Automated tests
 
