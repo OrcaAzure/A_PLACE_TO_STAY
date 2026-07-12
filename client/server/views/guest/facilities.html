@@ -188,7 +188,7 @@
 
 <!-- Venue Booking Modal -->
 <div id="venue-booking-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40">
-  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl p-6 space-y-4">
+  <div class="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[90vh] overflow-y-auto p-6 space-y-4">
     <div class="flex items-center justify-between">
       <h3 class="font-headline-sm text-on-surface" id="vbm-title">Book Venue</h3>
       <button id="vbm-close" type="button" class="text-on-surface-variant hover:text-on-surface">
@@ -1555,7 +1555,7 @@
     if (cap) parts.push(`<p class="text-body-sm text-on-surface-variant"><span class="material-symbols-outlined text-[15px] align-middle">group</span> ${escapeHtml(cap)}</p>`);
     if (venue.min_hours) parts.push(`<p class="text-body-sm text-on-surface-variant"><span class="material-symbols-outlined text-[15px] align-middle">schedule</span> ${venue.min_hours}-hour minimum booking</p>`);
     if (venue.inclusions) parts.push(`<div><p class="text-label-sm font-medium text-on-surface mb-0.5">What's included</p><p class="text-body-sm text-on-surface-variant whitespace-pre-line">${escapeHtml(venue.inclusions)}</p></div>`);
-    if (venue.policies) parts.push(`<div><p class="text-label-sm font-medium text-on-surface mb-0.5">Policies</p><p class="text-body-sm text-on-surface-variant whitespace-pre-line">${escapeHtml(venue.policies)}</p></div>`);
+    if (venue.policies) parts.push(`<button type="button" id="vbm-view-policies" class="text-body-sm font-semibold text-primary underline underline-offset-2 hover:opacity-80">View full policies &amp; details</button>`);
     if (!parts.length) { infoEl.classList.add('hidden'); infoEl.innerHTML = ''; return; }
     infoEl.innerHTML = parts.join('');
     infoEl.classList.remove('hidden');
@@ -1660,6 +1660,9 @@
   }
 
   document.getElementById('vbm-close')?.addEventListener('click', closeVenueModal);
+  document.getElementById('vbm-info')?.addEventListener('click', (e) => {
+  if (!e.target.closest('#vbm-view-policies') || !currentVenue) return;closeVenueModal();openVenuePreview(currentVenue.key);
+  });
   document.getElementById('vbm-cancel-btn')?.addEventListener('click', closeVenueModal);
   modal?.addEventListener('click', (e) => { if (e.target === modal) closeVenueModal(); });
 
