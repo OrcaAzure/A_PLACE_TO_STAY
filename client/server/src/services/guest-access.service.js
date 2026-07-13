@@ -147,13 +147,18 @@ function resolveStayContext(stays, today) {
 async function loadGuestAccessAccounts() {
   const [guests] = await pool.query(
     `SELECT * FROM users
-     WHERE role = ?
-       AND LOWER(email) NOT LIKE '%@apts.edu'
+     WHERE LOWER(email) NOT LIKE '%@apts.edu'
        AND LOWER(email) NOT LIKE '%@apts.edu.ph'
+       AND (
+         role = ?
+         OR (role = '' AND LOWER(email) NOT LIKE '%@aptspace.local')
+       )
      ORDER BY created_at DESC`,
     [ROLES.GUEST],
   );
-  return guests;
+  return guests.map((guest) => (
+    guest.role === ROLES.GUEST ? guest : { ...guest, role: ROLES.GUEST }
+  ));
 }
 
 export async function getGuestAccessOverview() {

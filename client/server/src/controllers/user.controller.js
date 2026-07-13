@@ -69,7 +69,8 @@ export const updateUser = async (req, res) => {
     if (existing.length === 0) return res.status(404).json({ message: 'User not found' });
 
     const target = existing[0];
-    const { full_name, role, status } = req.body;
+    const { full_name, status } = req.body;
+    const role = req.body.role === '' || req.body.role == null ? undefined : req.body.role;
     const targetId = Number(req.params.id);
 
     if (targetId === req.user?.id && status === STATUS.INACTIVE) {

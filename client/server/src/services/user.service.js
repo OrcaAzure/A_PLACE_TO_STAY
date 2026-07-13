@@ -15,7 +15,9 @@ export function isInternalPortalUser(user) {
 
 /** External visitors managed on the Guest Access page (Guest role, non-APTS email). */
 export function isManagedExternalGuest(user) {
-  return user?.role === ROLES.GUEST && !isInternalGuestEmail(user.email);
+  if (!user || isInternalGuestEmail(user.email)) return false;
+  const role = String(user.role || '').trim();
+  return role === ROLES.GUEST || role === '';
 }
 
 export function generateTempPassword() {

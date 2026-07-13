@@ -789,5 +789,19 @@ export async function runSchemaPatches() {
   } catch (err) {
     console.warn('[schema] users notification prefs skipped:', err.message);
   }
+
+  try {
+    if (await tableExists('users')) {
+      const [result] = await pool.execute(
+        `UPDATE users SET role = 'Guest'
+         WHERE role = '' OR role IS NULL`
+      );
+      if (result.affectedRows > 0) {
+        console.log(`[schema] Repaired ${result.affectedRows} user(s) with empty role → Guest`);
+      }
+    }
+  } catch (err) {
+    console.warn('[schema] users.role repair skipped:', err.message);
+  }
 }
 
