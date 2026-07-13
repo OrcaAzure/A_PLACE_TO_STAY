@@ -185,8 +185,9 @@ body:not(.lp-ready) #lp-page .lp-mobile-cta a[href*="login"] {
   text-decoration: none;
 }
 
-html.scroll-smooth,
+html,
 body.lp-shell {
+  scroll-behavior: auto;
   scroll-padding-top: calc(4.25rem + env(safe-area-inset-top, 0px));
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -199,7 +200,7 @@ html.lp-scroll-snap-active {
   scroll-behavior: auto !important;
 }
 
-html.scroll-smooth::-webkit-scrollbar,
+html::-webkit-scrollbar,
 body.lp-shell::-webkit-scrollbar {
   display: none;
 }
@@ -357,6 +358,7 @@ body.lp-scroll-snap-active .lp-section-scroller {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  transition: none;
 }
 
 .lp-scroll-pin {
@@ -387,10 +389,7 @@ body.lp-scroll-snap-active .lp-section-scroller {
   object-fit: cover;
   object-position: center;
   opacity: 0;
-}
-
-.lp-scroll-bg-img.is-active {
-  opacity: 1;
+  will-change: opacity;
 }
 
 .lp-scroll-bg-overlay {
@@ -470,7 +469,6 @@ body.lp-scroll-snap-active .lp-section-scroller {
   z-index: 3;
   width: min(92vw, 56rem);
   min-height: clamp(4rem, 12vh, 6rem);
-  perspective: 800px;
   text-align: center;
 }
 
@@ -502,7 +500,6 @@ body.lp-scroll-snap-active .lp-section-scroller {
   text-transform: capitalize;
   color: #fff;
   text-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
-  transform-style: preserve-3d;
   transform-origin: center center;
 }
 
@@ -512,8 +509,12 @@ body.lp-scroll-snap-active .lp-section-scroller {
 
 .lp-scroll-char {
   display: inline-block;
-  transform-style: preserve-3d;
-  transform-origin: 50% 50%;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+
+.lp-scroll-phrase.is-visible .lp-scroll-char {
+  opacity: 1;
 }
 
 .lp-scroll-section.is-transitioning .lp-scroll-phrase,
@@ -557,22 +558,17 @@ body.lp-scroll-snap-active .lp-section-scroller {
     linear-gradient(145deg, #2c5282 0%, #1a365d 100%);
   background-size: cover;
   background-position: center 45%;
+}
+
+.lp-hero.is-parallax-active .lp-hero-bg {
   will-change: transform;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .lp-hero-bg {
-    animation: lp-hero-pan 22s ease-in-out infinite alternate;
-  }
-}
-
-@keyframes lp-hero-pan {
-  from {
-    background-position: center 42%;
-  }
-  to {
-    background-position: center 58%;
-  }
+.lp-hero.is-parallax-active .lp-hero-badge,
+.lp-hero.is-parallax-active .lp-hero-tag,
+.lp-hero.is-parallax-active .lp-stat {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .lp-hero-overlay {

@@ -50,8 +50,8 @@ describe('Pages smoke (public)', () => {
 
     const sections = await agent.get('/components/landing-sections.html');
     assert.equal(sections.status, 200);
-    assert.match(sections.text, /lp-scroll-section/);
-    assert.match(sections.text, /id="explore"/);
+    assert.match(sections.text, /lp-trust/);
+    assert.match(sections.text, /id="facilities"/);
   });
 
   it('GET landing.css is served', async () => {
