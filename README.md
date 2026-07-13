@@ -28,6 +28,8 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
+**UI preview only (no MySQL):** `npm run dev:ui` then open [http://localhost:3000/?skipIntro=1](http://localhost:3000/?skipIntro=1) — see [RUN-SERVER.md](RUN-SERVER.md#preview-uis-without-mysql-design--layout-only).
+
 **Verify local setup:** `npm run verify`
 
 **Admin login:** `admin@aptspace.com` / `password` (or your `DEFAULT_PASSWORD`)

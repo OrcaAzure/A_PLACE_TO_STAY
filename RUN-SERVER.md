@@ -212,11 +212,43 @@ Use the full path to MySQL from XAMPP or MySQL Installer (see step 4 above).
 
 ---
 
+## Preview UIs without MySQL (design / layout only)
+
+If you only want to **see pages and animations** and do not need login or real data:
+
+```bash
+npm run dev:ui
+```
+
+Then open:
+
+| URL | What you see |
+|-----|----------------|
+| http://localhost:3000/?skipIntro=1 | Landing page (skips preloader + welcome) |
+| http://localhost:3000/ | Full landing (with intro animations) |
+| http://localhost:3000/login.html | Login screen |
+| http://localhost:3000/guest/dashboard.html | Guest portal layout |
+| http://localhost:3000/guest/facilities.html | Browse facilities UI |
+| http://localhost:3000/admin/dashboard.html | Admin portal layout |
+
+**Limits in UI-only mode:** MySQL is not used. Login, bookings, and API data will not work — pages may show empty lists or errors in the browser console. Use `npm run dev` with MySQL for full functionality.
+
+**Landing-only (no server):** from the project folder:
+
+```bash
+npx --yes serve client/public -l 3456
+```
+
+Open http://localhost:3456/?skipIntro=1 — landing and legal pages only (no guest/admin app pages).
+
+---
+
 ## Useful commands (cheat sheet)
 
 | Command | What it does |
 |---------|----------------|
-| `npm run dev` | Start server (normal development) |
+| `npm run dev` | Start server (normal development — needs MySQL) |
+| `npm run dev:ui` | Start server **without MySQL** — UI/layout preview only |
 | `npm run verify` | Check if setup is correct |
 | `npm run docker:up` | Start with Docker (no local MySQL needed) |
 | `npm run docker:down` | Stop Docker stack |

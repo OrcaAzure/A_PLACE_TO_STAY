@@ -389,6 +389,9 @@ body.lp-scroll-snap-active .lp-section-scroller {
   object-fit: cover;
   object-position: center;
   opacity: 0;
+}
+
+.lp-scroll-section.is-transitioning .lp-scroll-bg-img {
   will-change: opacity;
 }
 

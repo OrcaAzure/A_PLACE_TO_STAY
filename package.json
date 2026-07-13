@@ -4,6 +4,7 @@
   "description": "APTSpace — APTS housing and facility management",
   "scripts": {
     "dev": "npm run dev --prefix client/server",
+    "dev:ui": "node scripts/dev-ui.mjs",
     "start": "npm start --prefix client/server",
     "start:staging": "node scripts/run-server.mjs .env.staging",
     "start:staging:local": "node scripts/run-server.mjs .env.staging.local",
