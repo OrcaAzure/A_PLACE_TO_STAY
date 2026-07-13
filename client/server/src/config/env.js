@@ -42,6 +42,9 @@ export const CACHE_MAX_ENTRIES = Number(process.env.CACHE_MAX_ENTRIES) || 500;
 export const API_RATE_LIMIT_MAX = Number(process.env.API_RATE_LIMIT_MAX)
   || (isProduction ? 120 : 600);
 
+/** Skip MySQL connect/seed and bypass portal page auth — static UI preview only. */
+export const UI_ONLY = process.env.UI_ONLY === 'true' || process.env.UI_ONLY === '1';
+
 const LOCAL_ORIGINS = [
   'http://localhost:3000',
   'http://localhost:5500',

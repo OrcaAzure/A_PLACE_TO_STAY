@@ -21,7 +21,7 @@ import bookingRequestRoutes from './routes/booking-request.routes.js';
 import pageRoutes      from './routes/pages.routes.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { pool }        from './config/db.js';
-import { getAllowedOrigins, isProduction, API_RATE_LIMIT_MAX } from './config/env.js';
+import { getAllowedOrigins, isProduction, API_RATE_LIMIT_MAX, UI_ONLY } from './config/env.js';
 import { cache } from './utils/cache.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -88,6 +88,15 @@ app.get('/api', (req, res) => {
 });
 
 app.get('/api/health', async (req, res) => {
+  if (UI_ONLY) {
+    return res.json({
+      status: 'ok',
+      db: 'skipped',
+      mode: 'ui-only',
+      env: 'development',
+      cache: cache.stats(),
+    });
+  }
   try {
     await pool.query('SELECT 1');
     if (isProduction) {

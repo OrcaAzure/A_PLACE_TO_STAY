@@ -1,5 +1,6 @@
 import { extractToken, resolveAuthUser } from '../utils/authToken.js';
 import { clearAuthCookie } from '../utils/cookies.js';
+import { UI_ONLY } from '../config/env.js';
 
 import { isAdminPortalRole } from '../utils/constants.js';
 
@@ -11,6 +12,8 @@ function redirectToLogin(res, reason) {
 
 export function requirePortalPage(portal) {
   return async (req, res, next) => {
+    if (UI_ONLY) return next();
+
     const token = extractToken(req);
     if (!token) return redirectToLogin(res, 'auth');
 

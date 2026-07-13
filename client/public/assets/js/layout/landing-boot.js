@@ -3,6 +3,7 @@
  */
 
 const FAILSAFE_MS = 10000;
+const LANDING_ASSET_V = 'scrollqa3';
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -40,9 +41,18 @@ async function revealLandingPage(startHeroHandoff) {
   await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
+async function bootLandingPage({ skipHeroEntrance = true } = {}) {
+  const { initLandingPage } = await import(`/assets/js/layout/landing.js?v=${LANDING_ASSET_V}`);
+  const { redirectIfLoggedIn } = await import('/assets/js/services/auth.js');
+  redirectIfLoggedIn().catch(() => {});
+  const startHeroHandoff = await initLandingPage({ skipHeroEntrance });
+  await revealLandingPage(startHeroHandoff);
+}
+
 async function boot() {
   const params = new URLSearchParams(window.location.search);
   const previewIdle = params.has('previewIdle') || params.get('idle') === 'preview';
+  const skipIntro = params.has('skipIntro') || params.get('intro') === 'skip' || params.get('intro') === '0';
 
   try {
     const { mountPublicLandingContent } = await import('/assets/js/layout/landing-content.js');
@@ -64,11 +74,24 @@ async function boot() {
     document.body.classList.add('lp-ready');
 
     try {
-      const { initLandingPage } = await import('/assets/js/layout/landing.js?v=scrollqa2');
-      const { redirectIfLoggedIn } = await import('/assets/js/services/auth.js');
-      redirectIfLoggedIn().catch(() => {});
-      const startHeroHandoff = await initLandingPage({ skipHeroEntrance: true });
-      await revealLandingPage(startHeroHandoff);
+      await bootLandingPage({ skipHeroEntrance: true });
+    } catch (err) {
+      console.error('[landing] page init failed:', err);
+      document.body.classList.remove('lp-page-hidden');
+    }
+    return;
+  }
+
+  if (skipIntro) {
+    document.getElementById('lp-preloader')?.remove();
+    document.getElementById('lp-welcome')?.remove();
+    document.body.classList.remove('lp-preloader-active', 'lp-welcome-active');
+    document.body.classList.add('lp-ready');
+    if (!prefersReducedMotion()) {
+      document.body.classList.add('lp-page-hidden');
+    }
+    try {
+      await bootLandingPage({ skipHeroEntrance: false });
     } catch (err) {
       console.error('[landing] page init failed:', err);
       document.body.classList.remove('lp-page-hidden');
@@ -121,11 +144,7 @@ async function boot() {
   document.body.classList.add('lp-ready');
 
   try {
-    const { initLandingPage } = await import('/assets/js/layout/landing.js?v=scrollqa2');
-    const { redirectIfLoggedIn } = await import('/assets/js/services/auth.js');
-    redirectIfLoggedIn().catch(() => {});
-    const startHeroHandoff = await initLandingPage({ skipHeroEntrance: true });
-    await revealLandingPage(startHeroHandoff);
+    await bootLandingPage({ skipHeroEntrance: true });
   } catch (err) {
     console.error('[landing] page init failed:', err);
     document.body.classList.remove('lp-page-hidden');

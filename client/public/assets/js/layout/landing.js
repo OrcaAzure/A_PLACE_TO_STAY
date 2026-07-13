@@ -97,9 +97,6 @@ async function loadGsapWithScrollTrigger() {
   if (window.ScrollTrigger?.config) {
     window.ScrollTrigger.config({ limitCallbacks: true });
   }
-  if (window.ScrollTrigger?.normalizeScroll) {
-    window.ScrollTrigger.normalizeScroll(true);
-  }
   return window.gsap;
 }
 
@@ -273,6 +270,11 @@ function initNavSpy() {
       }
     });
   });
+
+  window.__lpRemeasureNav = () => {
+    measureSections();
+    resolveSection();
+  };
 }
 
 function getScrollShowcaseTrigger() {
@@ -297,7 +299,7 @@ function initSmoothAnchors() {
         e.preventDefault();
         const st = getScrollShowcaseTrigger();
         if (st) {
-          window.scrollTo({ top: Math.max(0, Math.round(st.start) + 1), behavior: 'auto' });
+          window.scrollTo({ top: Math.max(0, Math.round(st.start) + 2), behavior: 'auto' });
         } else {
           const target = document.getElementById('explore');
           if (target) target.scrollIntoView({ behavior: 'auto', block: 'start' });
@@ -412,6 +414,10 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     document.body.classList.toggle('lp-scroll-snap-active', active);
     document.documentElement.classList.toggle('lp-scroll-snap-active', active);
     pin.style.willChange = active ? 'transform' : '';
+    const heroBg = document.querySelector('.lp-hero-bg');
+    if (heroBg && gsap && active) {
+      gsap.set(heroBg, { clearProps: 'transform,yPercent' });
+    }
   }
 
   function snapProgressForIndex(index) {
@@ -666,6 +672,8 @@ function mountScrollShowcase(gsap, ScrollTrigger) {
   if (!section) return;
   preloadScrollShowcaseImages(section).then(() => {
     initScrollShowcase(gsap, ScrollTrigger);
+    scheduleScrollRefresh(ScrollTrigger);
+    window.__lpRemeasureNav?.();
   });
 }
 
@@ -676,6 +684,7 @@ function scheduleScrollRefresh(ScrollTrigger) {
   window.clearTimeout(scrollRefreshTimer);
   scrollRefreshTimer = window.setTimeout(() => {
     ScrollTrigger.refresh();
+    window.__lpRemeasureNav?.();
   }, 120);
 }
 
@@ -716,7 +725,8 @@ function mountLandingScrollAnimations(gsap, ST) {
         trigger: hero,
         start: 'top top',
         end: 'bottom top',
-        scrub: 1,
+        scrub: 0.6,
+        invalidateOnRefresh: true,
         onToggle: (self) => {
           hero.classList.toggle('is-parallax-active', self.isActive);
         },

@@ -1,4 +1,4 @@
-import { isProduction, JWT_SECRET, DB_HOST, DB_NAME, DB_USER, APP_URL, DEFAULT_PASSWORD } from './env.js';
+import { isProduction, JWT_SECRET, DB_HOST, DB_NAME, DB_USER, APP_URL, DEFAULT_PASSWORD, UI_ONLY } from './env.js';
 
 const WEAK_SECRETS = new Set([
   'change_this_to_a_long_random_string',
@@ -17,6 +17,10 @@ function warn(message) {
 }
 
 export function validateEnv() {
+  if (UI_ONLY && isProduction) {
+    fail('UI_ONLY cannot be enabled in production.');
+  }
+
   const secret = JWT_SECRET?.trim();
   const missing = [];
   if (!DB_HOST) missing.push('DB_HOST');
