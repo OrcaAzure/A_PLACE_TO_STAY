@@ -242,20 +242,21 @@ body.lp-shell::-webkit-scrollbar {
 
   .lp-hero-grid-tight {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
-    width: min(100%, 1140px);
+    width: min(100%, 42rem);
     margin-inline: auto;
     align-items: center;
+    justify-items: center;
   }
 
   .lp-hero-copy-col {
-    justify-self: end;
+    justify-self: center;
     width: 100%;
-    max-width: 34rem;
+    max-width: 38rem;
     min-width: 0;
     overflow-wrap: break-word;
-    padding-right: 0.5rem;
+    padding-right: 0;
   }
 
   .lp-hero-type-line {
@@ -276,21 +277,8 @@ body.lp-shell::-webkit-scrollbar {
     padding-bottom: clamp(3.5rem, 6vh, 5rem);
   }
 
-  .lp-hero.lp-hero--comfort .lp-hero-visual-col {
-    justify-self: start;
-    min-height: 24rem;
-    max-width: 22rem;
-    margin-left: 2.5rem;
-    margin-right: 0;
-    overflow: visible;
-  }
-
   .lp-hero.lp-hero--comfort::after {
     height: clamp(5rem, 12vh, 7rem);
-  }
-
-  .lp-hero.lp-hero--comfort .lp-hero-visual {
-    max-height: min(28rem, 56dvh);
   }
 
   .lp-hero.lp-hero--comfort .lp-hero-rule {
@@ -712,59 +700,8 @@ body.lp-scroll-snap-active .lp-section-scroller {
   border-color: rgba(255, 255, 255, 0.24);
 }
 
-.lp-hero-visual-col {
-  position: relative;
-  min-height: 28rem;
-  width: 100%;
-  max-width: 28rem;
-  margin-left: auto;
-}
-
-.lp-hero-visual {
-  position: relative;
-  border-radius: 1.5rem;
-  overflow: hidden;
-  max-height: min(34rem, 60dvh);
-  box-shadow:
-    0 32px 64px rgba(0, 0, 0, 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.12);
-  background: linear-gradient(145deg, #2c5282 0%, #1a365d 100%);
-}
-
-.lp-hero-visual img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.lp-hero-float {
-  position: absolute;
-  border-radius: 1rem;
-  overflow: hidden;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.28);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: linear-gradient(145deg, #4a5568 0%, #1a365d 100%);
-}
-
 .lp-trust-item {
   opacity: 1;
-}
-
-.lp-hero-mobile-visual {
-  position: relative;
-}
-
-.lp-hero-mobile-caption {
-  background: linear-gradient(to top, rgba(26, 54, 93, 0.82), transparent);
-}
-
-.lp-hero-mobile-visual::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(26, 54, 93, 0.35) 0%, transparent 55%);
-  pointer-events: none;
 }
 
 .lp-scroll-hint {
@@ -788,29 +725,11 @@ body.lp-scroll-snap-active .lp-section-scroller {
   .lp-scroll-hint-icon {
     animation: lp-scroll-bob 2.2s ease-in-out infinite;
   }
-
-  .lp-hero-float-a {
-    animation: lp-hero-float-a 5.5s ease-in-out infinite;
-  }
-
-  .lp-hero-float-b {
-    animation: lp-hero-float-b 6.2s ease-in-out infinite;
-  }
 }
 
 @keyframes lp-scroll-bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(5px); }
-}
-
-@keyframes lp-hero-float-a {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
-}
-
-@keyframes lp-hero-float-b {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(7px); }
 }
 
 /* Vertical section scroller (desktop) — sits in viewport gutter beside content */

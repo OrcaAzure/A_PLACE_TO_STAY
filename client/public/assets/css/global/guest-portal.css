@@ -91,19 +91,6 @@ body.guest-shell {
   color: #c53030;
 }
 
-/* Guest home hero — smaller collage (matches public landing comfort scale) */
-@media (min-width: 1024px) {
-  .guest-landing .lp-hero-visual-col {
-    max-width: 22rem;
-    margin-right: 2rem;
-    transform: translate(-1.5rem, -2.25rem);
-  }
-
-  .guest-landing .lp-hero-visual {
-    max-height: min(28rem, 56dvh);
-  }
-}
-
 @media (max-width: 767px) {
   .guest-top-nav .lp-nav-inner {
     display: flex;
