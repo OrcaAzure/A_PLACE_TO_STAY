@@ -93,20 +93,27 @@ export const getMe = async (userId) => {
     throw new Error('User not found');
   }
 
-  return normalizeUserPrefs(safeUser(rows[0]));
+  return normalizeUserProfile(safeUser(rows[0]));
 };
 
-function normalizeUserPrefs(user) {
+function normalizeUserProfile(user) {
   if (!user) return user;
   return {
     ...user,
-    email_notifications_enabled: user.email_notifications_enabled !== 0,
-    email_modification_notices_enabled: user.email_modification_notices_enabled !== 0,
+    contact_phone: user.contact_phone || null,
   };
 }
 
 export const updateMe = async (userId, body = {}) => {
-  const { full_name, email_notifications_enabled, email_modification_notices_enabled } = body;
+  const {
+    full_name,
+    contact_phone,
+    email,
+  } = body;
+
+  if (email !== undefined) {
+    throw new Error('Email address cannot be changed from account settings');
+  }
 
   const [existing] = await pool.query('SELECT full_name FROM users WHERE id = ? LIMIT 1', [userId]);
   if (!existing.length) throw new Error('User not found');
@@ -120,14 +127,15 @@ export const updateMe = async (userId, body = {}) => {
     params.push(full_name.trim());
   }
 
-  if (email_notifications_enabled !== undefined) {
-    sets.push('email_notifications_enabled = ?');
-    params.push(email_notifications_enabled ? 1 : 0);
-  }
-
-  if (email_modification_notices_enabled !== undefined) {
-    sets.push('email_modification_notices_enabled = ?');
-    params.push(email_modification_notices_enabled ? 1 : 0);
+  if (contact_phone !== undefined) {
+    const phone = contact_phone === null || contact_phone === ''
+      ? null
+      : String(contact_phone).trim();
+    if (phone && phone.length > 30) {
+      throw new Error('Contact number must be 30 characters or fewer');
+    }
+    sets.push('contact_phone = ?');
+    params.push(phone);
   }
 
   if (!sets.length) {

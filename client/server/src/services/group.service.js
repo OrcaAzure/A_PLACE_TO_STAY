@@ -19,7 +19,7 @@ import {
 import { validateReservationDates } from './fiscalYear.service.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from './ancillary.service.js';
-import { sendGroupModifiedEmail, sendGroupConfirmationEmail, sendGuestGroupSelfModifyEmail, sendGroupBookingCancelledEmail, sendGroupBookingRequestReceivedEmail } from './email.service.js';
+import { sendGroupModifiedEmail, sendGroupConfirmationEmail, sendGuestGroupSelfModifyEmail, sendGroupBookingCancelledEmail, sendGroupBookingDeclinedEmail, sendGroupBookingRequestReceivedEmail, extractDeclineReason } from './email.service.js';
 import { ensureInvoiceForBooking, ensureInvoicesForGroup, getInvoiceSnapshot, deletePaymentsForGroup, deletePaymentsForRoomBooking } from './payment.service.js';
 const bookingSelect = `
   SELECT bk.*,
@@ -63,6 +63,17 @@ function notifyGroupCancelled(group, { cancelledByGuest = true } = {}) {
     },
     group,
     { cancelledByGuest }
+  );
+}
+
+function notifyGroupDeclined(group, { reason = '' } = {}) {
+  void sendGroupBookingDeclinedEmail(
+    {
+      full_name: group.contact_name,
+      email: group.contact_email || group.requester_email,
+    },
+    group,
+    { reason }
   );
 }
 
@@ -622,6 +633,10 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
   const result = await getGroupById(groupId);
   if (nextStatus === 'Cancelled' && isAdmin) {
     notifyGroupCancelled(result, { cancelledByGuest: false });
+  } else if (nextStatus === 'Rejected' && group.status !== 'Rejected') {
+    notifyGroupDeclined(result, {
+      reason: extractDeclineReason(notes ?? result.notes),
+    });
   } else if (body.notify_guest && isAdmin && body.notify_modification && body.modification_message) {
     await sendGroupModifiedEmail(
       { full_name: result.contact_name, email: result.contact_email },

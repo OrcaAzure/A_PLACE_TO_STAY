@@ -23,7 +23,8 @@ import {
 import { fetchFacilitiesWithRates, FACILITY_GROUP_ICONS, formatFacilityLabel } from '../services/facilityCatalog.service.js';
 import { venueKey } from '../services/venueAdmin.service.js';
 import { sendGuestVenueSelfModifyEmail, sendVenueModifiedEmail } from '../services/email.service.js';
-import { notifyVenueBookingCancelled } from '../services/booking.service.js';
+import { notifyVenueBookingCancelled, notifyVenueBookingDeclined } from '../services/booking.service.js';
+import { extractDeclineReason } from '../services/email.service.js';
 
 import { isAdminRole, isAdminPortalRole } from '../utils/constants.js';
 
@@ -444,6 +445,11 @@ export const updateFacilityBooking = async (req, res) => {
       if (status === 'Cancelled') {
         const [cancelRows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
         notifyVenueBookingCancelled(cancelRows[0], { cancelledByGuest: false });
+      } else if (status === 'Rejected' && prev.status !== 'Rejected') {
+        const [rejectRows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [req.params.id]);
+        notifyVenueBookingDeclined(rejectRows[0], {
+          reason: extractDeclineReason(notes ?? rejectRows[0].notes),
+        });
       }
     }
 

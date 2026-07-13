@@ -146,13 +146,14 @@ Integration tests use `client/server/.env` and seeded users (`admin@aptspace.com
 
 Templates live in `client/server/src/services/email.service.js`. In development without SMTP, bodies are logged to the console (`[email dev]`).
 
-Guests can turn off email in **Account → Notifications** (`email_notifications_enabled`, `email_modification_notices_enabled` on `PATCH /api/auth/me`). Password reset and guest-access invite emails always send regardless of prefs.
+Reservation-related emails (approvals, declines, modifications, invoices, receipts) always send to the guest's email on file.
 
 | Email | When |
 |-------|------|
 | Guest access invite | Admin creates external guest account |
 | Password reset | Forgot-password flow |
 | Room / group confirmation | Booking approved |
+| Room / group / venue declined | Admin declines a pending request |
 | Room / group modified (admin) | Admin modifies with message |
 | Guest self-modify (room / group / venue) | Guest updates pending or re-requests approved booking |
 | Housing / venue invoice | Booking approved or admin sends from Billing |

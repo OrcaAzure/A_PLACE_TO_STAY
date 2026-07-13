@@ -9,6 +9,7 @@ function defaultState() {
     version: 1,
     updatedAt: null,
     items: [],
+    groupTotalGuests: null,
     extras: {
       meals: {},
       fees: [],
@@ -94,6 +95,49 @@ export function roomItems(state = loadBookingRequest()) {
 
 export function assignedRoomGuests(state = loadBookingRequest()) {
   return roomItems(state).reduce((sum, row) => sum + Math.max(1, Number(row.guestCount) || 1), 0);
+}
+
+export function getGroupTotalGuests(state = loadBookingRequest()) {
+  const n = state.groupTotalGuests;
+  return n == null ? null : Math.max(1, Number(n) || 1);
+}
+
+export function setGroupTotalGuests(count, state = loadBookingRequest()) {
+  state.groupTotalGuests = Math.max(1, Number(count) || 1);
+  return saveState(state);
+}
+
+export function roomGuestLimits(row, state = loadBookingRequest()) {
+  const minGuests = row.isDorm
+    ? Math.max(Number(row.capacityMin) || 1, Number(row.dormBookingMinimum) || 5)
+    : Math.max(1, Number(row.capacityMin) || 1);
+  const capacityMax = Math.max(minGuests, Number(row.capacityMax) || 99);
+  const groupTotal = getGroupTotalGuests(state);
+  const rooms = roomItems(state);
+
+  if (!groupTotal || rooms.length < 2) {
+    return { min: minGuests, max: capacityMax };
+  }
+
+  const current = Math.max(1, Number(row.guestCount) || 1);
+  const others = assignedRoomGuests(state) - current;
+  const max = Math.min(capacityMax, Math.max(minGuests, groupTotal - others));
+  return { min: minGuests, max };
+}
+
+export function groupGuestAssignmentStatus(state = loadBookingRequest()) {
+  const rooms = roomItems(state);
+  const assigned = assignedRoomGuests(state);
+  const groupTotal = getGroupTotalGuests(state);
+  if (rooms.length < 2 || groupTotal == null) {
+    return { assigned, groupTotal, matches: true, remaining: null };
+  }
+  return {
+    assigned,
+    groupTotal,
+    matches: assigned === groupTotal,
+    remaining: groupTotal - assigned,
+  };
 }
 
 export function venueItems(state = loadBookingRequest()) {

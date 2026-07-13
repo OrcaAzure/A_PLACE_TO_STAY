@@ -387,6 +387,7 @@ function filteredGuests() {
     const hay = [
       guest.full_name,
       guest.email,
+      guest.contact_phone,
       guest.organization,
       guest.stay?.summary,
       reservation?.label,
@@ -677,7 +678,7 @@ function renderAccountsTable() {
   const rows = filteredGuests();
   if (!rows.length) {
     const hasFilters = statusFilter !== 'all' || searchQuery;
-    tbody.innerHTML = `<tr><td colspan="5"><p class="ga-empty">${
+    tbody.innerHTML = `<tr><td colspan="6"><p class="ga-empty">${
       overview.guests.length
         ? hasFilters
           ? 'No guest accounts match your search or filter. <button type="button" class="ga-btn-text ga-btn-text--primary" data-ga-clear-filters>Clear search and filters</button>'
@@ -696,6 +697,7 @@ function renderAccountsTable() {
     return `<tr class="${rowClass}">
       <td class="ga-col-name font-medium">${escapeHtml(guest.full_name)}</td>
       <td class="ga-col-email">${escapeHtml(guest.email)}</td>
+      <td class="ga-col-phone">${escapeHtml(guest.contact_phone || '—')}</td>
       <td class="ga-col-access"><span class="ga-access-pill ${statusClass}">${escapeHtml(guest.status)}</span></td>
       <td class="ga-col-reservation">${stayCell(guest)}</td>
       <td class="ga-col-actions">${actionMenu(guest)}</td>
@@ -729,7 +731,7 @@ export async function loadGuestAccessPage({ background = false } = {}) {
 
     const tbody = $('guest-access-tbody');
     if (tbody) {
-      tbody.innerHTML = '<tr><td colspan="5"><p class="ga-empty">Loading…</p></td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6"><p class="ga-empty">Loading…</p></td></tr>';
     }
   }
 
@@ -757,7 +759,7 @@ export async function loadGuestAccessPage({ background = false } = {}) {
   renderAccountsTable();
 
   if (overviewError && tbody) {
-    tbody.innerHTML = `<tr><td colspan="5"><p class="ga-empty text-error">${escapeHtml(overviewError)}</p></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6"><p class="ga-empty text-error">${escapeHtml(overviewError)}</p></td></tr>`;
     updateAccountsCount();
   } else if (requestsError) {
     setFormFeedback(requestsError);

@@ -2,12 +2,13 @@
  * Booking request drawer + review/submit modal (guest browse).
  */
 
-import { submitBookingRequest, getProfile } from '/assets/js/services/api.js';
+import { submitBookingRequest, getProfile, getRoomStayEstimate } from '/assets/js/services/api.js';
 import { createGuestBookingExtras } from '/assets/js/features/guest-booking-extras.js';
 import {
   loadBookingRequest,
   clearBookingRequest,
   removeBookingRequestItem,
+  updateBookingRequestItem,
   bookingRequestCount,
   estimatedRequestTotal,
   roomItems,
@@ -15,6 +16,8 @@ import {
   sharedStayDates,
   getBookingRequestExtras,
   saveBookingRequestExtras,
+  groupGuestAssignmentStatus,
+  roomGuestLimits,
 } from '/assets/js/features/guest-booking-request-store.js';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
@@ -39,17 +42,58 @@ function formatStayRange(checkIn, checkOut) {
 let bookingExtras = null;
 let extrasReady = false;
 let profileCache = null;
+let guestCountUpdateToken = 0;
 
-function renderItem(row) {
+async function updateRoomGuestCount(itemId, guestCount) {
+  const state = loadBookingRequest();
+  const row = state.items.find((r) => r.id === itemId && r.kind === 'room');
+  if (!row) return;
+
+  const priceEl = document.querySelector(`[data-br-item-price="${itemId}"]`);
+  if (priceEl) priceEl.textContent = 'Updating…';
+
+  const token = ++guestCountUpdateToken;
+  try {
+    const estimate = await getRoomStayEstimate({
+      room_id: row.roomId,
+      check_in: row.checkIn,
+      check_out: row.checkOut,
+      guest_count: guestCount,
+    });
+    if (token !== guestCountUpdateToken) return;
+    updateBookingRequestItem(itemId, {
+      guestCount,
+      estimatedTotal: estimate.estimated_total,
+      pricePerNight: estimate.price_per_night,
+      occupancyItem: estimate.occupancy_item,
+    });
+  } catch (err) {
+    if (token !== guestCountUpdateToken) return;
+    showBookingRequestToast(err.message || 'Could not update guest count.', { error: true });
+    paintBookingRequestChrome();
+  }
+}
+
+function renderItem(row, state) {
   if (row.kind === 'room') {
+    const { min: minGuests, max: maxGuests } = roomGuestLimits(row, state);
+    const guestCount = Math.max(1, Number(row.guestCount) || 1);
+
     return `
       <article class="br-drawer__item" data-br-item="${escapeHtml(row.id)}">
         <div class="br-drawer__item-main">
           <p class="br-drawer__item-type">Room</p>
           <h4 class="br-drawer__item-title">${escapeHtml(row.building)} · Room ${escapeHtml(row.roomNumber)}</h4>
-          <p class="br-drawer__item-meta">${escapeHtml(row.roomType)} · ${row.guestCount} guest${row.guestCount === 1 ? '' : 's'}</p>
-          <p class="br-drawer__item-meta">${formatStayRange(row.checkIn, row.checkOut)}</p>
-          ${row.estimatedTotal != null ? `<p class="br-drawer__item-price">${peso(row.estimatedTotal)} est.</p>` : ''}
+          <p class="br-drawer__item-meta">${escapeHtml(row.roomType)} · ${formatStayRange(row.checkIn, row.checkOut)}</p>
+          <div class="br-room-guests">
+            <span class="br-room-guests__label">Guests in this room</span>
+            <div class="br-room-guests__qty">
+              <button type="button" data-br-guest-minus="${escapeHtml(row.id)}" aria-label="Fewer guests" ${guestCount <= minGuests ? 'disabled' : ''}>−</button>
+              <span data-br-guest-count="${escapeHtml(row.id)}">${guestCount}</span>
+              <button type="button" data-br-guest-plus="${escapeHtml(row.id)}" aria-label="More guests" ${guestCount >= maxGuests ? 'disabled' : ''}>+</button>
+            </div>
+          </div>
+          ${row.estimatedTotal != null ? `<p class="br-drawer__item-price" data-br-item-price="${escapeHtml(row.id)}">${peso(row.estimatedTotal)} est.</p>` : `<p class="br-drawer__item-price" data-br-item-price="${escapeHtml(row.id)}">—</p>`}
         </div>
         <button type="button" class="br-drawer__remove" data-br-remove="${escapeHtml(row.id)}" aria-label="Remove item">
           <span class="material-symbols-outlined">close</span>
@@ -97,6 +141,7 @@ function renderDrawerContent(state) {
   const total = estimatedRequestTotal(state);
   const rooms = roomItems(state);
   const venues = venueItems(state);
+  const guestStatus = groupGuestAssignmentStatus(state);
 
   if (!count) {
     return `
@@ -107,13 +152,28 @@ function renderDrawerContent(state) {
       </div>`;
   }
 
+  let guestSummary = '';
+  if (rooms.length > 1 && guestStatus.groupTotal != null) {
+    const suffix = guestStatus.matches
+      ? ''
+      : guestStatus.remaining > 0
+        ? ` — assign ${guestStatus.remaining} more`
+        : ` — ${Math.abs(guestStatus.remaining)} too many`;
+    guestSummary = `<p class="br-drawer__summary-meta${guestStatus.matches ? '' : ' br-drawer__summary-meta--warn'}">${guestStatus.assigned} of ${guestStatus.groupTotal} guests assigned across rooms${suffix}</p>`;
+  }
+
   return `
     <div class="br-drawer__summary">
       <p><strong>${count}</strong> item${count === 1 ? '' : 's'} · ${rooms.length} room${rooms.length === 1 ? '' : 's'}${venues.length ? ` · ${venues.length} venue${venues.length === 1 ? '' : 's'}` : ''}</p>
-      ${rooms.length > 1 ? `<p class="br-drawer__summary-meta">${rooms.reduce((sum, row) => sum + Math.max(1, Number(row.guestCount) || 1), 0)} guests assigned across rooms</p>` : ''}
+      ${guestSummary}
       ${total > 0 ? `<p class="br-drawer__summary-total">Estimated total: <strong>${peso(total)}</strong></p>` : ''}
     </div>
-    <div class="br-drawer__list">${state.items.map(renderItem).join('')}</div>`;
+    <div class="br-drawer__list">${state.items.map((row) => renderItem(row, state)).join('')}</div>`;
+}
+
+function canSubmitBookingRequest(state = loadBookingRequest()) {
+  if (bookingRequestCount(state) < 1) return false;
+  return groupGuestAssignmentStatus(state).matches;
 }
 
 function ensureChrome() {
@@ -243,6 +303,20 @@ function ensureChrome() {
       toggleDrawer(false);
       return;
     }
+    const minusBtn = e.target.closest('[data-br-guest-minus]');
+    const plusBtn = e.target.closest('[data-br-guest-plus]');
+    if (minusBtn || plusBtn) {
+      const itemId = minusBtn?.dataset.brGuestMinus || plusBtn?.dataset.brGuestPlus;
+      const state = loadBookingRequest();
+      const row = state.items.find((r) => r.id === itemId && r.kind === 'room');
+      if (!row) return;
+      const { min: minGuests, max: maxGuests } = roomGuestLimits(row, state);
+      const current = Math.max(1, Number(row.guestCount) || 1);
+      const next = Math.min(maxGuests, Math.max(minGuests, current + (minusBtn ? -1 : 1)));
+      if (next === current) return;
+      void updateRoomGuestCount(itemId, next);
+      return;
+    }
     const removeBtn = e.target.closest('[data-br-remove]');
     if (removeBtn) {
       removeBookingRequestItem(removeBtn.dataset.brRemove);
@@ -252,6 +326,17 @@ function ensureChrome() {
 
   document.getElementById('br-review-btn')?.addEventListener('click', () => {
     if (bookingRequestCount() < 1) return;
+    const state = loadBookingRequest();
+    const guestStatus = groupGuestAssignmentStatus(state);
+    if (!guestStatus.matches) {
+      showBookingRequestToast(
+        guestStatus.remaining > 0
+          ? `Assign all ${guestStatus.groupTotal} guests across your rooms before submitting (${guestStatus.remaining} still unassigned).`
+          : `Your rooms total ${guestStatus.assigned} guests, but you searched for ${guestStatus.groupTotal}. Adjust the counts so they match.`,
+        { error: true },
+      );
+      return;
+    }
     openReviewModal();
   });
 
@@ -306,7 +391,10 @@ function ensureChrome() {
 }
 
 async function ensureProfile() {
-  if (!profileCache) profileCache = await getProfile();
+  if (!profileCache) {
+    const data = await getProfile();
+    profileCache = data.user || data;
+  }
   return profileCache;
 }
 
@@ -354,7 +442,7 @@ async function openReviewModal() {
   const contactName = document.getElementById('br-contact-name');
   const contactPhone = document.getElementById('br-contact-phone');
   if (contactName && profile?.full_name && !contactName.value) contactName.value = profile.full_name;
-  if (contactPhone && profile?.phone && !contactPhone.value) contactPhone.value = profile.phone;
+  if (contactPhone && profile?.contact_phone && !contactPhone.value) contactPhone.value = profile.contact_phone;
 
   document.getElementById('br-review-success')?.classList.add('hidden');
   document.getElementById('br-review-error')?.classList.add('hidden');
@@ -395,6 +483,14 @@ async function submitBookingRequestForm() {
 
   const rooms = roomItems(state);
   const venues = venueItems(state);
+  const guestStatus = groupGuestAssignmentStatus(state);
+  if (!guestStatus.matches) {
+    errorEl.textContent = guestStatus.remaining > 0
+      ? `Assign all ${guestStatus.groupTotal} guests across your rooms before submitting (${guestStatus.remaining} still unassigned).`
+      : `Your rooms total ${guestStatus.assigned} guests, but you searched for ${guestStatus.groupTotal}. Adjust the counts so they match.`;
+    errorEl?.classList.remove('hidden');
+    return;
+  }
   const stay = sharedStayDates(state);
   const extrasPayload = rooms.length && bookingExtras ? bookingExtras.getPayload() : { meals: {}, fees: [], meal_allergen_notes: undefined };
 
@@ -461,8 +557,9 @@ export function paintBookingRequestChrome() {
   }
   if (body) body.innerHTML = renderDrawerContent(state);
   if (reviewBtn) {
-    reviewBtn.classList.toggle('br-drawer__cta--disabled', count < 1);
-    reviewBtn.disabled = count < 1;
+    const canSubmit = canSubmitBookingRequest(state);
+    reviewBtn.classList.toggle('br-drawer__cta--disabled', count < 1 || !canSubmit);
+    reviewBtn.disabled = count < 1 || !canSubmit;
   }
 }
 

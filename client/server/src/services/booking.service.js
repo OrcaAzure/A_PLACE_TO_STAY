@@ -5,7 +5,8 @@ import { DEFAULT_BOOKING_GUEST_ROLE } from '../utils/constants.js';
 import {
   sendBookingConfirmationEmail, sendBookingRequestReceivedEmail,
   sendBookingModifiedEmail, sendGuestRoomSelfModifyEmail,
-  sendRoomBookingCancelledEmail, sendVenueBookingCancelledEmail,
+  sendRoomBookingCancelledEmail, sendRoomBookingDeclinedEmail,
+  sendVenueBookingCancelledEmail, sendVenueBookingDeclinedEmail,
 } from './email.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
 import { DEFAULT_MEAL_RATES } from '../constants/ancillary.js';
@@ -642,6 +643,64 @@ export async function getAvailableRooms({
   return results;
 }
 
+/** Quote lodging total for one room using per-room guest count (Single/Double vs Daily Maximum). */
+export async function getRoomStayEstimate({
+  roomId,
+  checkIn,
+  checkOut,
+  guestCount = 1,
+  bypassAdvanceLimit = false,
+}) {
+  await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit });
+
+  const room = await getRoomById(roomId);
+  if (!room) throw new Error('Room not found');
+
+  const count = Math.max(1, Number(guestCount) || 1);
+  const capacityError = validateGuestCapacity(room, count);
+  if (capacityError) throw new Error(capacityError);
+
+  if (room.status === 'Maintenance') throw new Error('This room is under maintenance');
+  if (room.status === 'Dirty') throw new Error('This room is not ready for booking');
+  if (await hasOverlappingBooking(room.id, checkIn, checkOut)) {
+    throw new Error('This room is not available for the selected dates');
+  }
+
+  const rateRoomType = resolveRateRoomType(room);
+  const occupancyItem = await resolveOccupancyItem({
+    roomType: rateRoomType,
+    guestCount: count,
+  });
+  const nights = calcNights(checkIn, checkOut);
+  const estimatedTotal = await calculateStayTotalAmount({
+    roomType: rateRoomType,
+    occupancyItem,
+    guestCount: count,
+    checkIn,
+    checkOut,
+  });
+  if (estimatedTotal == null) throw new Error('No rate configured for this room and stay');
+
+  const checkInSeason = await resolveSeason(checkIn);
+  const pricePerNight = nights > 0
+    ? Math.round((estimatedTotal / nights) * 100) / 100
+    : null;
+
+  return {
+    room_id: room.id,
+    guest_count: count,
+    occupancy_item: occupancyItem,
+    nights,
+    price_per_night: pricePerNight,
+    estimated_total: estimatedTotal,
+    season: checkInSeason,
+    room_type: room.room_type,
+    capacity_min: effectiveCapacityMin(room),
+    capacity_max: room.capacity_max,
+    dorm_booking_minimum: room.room_type === 'Dorm' ? DORM_MIN_GUEST_COUNT : null,
+  };
+}
+
 export async function buildBookingEmailPayload(bookingRow) {
   if (!bookingRow?.id) return bookingRow;
   const meals = bookingRow.meals ?? await getBookingMeals(bookingRow.id);
@@ -675,11 +734,27 @@ export function notifyBookingCancelled(bookingRow, { cancelledByGuest = true } =
   );
 }
 
+export function notifyBookingDeclined(bookingRow, { reason = '' } = {}) {
+  void sendRoomBookingDeclinedEmail(
+    { full_name: bookingRow.guest_name, email: bookingRow.guest_email },
+    bookingRow,
+    { reason }
+  );
+}
+
 export function notifyVenueBookingCancelled(bookingRow, { cancelledByGuest = true } = {}) {
   void sendVenueBookingCancelledEmail(
     { full_name: bookingRow.guest_name, email: bookingRow.guest_email },
     bookingRow,
     { cancelledByGuest }
+  );
+}
+
+export function notifyVenueBookingDeclined(bookingRow, { reason = '' } = {}) {
+  void sendVenueBookingDeclinedEmail(
+    { full_name: bookingRow.guest_name, email: bookingRow.guest_email },
+    bookingRow,
+    { reason }
   );
 }
 
