@@ -183,7 +183,7 @@ export function initNavScroll(nav) {
 }
 
 function initNavSpy() {
-  const sectionIds = ['hero', 'facilities', 'contact'];
+  const sectionIds = ['hero', 'explore', 'facilities', 'contact'];
   const links = document.querySelectorAll('[data-nav-section]');
   const scroller = document.querySelector('.lp-section-scroller');
   if (!links.length) return;
@@ -200,9 +200,14 @@ function initNavSpy() {
   const setActive = (id) => {
     if (!sectionIds.includes(id)) return;
     links.forEach((link) => {
-      link.classList.toggle('is-active', link.dataset.navSection === id);
+      const section = link.dataset.navSection;
+      const isScrollerItem = link.classList.contains('lp-section-scroller-item');
+      const match = isScrollerItem
+        ? section === id
+        : section === (id === 'explore' ? 'hero' : id);
+      link.classList.toggle('is-active', match);
     });
-    scroller?.classList.toggle('is-on-light', id !== 'hero');
+    scroller?.classList.toggle('is-on-light', id === 'facilities' || id === 'contact');
   };
 
   const resolveSection = () => {
@@ -227,13 +232,38 @@ function initNavSpy() {
     });
   };
 
-  measureSections();
-  resolveSection();
+  const scheduleMeasure = () => {
+    if (document.body.classList.contains('lp-page-hidden')) {
+      requestAnimationFrame(scheduleMeasure);
+      return;
+    }
+    measureSections();
+    resolveSection();
+  };
+
+  scheduleMeasure();
   window.addEventListener('scroll', onScroll, { passive: true });
   window.addEventListener('resize', () => {
     measureSections();
     onScroll();
   }, { passive: true });
+  window.addEventListener('load', () => {
+    measureSections();
+    resolveSection();
+  }, { once: true });
+
+  const scrollSection = document.querySelector('.lp-scroll-section');
+  if (scrollSection) {
+    const layoutObserver = new MutationObserver(() => {
+      if (!scrollSection.classList.contains('is-ready')) return;
+      layoutObserver.disconnect();
+      requestAnimationFrame(() => {
+        measureSections();
+        resolveSection();
+      });
+    });
+    layoutObserver.observe(scrollSection, { attributes: true, attributeFilter: ['class'] });
+  }
 
   document.querySelectorAll('a[href^="#"]').forEach((link) => {
     link.addEventListener('click', () => {
@@ -245,6 +275,14 @@ function initNavSpy() {
   });
 }
 
+function getScrollShowcaseTrigger() {
+  const section = document.getElementById('explore');
+  if (!section || !window.ScrollTrigger?.getAll) return null;
+  return window.ScrollTrigger.getAll().find(
+    (t) => t.trigger === section || t.trigger?.id === 'explore',
+  ) || null;
+}
+
 function initSmoothAnchors() {
   document.querySelectorAll('a[href^="#"]').forEach((link) => {
     link.addEventListener('click', (e) => {
@@ -253,6 +291,17 @@ function initSmoothAnchors() {
       if (id === '#hero') {
         e.preventDefault();
         window.scrollTo({ top: 0, behavior: 'auto' });
+        return;
+      }
+      if (id === '#explore') {
+        e.preventDefault();
+        const st = getScrollShowcaseTrigger();
+        if (st) {
+          window.scrollTo({ top: Math.max(0, Math.round(st.start) + 1), behavior: 'auto' });
+        } else {
+          const target = document.getElementById('explore');
+          if (target) target.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
         return;
       }
       const target = document.querySelector(id);

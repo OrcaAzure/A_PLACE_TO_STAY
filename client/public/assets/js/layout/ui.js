@@ -443,6 +443,12 @@ const GUEST_SECTION_SCROLLER = `
         </a>
       </li>
       <li>
+        <a href="#explore" class="lp-section-scroller-item" data-nav-section="explore">
+          <span class="lp-section-scroller-label">Explore</span>
+          <span class="lp-section-scroller-dot" aria-hidden="true"></span>
+        </a>
+      </li>
+      <li>
         <a href="#facilities" class="lp-section-scroller-item" data-nav-section="facilities">
           <span class="lp-section-scroller-label">Facilities</span>
           <span class="lp-section-scroller-dot" aria-hidden="true"></span>

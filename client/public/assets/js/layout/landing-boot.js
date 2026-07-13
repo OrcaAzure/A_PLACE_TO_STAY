@@ -64,7 +64,7 @@ async function boot() {
     document.body.classList.add('lp-ready');
 
     try {
-      const { initLandingPage } = await import('/assets/js/layout/landing.js?v=scrollrestore1');
+      const { initLandingPage } = await import('/assets/js/layout/landing.js?v=scrollqa2');
       const { redirectIfLoggedIn } = await import('/assets/js/services/auth.js');
       redirectIfLoggedIn().catch(() => {});
       const startHeroHandoff = await initLandingPage({ skipHeroEntrance: true });
@@ -121,7 +121,7 @@ async function boot() {
   document.body.classList.add('lp-ready');
 
   try {
-    const { initLandingPage } = await import('/assets/js/layout/landing.js?v=scrollrestore1');
+    const { initLandingPage } = await import('/assets/js/layout/landing.js?v=scrollqa2');
     const { redirectIfLoggedIn } = await import('/assets/js/services/auth.js');
     redirectIfLoggedIn().catch(() => {});
     const startHeroHandoff = await initLandingPage({ skipHeroEntrance: true });
