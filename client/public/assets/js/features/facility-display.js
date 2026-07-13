@@ -44,12 +44,20 @@ export const VENUE_CATEGORY_IMAGE = {
   'GMC Conference Rooms': 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
   GMC: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
   'Prayer Mountain': '/images/PrayerMountainPreview.jpg',
-  'Prayer Tower': '/images/PrayerTower.jpg',
-  Garden: '/images/Garden.jpg',
-  Recreation: '/images/RecEntrancePreview.jpg',
-  'Basketball Court': '/images/RecEntrancePreview.jpg',
-  'Childrens Playground': '/images/RecEntrancePreview.jpg',
-  'Recreational Center': '/images/RecEntrancePreview.jpg',
+  'Prayer Tower': '/images/PrayerTowerPreview.jpg',
+  Garden: '/images/GardenPreview.jpg',
+  Recreation: '/images/RecreationPreview.jpg',
+  'Basketball Court': '/images/RecreationPreview.jpg',
+  'Childrens Playground': '/images/RecreationPreview.jpg',
+  'Recreational Center': '/images/RecreationPreview.jpg',
+};
+
+/** Canonical amenity previews for guest dashboard / landing (same paths as venue details). */
+export const LANDING_AMENITY_IMAGE = {
+  garden: VENUE_CATEGORY_IMAGE.Garden,
+  prayerMountain: VENUE_CATEGORY_IMAGE['Prayer Mountain'],
+  prayerTower: VENUE_CATEGORY_IMAGE['Prayer Tower'],
+  recreation: VENUE_CATEGORY_IMAGE.Recreation,
 };
 
 /**
@@ -60,12 +68,13 @@ export const VENUE_NAME_IMAGE = {
   'GMC Chapel': 'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1200&q=80',
   'Burdine Commons': 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=1200&q=80',
   'Prayer Mountain': '/images/PrayerMountainPreview.jpg',
-  'Prayer Tower': '/images/PrayerTower.jpg',
-  Garden: '/images/Garden.jpg',
-  'Osgood Hall': '/images/Garden.jpg',
-  'Basketball Court': '/images/RecEntrancePreview.jpg',
-  'Childrens Playground': '/images/RecEntrancePreview.jpg',
-  'Recreational Center': '/images/RecEntrancePreview.jpg',
+  'Prayer Tower': '/images/PrayerTowerPreview.jpg',
+  Garden: '/images/GardenPreview.jpg',
+  'Osgood Hall': '/images/GardenPreview.jpg',
+  'Osgood Garden': '/images/GardenPreview.jpg',
+  'Basketball Court': '/images/RecreationPreview.jpg',
+  'Childrens Playground': '/images/RecreationPreview.jpg',
+  'Recreational Center': '/images/RecreationPreview.jpg',
   'A-101': 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80',
   'A-504': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
   'A-505': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
@@ -198,7 +207,7 @@ const VENUE_CATEGORY_GALLERY = {
   'GMC Chapel': [
     'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1400&q=80',
     'https://images.unsplash.com/photo-1519167758481-83f29da8e3a3?auto=format&fit=crop&w=1400&q=80',
-    '/images/PrayerTower.jpg',
+    '/images/PrayerTowerPreview.jpg',
   ],
   'Burdine Commons': [
     'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=1400&q=80',
@@ -212,23 +221,27 @@ const VENUE_CATEGORY_GALLERY = {
   ],
   'Prayer Mountain': [
     '/images/PrayerMountainPreview.jpg',
-    '/images/PrayerTower.jpg',
-    'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1400&q=80',
+    '/images/PrayerMountainPreview2.jpg',
+    '/images/PrayerMountainPreview3.jpg',
+    '/images/HutPreview.jpg',
   ],
   'Prayer Tower': [
-    '/images/PrayerTower.jpg',
-    '/images/PrayerMountainPreview.jpg',
-    'https://images.unsplash.com/photo-1519817650390-64a5db0bcab3?auto=format&fit=crop&w=1400&q=80',
+    '/images/PrayerTowerPreview.jpg',
+    '/images/PrayerTowerPreview2.jpg',
+    '/images/PrayerTowerPreview3.jpg',
   ],
   Garden: [
-    '/images/Garden.jpg',
-    'https://images.unsplash.com/photo-1416879595882-3373a0480b5b?auto=format&fit=crop&w=1400&q=80',
-    'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1400&q=80',
+    '/images/GardenPreview.jpg',
+    '/images/GardenPreview2.jpg',
+    '/images/GardenPreview3.jpg',
+    '/images/GardenPreview4.jpg',
   ],
   Recreation: [
-    '/images/RecEntrancePreview.jpg',
-    'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1400&q=80',
-    'https://images.unsplash.com/photo-1574629810360-7efbbe195018?auto=format&fit=crop&w=1400&q=80',
+    '/images/RecreationPreview.jpg',
+    '/images/RecreationPreview2.jpg',
+    '/images/RecreationPreview3.jpg',
+    '/images/RecreationPreview4.jpg',
+    '/images/RecreationPreview5.jpg',
   ],
 };
 
@@ -273,7 +286,6 @@ export function roomGalleryImages(room = {}) {
  * Gallery list for a venue card/detail modal.
  */
 export function venueGalleryImages(venue = {}) {
-  const primary = venuePreviewImage(venue);
   const code = normalizeVenueKey(venue.room_code ?? venue.roomCode);
   const candidates = [venue.name, venue.label, venue.item, venue.facility_group, venue.category]
     .map(normalizeVenueKey)
@@ -289,16 +301,21 @@ export function venueGalleryImages(venue = {}) {
   if (!categoryKey) {
     const blob = candidates.join(' ').toLowerCase();
     if (/chapel|church|wedding|baptism/.test(blob)) categoryKey = 'GMC Chapel';
-    else if (/prayer mountain|retreat/.test(blob)) categoryKey = 'Prayer Mountain';
+    else if (/prayer mountain|retreat|hut/.test(blob)) categoryKey = 'Prayer Mountain';
     else if (/prayer tower/.test(blob)) categoryKey = 'Prayer Tower';
     else if (/garden|osgood/.test(blob)) categoryKey = 'Garden';
     else if (/basketball|playground|recreation|sport|court|gym/.test(blob)) categoryKey = 'Recreation';
     else if (/conference|classroom|commons|meeting|a-\d{3}/.test(blob)) categoryKey = 'GMC Conference Rooms';
   }
 
+  const categoryGallery = VENUE_CATEGORY_GALLERY[categoryKey];
+  if (categoryGallery?.length) {
+    return uniqueUrls(categoryGallery).slice(0, 5);
+  }
+
+  const primary = venuePreviewImage(venue);
   const extras = [
     code && VENUE_NAME_IMAGE[code],
-    ...(VENUE_CATEGORY_GALLERY[categoryKey] || []),
     VENUE_CATEGORY_IMAGE[categoryKey],
     DEFAULT_VENUE_IMAGE,
   ].filter(Boolean);
@@ -336,7 +353,7 @@ export function venuePreviewImage({
   if (/chapel|church|wedding|baptism/.test(blob)) {
     return VENUE_CATEGORY_IMAGE['GMC Chapel'];
   }
-  if (/prayer mountain|retreat/.test(blob)) {
+  if (/prayer mountain|retreat|hut/.test(blob)) {
     return VENUE_CATEGORY_IMAGE['Prayer Mountain'];
   }
   if (/prayer tower/.test(blob)) {

@@ -9,6 +9,7 @@ import {
   GUEST_BLOCKED_BUILDINGS,
 } from '/assets/js/config/guest-access.js';
 import { isRoomListVisible } from '/assets/js/features/reservation-shared.js';
+import { LANDING_AMENITY_IMAGE } from '/assets/js/features/facility-display.js';
 
 export { isInternalGuest, canGuestAccessRoom as roomAllowedForGuest };
 export { EXTERNAL_ROOM_BUILDINGS, GUEST_BLOCKED_BUILDINGS };
@@ -51,7 +52,7 @@ export const BROWSE_CATEGORIES = [
     blurb: 'Worship, receptions, and outdoor gatherings across GMC spaces.',
     icon: 'church',
     cta: 'See rates',
-    image: '/images/PrayerTower.jpg',
+    image: LANDING_AMENITY_IMAGE.prayerTower,
     showsRooms: false,
     layout: 'standard',
   },
@@ -62,7 +63,7 @@ export const BROWSE_CATEGORIES = [
     blurb: 'Retreat and prayer spaces — flexible hourly booking for ministry teams.',
     icon: 'landscape',
     cta: 'Book now',
-    image: '/images/PrayerMountainPreview.jpg',
+    image: LANDING_AMENITY_IMAGE.prayerMountain,
     showsRooms: false,
     layout: 'standard',
   },
@@ -73,7 +74,7 @@ export const BROWSE_CATEGORIES = [
     blurb: 'Basketball court, playground, and Rec Center — reserved in 4-hour blocks.',
     icon: 'sports_basketball',
     cta: 'Reserve',
-    image: '/images/RecEntrancePreview.jpg',
+    image: LANDING_AMENITY_IMAGE.recreation,
     showsRooms: false,
     layout: 'standard',
   },
