@@ -64,14 +64,11 @@ async function boot() {
     document.body.classList.add('lp-ready');
 
     try {
-      const { initLandingPage } = await import('/assets/js/layout/landing.js?v=heroclean3');
+      const { initLandingPage } = await import('/assets/js/layout/landing.js?v=landingclean1');
       const { redirectIfLoggedIn } = await import('/assets/js/services/auth.js');
       redirectIfLoggedIn().catch(() => {});
       const startHeroHandoff = await initLandingPage({ skipHeroEntrance: true });
       await revealLandingPage(startHeroHandoff);
-      if (window.ScrollTrigger) {
-        window.ScrollTrigger.refresh(true);
-      }
     } catch (err) {
       console.error('[landing] page init failed:', err);
       document.body.classList.remove('lp-page-hidden');
@@ -124,14 +121,11 @@ async function boot() {
   document.body.classList.add('lp-ready');
 
   try {
-    const { initLandingPage } = await import('/assets/js/layout/landing.js?v=heroclean3');
+    const { initLandingPage } = await import('/assets/js/layout/landing.js?v=landingclean1');
     const { redirectIfLoggedIn } = await import('/assets/js/services/auth.js');
     redirectIfLoggedIn().catch(() => {});
-    const startHeroHandoff = await initLandingPage({ skipHeroEntrance: !reduced });
+    const startHeroHandoff = await initLandingPage({ skipHeroEntrance: true });
     await revealLandingPage(startHeroHandoff);
-    if (window.ScrollTrigger) {
-      window.ScrollTrigger.refresh(true);
-    }
   } catch (err) {
     console.error('[landing] page init failed:', err);
     document.body.classList.remove('lp-page-hidden');
