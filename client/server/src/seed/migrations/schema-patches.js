@@ -770,27 +770,6 @@ export async function runSchemaPatches() {
   }
 
   try {
-    if (await tableExists('users') && !(await columnExists('users', 'email_notifications_enabled'))) {
-      await pool.execute(
-        `ALTER TABLE users
-         ADD COLUMN email_notifications_enabled TINYINT(1) NOT NULL DEFAULT 1
-         AFTER session_expires_at`
-      );
-      console.log('[schema] Added users.email_notifications_enabled');
-    }
-    if (await tableExists('users') && !(await columnExists('users', 'email_modification_notices_enabled'))) {
-      await pool.execute(
-        `ALTER TABLE users
-         ADD COLUMN email_modification_notices_enabled TINYINT(1) NOT NULL DEFAULT 1
-         AFTER email_notifications_enabled`
-      );
-      console.log('[schema] Added users.email_modification_notices_enabled');
-    }
-  } catch (err) {
-    console.warn('[schema] users notification prefs skipped:', err.message);
-  }
-
-  try {
     if (await tableExists('users')) {
       const [result] = await pool.execute(
         `UPDATE users SET role = 'Guest'
@@ -802,6 +781,31 @@ export async function runSchemaPatches() {
     }
   } catch (err) {
     console.warn('[schema] users.role repair skipped:', err.message);
+  }
+
+  try {
+    if (await tableExists('users') && (await columnExists('users', 'preferred_language'))) {
+      await pool.execute('ALTER TABLE users DROP COLUMN preferred_language');
+      console.log('[schema] Removed users.preferred_language');
+    }
+    if (await tableExists('users') && (await columnExists('users', 'email_modification_notices_enabled'))) {
+      await pool.execute('ALTER TABLE users DROP COLUMN email_modification_notices_enabled');
+      console.log('[schema] Removed users.email_modification_notices_enabled');
+    }
+    if (await tableExists('users') && (await columnExists('users', 'email_notifications_enabled'))) {
+      await pool.execute('ALTER TABLE users DROP COLUMN email_notifications_enabled');
+      console.log('[schema] Removed users.email_notifications_enabled');
+    }
+    if (await tableExists('users') && !(await columnExists('users', 'contact_phone'))) {
+      await pool.execute(
+        `ALTER TABLE users
+         ADD COLUMN contact_phone VARCHAR(30) DEFAULT NULL
+         AFTER session_expires_at`
+      );
+      console.log('[schema] Added users.contact_phone');
+    }
+  } catch (err) {
+    console.warn('[schema] users profile fields skipped:', err.message);
   }
 }
 

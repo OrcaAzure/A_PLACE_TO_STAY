@@ -16,13 +16,16 @@ import {
   notifyBookingCreated,
   notifyBookingUpdated,
   notifyBookingCancelled,
+  notifyBookingDeclined,
   notifyGuestRoomSelfModified,
   getRoomById,
   resolveSeason,
+  getRoomStayEstimate,
 } from '../services/booking.service.js';
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from '../services/ancillary.service.js';
+import { extractDeclineReason } from '../services/email.service.js';
 import { getInvoiceSnapshot, ensureInvoiceForBooking, deletePaymentsForRoomBooking } from '../services/payment.service.js';
 
 import { isAdminRole, isAdminPortalRole } from '../utils/constants.js';
@@ -109,6 +112,40 @@ export const getRoomAvailability = async (req, res) => {
       active_season: resolved_season,
       resolved_season,
     });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const getRoomStayEstimateHandler = async (req, res) => {
+  try {
+    const { room_id, check_in, check_out, guest_count } = req.query;
+    if (isEmpty(room_id) || isEmpty(check_in) || isEmpty(check_out)) {
+      return res.status(400).json({ message: 'room_id, check_in, and check_out are required' });
+    }
+
+    const room = await getRoomById(room_id);
+    if (!room) return res.status(404).json({ message: 'Room not found' });
+
+    const isAdmin = isAdminRole(req.user.role);
+    if (!isAdmin) {
+      const allowed = filterRoomsForGuestUser(
+        [{ ...room, building_name: room.building_name }],
+        req.user.email,
+      );
+      if (!allowed.length) {
+        return res.status(403).json({ message: 'You do not have access to this room' });
+      }
+    }
+
+    const estimate = await getRoomStayEstimate({
+      roomId: room_id,
+      checkIn: check_in,
+      checkOut: check_out,
+      guestCount: guest_count || 1,
+      bypassAdvanceLimit: isAdmin,
+    });
+    res.status(200).json(estimate);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
@@ -388,6 +425,10 @@ export const updateBooking = async (req, res) => {
         current: rows[0],
         modificationMessage: modification_message,
         notifyModification: Boolean(notify_modification),
+      });
+    } else if (status === 'Rejected' && existing.status !== 'Rejected') {
+      notifyBookingDeclined(rows[0], {
+        reason: extractDeclineReason(notes ?? rows[0].notes),
       });
     } else if (status === 'Cancelled') {
       notifyBookingCancelled(rows[0], { cancelledByGuest: false });

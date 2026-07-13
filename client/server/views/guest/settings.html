@@ -20,15 +20,61 @@
             vertical-align: middle;
         }
         .soft-shadow { box-shadow: 0px 1px 3px rgba(0,0,0,0.1); }
+        /* Guest settings: content is short — no inner scroll on desktop */
+        .guest-settings-workspace {
+            flex: 0 1 auto;
+        }
+        .guest-settings-workspace .app-tab-panels {
+            flex: none;
+            min-height: 0;
+            overflow: visible;
+        }
+        @media (max-width: 639px) {
+            .guest-settings-workspace .app-tab-panels {
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+        .guest-settings-footer {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--color-outline-variant, #cbd5e0);
+        }
+        .guest-shell .guest-settings-workspace .btn-primary,
+        .guest-shell #app-modal .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            min-height: 2.75rem;
+            padding: 0.625rem 1.25rem;
+            font-size: 0.9375rem;
+            font-weight: 700;
+            background: var(--color-primary, #1A365D);
+            color: #fff;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+        .guest-shell .guest-settings-workspace .btn-primary:hover,
+        .guest-shell #app-modal .btn-primary:hover {
+            background: var(--color-primary-container, #2C5282);
+            box-shadow: 0 2px 8px rgba(26, 54, 93, 0.2);
+        }
     </style>
 </head>
 <body>
 
 <div id="page-content">
-    <div class="app-tab-workspace bg-surface-container-lowest rounded-lg soft-shadow border border-outline-variant/30 max-w-full">
+    <div class="app-tab-workspace guest-settings-workspace bg-surface-container-lowest rounded-lg soft-shadow border border-outline-variant/30 max-w-full">
     <div class="app-tabs px-lg pt-md" role="tablist" aria-label="Settings sections">
         <button type="button" role="tab" data-guest-tab="profile" class="app-tab-btn app-tab-active" aria-selected="true">Profile</button>
-        <button type="button" role="tab" data-guest-tab="notifications" class="app-tab-btn" aria-selected="false">Notifications</button>
         <button type="button" role="tab" data-guest-tab="security" class="app-tab-btn" aria-selected="false">Security</button>
     </div>
 
@@ -36,81 +82,25 @@
     <section class="app-tab-panel space-y-lg" data-guest-panel="profile" role="tabpanel">
         <div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg border border-outline-variant/30">
             <h3 class="font-headline-sm text-headline-sm mb-lg">Profile Information</h3>
-            <div class="flex flex-col md:flex-row items-center gap-xl mb-xl">
-                <div class="relative">
-                    <img class="w-32 h-32 rounded-lg object-cover bg-surface-container border border-outline-variant" id="avatar-preview" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA5rLHL9vvMhQE1nQQlK8H1Z3O_8DbQXbMrdDZFAjXQCvjXHo6yPhpESrynM3HWgVjOczmK5ar2PyR2_SHINP8xzmGuQGk5NLDjBYe-0d3hRB06MMB0VRswUb5tXR2Idvi591ghJiCeG7tBZLcqnbFUoGpPXlEDFI_NY0lPi5VmXJKEO6uqjgsdI8YTLuXTbqJWEsVDWrhTZXWmNzvUZrSMxRplBpMtDo7hQ3I4Hz1O9MgVc2J2KO5NsQbluGfPsDiHh7JfEj77TLM4"/>
-                    <div class="absolute -bottom-2 -right-2 bg-primary text-on-primary p-2 rounded-lg shadow-lg">
-                        <span class="material-symbols-outlined text-sm">edit</span>
-                    </div>
-                </div>
-                <div class="flex flex-col gap-sm">
-                    <div class="flex gap-md js-requires-write">
-                        <button class="bg-primary-container text-on-primary-container px-lg py-sm rounded-lg font-label-md text-label-md hover:opacity-90 transition-opacity">Upload</button>
-                        <button class="bg-surface-container-high text-on-surface-variant px-lg py-sm rounded-lg font-label-md text-label-md hover:bg-surface-container-highest transition-colors">Remove</button>
-                    </div>
-                    <p class="font-body-sm text-body-sm text-on-surface-variant mt-2">Recommended: Square JPG or PNG, at least 400x400px.</p>
-                </div>
-            </div>
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
                 <div class="space-y-xs">
-                    <label class="font-label-md text-label-md text-on-surface-variant">Full Name</label>
+                    <label class="font-label-md text-label-md text-on-surface-variant" for="settings-name">Full Name</label>
                     <input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="text" id="settings-name" value="Guest User"/>
                 </div>
                 <div class="space-y-xs">
-                    <label class="font-label-md text-label-md text-on-surface-variant">Email Address</label>
-                    <input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="email" id="settings-email" value=""/>
+                    <label class="font-label-md text-label-md text-on-surface-variant" for="settings-email">Email Address</label>
+                    <input class="w-full bg-surface-container-low border border-outline-variant rounded-lg p-md text-on-surface-variant cursor-not-allowed outline-none" type="email" id="settings-email" value="" readonly aria-readonly="true" title="Email cannot be changed. Contact the housing office if you need to update it."/>
+                    <p class="font-body-sm text-body-sm text-on-surface-variant">Managed by the housing office.</p>
                 </div>
-                <div class="space-y-xs">
-                    <label class="font-label-md text-label-md text-on-surface-variant">Contact Number</label>
-                    <input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="tel" value="+63 912 345 6789"/>
-                </div>
-                <div class="space-y-xs">
-                    <label class="font-label-md text-label-md text-on-surface-variant">Preferred Language</label>
-                    <select class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none cursor-pointer">
-                        <option>English (US)</option>
-                        <option>English (UK)</option>
-                        <option>Filipino</option>
-                        <option>Korean</option>
-                        <option>Mandarin</option>
-                    </select>
+                <div class="space-y-xs max-w-xs">
+                    <label class="font-label-md text-label-md text-on-surface-variant" for="settings-phone">Contact Number</label>
+                    <input class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all" type="tel" id="settings-phone" placeholder="+63 912 345 6789" autocomplete="tel"/>
                 </div>
             </div>
-            <div id="settings-feedback" class="hidden mt-lg text-body-sm rounded-lg px-3 py-2"></div>
-            <div class="mt-xl pt-lg border-t border-outline-variant flex justify-end js-requires-write">
-                <button id="settings-save-btn" type="button" class="bg-primary text-on-primary px-xl py-md rounded-lg font-label-md text-label-md hover:opacity-95 shadow-md active:scale-95 transition-all">Save Changes</button>
-            </div>
-        </div>
-    </section>
-
-    <section class="app-tab-panel is-tab-hidden hidden space-y-lg" data-guest-panel="notifications" role="tabpanel">
-        <div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg border border-outline-variant/30">
-            <h3 class="font-headline-sm text-headline-sm mb-lg">Notification Preferences</h3>
-            <div class="space-y-md">
-                <div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
-                    <div>
-                        <p class="font-label-md text-label-md">Email notifications</p>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant">Confirmations, approvals, and booking status updates.</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input id="pref-email-notifications" class="sr-only peer" type="checkbox" checked />
-                        <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                    </label>
-                </div>
-                <div class="flex items-center justify-between p-md rounded-lg hover:bg-surface-container-low transition-colors">
-                    <div>
-                        <p class="font-label-md text-label-md">Modification notices</p>
-                        <p class="font-body-sm text-body-sm text-on-surface-variant">When staff or you change dates, guests, or venue details.</p>
-                    </div>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input id="pref-email-modifications" class="sr-only peer" type="checkbox" checked />
-                        <div class="w-11 h-6 bg-surface-container-highest peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                    </label>
-                </div>
-            </div>
-            <div id="notif-prefs-feedback" class="hidden mt-lg text-body-sm rounded-lg px-3 py-2"></div>
-            <div class="mt-xl pt-lg border-t border-outline-variant flex justify-end js-requires-write">
-                <button id="notif-prefs-save-btn" type="button" class="bg-primary text-on-primary px-xl py-md rounded-lg font-label-md text-label-md hover:opacity-95 shadow-md active:scale-95 transition-all">Save preferences</button>
+            <div class="guest-settings-footer js-requires-write">
+                <button id="settings-save-btn" type="button" class="btn-primary">Save Changes</button>
+                <div id="settings-feedback" class="hidden text-body-sm rounded-lg px-3 py-2"></div>
             </div>
         </div>
     </section>
@@ -118,30 +108,30 @@
     <section class="app-tab-panel is-tab-hidden hidden space-y-lg" data-guest-panel="security" role="tabpanel">
         <div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg border border-outline-variant/30">
             <h3 class="font-headline-sm text-headline-sm mb-lg">Password & Authentication</h3>
-            <div class="space-y-lg mb-xl">
-                <div class="grid grid-cols-1 gap-lg max-w-md">
-                    <div class="space-y-xs">
-                        <label class="font-label-md text-label-md text-on-surface-variant" for="current-password">Current Password</label>
-                        <input id="current-password" class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="••••••••" type="password" />
-                    </div>
-                    <div class="space-y-xs">
-                        <label class="font-label-md text-label-md text-on-surface-variant" for="new-password">New Password</label>
-                        <input id="new-password" class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Min. 6 characters" type="password" />
-                    </div>
-                    <div class="space-y-xs">
-                        <label class="font-label-md text-label-md text-on-surface-variant" for="confirm-new-password">Confirm New Password</label>
-                        <input id="confirm-new-password" class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Repeat new password" type="password" />
-                    </div>
+            <div class="grid grid-cols-1 gap-lg max-w-md">
+                <div class="space-y-xs">
+                    <label class="font-label-md text-label-md text-on-surface-variant" for="current-password">Current Password</label>
+                    <input id="current-password" class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="••••••••" type="password" autocomplete="current-password" />
                 </div>
+                <div class="space-y-xs">
+                    <label class="font-label-md text-label-md text-on-surface-variant" for="new-password">New Password</label>
+                    <input id="new-password" class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Min. 6 characters" type="password" autocomplete="new-password" />
+                </div>
+                <div class="space-y-xs">
+                    <label class="font-label-md text-label-md text-on-surface-variant" for="confirm-new-password">Confirm New Password</label>
+                    <input id="confirm-new-password" class="w-full bg-surface border border-outline-variant rounded-lg p-md focus:ring-2 focus:ring-primary/20 outline-none transition-all" placeholder="Repeat new password" type="password" autocomplete="new-password" />
+                </div>
+            </div>
+            <div class="guest-settings-footer js-requires-write">
+                <button id="update-password-btn" type="button" class="btn-primary">Update Password</button>
                 <div id="password-feedback" class="hidden text-body-sm rounded-lg px-3 py-2"></div>
-                <button id="update-password-btn" class="js-requires-write bg-primary-container text-on-primary-container px-lg py-md rounded-lg font-label-md text-label-md hover:opacity-90">Update Password</button>
             </div>
         </div>
 
         <div class="bg-surface-container-lowest rounded-lg soft-shadow p-lg border border-outline-variant/30 lg:hidden">
             <h3 class="font-headline-sm text-headline-sm mb-md">Session</h3>
             <p class="font-body-sm text-body-sm text-on-surface-variant mb-lg">Sign out of your guest account on this device.</p>
-            <button type="button" data-action="logout" class="w-full flex items-center justify-center gap-2 px-lg py-md rounded-lg border border-outline-variant text-on-surface-variant font-label-md text-label-md font-semibold hover:bg-surface-container-low transition-colors min-h-[3rem]">
+            <button type="button" data-action="guest-logout" class="w-full flex items-center justify-center gap-2 px-lg py-md rounded-lg border border-outline-variant text-on-surface-variant font-label-md text-label-md font-semibold hover:bg-surface-container-low transition-colors min-h-[3rem]">
                 <span class="material-symbols-outlined text-[1.25rem]">logout</span>
                 Log Out
             </button>
@@ -156,7 +146,6 @@
   import { initAppLayout } from '/assets/js/layout/ui.js';
   import { initTabGroup } from '/assets/js/layout/tabs.js';
   import { loadGuestSettings } from '/assets/js/features/guest-settings.js';
-  import { changePassword } from '/assets/js/services/api.js';
 
   if (!(await requireAuth())) throw new Error('Not authenticated');
   await initAppLayout({
@@ -168,9 +157,8 @@
 
   const { readOnly } = applyRoleUI();
   if (readOnly) {
-    document.querySelectorAll('[data-guest-panel="profile"] input, [data-guest-panel="profile"] select, [data-guest-panel="security"] input, [data-guest-panel="notifications"] input')
+    document.querySelectorAll('[data-guest-panel="profile"] input, [data-guest-panel="security"] input')
       .forEach((el) => { el.setAttribute('disabled', 'disabled'); });
-    document.getElementById('notif-prefs-save-btn')?.setAttribute('disabled', 'disabled');
   }
 
   initTabGroup({
@@ -179,43 +167,6 @@
     tabsSelector: '[role="tablist"]',
     panelsSelector: '.app-tab-panels',
     useHiddenClass: true,
-  });
-
-  document.getElementById('update-password-btn')?.addEventListener('click', async () => {
-    const currentPw  = document.getElementById('current-password')?.value.trim();
-    const newPw      = document.getElementById('new-password')?.value.trim();
-    const confirmPw  = document.getElementById('confirm-new-password')?.value.trim();
-    const feedback   = document.getElementById('password-feedback');
-    const btn        = document.getElementById('update-password-btn');
-
-    const showMsg = (msg, isError) => {
-      if (!feedback) return;
-      feedback.textContent = msg;
-      feedback.className = isError
-        ? 'text-body-sm rounded-lg px-3 py-2 bg-error/10 text-error'
-        : 'text-body-sm rounded-lg px-3 py-2 bg-emerald-50 text-emerald-700';
-      feedback.classList.remove('hidden');
-    };
-
-    if (!currentPw || !newPw || !confirmPw) return showMsg('All password fields are required.', true);
-    if (newPw.length < 6)                   return showMsg('New password must be at least 6 characters.', true);
-    if (newPw !== confirmPw)                return showMsg('New passwords do not match.', true);
-
-    btn.disabled = true;
-    btn.textContent = 'Saving…';
-    try {
-      const data = await changePassword({ current_password: currentPw, new_password: newPw });
-      showMsg(data.message || 'Password updated.', false);
-      ['current-password', 'new-password', 'confirm-new-password'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-    } catch (err) {
-      showMsg(err.message, true);
-    } finally {
-      btn.disabled = false;
-      btn.textContent = 'Update Password';
-    }
   });
 </script>
 </body>

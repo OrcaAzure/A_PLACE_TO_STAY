@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import { pool } from '../config/db.js';
 import {
   isProduction,
   SMTP_HOST,
@@ -325,42 +324,12 @@ export function getSupportEmail() {
   return 'facilities@apts.edu.ph';
 }
 
-async function guestAcceptsEmail(email, { type = 'general' } = {}) {
-  const recipient = String(email || '').trim().toLowerCase();
-  if (!recipient) return false;
-
-  try {
-    const [rows] = await pool.query(
-      `SELECT email_notifications_enabled, email_modification_notices_enabled
-       FROM users WHERE LOWER(email) = ? LIMIT 1`,
-      [recipient],
-    );
-    if (!rows.length) return true;
-    const row = rows[0];
-    if (type === 'modification') {
-      return row.email_modification_notices_enabled !== 0;
-    }
-    return row.email_notifications_enabled !== 0;
-  } catch {
-    return true;
-  }
-}
-
-async function sendMail({ to, subject, html, text, replyTo, prefType = null }) {
+async function sendMail({ to, subject, html, text, replyTo }) {
   const recipient = String(to || '').trim();
   if (!recipient) {
     lastEmailError = 'No recipient email address';
     console.warn(`[email] Skipped — no recipient for subject: ${subject}`);
     return false;
-  }
-
-  if (prefType) {
-    const allowed = await guestAcceptsEmail(recipient, { type: prefType });
-    if (!allowed) {
-      lastEmailError = null;
-      console.info(`[email] Skipped (${prefType}) — user opted out: ${recipient}`);
-      return false;
-    }
   }
 
   try {
@@ -431,7 +400,6 @@ export async function sendBookingRequestReceivedEmail(user, booking) {
 
   return sendMail({
     to: user.email || user.guest_email,
-    prefType: 'general',
     subject: `Reservation request received ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>Reservation Request Received</h2>
@@ -458,7 +426,6 @@ export async function sendBookingConfirmationEmail(user, booking) {
 
   return sendMail({
     to: user.email || user.guest_email,
-    prefType: 'general',
     subject: `Reservation confirmed ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>Reservation Confirmed</h2>
@@ -485,6 +452,103 @@ function cancellationIntro({ cancelledByGuest, reservationType }) {
   return `Your ${reservationType} has been cancelled by housing staff. If you have questions, contact us at ${escapeHtml(getSupportEmail())}.`;
 }
 
+/** Pull the latest admin decline note saved as `[Rejected] …` in booking notes. */
+export function extractDeclineReason(notes) {
+  if (!notes) return '';
+  const lines = String(notes).split('\n');
+  for (let i = lines.length - 1; i >= 0; i -= 1) {
+    const match = lines[i].match(/^\[Rejected\]\s*(.*)$/i);
+    if (match) return match[1].trim();
+  }
+  return '';
+}
+
+export async function sendRoomBookingDeclinedEmail(user, booking, { reason = '' } = {}) {
+  const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
+  const details = buildRoomStayDetailSections(booking, { estimate: true });
+  const ref = details.reference ? ` ${details.reference}` : '';
+
+  return sendMail({
+    to: resolveGuestRecipientEmail({ user, booking }),
+    subject: `Reservation request not approved${ref} — APTSpace`.trim(),
+    html: `
+      <h2>Reservation Request Not Approved</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Thank you for your room reservation request. After review, housing staff were <strong>unable to approve</strong> this request at this time.</p>
+      ${reason ? emailQuote(reason) : ''}
+      ${details.reference ? `<p><strong>Reference:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${emailSection('Request details', details.stayItems)}
+      ${emailSection('Next steps', emailDetailList([
+        emailDetailItem('Questions', `Contact us at ${escapeHtml(getSupportEmail())} if you would like to discuss other dates or room options.`),
+        emailDetailItem('New request', 'You may submit a new booking request through APTSpace at any time.'),
+      ].filter(Boolean)))}
+      ${emailFooter()}
+    `,
+  });
+}
+
+export async function sendGroupBookingDeclinedEmail(user, group, { reason = '' } = {}) {
+  const name = user.full_name || group.contact_name || 'Guest';
+  const details = buildGroupStayDetailSections(group, { estimate: true });
+  const ref = details.reference ? ` ${details.reference}` : '';
+
+  return sendMail({
+    to: resolveGuestRecipientEmail({ user, group }),
+    subject: `Group reservation request not approved${ref} — APTSpace`.trim(),
+    html: `
+      <h2>Group Reservation Request Not Approved</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Thank you for your group reservation request for <strong>${escapeHtml(group.group_name || 'your group')}</strong>. After review, housing staff were <strong>unable to approve</strong> this request at this time.</p>
+      ${reason ? emailQuote(reason) : ''}
+      ${details.reference ? `<p><strong>Reference:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${emailSection('Request details', details.stayItems)}
+      ${details.addons}
+      ${emailSection('Next steps', emailDetailList([
+        emailDetailItem('Questions', `Contact us at ${escapeHtml(getSupportEmail())} if you would like to discuss other dates or room options.`),
+        emailDetailItem('New request', 'You may submit a new booking request through APTSpace at any time.'),
+      ].filter(Boolean)))}
+      ${emailFooter()}
+    `,
+  });
+}
+
+export async function sendVenueBookingDeclinedEmail(user, booking, { reason = '' } = {}) {
+  const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
+  const venue = [booking.facility_category, booking.facility_name || booking.facility_room_code]
+    .filter(Boolean)
+    .join(' — ');
+  const eventDate = formatEventDate(booking.event_date);
+  const start = formatTime12(booking.start_time);
+  const end = formatTime12(booking.end_time);
+  const timeRange = start && end ? `${start} – ${end}` : '—';
+  const ref = booking.id ? `#VEN-${booking.id}` : null;
+
+  return sendMail({
+    to: resolveGuestRecipientEmail({ user, booking }),
+    subject: `Venue request not approved${ref ? ` ${ref}` : ''} — APTSpace`.trim(),
+    html: `
+      <h2>Venue Request Not Approved</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Thank you for your venue booking request. After review, housing staff were <strong>unable to approve</strong> this request at this time.</p>
+      ${reason ? emailQuote(reason) : ''}
+      ${ref ? `<p><strong>Reference:</strong> ${escapeHtml(ref)}</p>` : ''}
+      ${emailSection('Request details', emailDetailList([
+        emailDetailItem('Venue', escapeHtml(venue)),
+        emailDetailItem('Event date', escapeHtml(eventDate)),
+        emailDetailItem('Time', escapeHtml(timeRange)),
+        emailDetailItem('Guests', escapeHtml(booking.guest_count || 1)),
+        booking.total_amount != null ? emailDetailItem('Estimated amount', fmtPeso(booking.total_amount)) : '',
+        emailDetailItem('Status', 'Not approved'),
+      ].filter(Boolean)))}
+      ${emailSection('Next steps', emailDetailList([
+        emailDetailItem('Questions', `Contact us at ${escapeHtml(getSupportEmail())} if you would like to discuss other dates or venues.`),
+        emailDetailItem('New request', 'You may submit a new venue request through APTSpace at any time.'),
+      ].filter(Boolean)))}
+      ${emailFooter()}
+    `,
+  });
+}
+
 export async function sendRoomBookingCancelledEmail(user, booking, { cancelledByGuest = true } = {}) {
   const name = user.full_name || user.guest_name || booking.guest_name || 'Guest';
   const details = buildRoomStayDetailSections(booking, { estimate: false });
@@ -492,7 +556,6 @@ export async function sendRoomBookingCancelledEmail(user, booking, { cancelledBy
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
-    prefType: 'general',
     subject: `Room reservation cancelled${ref} — APTSpace`.trim(),
     html: `
       <h2>Room Reservation Cancelled</h2>
@@ -518,7 +581,6 @@ export async function sendVenueBookingCancelledEmail(user, booking, { cancelledB
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
-    prefType: 'general',
     subject: `Venue booking cancelled${ref ? ` ${ref}` : ''} — APTSpace`.trim(),
     html: `
       <h2>Venue Booking Cancelled</h2>
@@ -545,7 +607,6 @@ export async function sendGroupBookingCancelledEmail(user, group, { cancelledByG
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
-    prefType: 'general',
     subject: `Group reservation cancelled${ref} — APTSpace`.trim(),
     html: `
       <h2>Group Reservation Cancelled</h2>
@@ -589,7 +650,6 @@ export async function sendGuestRoomSelfModifyEmail(user, booking, {
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
-    prefType: 'general',
     subject: wasApproved
       ? `Modification request received ${details.reference || ''} — APTSpace`.trim()
       : `Reservation updated ${details.reference || ''} — APTSpace`.trim(),
@@ -623,7 +683,6 @@ export async function sendGuestGroupSelfModifyEmail(user, group, {
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
-    prefType: 'general',
     subject: wasApproved
       ? `Group modification request received ${details.reference || ''} — APTSpace`.trim()
       : `Group reservation updated ${details.reference || ''} — APTSpace`.trim(),
@@ -668,7 +727,6 @@ export async function sendGuestVenueSelfModifyEmail(user, booking, {
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
-    prefType: 'general',
     subject: wasApproved
       ? `Venue modification request received${ref ? ` ${ref}` : ''} — APTSpace`.trim()
       : `Venue booking updated${ref ? ` ${ref}` : ''} — APTSpace`.trim(),
@@ -709,7 +767,6 @@ export async function sendPaymentReceiptEmail(user, payment) {
 
   return sendMail({
     to: user.email || user.guest_email,
-    prefType: 'general',
     subject: isVenue
       ? `Venue payment confirmed${invoiceRef ? ` ${invoiceRef}` : ''} — APTSpace`.trim()
       : `Housing payment confirmed${invoiceRef ? ` ${invoiceRef}` : ''} — APTSpace`.trim(),
@@ -750,7 +807,6 @@ export async function sendVenueInvoiceEmail(user, payment) {
 
   return sendMail({
     to: user.email || user.guest_email,
-    prefType: 'general',
     subject: `Venue booking confirmed #${payment.id} — ${payment.facility_name || 'Facility'} | APTSpace`,
     html: `
       <h2>Venue Booking Confirmed</h2>
@@ -798,7 +854,6 @@ export async function sendVenueModifiedEmail(user, booking, {
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, booking }),
-    prefType: 'modification',
     subject: `Venue booking updated${ref ? ` ${ref}` : ''} — APTSpace`.trim(),
     html: `
       <h2>Venue Booking Updated</h2>
@@ -831,7 +886,6 @@ export async function sendBookingModifiedEmail(user, booking, { message, previou
 
   return sendMail({
     to: user.email || user.guest_email,
-    prefType: 'modification',
     subject: `Reservation updated ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>Reservation Updated</h2>
@@ -858,7 +912,6 @@ export async function sendGroupBookingRequestReceivedEmail(user, group, { batchR
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
-    prefType: 'general',
     subject: `Group reservation request received ${ref ? ref : ''} — APTSpace`.trim(),
     html: `
       <h2>Group Reservation Request Received</h2>
@@ -886,7 +939,6 @@ export async function sendGroupConfirmationEmail(user, group) {
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
-    prefType: 'general',
     subject: `Group reservation confirmed ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>Group Reservation Confirmed</h2>
@@ -911,7 +963,6 @@ export async function sendGroupModifiedEmail(user, group, { message, previousChe
 
   return sendMail({
     to: resolveGuestRecipientEmail({ user, group }),
-    prefType: 'modification',
     subject: `Group reservation updated ${details.reference || ''} — APTSpace`.trim(),
     html: `
       <h2>Group Reservation Updated</h2>

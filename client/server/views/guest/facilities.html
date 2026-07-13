@@ -413,7 +413,7 @@
   import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
   import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
   import { jsonFingerprint } from '/assets/js/layout/silent-refresh.js';
-  import { getRooms, getRoomAvailability, normalizeRoom, getVenueFacilities, getVenueRateQuote, createFacilityBooking, checkVenueSlotAvailability } from '/assets/js/services/api.js';
+  import { getRooms, getRoomAvailability, getRoomStayEstimate, normalizeRoom, getVenueFacilities, getVenueRateQuote, createFacilityBooking, checkVenueSlotAvailability } from '/assets/js/services/api.js';
   import {
     isAvailabilityBookable,
     isAvailabilityVisible,
@@ -445,11 +445,14 @@
     sharedStayDates,
     assignedRoomGuests,
     loadBookingRequest,
+    setGroupTotalGuests,
   } from '/assets/js/features/guest-booking-request-store.js';
   import {
     initBookingRequestChrome,
     showBookingRequestToast,
   } from '/assets/js/features/guest-booking-request-ui.js';
+  import { openRoomGuestPicker } from '/assets/js/features/guest-room-guest-picker.js';
+  import { DORM_MIN_GUEST_COUNT } from '/assets/js/features/reservation-shared.js';
   import {
     paintBrowseCategoryCards,
     buildBrowseCategoryCardsHtml,
@@ -551,7 +554,7 @@
     const dormMin = Number(avail?.dorm_booking_minimum) || 5;
 
     if (remaining <= 0) {
-      return Math.min(total, cap);
+      return null;
     }
 
     const allocation = Math.min(remaining, cap);
@@ -897,7 +900,7 @@
     }
   }
 
-  function addRoomToBookingRequest(roomId) {
+  async function addRoomToBookingRequest(roomId) {
     const room = visibleRooms().find((r) => String(r.id) === String(roomId))
       || roomsForFilters().find((r) => String(r.id) === String(roomId));
     if (!room) return;
@@ -915,21 +918,86 @@
       return;
     }
 
-    const guestCount = guestCountForRoom(room);
-    if (guestCount == null) {
-      const avail = availabilityForRoom(room.id);
-      const isDorm = room.roomType === 'Dorm' || avail?.room_type === 'Dorm';
-      showBookingRequestToast(
-        isDorm
-          ? `This dorm needs at least ${avail?.dorm_booking_minimum || 5} guests per room. You have ${remainingGroupGuests()} guest${remainingGroupGuests() === 1 ? '' : 's'} left to assign.`
-          : 'Not enough guests left to fill this room at its minimum capacity.',
-        { error: true },
-      );
-      return;
+    const avail = availabilityForRoom(room.id);
+    const isDorm = room.roomType === 'Dorm' || avail?.room_type === 'Dorm';
+    const physicalMin = Number(room.capacityMin ?? room.capacity_min ?? 1) || 1;
+    const capacityMax = Number(room.capacityMax ?? room.capacity_max ?? 99) || 99;
+    const dormMin = Number(avail?.dorm_booking_minimum) || DORM_MIN_GUEST_COUNT;
+    const minGuests = isDorm ? Math.max(physicalMin, dormMin) : physicalMin;
+
+    let guestCount;
+    let estimatedTotal;
+    let pricePerNight;
+    let occupancyItem;
+
+    if (isMultiRoomBrowse()) {
+      if (remainingGroupGuests() <= 0) {
+        showBookingRequestToast('All guests are already assigned to rooms in your request.', { error: true });
+        return;
+      }
+
+      const defaultCount = guestCountForRoom(room);
+      if (defaultCount == null) {
+        showBookingRequestToast(
+          isDorm
+            ? `This dorm needs at least ${dormMin} guests per room. You have ${remainingGroupGuests()} guest${remainingGroupGuests() === 1 ? '' : 's'} left to assign.`
+            : 'Not enough guests left to fill this room at its minimum capacity.',
+          { error: true },
+        );
+        return;
+      }
+
+      const remaining = remainingGroupGuests();
+      const pickerMax = remaining > 0 ? Math.min(capacityMax, remaining) : capacityMax;
+      if (pickerMax < minGuests) {
+        showBookingRequestToast(
+          isDorm
+            ? `This dorm needs at least ${dormMin} guests per room. You have ${remaining} guest${remaining === 1 ? '' : 's'} left to assign.`
+            : 'Not enough guests left to fill this room at its minimum capacity.',
+          { error: true },
+        );
+        return;
+      }
+
+      const picked = await openRoomGuestPicker({
+        roomLabel: `${room.building} · Room ${room.roomNumber}`,
+        roomType: room.roomType,
+        roomId: room.id,
+        checkIn,
+        checkOut,
+        minGuests,
+        maxGuests: pickerMax,
+        defaultGuestCount: Math.min(defaultCount, pickerMax),
+        isDorm,
+      });
+      if (!picked) return;
+
+      guestCount = picked.guestCount;
+      estimatedTotal = picked.estimate.estimated_total;
+      pricePerNight = picked.estimate.price_per_night;
+      occupancyItem = picked.estimate.occupancy_item;
+    } else {
+      guestCount = totalGroupGuests();
+      try {
+        const estimate = await getRoomStayEstimate({
+          room_id: room.id,
+          check_in: checkIn,
+          check_out: checkOut,
+          guest_count: guestCount,
+        });
+        estimatedTotal = estimate.estimated_total;
+        pricePerNight = estimate.price_per_night;
+        occupancyItem = estimate.occupancy_item;
+      } catch (err) {
+        showBookingRequestToast(err.message || 'Could not add room.', { error: true });
+        return;
+      }
     }
 
-    const price = priceFor(room);
     try {
+      if (isMultiRoomBrowse()) {
+        setGroupTotalGuests(totalGroupGuests());
+      }
       addBookingRequestItem({
         kind: 'room',
         roomId: room.id,
@@ -939,7 +1007,13 @@
         checkIn,
         checkOut,
         guestCount,
-        estimatedTotal: price?.total ?? null,
+        estimatedTotal,
+        pricePerNight,
+        occupancyItem,
+        capacityMin: physicalMin,
+        capacityMax,
+        isDorm,
+        dormBookingMinimum: isDorm ? dormMin : null,
       });
       const assigned = assignedRoomGuests(loadBookingRequest());
       const total = totalGroupGuests();
@@ -1548,6 +1622,21 @@
       return;
     }
 
+    if (window.innerWidth < 900) {
+      frame.style.width = '100%';
+      frame.style.height = '100%';
+      frame.style.removeProperty('margin-left');
+      frame.style.removeProperty('margin-right');
+      previewImage.style.width = '100%';
+      previewImage.style.height = '100%';
+      previewImage.style.removeProperty('max-width');
+      previewImage.style.removeProperty('max-height');
+      previewImage.style.objectFit = 'contain';
+      schedulePreviewLayoutSync();
+      scrollActivePreviewThumbIntoView();
+      return;
+    }
+
     const naturalW = previewImage.naturalWidth;
     const naturalH = previewImage.naturalHeight;
     if (!naturalW || !naturalH) {
@@ -1583,6 +1672,11 @@
     previewImage.style.maxHeight = 'none';
 
     schedulePreviewLayoutSync();
+  }
+
+  function scrollActivePreviewThumbIntoView() {
+    const active = previewThumbs?.querySelector('.browse-preview__thumb.is-active');
+    active?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
   }
 
   function paintPreviewImage() {
@@ -1626,6 +1720,7 @@
       >
         <img src="${escapeHtml(src)}" alt="" loading="lazy" />
       </button>`).join('');
+    scrollActivePreviewThumbIntoView();
   }
 
   function stepPreview(delta) {
@@ -1869,7 +1964,7 @@
     }
     const roomAddBtn = e.target.closest('[data-room-add-request]');
     if (roomAddBtn) {
-      addRoomToBookingRequest(roomAddBtn.dataset.roomAddRequest || previewState.roomId);
+      void addRoomToBookingRequest(roomAddBtn.dataset.roomAddRequest || previewState.roomId);
       return;
     }
     const roomBookBtn = e.target.closest('[data-room-book]');

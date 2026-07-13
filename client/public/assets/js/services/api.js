@@ -426,6 +426,15 @@ export async function getRoomAvailability(params = {}) {
   return apiRequest(`/bookings/availability?${qs.toString()}`);
 }
 
+export async function getRoomStayEstimate(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.room_id) qs.set('room_id', String(params.room_id));
+  if (params.check_in) qs.set('check_in', params.check_in);
+  if (params.check_out) qs.set('check_out', params.check_out);
+  if (params.guest_count != null) qs.set('guest_count', String(params.guest_count));
+  return apiRequest(`/bookings/room-estimate?${qs.toString()}`);
+}
+
 export async function getGroups() {
   const data = await apiRequest('/groups');
   return data.groups || [];
