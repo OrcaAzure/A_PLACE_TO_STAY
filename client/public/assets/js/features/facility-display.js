@@ -52,6 +52,14 @@ export const VENUE_CATEGORY_IMAGE = {
   'Recreational Center': '/images/RecreationPreview.jpg',
 };
 
+/** Canonical amenity previews for guest dashboard / landing (same paths as venue details). */
+export const LANDING_AMENITY_IMAGE = {
+  garden: VENUE_CATEGORY_IMAGE.Garden,
+  prayerMountain: VENUE_CATEGORY_IMAGE['Prayer Mountain'],
+  prayerTower: VENUE_CATEGORY_IMAGE['Prayer Tower'],
+  recreation: VENUE_CATEGORY_IMAGE.Recreation,
+};
+
 /**
  * Exact venue name / room code / package overrides.
  * Add real campus photos here as they become available (same pattern as ROOM_NUMBER_IMAGE).
@@ -199,7 +207,7 @@ const VENUE_CATEGORY_GALLERY = {
   'GMC Chapel': [
     'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1400&q=80',
     'https://images.unsplash.com/photo-1519167758481-83f29da8e3a3?auto=format&fit=crop&w=1400&q=80',
-    '/images/PrayerTower.jpg',
+    '/images/PrayerTowerPreview.jpg',
   ],
   'Burdine Commons': [
     'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=1400&q=80',

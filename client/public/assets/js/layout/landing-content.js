@@ -2,17 +2,28 @@
  * Composes public + guest landing main content from shared HTML partials.
  */
 
+import { LANDING_AMENITY_IMAGE } from '/assets/js/features/facility-display.js';
+
 const PARTIALS = {
   heroPublic: '/components/landing-hero-public.html',
   heroGuest: '/components/landing-hero-guest.html',
   sections: '/components/landing-sections.html',
 };
 
+const AMENITY_TOKENS = {
+  GARDEN_IMG: LANDING_AMENITY_IMAGE.garden,
+  PRAYER_TOWER_IMG: LANDING_AMENITY_IMAGE.prayerTower,
+  PRAYER_MOUNTAIN_IMG: LANDING_AMENITY_IMAGE.prayerMountain,
+  RECREATION_IMG: LANDING_AMENITY_IMAGE.recreation,
+  CHAPEL_GARDEN_IMG: LANDING_AMENITY_IMAGE.prayerTower,
+};
+
 const VARIANT_TOKENS = {
   public: {
+    ...AMENITY_TOKENS,
     FACILITIES_INTRO: 'Lodging at the Global Missions Center plus campus venues — bookable after you sign in.',
     LINK_GMC: '/login.html',
-    GMC_IMG: '/images/PrayerTower.jpg',
+    GMC_IMG: '/images/PrayerTowerPreview.jpg',
     GMC_ALT: 'GMC room interior',
     GMC_TITLE: 'Rooms',
     LINK_CONF: '/login.html',
@@ -25,6 +36,7 @@ const VARIANT_TOKENS = {
     CTA_BTN_CLASS_SUFFIX: '',
   },
   guest: {
+    ...AMENITY_TOKENS,
     FACILITIES_INTRO: 'Every bookable space on the APTS campus — from overnight stays to function rooms and outdoor venues.',
     LINK_GMC: '/guest/facilities.html?category=guest-houses',
     GMC_IMG: '/images/RoomsPreview.jpg',
