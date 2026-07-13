@@ -21,7 +21,7 @@ for (const page of adminPages) {
   router.get(`/admin/${page}.html`, requirePortalPage('admin'), (req, res) => sendView(res, `admin/${page}.html`));
 }
 
-const guestPages = ['dashboard', 'reservations', 'facilities', 'settings'];
+const guestPages = ['dashboard', 'reservations', 'facilities', 'settings', 'booking-request', 'billing'];
 for (const page of guestPages) {
   router.get(`/guest/${page}.html`, requirePortalPage('guest'), (req, res) => sendView(res, `guest/${page}.html`));
 }

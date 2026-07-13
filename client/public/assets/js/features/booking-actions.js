@@ -78,6 +78,19 @@ export async function approveSingleRequest(r) {
 }
 
 export async function approveGroupRequest(r) {
+  if (r.assignedBookings?.length) {
+    const rooms = r.assignedBookings.map((b) => ({
+      room_id: Number(b.room_id),
+      guest_count: Math.max(1, Number(b.guestCount ?? b.guest_count) || 1),
+    }));
+    await updateGroup(r.id, {
+      status: 'Approved',
+      rooms,
+      notify_guest: true,
+    });
+    return;
+  }
+
   const data = await suggestGroupRooms({
     check_in: r.schedule?.checkIn,
     check_out: r.schedule?.checkOut,
@@ -305,29 +318,18 @@ export async function alertPaidInvoiceBlocksDelete(item) {
 }
 
 export function openModifyRequestWizard(r, { modifyRequest = true } = {}) {
+  window.dispatchEvent(new CustomEvent('manage-requests:close'));
+
   if (r.kind === 'group') {
     window.dispatchEvent(new CustomEvent('group-wizard:open', {
       detail: {
         fromRequestId: r.id,
         modifyRequest,
-        prefill: {
-          groupName: r.groupName,
-          contactName: r.requester?.name,
-          contactPhone: r.contactPhone,
-          email: r.requester?.email,
-          checkIn: r.schedule?.checkIn,
-          checkOut: r.schedule?.checkOut,
-          totalGuests: r.totalGuests,
-          roomsRequested: r.roomsRequested,
-          notes: r.notes,
-          userId: r.userId,
-          meals: r.meals,
-          mealAllergenNotes: r.mealAllergenNotes,
-        },
         originalRequest: {
           checkIn: r.schedule?.checkIn,
           checkOut: r.schedule?.checkOut,
           roomsRequested: r.roomsRequested,
+          roomCount: r.roomCount || r.assignedBookings?.length || 0,
         },
       },
     }));
@@ -347,6 +349,7 @@ export function openModifyRequestWizard(r, { modifyRequest = true } = {}) {
           roomId: r.roomId,
           notes: r.notes,
           meals: r.meals,
+          fees: r.fees,
           mealAllergenNotes: r.mealAllergenNotes,
           facility: r.facility,
         },

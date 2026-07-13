@@ -503,7 +503,7 @@ export async function assessGuestAccountDeletion(userId) {
 
   const [[{ pendingRooms }]] = await pool.query(
     `SELECT COUNT(*) AS pendingRooms FROM bookings_rooms
-     WHERE user_id = ? AND status = 'Pending'`,
+     WHERE user_id = ? AND status = 'Pending' AND group_id IS NULL`,
     [userId],
   );
   if (Number(pendingRooms) > 0) {

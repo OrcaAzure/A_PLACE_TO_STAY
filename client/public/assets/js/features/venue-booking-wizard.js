@@ -892,13 +892,17 @@ async function confirmSave() {
 function show() {
   $('venue-wizard-overlay')?.classList.remove('hidden');
   $('venue-wizard-modal')?.classList.remove('hidden');
+  document.body.classList.add('guest-wizard-open');
   document.body.style.overflow = 'hidden';
 }
 
 function hide() {
   $('venue-wizard-overlay')?.classList.add('hidden');
   $('venue-wizard-modal')?.classList.add('hidden');
-  document.body.style.overflow = '';
+  document.body.classList.remove('guest-wizard-open');
+  const roomOpen = !$('reservation-wizard-modal')?.classList.contains('hidden');
+  const groupOpen = !$('group-wizard-modal')?.classList.contains('hidden');
+  if (!roomOpen && !groupOpen) document.body.style.overflow = '';
 }
 
 export function isVenueBookingWizardOpen() { return isOpen; }

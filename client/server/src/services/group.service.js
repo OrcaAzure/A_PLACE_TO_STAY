@@ -19,7 +19,7 @@ import {
 import { validateReservationDates } from './fiscalYear.service.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from './ancillary.service.js';
-import { sendGroupModifiedEmail, sendGroupConfirmationEmail, sendGuestGroupSelfModifyEmail, sendGroupBookingCancelledEmail } from './email.service.js';
+import { sendGroupModifiedEmail, sendGroupConfirmationEmail, sendGuestGroupSelfModifyEmail, sendGroupBookingCancelledEmail, sendGroupBookingRequestReceivedEmail } from './email.service.js';
 import { ensureInvoiceForBooking, ensureInvoicesForGroup, getInvoiceSnapshot, deletePaymentsForGroup, deletePaymentsForRoomBooking } from './payment.service.js';
 const bookingSelect = `
   SELECT bk.*,
@@ -64,6 +64,23 @@ function notifyGroupCancelled(group, { cancelledByGuest = true } = {}) {
     group,
     { cancelledByGuest }
   );
+}
+
+export function notifyGroupCreated(group, { user, batchRef } = {}) {
+  void (async () => {
+    const full = group?.bookings?.length ? group : await getGroupById(group?.id);
+    if (!full) return;
+    const recipient = {
+      full_name: user?.full_name || full.contact_name || full.requester_name,
+      email: user?.email || full.contact_email || full.requester_email,
+    };
+    const status = String(full.status || '').toLowerCase();
+    if (status === 'approved') {
+      await sendGroupConfirmationEmail(recipient, full);
+    } else if (status === 'pending') {
+      await sendGroupBookingRequestReceivedEmail(recipient, full, { batchRef });
+    }
+  })();
 }
 
 export function suggestRoomAssignment(availableRooms, totalGuests) {
@@ -343,10 +360,13 @@ export async function createReservationGroup(raw = {}) {
 
   const groupId = result.insertId;
 
-  if (rooms?.length && (isAdmin || groupStatus === 'Approved')) {
+  if (rooms?.length) {
     const assignedGuests = rooms.reduce((s, r) => s + Number(r.guest_count || 0), 0);
     if (assignedGuests !== guests) {
-      throw new Error(`Guest count per room must add up to ${guests} (currently ${assignedGuests}).`);
+      await pool.query(
+        'UPDATE reservation_groups SET total_guests = ? WHERE id = ?',
+        [assignedGuests, groupId]
+      );
     }
     return saveGroupBookings({
       groupId,

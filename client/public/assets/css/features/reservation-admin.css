@@ -90,6 +90,19 @@ a.res-action-card {
 
 .res-wizard-body { min-height: 280px; }
 .res-wizard-footer { flex-direction: column; align-items: stretch; gap: 0.75rem; }
+.res-wizard-footer .res-actions-row {
+  width: 100%;
+  justify-content: flex-end;
+}
+@media (max-width: 640px) {
+  .res-wizard-footer .res-actions-row {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+  .res-wizard-footer .res-actions-row .res-btn {
+    width: 100%;
+  }
+}
 .admin-shell .res-wizard-footer .res-error {
   margin: 0;
   padding: 0.65rem 0.85rem;
@@ -1786,19 +1799,22 @@ a.res-action-card {
 /* ── Wizard visual parity (admin create/edit — matches guest booking UX) ── */
 
 body.guest-wizard-open #reservation-wizard-overlay,
-body.guest-wizard-open #group-wizard-overlay {
+body.guest-wizard-open #group-wizard-overlay,
+body.guest-wizard-open #venue-wizard-overlay {
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
 
 body.guest-wizard-open #reservation-wizard-modal:not(.hidden) .res-modal,
-body.guest-wizard-open #group-wizard-modal:not(.hidden) .res-modal {
+body.guest-wizard-open #group-wizard-modal:not(.hidden) .res-modal,
+body.guest-wizard-open #venue-wizard-modal:not(.hidden) .res-modal {
   transform: translateY(0) scale(1);
   opacity: 1;
 }
 
 #reservation-wizard-modal .res-modal,
-#group-wizard-modal .res-modal {
+#group-wizard-modal .res-modal,
+#venue-wizard-modal .res-modal {
   transform: translateY(10px) scale(0.98);
   opacity: 0;
   transition: transform 0.28s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.28s ease;

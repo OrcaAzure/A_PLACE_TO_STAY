@@ -3,7 +3,7 @@
  * Used by guest booking extras and admin reservation wizards.
  */
 
-import { escapeHtml, formatMoney, PER_PERSON_NIGHT_EXTRA_ITEM } from '/assets/js/features/reservation-shared.js';
+import { escapeHtml, formatMoney, PER_PERSON_NIGHT_EXTRA_ITEM, servicesToQuickFees } from '/assets/js/features/reservation-shared.js';
 
 const LAUNDRY_CATEGORIES = new Set(['Laundry', 'Laundry-Iron']);
 export const LAUNDRY_GROUP_ID = 'laundry';
@@ -26,6 +26,15 @@ export function filterGuestSelfBookServices(services = []) {
       items: (group.items || []).filter((item) => !GUEST_SELF_BOOK_EXCLUDED_ITEMS.has(item.item)),
     }))
     .filter((group) => (group.items || []).length > 0);
+}
+
+/** Fee picker catalog for guest self-service flows (browse, modify) — admin wizards use the full catalog. */
+export function getGuestSelfBookFeeCatalog(services = []) {
+  const filtered = filterGuestSelfBookServices(services);
+  return {
+    feeGroups: buildFeeGroups(filtered),
+    quickFees: servicesToQuickFees(filtered),
+  };
 }
 
 const GROUP_LABELS = {
@@ -242,6 +251,7 @@ export function renderWizardFeePicker({
   customNameInputId = 'wiz-fee-name',
   customAmtInputId = 'wiz-fee-amt',
   customAddBtnId = 'wiz-add-fee',
+  compact = false,
 } = {}) {
   const expandedGroup = feeGroups.find((g) => g.id === expandedGroupId && g.type === 'expandable');
   const chipsHtml = feeGroups.length
@@ -267,7 +277,7 @@ export function renderWizardFeePicker({
     : '';
 
   return `
-    <div class="res-wizard-fee-picker" data-fee-picker>
+    <div class="res-wizard-fee-picker${compact ? ' res-wizard-fee-picker--compact' : ''}" data-fee-picker>
       <div class="guest-service-grid" data-fee-chips>${chipsHtml}</div>
       ${submenuHtml}
       ${renderSelectedFees(fees)}

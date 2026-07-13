@@ -15,7 +15,7 @@ import {
   mealTypesOrdered,
   ensureMealsShape,
 } from '/assets/js/features/reservation-shared.js';
-import { buildFeeGroups, LAUNDRY_GROUP_ID, filterGuestSelfBookServices } from '/assets/js/features/booking-fee-picker.js';
+import { getGuestSelfBookFeeCatalog, LAUNDRY_GROUP_ID } from '/assets/js/features/booking-fee-picker.js';
 
 const MEAL_META = {
   Breakfast: { icon: 'free_breakfast', tone: 'amber' },
@@ -34,6 +34,7 @@ export function createGuestBookingExtras({
   feeChipsMount,
   feeSubmenuMount,
   selectedFeesMount,
+  allergenInputId = 'booking-meal-allergens',
   onChange = () => {},
 } = {}) {
   const feeServicesBlock = panelEl?.querySelector('[data-guest-extras-services]');
@@ -61,7 +62,7 @@ export function createGuestBookingExtras({
   }
 
   function getPayload() {
-    const allergenEl = document.getElementById('booking-meal-allergens');
+    const allergenEl = document.getElementById(allergenInputId);
     return {
       meals: { ...meals },
       fees: fees.map((f) => ({ fee_name: f.name, amount: f.amount })),
@@ -78,7 +79,7 @@ export function createGuestBookingExtras({
     meals = emptyMeals(mealRates);
     fees = [];
     expandedGroupId = null;
-    const allergenEl = document.getElementById('booking-meal-allergens');
+    const allergenEl = document.getElementById(allergenInputId);
     if (allergenEl) allergenEl.value = '';
     setRoomSelected(false);
     render();
@@ -318,6 +319,21 @@ export function createGuestBookingExtras({
     });
   }
 
+  function applyState({ meals: nextMeals, fees: nextFees, meal_allergen_notes } = {}) {
+    if (nextMeals) meals = ensureMealsShape(nextMeals, mealRates);
+    if (Array.isArray(nextFees)) {
+      fees = nextFees.map((f) => ({
+        name: f.fee_name || f.name,
+        amount: Number(f.amount),
+        category: f.category || '',
+      })).filter((f) => f.name && !Number.isNaN(f.amount));
+    }
+    const allergenEl = document.getElementById(allergenInputId);
+    if (allergenEl) allergenEl.value = meal_allergen_notes || '';
+    render();
+    onChange();
+  }
+
   async function init() {
     try {
       const [rates, catalog] = await Promise.all([
@@ -326,7 +342,7 @@ export function createGuestBookingExtras({
       ]);
       mealRates = { ...mealRates, ...rates };
       meals = ensureMealsShape(meals, mealRates);
-      feeGroups = buildFeeGroups(filterGuestSelfBookServices(catalog.services || []));
+      feeGroups = getGuestSelfBookFeeCatalog(catalog.services || []).feeGroups;
     } catch {
       feeGroups = [];
     }
@@ -339,6 +355,7 @@ export function createGuestBookingExtras({
     init,
     reset,
     setRoomSelected,
+    applyState,
     getPayload,
     grandTotal,
     mealsSubtotal,

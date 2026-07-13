@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html class="scroll-smooth" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Billing | APTSpace Guest</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="/assets/js/config/tailwind-theme-base.js"></script>
+<script src="/assets/js/config/tailwind-guest.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/assets/css/global/landing.css"/>
+<link rel="stylesheet" href="/assets/css/global/guest-portal.css?v=br1"/>
+<link rel="stylesheet" href="/assets/css/global/main.css" />
+<link rel="stylesheet" href="/assets/css/components/components.css" />
+<link rel="stylesheet" href="/assets/css/global/responsive.css" />
+<link rel="stylesheet" href="/assets/css/features/admin-invoices.css" />
+<style>
+  .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+</style>
+</head>
+<body>
+
+<div id="page-content">
+  <div class="p-lg max-w-5xl mx-auto">
+    <div class="mb-xl">
+      <h2 class="font-headline-xl text-headline-xl text-on-surface">Billing</h2>
+      <p class="font-body-md text-body-md text-on-surface-variant mt-1">Invoices and payment status for approved reservations. Pending requests appear in Reservation History until confirmed.</p>
+    </div>
+
+    <section id="guest-invoices-section" class="hidden" aria-labelledby="guest-invoices-heading">
+      <div class="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-5 bg-amber-50 border-b border-amber-100">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-amber-700 text-[28px]" aria-hidden="true">receipt_long</span>
+            <div>
+              <h3 id="guest-invoices-heading" class="font-headline-sm text-headline-sm text-on-surface">Your invoices</h3>
+              <p class="text-body-sm text-on-surface-variant mt-0.5">Pay the APTS Housing Department. Your reservation stays confirmed either way.</p>
+            </div>
+          </div>
+          <p id="guest-invoices-count" class="text-label-md font-semibold text-amber-800 shrink-0">—</p>
+        </div>
+        <div id="guest-invoices-list" class="p-4 sm:p-6 grid gap-4 sm:grid-cols-2"></div>
+      </div>
+    </section>
+
+    <div id="guest-billing-empty" class="hidden bg-white rounded-2xl border border-outline-variant p-8 text-center text-on-surface-variant">
+      <span class="material-symbols-outlined text-[40px] text-outline mb-2">receipt_long</span>
+      <p class="font-body-md">No invoices yet.</p>
+      <p class="text-body-sm mt-1">Invoices are created after your reservation is approved.</p>
+      <a href="/guest/reservations.html" class="inline-block mt-4 text-primary font-semibold no-underline">View Reservation History →</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { requireAuth } from '/assets/js/services/auth.js';
+  import { initAppLayout } from '/assets/js/layout/ui.js';
+  import { loadGuestInvoices } from '/assets/js/features/guest-invoices.js';
+
+  if (!(await requireAuth())) throw new Error('Not authenticated');
+  await initAppLayout({ portal: 'guest', activePage: 'billing' });
+
+  const section = document.getElementById('guest-invoices-section');
+  const empty = document.getElementById('guest-billing-empty');
+  await loadGuestInvoices();
+  if (section?.classList.contains('hidden') && empty) empty.classList.remove('hidden');
+</script>
+</body>
+</html>

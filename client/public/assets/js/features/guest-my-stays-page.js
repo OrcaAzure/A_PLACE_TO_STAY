@@ -10,14 +10,13 @@ getFiscalYear, getSupportContact,
 } from '/assets/js/services/api.js';
 import {
 canGuestCancelRoomBooking, canGuestCancelVenueBooking, canGuestModifyRoomBooking, canGuestModifyVenueBooking,
-lifecyclePhaseForBooking, venuePhaseLabel, normStatus,
+lifecyclePhaseForBooking, venuePhaseLabel, normStatus, isStandaloneRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
 import {
   parseBookQuery, priceNoticeHtml, hasCompleteBookIntent,
   validateVenueCapacityClient, validateVenueDurationClient,
 } from '/assets/js/features/guest-booking-flow.js';
 import { initGuestRoomBookingModal } from '/assets/js/features/guest-room-booking-modal.js';
-import { loadGuestInvoices } from '/assets/js/features/guest-invoices.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { jsonFingerprint, updateStat } from '/assets/js/layout/silent-refresh.js';
 import { openGuestModifyWizard, confirmGuestCancelReservation, cancelRoomReservation, cancelVenueReservation } from '/assets/js/features/booking-actions.js';
@@ -43,6 +42,7 @@ export async function bootstrapGuestMyStaysPage() {
     document.getElementById('booking-price-notice').innerHTML = priceNoticeHtml();
 
     const BLOCKED_BUILDINGS = [];
+    const isBlockedBuilding = (name) => BLOCKED_BUILDINGS.includes(String(name || '').trim());
     const { readOnly } = applyRoleUI();
   
     let cancellationCutoffHours = 24;
@@ -224,14 +224,14 @@ export async function bootstrapGuestMyStaysPage() {
           getFacilityBookings(),
         ]);
         const singles = raw
-          .filter((b) => !b.group_id)
+          .filter((b) => isStandaloneRoomBooking(b))
           .map(normalizeBooking)
           .filter((b) => !isBlockedBuilding(b.buildingName));
         const groupItems = groups.map((g) => ({
           kind: 'group',
           id: g.id,
           title: g.group_name,
-          facilityLabel: `${g.room_count || 0} room(s) assigned Â· ${g.total_guests} guest(s)`,
+          facilityLabel: `${g.room_count || 0} room(s) assigned · ${g.total_guests} guest(s)`,
           startDate: String(g.check_in).slice(0, 10),
           endDate: String(g.check_out).slice(0, 10),
           status: (g.status || 'Pending').toLowerCase(),
@@ -259,7 +259,6 @@ export async function bootstrapGuestMyStaysPage() {
 
         renderFeatured(allBookings, { silent: background });
         applyAndRender({ silent: background });
-        if (!background) await loadGuestInvoices();
       } catch (err) {
         if (background) return;
         document.getElementById('reservations-list').innerHTML =

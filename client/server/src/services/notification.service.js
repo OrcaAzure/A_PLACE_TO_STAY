@@ -24,7 +24,7 @@ async function getAdminNotifications() {
     [recentVenues],
     [openInvoices],
   ] = await Promise.all([
-    pool.query(`SELECT COUNT(*) AS c FROM bookings_rooms WHERE status = 'Pending'`),
+    pool.query(`SELECT COUNT(*) AS c FROM bookings_rooms WHERE status = 'Pending' AND group_id IS NULL`),
     pool.query(`SELECT COUNT(*) AS c FROM reservation_groups WHERE status = 'Pending'`),
     pool.query(`SELECT COUNT(*) AS c FROM bookings_facilities WHERE status = 'Pending'`),
     pool.query(
@@ -39,6 +39,7 @@ async function getAdminNotifications() {
       LEFT JOIN rooms r ON bk.room_id = r.id
       LEFT JOIN buildings b ON r.building_id = b.id
       WHERE bk.status IN ('Pending', 'Approved')
+        AND bk.group_id IS NULL
       ORDER BY bk.updated_at DESC
       LIMIT 6
     `),
@@ -147,13 +148,18 @@ async function getAdminNotifications() {
 async function getGuestNotifications(userId) {
   const [
     [pendingRooms],
+    [pendingGroups],
     [pendingVenues],
     [approvedUpcoming],
     [recentRooms],
     [recentVenues],
   ] = await Promise.all([
     pool.query(
-      `SELECT COUNT(*) AS c FROM bookings_rooms WHERE user_id = ? AND status = 'Pending'`,
+      `SELECT COUNT(*) AS c FROM bookings_rooms WHERE user_id = ? AND status = 'Pending' AND group_id IS NULL`,
+      [userId],
+    ),
+    pool.query(
+      `SELECT COUNT(*) AS c FROM reservation_groups WHERE user_id = ? AND status = 'Pending'`,
       [userId],
     ),
     pool.query(
@@ -169,6 +175,7 @@ async function getGuestNotifications(userId) {
       `SELECT id, status, check_in, check_out, updated_at
        FROM bookings_rooms
        WHERE user_id = ? AND status IN ('Pending', 'Approved', 'Rejected')
+         AND group_id IS NULL
        ORDER BY updated_at DESC
        LIMIT 5`,
       [userId],
@@ -184,8 +191,9 @@ async function getGuestNotifications(userId) {
   ]);
 
   const pendingRoomCount = Number(pendingRooms[0]?.c || 0);
+  const pendingGroupCount = Number(pendingGroups[0]?.c || 0);
   const pendingVenueCount = Number(pendingVenues[0]?.c || 0);
-  const pendingTotal = pendingRoomCount + pendingVenueCount;
+  const pendingTotal = pendingRoomCount + pendingGroupCount + pendingVenueCount;
   const upcoming = Number(approvedUpcoming[0]?.c || 0);
 
   const feed = [];
