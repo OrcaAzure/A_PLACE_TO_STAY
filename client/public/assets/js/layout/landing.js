@@ -18,6 +18,7 @@ const HERO_TYPE_PHRASES = [
   'group ministry stays',
 ];
 
+<<<<<<< Updated upstream
 function initHeroImageFallbacks() {
   const fallback = '/images/GardenPreview.jpg';
   document.querySelectorAll('.lp-hero-visual img, .lp-hero-float img, .lp-hero-mobile-visual img').forEach((img) => {
@@ -29,6 +30,8 @@ function initHeroImageFallbacks() {
   });
 }
 
+=======
+>>>>>>> Stashed changes
 function initHeroTypewriter() {
   const el = document.getElementById('lp-hero-typed');
   const cursor = document.querySelector('.lp-hero-type-cursor');
@@ -124,7 +127,7 @@ function revealStatic() {
     el.style.opacity = '1';
   });
   if (window.gsap) {
-    window.gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-rule, .lp-hero-sub, .lp-hero-cta > *, .lp-hero-tags > *, .lp-stat, .lp-hero-visual, .lp-hero-mobile-visual, .lp-hero-float, .lp-scroll-hint', {
+    window.gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-rule, .lp-hero-sub, .lp-hero-cta > *, .lp-hero-tags > *, .lp-stat, .lp-scroll-hint', {
       clearProps: 'all',
     });
   }
@@ -587,13 +590,6 @@ function prepareHeroHandoff(gsap) {
     y: 18,
   });
   gsap.set('.lp-hero-rule', { scaleX: 0, transformOrigin: 'left center' });
-  gsap.set('.lp-hero-visual', {
-    autoAlpha: 0,
-    scale: 1.06,
-    clipPath: 'inset(14% 0% 0% 0%)',
-  });
-  gsap.set('.lp-hero-float', { autoAlpha: 0, scale: 0.9, y: 14 });
-  gsap.set('.lp-hero-mobile-visual', { autoAlpha: 0, y: 16 });
   gsap.set('.lp-scroll-hint', { autoAlpha: 0, y: -6 });
   gsap.set('.lp-hero-bg', { scale: 1.05, transformOrigin: 'center center' });
 }
@@ -615,22 +611,6 @@ function playHeroHandoff(gsap) {
     .to('.lp-hero-cta > *', { autoAlpha: 1, y: 0, stagger: 0.06, duration: 0.38 }, '-=0.28')
     .to('.lp-hero-tags > *', { autoAlpha: 1, y: 0, stagger: 0.05, duration: 0.34 }, '-=0.24')
     .to('.lp-stat', { autoAlpha: 1, y: 0, stagger: 0.06, duration: 0.4 }, '-=0.22')
-    .to('.lp-hero-visual', {
-      autoAlpha: 1,
-      scale: 1,
-      clipPath: 'inset(0% 0% 0% 0%)',
-      duration: 0.9,
-      ease: 'power3.out',
-    }, '-=0.72')
-    .to('.lp-hero-float', {
-      autoAlpha: 1,
-      scale: 1,
-      y: 0,
-      stagger: 0.11,
-      duration: 0.52,
-      ease: 'back.out(1.15)',
-    }, '-=0.58')
-    .to('.lp-hero-mobile-visual', { autoAlpha: 1, y: 0, duration: 0.45 }, '-=0.55')
     .to('.lp-scroll-hint', { autoAlpha: 0.45, y: 0, duration: 0.32 }, '-=0.25');
 
   return tl;
@@ -686,7 +666,6 @@ export async function initLandingPage(options = {}) {
   initNavSpy();
   initMobileMenu();
   initHeroTypewriter();
-  initHeroImageFallbacks();
 
   document.querySelectorAll('.lp-facility-card img').forEach((img) => {
     img.addEventListener('error', () => {
@@ -745,15 +724,6 @@ export async function initLandingPage(options = {}) {
       .from('.lp-hero-cta > *', { y: 20, autoAlpha: 0, stagger: 0.1, duration: 0.5 }, '-=0.25')
       .from('.lp-hero-tags > *', { y: 14, autoAlpha: 0, stagger: 0.07, duration: 0.4 }, '-=0.3')
       .from('.lp-stat', { y: 28, autoAlpha: 0, stagger: 0.08, duration: 0.55 }, '-=0.2')
-      .from('.lp-hero-mobile-visual', { y: 20, autoAlpha: 0, duration: 0.55 }, '-=0.35')
-      .from('.lp-hero-visual', {
-        autoAlpha: 0,
-        clipPath: 'inset(100% 0% 0% 0%)',
-        scale: 1.08,
-        duration: 1.1,
-        ease: 'power4.out',
-      }, '-=0.85')
-      .from('.lp-hero-float', { scale: 0.8, autoAlpha: 0, stagger: 0.15, duration: 0.6, ease: 'back.out(1.4)' }, '-=0.5')
       .from('.lp-scroll-hint', { y: -8, autoAlpha: 0, duration: 0.4 }, '-=0.2');
 
     animateCounters(gsap);
