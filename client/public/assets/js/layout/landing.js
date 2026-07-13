@@ -124,7 +124,7 @@ function revealStatic() {
     el.style.opacity = '1';
   });
   if (window.gsap) {
-    window.gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-rule, .lp-hero-sub, .lp-hero-cta > *, .lp-hero-tags > *, .lp-stat, .lp-hero-visual, .lp-hero-mobile-visual, .lp-hero-float, .lp-hero-booking-card, .lp-scroll-hint', {
+    window.gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-rule, .lp-hero-sub, .lp-hero-cta > *, .lp-hero-tags > *, .lp-stat, .lp-hero-visual, .lp-hero-mobile-visual, .lp-hero-float, .lp-scroll-hint', {
       clearProps: 'all',
     });
   }
@@ -593,7 +593,6 @@ function prepareHeroHandoff(gsap) {
     clipPath: 'inset(14% 0% 0% 0%)',
   });
   gsap.set('.lp-hero-float', { autoAlpha: 0, scale: 0.9, y: 14 });
-  gsap.set('.lp-hero-booking-card', { autoAlpha: 0, y: 18 });
   gsap.set('.lp-hero-mobile-visual', { autoAlpha: 0, y: 16 });
   gsap.set('.lp-scroll-hint', { autoAlpha: 0, y: -6 });
   gsap.set('.lp-hero-bg', { scale: 1.05, transformOrigin: 'center center' });
@@ -631,7 +630,6 @@ function playHeroHandoff(gsap) {
       duration: 0.52,
       ease: 'back.out(1.15)',
     }, '-=0.58')
-    .to('.lp-hero-booking-card', { autoAlpha: 1, y: 0, duration: 0.45, ease: 'power2.out' }, '-=0.42')
     .to('.lp-hero-mobile-visual', { autoAlpha: 1, y: 0, duration: 0.45 }, '-=0.55')
     .to('.lp-scroll-hint', { autoAlpha: 0.45, y: 0, duration: 0.32 }, '-=0.25');
 
@@ -756,7 +754,6 @@ export async function initLandingPage(options = {}) {
         ease: 'power4.out',
       }, '-=0.85')
       .from('.lp-hero-float', { scale: 0.8, autoAlpha: 0, stagger: 0.15, duration: 0.6, ease: 'back.out(1.4)' }, '-=0.5')
-      .from('.lp-hero-booking-card', { y: 20, autoAlpha: 0, duration: 0.55, ease: 'power2.out' }, '-=0.35')
       .from('.lp-scroll-hint', { y: -8, autoAlpha: 0, duration: 0.4 }, '-=0.2');
 
     animateCounters(gsap);

@@ -593,14 +593,6 @@ body.lp-scroll-snap-active .lp-section-scroller {
   background: var(--lp-hero-overlay);
 }
 
-.lp-hero-grid {
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 48px 48px;
-  mask-image: radial-gradient(ellipse 80% 70% at 30% 40%, black 20%, transparent 75%);
-}
-
 .lp-hero-glow {
   position: absolute;
   border-radius: 9999px;
@@ -737,14 +729,6 @@ body.lp-scroll-snap-active .lp-section-scroller {
     0 32px 64px rgba(0, 0, 0, 0.35),
     0 0 0 1px rgba(255, 255, 255, 0.12);
   background: linear-gradient(145deg, #2c5282 0%, #1a365d 100%);
-}
-
-.lp-hero-booking-card {
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.65);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.22);
-  z-index: 3;
 }
 
 .lp-hero-visual img {
