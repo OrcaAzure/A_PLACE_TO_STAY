@@ -485,8 +485,14 @@ export function normalizeManageGroupRequest(group) {
     updatedAt: group.updated_at,
     grandTotal: group.grand_total != null ? Number(group.grand_total) : null,
     mealAllergenNotes: group.meal_allergen_notes || '',
+    meals: group.meals || [],
+    fees: (group.fees || []).map((f) => ({
+      fee_name: f.fee_name,
+      amount: f.amount != null ? Number(f.amount) : 0,
+    })),
     assignedBookings: (group.bookings || []).map((b) => ({
       id: b.id,
+      room_id: b.room_id,
       building: b.building_name,
       roomNumber: b.room_number,
       roomType: b.room_type,
@@ -586,6 +592,7 @@ export function normalizeBooking(booking) {
     id: booking.id,
     userId: booking.user_id,
     roomId: booking.room_id,
+    groupId: booking.group_id ?? null,
     title: booking.guest_name || booking.title || facilityLabel,
     facilityLabel,
     buildingName: building,
@@ -640,6 +647,7 @@ export function normalizeManageRequest(booking) {
     totalAmount: booking.total_amount != null ? Number(booking.total_amount) : null,
     roomId: booking.room_id,
     userId: booking.user_id,
+    groupId: booking.group_id ?? null,
   };
 }
 
@@ -678,6 +686,13 @@ export async function createFacilityBooking(payload) {
   return apiRequest('/facility-bookings', {
     method: 'POST',
     body: JSON.stringify(body),
+  });
+}
+
+export async function submitBookingRequest(payload) {
+  return apiRequest('/booking-requests/submit', {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
 }
 

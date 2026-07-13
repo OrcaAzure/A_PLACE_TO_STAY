@@ -14,17 +14,20 @@ import {
   DORM_MIN_GUEST_COUNT, dormPriceLabel,
   isRoomListVisible, isRoomBookable, dormMinGuestsNotice, validateRoomGuestCapacity,
   readMealsFromInputs, clampMealQty, mealTypesOrdered, ensureMealsShape, isValidEmail,
+  guestModifyMinStep, renderGuestModifyProgress, renderGuestModifyReviewSummary, renderGuestModifyReviewCallout,
 } from '/assets/js/features/reservation-shared.js';
 import {
   renderWizardMealGrid,
+  renderGuestModifyMealList,
   syncWizardMealCards,
   renderWizardRoomCard,
+  renderGuestModifyRoomRow,
   renderWizardRoomTypeFilter,
   bindWizardRoomTypeFilter,
   renderWizardConfirmCard,
   renderWizardPriceSummary,
 } from '/assets/js/features/wizard-visuals.js';
-import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
+import { buildFeeGroups, getGuestSelfBookFeeCatalog, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
 
 let initialized = false;
 let isOpen = false;
@@ -65,9 +68,44 @@ function renderGuestContactCard({ lead, compact } = {}) {
   return `${lead ? `<p class="res-lead">${lead}</p>` : ''}${card}`;
 }
 
+function applyGuestModifyChrome() {
+  const modal = $('reservation-wizard-modal')?.querySelector('.res-modal');
+  const headerWrap = modal?.querySelector('.res-modal-header > div:first-child');
+  const subtitle = $('reservation-wizard-subtitle');
+  if (!state.guestModify) {
+    subtitle?.classList.remove('hidden');
+    headerWrap?.querySelector('.guest-modify-status')?.remove();
+    return;
+  }
+  $('reservation-wizard-title').textContent = 'Modify reservation';
+  if (subtitle) {
+    subtitle.textContent = '';
+    subtitle.classList.add('hidden');
+  }
+  let status = headerWrap?.querySelector('.guest-modify-status');
+  if (!status) {
+    status = document.createElement('span');
+    $('reservation-wizard-title')?.insertAdjacentElement('afterend', status);
+  }
+  if (status) {
+    status.textContent = state.guestWasApproved ? 'Approved' : 'Pending';
+    status.className = `guest-modify-status guest-modify-status--${state.guestWasApproved ? 'approved' : 'pending'}`;
+  }
+}
+
 function renderSteps() {
   const el = $('reservation-wizard-steps');
   if (!el) return;
+  const modal = $('reservation-wizard-modal')?.querySelector('.res-modal');
+  if (state.guestModify) {
+    modal?.classList.add('res-modal--guest-modify');
+    el.className = 'res-steps res-steps--guest-modify';
+    el.innerHTML = renderGuestModifyProgress(state.step);
+    applyGuestModifyChrome();
+    return;
+  }
+  modal?.classList.remove('res-modal--guest-modify');
+  el.className = 'res-steps';
   el.innerHTML = WIZARD_STEPS.map((s) => {
     const done = s.id < state.step;
     const active = s.id === state.step;
@@ -98,30 +136,44 @@ function renderStep1() {
 }
 
 function renderStep2() {
-  const banner = state.checkIn && state.checkOut && state.checkOut > state.checkIn ? `
-    <div class="res-banner ${state.availableCount > 0 ? 'res-banner--ok' : 'res-banner--warn'}">
+  const showAvailBanner = state.guestModify
+    ? (state.checkIn && state.checkOut && state.checkOut > state.checkIn && !state.loadingRooms && state.availableCount === 0)
+    : (state.checkIn && state.checkOut && state.checkOut > state.checkIn);
+  const banner = showAvailBanner ? `
+    <div class="res-banner ${state.guestModify || state.availableCount > 0 ? 'res-banner--ok' : 'res-banner--warn'}">
       ${state.loadingRooms ? 'Checking room availability…'
     : state.availableCount > 0
-      ? `<strong>${state.availableCount} room(s)</strong> can fit ${state.guestCount} guest(s) on these dates.`
+      ? (state.guestModify ? '' : `<strong>${state.availableCount} room(s)</strong> can fit ${state.guestCount} guest(s) on these dates.`)
       : `<strong>No rooms available</strong> for ${state.guestCount} guest(s) on these dates. Try different dates or fewer guests.`}
     </div>` : '';
+  const fields = `
+    <div class="res-row">
+      <div><label class="res-label">Check-in</label><input id="wiz-check-in" class="res-input" type="date" value="${escapeHtml(state.checkIn)}" /></div>
+      <div><label class="res-label">Check-out</label><input id="wiz-check-out" class="res-input" type="date" value="${escapeHtml(state.checkOut)}" /></div>
+    </div>
+    <label class="res-label">Guests</label>
+    <input id="wiz-guests" class="res-input res-input--short" type="number" min="1" max="20" value="${state.guestCount}" />`;
+  if (state.guestModify) {
+    return `<div class="guest-modify-panel">${fields}${banner}</div>`;
+  }
   return `
     <p class="res-lead">Pick the stay dates and how many people will stay.</p>
     ${(() => {
       const hint = fiscalBounds ? formatBookingWindowHint(fiscalBounds) : '';
       return hint ? `<p class="res-hint">${escapeHtml(hint)}</p>` : '';
     })()}
-    <div class="res-row">
-      <div><label class="res-label">Check-in</label><input id="wiz-check-in" class="res-input" type="date" value="${escapeHtml(state.checkIn)}" /></div>
-      <div><label class="res-label">Check-out</label><input id="wiz-check-out" class="res-input" type="date" value="${escapeHtml(state.checkOut)}" /></div>
-    </div>
-    <label class="res-label">Number of guests</label>
-    <input id="wiz-guests" class="res-input res-input--short" type="number" min="1" max="20" value="${state.guestCount}" />
+    ${fields}
     <p class="res-hint">Room options on the next step will update based on this number. Dorm bookings require at least ${DORM_MIN_GUEST_COUNT} guests (per-person pricing).</p>
     ${banner}`;
 }
 
 function renderRoomRow(room, { recommended = false } = {}) {
+  if (state.guestModify) {
+    return renderGuestModifyRoomRow(room, {
+      selected: String(room.id) === String(state.roomId),
+      guestCount: state.guestCount,
+    });
+  }
   return renderWizardRoomCard(room, {
     selected: String(room.id) === String(state.roomId),
     guestCount: state.guestCount,
@@ -132,10 +184,11 @@ function renderRoomRow(room, { recommended = false } = {}) {
 }
 
 function getFilteredAvailableRooms() {
+  const statuses = state.guestModify ? ['available'] : ['available', 'dorm_min_guests'];
   return filterRoomsList(state.availableRooms, {
     search: state.roomSearch,
     roomType: state.roomTypeFilter,
-    includeStatuses: ['available', 'dorm_min_guests'],
+    includeStatuses: statuses,
   });
 }
 
@@ -159,41 +212,46 @@ function renderStep3() {
   const filtered = getFilteredAvailableRooms();
   const recommended = recommendRooms(filtered, state.guestCount, 3);
 
-  const conflictBanner = (requestedUnavailable || ((state.modifyRequest || state.guestModify) && state.originalRoomLabel)) ? `
+  const conflictBanner = requestedUnavailable ? `
     <div class="res-banner res-banner--warn">
-      ${requestedUnavailable
-    ? state.guestModify
-      ? `<strong>Room unavailable:</strong> <strong>${escapeHtml(state.originalRoomLabel || 'your room')}</strong> is already booked on these dates. Choose another room${state.guestWasApproved ? ' and explain the change on the last step' : ''}.`
-      : `<strong>Room conflict:</strong> The guest requested <strong>${escapeHtml(state.originalRoomLabel || 'this room')}</strong>, but it is already booked on these dates. Choose another room and explain the change on the last step.`
-    : state.guestModify
-      ? `You originally selected <strong>${escapeHtml(state.originalRoomLabel || 'a room')}</strong>. You can change the room or dates before submitting.`
-      : state.modifyRequest
-        ? `Guest originally requested <strong>${escapeHtml(state.originalRoomLabel || 'a room')}</strong>. You can change the room, dates, or details before approving.`
-        : ''}
-    </div>` : '';
+      ${state.guestModify
+    ? `<strong>${escapeHtml(state.originalRoomLabel || 'Your room')}</strong> is no longer available. Please pick another room.`
+    : `<strong>Room conflict:</strong> The guest requested <strong>${escapeHtml(state.originalRoomLabel || 'this room')}</strong>, but it is already booked on these dates. Choose another room and explain the change on the last step.`}
+    </div>` : (state.modifyRequest && state.originalRoomLabel ? `
+    <div class="res-banner res-banner--warn">
+      Guest originally requested <strong>${escapeHtml(state.originalRoomLabel)}</strong>. You can change the room, dates, or details before approving.
+    </div>` : '');
 
   const lead = state.guestModify
-    ? 'Search and pick a room. Tap suggested rooms if you want recommendations.'
+    ? 'Choose from the available rooms below. Your current room stays selected if it is still free on these dates.'
     : 'Search and pick a room. Use <strong>Show suggested rooms</strong> if you want help finding a good fit.';
 
-  const recToggle = recommended.length ? `
+  const recToggle = (!state.guestModify && recommended.length) ? `
     <button type="button" id="wiz-toggle-rec" class="res-btn res-btn--secondary res-rec-toggle">
       <span class="material-symbols-outlined">auto_awesome</span>
       ${state.showRecommendations ? 'Hide suggested rooms' : `Show ${recommended.length} suggested room${recommended.length === 1 ? '' : 's'}`}
     </button>` : '';
 
-  const recBlock = state.showRecommendations && recommended.length ? `
+  const recBlock = (!state.guestModify && state.showRecommendations && recommended.length) ? `
     <div class="res-rec-section">
       <h3 class="res-rec-head"><span class="material-symbols-outlined">star</span> Suggested for ${state.guestCount} guest(s)</h3>
       <div class="res-room-list wiz-room-list">${recommended.map((r) => renderRoomRow(r, { recommended: true })).join('')}</div>
     </div>` : '';
 
   const listBlock = filtered.length ? `
-    <h3 class="res-subhead res-subhead--spaced">Available rooms (${filtered.length})</h3>
-    <div class="wiz-room-list">${filtered.map((r) => renderRoomRow(r)).join('')}</div>`
+    ${state.guestModify ? '' : `<h3 class="res-subhead res-subhead--spaced">Available rooms (${filtered.length})</h3>`}
+    <div class="wiz-room-list${state.guestModify ? ' wiz-room-list--compact' : ''}">${filtered.map((r) => renderRoomRow(r)).join('')}</div>`
     : (!state.loadingRooms
-      ? '<div class="res-empty-box"><span class="material-symbols-outlined">search_off</span><p>No rooms match your search. Clear filters or change dates.</p></div>'
+      ? '<div class="res-empty-box"><p>No rooms available. Try different dates.</p></div>'
       : '');
+
+  if (state.guestModify) {
+    return `
+      ${conflictBanner}
+      ${state.loadingRooms ? '<p class="res-hint">Loading rooms…</p>' : ''}
+      <input id="wiz-room-search" type="search" class="res-input guest-modify-search" placeholder="Search rooms…" value="${escapeHtml(state.roomSearch)}" />
+      ${listBlock}`;
+  }
 
   return `
     <p class="res-lead">${lead}</p>
@@ -209,6 +267,15 @@ function bindMealDelegation() {
   const root = $('reservation-wizard-body');
   if (!root) return;
   mealDelegationBound = true;
+  root.addEventListener('click', (e) => {
+    const minus = e.target.closest('[data-meal-minus]');
+    const plus = e.target.closest('[data-meal-plus]');
+    if (!minus && !plus) return;
+    const type = minus?.getAttribute('data-meal-minus') || plus?.getAttribute('data-meal-plus');
+    if (!type) return;
+    state.meals[type] = clampMealQty((state.meals[type] || 0) + (minus ? -1 : 1));
+    syncWizardMealCards(root, state.meals, state.mealRates);
+  });
   root.addEventListener('input', (e) => {
     const input = e.target.closest('.guest-meal-qty-input[data-meal-qty]');
     if (!input) return;
@@ -242,6 +309,31 @@ function renderStep4() {
     customAmtInputId: 'wiz-fee-amt',
     customAddBtnId: 'wiz-add-fee',
   });
+  if (state.guestModify) {
+    return `
+      <div class="guest-modify-extras">
+        <section class="guest-modify-extras__section">
+          <h3 class="guest-modify-section-title">Meals</h3>
+          ${renderGuestModifyMealList(state.meals, state.mealRates)}
+        </section>
+        <section class="guest-modify-extras__section">
+          <label class="guest-modify-field-label" for="wiz-meal-allergens">Dietary notes <span class="guest-modify-optional">optional</span></label>
+          <textarea id="wiz-meal-allergens" class="res-input guest-modify-textarea" rows="2" placeholder="Allergies or dietary needs…">${escapeHtml(state.mealAllergenNotes || '')}</textarea>
+        </section>
+        ${state.fees.length || feeGroups.length ? `
+        <section class="guest-modify-extras__section">
+          <h3 class="guest-modify-section-title">Add-ons</h3>
+          ${renderWizardFeePicker({
+    feeGroups,
+    expandedGroupId: state.expandedFeeGroupId,
+    fees: state.fees,
+    emptyMessage: 'No add-on services are available right now.',
+    showCustom: false,
+    compact: true,
+  })}
+        </section>` : ''}
+      </div>`;
+  }
   return `
     <p class="res-lead">Add meals if needed. Set a quantity for each meal type.</p>
     <div class="wiz-extras-block">
@@ -252,9 +344,7 @@ function renderStep4() {
     <textarea id="wiz-meal-allergens" class="res-input" rows="2" placeholder="e.g. nut allergy, gluten-free, vegetarian…">${escapeHtml(state.mealAllergenNotes || '')}</textarea>
     <div class="wiz-extras-block">
       <p class="guest-extras-block__label">Additional fees (optional)</p>
-      <p class="res-hint">${state.guestModify
-    ? 'Choose a category, then add catalog fees. Custom charges must be arranged with housing.'
-    : 'Choose a category to browse options, or add a custom fee below.'}</p>
+      <p class="res-hint">Choose a category to browse options, or add a custom fee below.</p>
       ${feePickerBlock}
     </div>`;
 }
@@ -278,15 +368,11 @@ function renderStep5() {
   });
 
   const modifyBlock = state.guestModify
-    ? (state.guestWasApproved ? `
-    <div class="res-banner res-banner--warn">
-      This reservation was already approved. Submitting changes sends it back to housing for review.
-    </div>
-    <label class="res-label" for="wiz-guest-message">Message to housing (required)</label>
-    <textarea id="wiz-guest-message" class="res-input" rows="3" placeholder="e.g. We need to arrive one day later and would like a room on the ground floor if possible.">${escapeHtml(state.guestMessage)}</textarea>
-  ` : `
-    <div class="res-banner res-banner--ok">You can update your pending request. Housing will review any changes.</div>
-  `)
+    ? renderGuestModifyReviewCallout({
+      approved: state.guestWasApproved,
+      textareaId: 'wiz-guest-message',
+      message: state.guestMessage,
+    })
     : state.modifyRequest ? `
     <div class="res-banner res-banner--warn">
       You are approving this request with changes. The guest will receive an email explaining what changed.
@@ -300,6 +386,30 @@ function renderStep5() {
   const roomDetail = r
     ? `Room ${escapeHtml(r.room_number)} · ${escapeHtml(r.room_type_label || r.room_type)}${dormPriceLabel(r, state.guestCount, r.nights) ? `<br><span class="res-hint">${escapeHtml(dormPriceLabel(r, state.guestCount, r.nights))}</span>` : ''}`
     : '—';
+
+  if (state.guestModify) {
+    const reviewRows = [
+      { label: 'Stay', value: `${formatDateLong(state.checkIn)} – ${formatDateLong(state.checkOut)} · ${state.guestCount} guest${state.guestCount === 1 ? '' : 's'}` },
+      { label: 'Room', value: r ? `Room ${r.room_number} · ${r.room_type_label || r.room_type}` : '—' },
+    ];
+    mealTypesOrdered(state.mealRates).forEach((t) => {
+      if (state.meals[t] > 0) {
+        reviewRows.push({ label: t, value: state.meals[t] * (Number(state.mealRates[t]) || 0) });
+      }
+    });
+    state.fees.forEach((f) => {
+      reviewRows.push({ label: f.fee_name, value: f.amount });
+    });
+    return `
+      ${renderGuestModifyReviewCallout({
+      approved: state.guestWasApproved,
+      textareaId: 'wiz-guest-message',
+      message: state.guestMessage,
+    })}
+      ${renderGuestModifyReviewSummary(reviewRows, { grandLabel: 'Estimated total', grandTotal: grand })}
+      <label class="res-label" for="wiz-notes">Notes <span class="guest-modify-optional">optional</span></label>
+      <textarea id="wiz-notes" class="res-input" rows="2" placeholder="Anything else for housing…">${escapeHtml(state.notes)}</textarea>`;
+  }
 
   return `
     <p class="res-lead">Please review everything before saving.</p>
@@ -325,12 +435,12 @@ function renderBody() {
   if (!mount) return;
   const fns = { 1: renderStep1, 2: renderStep2, 3: renderStep3, 4: renderStep4, 5: renderStep5 };
   mount.classList.remove('res-wizard-body--enter');
-  mount.innerHTML = fns[state.step]?.() || '';
+  const stepHtml = fns[state.step]?.() || '';
+  mount.innerHTML = stepHtml;
   requestAnimationFrame(() => mount.classList.add('res-wizard-body--enter'));
 
-  $('reservation-wizard-title').textContent = state.guestModify
-    ? 'Modify Reservation'
-    : state.mode === 'edit'
+  if (!state.guestModify) {
+  $('reservation-wizard-title').textContent = state.mode === 'edit'
       ? 'Edit Reservation'
       : state.modifyRequest
         ? 'Modify & Approve Request'
@@ -338,15 +448,20 @@ function renderBody() {
           ? 'Approve Guest Request'
           : 'Create Reservation';
   $('reservation-wizard-subtitle').textContent = WIZARD_STEPS[state.step - 1]?.short || '';
-  setBtnVisible($('reservation-wizard-back'), state.step > 1);
+  } else {
+    applyGuestModifyChrome();
+  }
+  setBtnVisible($('reservation-wizard-back'), state.step > (state.guestModify ? guestModifyMinStep() : 1));
   setBtnVisible($('reservation-wizard-next'), state.step < 5);
   setBtnVisible($('reservation-wizard-confirm'), state.step >= 5);
   $('reservation-wizard-next').disabled = state.saving;
   $('reservation-wizard-confirm').disabled = state.saving;
-  $('reservation-wizard-next').textContent = state.saving ? 'Please wait…' : 'Next step';
+  $('reservation-wizard-next').textContent = state.saving ? 'Please wait…' : (state.guestModify ? 'Continue' : 'Next step');
   $('reservation-wizard-confirm').textContent = state.saving
     ? 'Saving…'
-    : (state.guestModify ? 'Submit changes' : 'Save reservation');
+    : (state.guestModify
+      ? 'Submit'
+      : (state.modifyRequest || state.fromRequestId ? 'Save & approve' : 'Save reservation'));
 
   const err = $('reservation-wizard-error');
   if (state.error) { err.textContent = state.error; err.classList.remove('hidden'); }
@@ -452,8 +567,10 @@ function bindEvents() {
 
   const onStayChange = () => {
     readFields();
-    state.roomId = '';
-    state.selectedRoom = null;
+    if (!state.guestModify) {
+      state.roomId = '';
+      state.selectedRoom = null;
+    }
     state.error = null;
     fetchRooms();
   };
@@ -558,6 +675,13 @@ function validate() {
     if (state.checkOut <= state.checkIn) { state.error = 'Check-out must be after check-in.'; return false; }
   }
   if (state.step === 3 && !state.roomId) { state.error = 'Please select an available room.'; return false; }
+  if (state.step === 3 && state.roomId) {
+    const picked = state.availableRooms.find((r) => String(r.id) === String(state.roomId));
+    if (!picked || picked.availability_status !== 'available') {
+      state.error = 'The selected room is not available on these dates. Choose another room or change your dates.';
+      return false;
+    }
+  }
   if (state.step === 3 && state.selectedRoom) {
     const capacityError = validateRoomGuestCapacity(state.selectedRoom, state.guestCount);
     if (capacityError) { state.error = capacityError; return false; }
@@ -587,7 +711,8 @@ async function goNext() {
 
 function goBack() {
   readFields();
-  if (state.step > 1) state.step--;
+  const minStep = state.guestModify ? guestModifyMinStep() : 1;
+  if (state.step > minStep) state.step--;
   state.error = null;
   renderSteps();
   renderBody();
@@ -610,7 +735,13 @@ async function confirmSave() {
     return;
   }
   if (!state.roomId) { state.error = 'Please select a room.'; renderBody(); return; }
-  const capacityError = validateRoomGuestCapacity(state.selectedRoom, state.guestCount);
+  const pickedRoom = state.availableRooms.find((r) => String(r.id) === String(state.roomId));
+  if (!pickedRoom || pickedRoom.availability_status !== 'available') {
+    state.step = 3;
+    showWizardError('The selected room is not available on these dates. Choose another room or change your dates.');
+    return;
+  }
+  const capacityError = validateRoomGuestCapacity(state.selectedRoom || pickedRoom, state.guestCount);
   if (capacityError) {
     state.step = 3;
     showWizardError(capacityError);
@@ -684,9 +815,11 @@ function showModal() {
 function hideModal() {
   $('reservation-wizard-overlay')?.classList.add('hidden');
   $('reservation-wizard-modal')?.classList.add('hidden');
+  $('reservation-wizard-modal')?.querySelector('.res-modal')?.classList.remove('res-modal--guest-modify');
   document.body.classList.remove('guest-wizard-open');
   const groupOpen = !$('group-wizard-modal')?.classList.contains('hidden');
-  if (!groupOpen) document.body.style.overflow = '';
+  const venueOpen = !$('venue-wizard-modal')?.classList.contains('hidden');
+  if (!groupOpen && !venueOpen) document.body.style.overflow = '';
 }
 
 export function isReservationWizardOpen() { return isOpen; }
@@ -722,8 +855,15 @@ export async function openReservationWizard(options = {}) {
     state.mealRates = mealRatesResult;
     state.meals = ensureMealsShape(state.meals, state.mealRates);
     fiscalBounds = fiscalResult;
-    quickFees = servicesToQuickFees(catalogResult.services || []);
-    feeGroups = buildFeeGroups(catalogResult.services || []);
+    const catalogServices = catalogResult.services || [];
+    if (guestModify) {
+      const guestCatalog = getGuestSelfBookFeeCatalog(catalogServices);
+      quickFees = guestCatalog.quickFees;
+      feeGroups = guestCatalog.feeGroups;
+    } else {
+      quickFees = servicesToQuickFees(catalogServices);
+      feeGroups = buildFeeGroups(catalogServices);
+    }
   } catch {
     users = [];
     quickFees = [];
@@ -746,7 +886,28 @@ export async function openReservationWizard(options = {}) {
     state.mealAllergenNotes = booking.meal_allergen_notes || '';
     state.fees = (booking.fees || []).map((f) => ({ fee_name: f.fee_name, amount: f.amount }));
     state.originalFees = state.fees.map((f) => ({ ...f }));
-    if (guestModify) applyLoggedInGuestContact(state);
+    if (guestModify) {
+      applyLoggedInGuestContact(state);
+      state.originalRoomId = booking.room_id;
+      state.originalRoomLabel = [booking.building_name, booking.room_number].filter(Boolean).join(' ');
+    }
+  } else if (fromRequestId) {
+    const booking = await getBookingById(fromRequestId);
+    state.bookingId = null;
+    state.fromRequestId = fromRequestId;
+    state.userId = booking.user_id;
+    state.guestName = booking.guest_name || '';
+    state.email = booking.guest_email || '';
+    state.contactPhone = booking.contact_phone || '';
+    state.checkIn = String(booking.check_in).slice(0, 10);
+    state.checkOut = String(booking.check_out).slice(0, 10);
+    state.guestCount = booking.guest_count || 1;
+    state.roomId = booking.room_id;
+    state.notes = booking.notes || '';
+    state.meals = mealsFromBooking(booking.meals || []);
+    state.mealAllergenNotes = booking.meal_allergen_notes || '';
+    state.fees = (booking.fees || []).map((f) => ({ fee_name: f.fee_name, amount: f.amount }));
+    state.originalFees = state.fees.map((f) => ({ ...f }));
   }
 
   if (prefill) {
@@ -765,6 +926,10 @@ export async function openReservationWizard(options = {}) {
       state.meals = Array.isArray(prefill.meals) ? mealsFromBooking(prefill.meals) : { ...state.meals, ...prefill.meals };
     }
     if (prefill.mealAllergenNotes != null) state.mealAllergenNotes = prefill.mealAllergenNotes;
+    if (prefill.fees?.length) {
+      state.fees = prefill.fees.map((f) => ({ fee_name: f.fee_name, amount: f.amount }));
+      state.originalFees = state.fees.map((f) => ({ ...f }));
+    }
   }
 
   if (originalRequest) {
@@ -781,6 +946,8 @@ export async function openReservationWizard(options = {}) {
 
   if (guestModify && state.checkIn && state.checkOut && state.checkOut > state.checkIn) {
     state.step = 2;
+  } else if (modifyRequest && state.roomId && state.checkIn && state.checkOut) {
+    state.step = 3;
   }
 
   state.meals = ensureMealsShape(state.meals, state.mealRates);

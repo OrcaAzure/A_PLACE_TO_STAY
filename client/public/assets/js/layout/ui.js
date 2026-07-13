@@ -45,7 +45,8 @@ export const ADMIN_MOBILE_NAV = [
 
 export const GUEST_NAV = [
   { id: 'dashboard', label: 'Home', icon: 'home', href: '/guest/dashboard.html' },
-  { id: 'reservations', label: 'My Stays', icon: 'event_available', href: '/guest/reservations.html' },
+  { id: 'reservations', label: 'Reservation History', icon: 'event_available', href: '/guest/reservations.html' },
+  { id: 'billing', label: 'Billing', icon: 'receipt_long', href: '/guest/billing.html' },
   { id: 'facilities', label: 'Browse', icon: 'explore', href: '/guest/facilities.html' },
   { id: 'settings', label: 'Account', icon: 'person', href: '/guest/settings.html' },
 ];
@@ -408,7 +409,8 @@ function renderGuestPortalNavLinks(activePage) {
   const items = [
     { id: 'dashboard', label: 'Home', href: '/guest/dashboard.html' },
     { id: 'facilities', label: 'Browse', href: '/guest/facilities.html' },
-    { id: 'reservations', label: 'My Stays', href: '/guest/reservations.html' },
+    { id: 'reservations', label: 'Reservation History', href: '/guest/reservations.html' },
+    { id: 'billing', label: 'Billing', href: '/guest/billing.html' },
   ];
   return items.map((item) => `
     <a class="${guestPortalNavLinkClass(activePage === item.id)}" href="${item.href}" aria-current="${activePage === item.id ? 'page' : 'false'}">${item.label}</a>
@@ -419,7 +421,8 @@ function renderGuestMobileNavLinks(activePage) {
   const items = [
     { id: 'dashboard', label: 'Home', href: '/guest/dashboard.html', icon: 'home' },
     { id: 'facilities', label: 'Browse', href: '/guest/facilities.html', icon: 'explore' },
-    { id: 'reservations', label: 'My Stays', href: '/guest/reservations.html', icon: 'event_available' },
+    { id: 'reservations', label: 'History', href: '/guest/reservations.html', icon: 'event_available' },
+    { id: 'billing', label: 'Billing', href: '/guest/billing.html', icon: 'receipt_long' },
     { id: 'settings', label: 'Account', href: '/guest/settings.html', icon: 'person' },
   ];
   return items.map((item) => {

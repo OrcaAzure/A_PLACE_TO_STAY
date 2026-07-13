@@ -4,7 +4,7 @@ import { getBookings, getGroups, deleteBooking, deleteGroup } from '/assets/js/s
 import {
   escapeHtml, formatDateLong, statusBadge, debounce, normStatus, getReservationCategory,
   lifecyclePhaseForBooking, lifecyclePhaseBadge, canAdminCancelRoomBooking,
-  canAdminDeleteStayRecord, collectStayInvoiceSummary,
+  canAdminDeleteStayRecord, collectStayInvoiceSummary, isStandaloneRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
 import {
   cancelRoomReservation, confirmAdminCancelReservation,
@@ -122,7 +122,7 @@ async function load() {
   try {
     const [bookings, groups] = await Promise.all([getBookings(), getGroups()]);
     const singles = bookings
-      .filter((b) => !b.group_id && ['approved', 'cancelled'].includes(normStatus(b.status)))
+      .filter((b) => isStandaloneRoomBooking(b) && ['approved', 'cancelled'].includes(normStatus(b.status)))
       .map((b) => ({
         kind: 'single',
         ...b,

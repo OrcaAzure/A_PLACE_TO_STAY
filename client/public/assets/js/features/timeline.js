@@ -18,7 +18,7 @@ import { updateFacilityBooking } from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDate, formatDateLong, formatMoney, normStatus, stayNights,
   toLocalDateString, lifecyclePhaseForBooking, lifecycleEventClass, venuePhaseLabel,
-  canAdminModifyVenueBooking,
+  canAdminModifyVenueBooking, isStandaloneRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { jsonFingerprint } from '/assets/js/layout/silent-refresh.js';
@@ -1166,7 +1166,7 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
     try {
       const [rawBookings, rawVenues] = await Promise.all([getBookings(), getFacilityBookings()]);
       const roomRows = rawBookings
-        .filter((b) => !b.group_id && ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
+        .filter((b) => isStandaloneRoomBooking(b) && ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
         .map((b) => ({ ...normalizeBooking(b), kind: 'room' }));
       const venueRows = rawVenues
         .filter((b) => ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))

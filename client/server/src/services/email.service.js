@@ -851,6 +851,35 @@ export async function sendBookingModifiedEmail(user, booking, { message, previou
   });
 }
 
+export async function sendGroupBookingRequestReceivedEmail(user, group, { batchRef } = {}) {
+  const name = user.full_name || group.contact_name || 'Guest';
+  const details = buildGroupStayDetailSections(group, { estimate: true });
+  const ref = batchRef || details.reference || '';
+
+  return sendMail({
+    to: resolveGuestRecipientEmail({ user, group }),
+    prefType: 'general',
+    subject: `Group reservation request received ${ref ? ref : ''} — APTSpace`.trim(),
+    html: `
+      <h2>Group Reservation Request Received</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>We received your group room reservation request for <strong>${escapeHtml(group.group_name || 'your group')}</strong>. Housing staff will review the details below and email you once it is approved.</p>
+      ${emailNotice('The total shown is an <strong>estimate</strong>. Housing staff will confirm your final amount after reviewing your request.', 'warn')}
+      ${ref ? `<p><strong>Reference:</strong> ${escapeHtml(ref)}</p>` : ''}
+      ${details.reference ? `<p><strong>Group:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${emailSection('Contact', details.contactItems)}
+      ${emailSection('Stay details', details.stayItems)}
+      ${details.addons}
+      ${emailSection('What happens next', emailDetailList([
+        emailDetailItem('Step 1', 'Housing reviews your request for room availability and pricing.'),
+        emailDetailItem('Step 2', 'You receive a confirmation email with your <strong>final total</strong> when approved.'),
+        emailDetailItem('Step 3', 'Pay at the Housing office before or during check-in.'),
+      ].filter(Boolean)))}
+      ${emailFooter()}
+    `,
+  });
+}
+
 export async function sendGroupConfirmationEmail(user, group) {
   const name = user.full_name || group.contact_name || 'Guest';
   const details = buildGroupStayDetailSections(group, { estimate: false });

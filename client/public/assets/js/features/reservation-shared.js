@@ -109,6 +109,12 @@ export function isRoomBookable(status) {
   return status === 'available';
 }
 
+/** Room booking not tied to a reservation group (group child rows are shown via the group). */
+export function isStandaloneRoomBooking(booking) {
+  const groupId = booking?.group_id ?? booking?.groupId;
+  return groupId == null || groupId === '';
+}
+
 export function dormMinGuestsNotice(guestCount) {
   const count = Number(guestCount) || 1;
   if (count >= DORM_MIN_GUEST_COUNT) return null;
@@ -155,6 +161,74 @@ export const WIZARD_STEPS = [
   { id: 4, label: 'Meals & Extras', short: 'Add meals or fees' },
   { id: 5, label: 'Confirm', short: 'Review and save' },
 ];
+
+/** Guest self-service modify flow — maps wizard step ids to a 4-step progress bar. */
+export const GUEST_MODIFY_STEPS = [
+  { step: 2, display: 1, label: 'Dates', short: 'Update your stay dates' },
+  { step: 3, display: 2, label: 'Room', short: 'Choose your room' },
+  { step: 4, display: 3, label: 'Extras', short: 'Meals & add-ons' },
+  { step: 5, display: 4, label: 'Review', short: 'Review & submit' },
+];
+
+export const GUEST_MODIFY_GROUP_STEPS = GUEST_MODIFY_STEPS.map((s) => (
+  s.step === 3 ? { ...s, label: 'Rooms', short: 'Choose your rooms' } : s
+));
+
+export function guestModifyMinStep() {
+  return 2;
+}
+
+export function guestModifyStepMeta(step, { group = false } = {}) {
+  const list = group ? GUEST_MODIFY_GROUP_STEPS : GUEST_MODIFY_STEPS;
+  return list.find((s) => s.step === step) || null;
+}
+
+export function renderGuestModifyProgress(step, { group = false } = {}) {
+  const steps = group ? GUEST_MODIFY_GROUP_STEPS : GUEST_MODIFY_STEPS;
+  const meta = steps.find((s) => s.step === step) || steps[0];
+  const segments = steps.map((s) => {
+    const done = step > s.step;
+    const current = step === s.step;
+    return `<span class="guest-modify-progress__seg${done ? ' is-done' : ''}${current ? ' is-current' : ''}"></span>`;
+  }).join('');
+  return `
+    <div class="guest-modify-progress" role="status" aria-live="polite">
+      <div class="guest-modify-progress__track" aria-hidden="true">${segments}</div>
+      <p class="guest-modify-progress__text">Step ${meta.display} of ${steps.length} · ${escapeHtml(meta.label)}</p>
+    </div>`;
+}
+
+/** Compact review list for the final guest modify step. */
+export function renderGuestModifyReviewSummary(rows = [], { grandLabel = 'Estimated total', grandTotal = 0 } = {}) {
+  const items = rows.map(({ label, value }) => `
+    <div class="guest-modify-review__row">
+      <span class="guest-modify-review__label">${escapeHtml(label)}</span>
+      <span class="guest-modify-review__value">${typeof value === 'number' ? formatMoney(value) : escapeHtml(String(value))}</span>
+    </div>`).join('');
+  return `
+    <div class="guest-modify-review">
+      ${items}
+      <div class="guest-modify-review__total">
+        <span>${escapeHtml(grandLabel)}</span>
+        <strong>${formatMoney(grandTotal)}</strong>
+      </div>
+    </div>`;
+}
+
+export function renderGuestModifyReviewCallout({
+  approved = false,
+  group = false,
+  textareaId = 'wiz-guest-message',
+  message = '',
+} = {}) {
+  if (!approved) return '';
+  return `
+    <p class="guest-modify-note">Approved stays need housing review when changed. Briefly explain what you need updated.</p>
+    <label class="res-label" for="${escapeHtml(textareaId)}">Your message</label>
+    <textarea id="${escapeHtml(textareaId)}" class="res-input res-input--message" rows="3" placeholder="${group
+    ? 'e.g. Two more guests are joining and we may need another room.'
+    : 'e.g. We need to arrive one day later.'}">${escapeHtml(message)}</textarea>`;
+}
 
 export function servicesToQuickFees(services = []) {
   const fees = [];

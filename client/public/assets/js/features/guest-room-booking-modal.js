@@ -59,7 +59,12 @@ export async function initGuestRoomBookingModal({
 } = {}) {
   const modal = document.getElementById('booking-modal-overlay');
   if (!modal) {
-    throw new Error('booking-modal-overlay not found');
+    console.warn('[browse] booking-modal-overlay not found — room booking modal disabled');
+    return {
+      openSearchBooking() {},
+      openConfirmBooking() {},
+      closeBookingModal() {},
+    };
   }
   if (modal.parentElement !== document.body) {
     document.body.appendChild(modal);

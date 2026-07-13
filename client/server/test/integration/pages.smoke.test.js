@@ -142,6 +142,6 @@ describe('Pages smoke (auth)', {
     await loginAs(guestAgent, 'samuel.park@gracechurch.org');
     const res = await guestAgent.get('/guest/reservations.html');
     assert.equal(res.status, 200);
-    assert.match(res.text, /reservations|My Stays/i);
+    assert.match(res.text, /Reservation History|reservations/i);
   });
 });

@@ -58,6 +58,40 @@ export function renderWizardMealGrid(meals, mealRates, { idPrefix = 'wiz' } = {}
     <p class="wiz-meals-total">Meals subtotal: <strong data-meals-total>${formatMoney(calcMealsSubtotal(meals, mealRates))}</strong></p>`;
 }
 
+/** Compact meal rows for guest modify wizard — easier to scan than four narrow cards. */
+export function renderGuestModifyMealList(meals, mealRates) {
+  const rows = mealTypesOrdered(mealRates).map((type) => {
+    const qty = clampMealQty(meals[type]);
+    const price = Number(mealRates[type]) || 0;
+    const meta = mealMetaFor(type);
+    return `
+      <div class="guest-modify-meal-row${qty > 0 ? ' is-active' : ''}" data-meal-type="${escapeHtml(type)}">
+        <div class="guest-modify-meal-row__icon guest-modify-meal-row__icon--${meta.tone}" aria-hidden="true">
+          <span class="material-symbols-outlined">${meta.icon}</span>
+        </div>
+        <div class="guest-modify-meal-row__info">
+          <strong>${escapeHtml(type)}</strong>
+          <span>${formatMoney(price)} each</span>
+        </div>
+        <div class="guest-modify-meal-row__qty">
+          <button type="button" class="guest-modify-meal-row__btn" data-meal-minus="${escapeHtml(type)}" aria-label="Fewer ${escapeHtml(type)}">−</button>
+          <input type="number" class="guest-meal-qty-input guest-modify-meal-row__input" data-meal-qty="${escapeHtml(type)}" min="0" max="${MEAL_MAX_QTY}" step="1" value="${qty}" inputmode="numeric" aria-label="${escapeHtml(type)} quantity" />
+          <button type="button" class="guest-modify-meal-row__btn" data-meal-plus="${escapeHtml(type)}" aria-label="More ${escapeHtml(type)}">+</button>
+        </div>
+        <span class="guest-modify-meal-row__sub${qty > 0 ? '' : ' is-empty'}" data-meal-sub="${escapeHtml(type)}">${qty > 0 ? formatMoney(price * qty) : ''}</span>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="guest-modify-meals">
+      ${rows}
+      <div class="guest-modify-meals__total">
+        <span>Meals subtotal</span>
+        <strong data-meals-total>${formatMoney(calcMealsSubtotal(meals, mealRates))}</strong>
+      </div>
+    </div>`;
+}
+
 export function renderWizardRoomTypeFilter(types, current, {
   idPrefix = 'wiz',
   attr = 'data-wiz-room-type',
@@ -237,10 +271,13 @@ export function syncWizardMealCards(root, meals, mealRates) {
     const price = Number(mealRates[type]) || 0;
     const card = [...root.querySelectorAll('[data-meal-type]')].find((el) => el.getAttribute('data-meal-type') === type);
     card?.classList.toggle('is-active', qty > 0);
+    const input = root.querySelector(`[data-meal-qty="${type}"]`);
+    if (input) input.value = qty;
     const sub = root.querySelector(`[data-meal-sub="${type}"]`);
     if (sub) {
       sub.textContent = qty > 0 ? formatMoney(price * qty) : '';
       sub.classList.toggle('guest-meal-card__sub--empty', qty <= 0);
+      sub.classList.toggle('is-empty', qty <= 0);
     }
   });
   const total = root.querySelector('[data-meals-total]');
@@ -364,5 +401,42 @@ export function renderWizardPriceSummary({ lines = [], grandLabel = 'Grand total
         <span>${escapeHtml(grandLabel)}</span>
         <span>${formatMoney(grandTotal)}</span>
       </div>
+    </div>`;
+}
+
+export function renderGuestModifyRoomRow(room, { selected = false, guestCount = 1 } = {}) {
+  const building = room.building_name ? `${escapeHtml(room.building_name)} ` : '';
+  const cap = room.room_type === 'Dorm'
+    ? `Up to ${room.capacity_max} guests`
+    : `${room.capacity_min}–${room.capacity_max} guests`;
+  return `
+    <button type="button" class="guest-modify-room-row${selected ? ' is-selected' : ''}" data-room-id="${room.id}">
+      <span class="guest-modify-room-row__radio" aria-hidden="true"></span>
+      <span class="guest-modify-room-row__main">
+        <strong>${building}Room ${escapeHtml(room.room_number)}</strong>
+        <span>${escapeHtml(room.room_type_label || room.room_type)} · ${cap}</span>
+      </span>
+      <span class="guest-modify-room-row__price">${room.estimated_total != null ? formatMoney(room.estimated_total) : ''}</span>
+    </button>`;
+}
+
+export function renderGuestModifyGroupRoomRow(room, { selected = false, guestCount = 1 } = {}) {
+  const building = room.building_name ? `${escapeHtml(room.building_name)} ` : '';
+  return `
+    <div class="guest-modify-group-room${selected ? ' is-selected' : ''}">
+      <div class="guest-modify-group-room__main">
+        <strong>${building}Room ${escapeHtml(room.room_number)}</strong>
+        <span>${escapeHtml(room.room_type_label || room.room_type)} · ${room.capacity_min}–${room.capacity_max} guests</span>
+      </div>
+      ${selected ? `
+        <div class="guest-modify-group-room__qty" role="group" aria-label="Guests in this room">
+          <button type="button" data-room-guest-minus="${room.id}" aria-label="Fewer guests">−</button>
+          <span>${guestCount}</span>
+          <button type="button" data-room-guest-plus="${room.id}" aria-label="More guests">+</button>
+        </div>
+        <button type="button" class="guest-modify-group-room__toggle" data-room-toggle="${room.id}">Remove</button>
+      ` : `
+        <button type="button" class="guest-modify-group-room__add" data-room-toggle="${room.id}">Add</button>
+      `}
     </div>`;
 }

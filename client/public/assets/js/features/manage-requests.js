@@ -10,7 +10,7 @@ import {
 } from '/assets/js/features/booking-actions.js';
 import {
   escapeHtml, formatDateLong, formatMoney, formatSubmittedAt,
-  statusBadge, debounce, normStatus, stayNights,
+  statusBadge, debounce, normStatus, stayNights, isStandaloneRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
 
 let initialized = false;
@@ -180,11 +180,19 @@ function renderGroupRequest(r) {
     ? renderSection('Pricing estimate', factRow('Estimated total', formatMoney(r.grandTotal)))
     : '';
 
+  const meals = formatMealsSummary(r.meals);
+  const fees = formatFeesSummary(r.fees);
+  const addonRows = [
+    meals ? factRow('Meals ordered', meals) : '',
+    fees ? factRow('Extra services', fees) : '',
+  ].filter(Boolean).join('');
+
   return `
     ${renderSection('Contact person', contactRows)}
     ${renderSection('Stay details', stayRows)}
     ${assignedSection}
     ${pricingSection}
+    ${addonRows ? renderSection('Meals & extras', addonRows) : ''}
     ${renderMealAllergenNotes(r.mealAllergenNotes)}
     ${renderNotes(r.notes)}
   `;
@@ -252,17 +260,23 @@ function renderRejectSummary(r) {
   if (!r) return '';
   const isGroup = r.kind === 'group';
   const nights = stayNights(r.schedule?.checkIn, r.schedule?.checkOut);
+  const meals = formatMealsSummary(r.meals);
+  const fees = formatFeesSummary(r.fees);
+  const addonLine = [meals ? `Meals: ${meals}` : null, fees ? `Extras: ${fees}` : null].filter(Boolean).join(' · ');
   const lines = isGroup
     ? [
       r.groupName,
       `${r.totalGuests ?? '?'} guests · ${r.roomsRequested ?? '?'} rooms`,
       `${formatDateLong(r.schedule?.checkIn)} → ${formatDateLong(r.schedule?.checkOut)}${nights ? ` (${nights} nights)` : ''}`,
-    ]
+      r.grandTotal != null ? formatMoney(r.grandTotal) : null,
+      addonLine || null,
+    ].filter(Boolean)
     : [
       r.requester?.name,
       [`${r.facility?.building || ''} ${r.facility?.roomNumber || ''}`.trim(), r.facility?.roomType].filter(Boolean).join(' · '),
       `${formatDateLong(r.schedule?.checkIn)} → ${formatDateLong(r.schedule?.checkOut)}${nights ? ` (${nights} nights)` : ''} · ${r.guestCount ?? '?'} guest(s)`,
       r.totalAmount != null ? formatMoney(r.totalAmount) : null,
+      addonLine || null,
     ].filter(Boolean);
 
   return `<ul class="res-reject-summary">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>`;
@@ -306,7 +320,7 @@ async function load() {
   try {
     const [bookings, groups] = await Promise.all([getBookings(), getGroups()]);
     const singles = bookings
-      .filter((b) => !b.group_id)
+      .filter((b) => isStandaloneRoomBooking(b))
       .map(normalizeManageRequest)
       .filter((r) => ['pending', 'approved', 'rejected'].includes(normStatus(r.status)));
     const groupRows = groups
@@ -374,7 +388,6 @@ function modify(key) {
   const { kind, id } = parseRequestKey(key);
   const r = requests.find((x) => x.kind === kind && String(x.id) === String(id));
   if (!r) return;
-  closeManageRequestsModal();
   openModifyRequestWizard(r, { modifyRequest: true });
 }
 
@@ -423,4 +436,7 @@ export function initManageRequestsModal() {
     if (e.target.closest('[data-open-manage-requests]')) { e.preventDefault(); openManageRequestsModal(); }
   });
   window.addEventListener('booking:updated', () => { syncBadge(); if (isOpen) load(); });
+  window.addEventListener('manage-requests:close', () => {
+    if (isOpen) closeManageRequestsModal();
+  });
 }

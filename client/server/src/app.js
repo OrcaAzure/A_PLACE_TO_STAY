@@ -17,6 +17,7 @@ import facilityBookingRoutes from './routes/facilityBooking.routes.js';
 import ancillaryRoutes       from './routes/ancillary.routes.js';
 import settingsRoutes  from './routes/settings.routes.js';
 import supportRoutes   from './routes/support.routes.js';
+import bookingRequestRoutes from './routes/booking-request.routes.js';
 import pageRoutes      from './routes/pages.routes.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { pool }        from './config/db.js';
@@ -146,6 +147,7 @@ app.use('/api/facility-bookings', facilityBookingRoutes);
 app.use('/api/catalog',           ancillaryRoutes);
 app.use('/api/settings',   settingsRoutes);
 app.use('/api/support',    supportRoutes);
+app.use('/api/booking-requests', bookingRequestRoutes);
 
 app.use(pageRoutes);
 

@@ -3,6 +3,7 @@ export default class Booking {
     this.id             = data.id;
     this.user_id        = data.user_id;
     this.room_id        = data.room_id;
+    this.group_id       = data.group_id ?? null;
     this.check_in       = data.check_in;
     this.check_out      = data.check_out;
     this.season         = data.season;

@@ -20,7 +20,7 @@ import {
   escapeHtml, formatDateLong, formatMoney, formatSubmittedAt, statusBadge, debounce,
   normStatus, stayNights, getReservationCategory, lifecyclePhaseForBooking, lifecyclePhaseBadge,
   canAdminCancelVenueBooking, canAdminModifyVenueBooking, canAdminCancelRoomBooking,
-  canAdminDeleteStayRecord, canAdminDeleteVenueRecord, collectStayInvoiceSummary,
+  canAdminDeleteStayRecord, canAdminDeleteVenueRecord, collectStayInvoiceSummary, isStandaloneRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 const TABS = [
@@ -289,6 +289,13 @@ function renderGroupRequestDetails(r) {
     ].join(''))
     : '';
 
+  const meals = formatMealsSummary(r.meals);
+  const fees = formatFeesSummary(r.fees);
+  const addonRows = [
+    meals ? factRow('Meals ordered', meals) : '',
+    fees ? factRow('Extra services', fees) : '',
+  ].filter(Boolean).join('');
+
   return `
     ${renderSection('Contact person', [
       factRow('Contact name', r.requester?.name),
@@ -304,6 +311,7 @@ function renderGroupRequestDetails(r) {
     ].join(''))}
     ${assignedSection}
     ${pricingSection}
+    ${addonRows ? renderSection('Meals & extras', addonRows) : ''}
     ${renderMealAllergenNotes(r.mealAllergenNotes)}
     ${renderNotes(r.notes)}
   `;
@@ -370,6 +378,13 @@ function renderGroupStayDetails(item) {
     ].join(''))
     : '';
 
+  const meals = formatMealsSummary(item.meals);
+  const fees = formatFeesSummary(item.fees);
+  const addonRows = [
+    meals ? factRow('Meals ordered', meals) : '',
+    fees ? factRow('Extra services', fees) : '',
+  ].filter(Boolean).join('');
+
   const housingSection = renderHousingPaymentSection(item);
 
   return `
@@ -387,6 +402,7 @@ function renderGroupStayDetails(item) {
     ].join(''))}
     ${assignedSection}
     ${pricingSection}
+    ${addonRows ? renderSection('Meals & extras', addonRows) : ''}
     ${housingSection}
     ${renderMealAllergenNotes(item.meal_allergen_notes)}
     ${renderNotes(item.notes)}
@@ -725,11 +741,11 @@ async function loadAll({ background = false } = {}) {
       getBookings(), getGroups(), getFacilityBookings(),
     ]);
 
-    state.roomRequests = bookings.filter((b) => !b.group_id).map(normalizeManageRequest);
+    state.roomRequests = bookings.filter((b) => isStandaloneRoomBooking(b)).map(normalizeManageRequest);
     state.groupRequests = groups.map(normalizeManageGroupRequest);
 
     state.roomStays = bookings
-      .filter((b) => !b.group_id && ['approved', 'cancelled'].includes(normStatus(b.status)))
+      .filter((b) => isStandaloneRoomBooking(b) && ['approved', 'cancelled'].includes(normStatus(b.status)))
       .map((b) => ({
         kind: 'single',
         ...b,

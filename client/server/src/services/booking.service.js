@@ -578,7 +578,7 @@ export async function getAvailableRooms({
       availabilityStatus = 'dorm_min_guests';
     } else if (!groupPicker && room.room_type !== 'Dorm' && count < physicalMin) {
       availabilityStatus = 'too_small';
-    }     else if (groupPicker && count > room.capacity_max) availabilityStatus = 'too_small';
+    }
 
     const pricingGuests = (() => {
       if (groupPicker) return Math.max(physicalMin, Math.min(count, room.capacity_max));

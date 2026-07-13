@@ -72,11 +72,11 @@ export const getAdminSummary = async (req, res) => {
     ] = await Promise.all([
       pool.query(`
         SELECT
-          SUM(status = 'Pending')  AS pending,
-          SUM(status = 'Approved') AS approved,
-          SUM(status = 'Rejected') AS rejected,
-          SUM(status = 'Cancelled') AS cancelled,
-          COUNT(*) AS total
+          SUM(status = 'Pending' AND group_id IS NULL)  AS pending,
+          SUM(status = 'Approved' AND group_id IS NULL) AS approved,
+          SUM(status = 'Rejected' AND group_id IS NULL) AS rejected,
+          SUM(status = 'Cancelled' AND group_id IS NULL) AS cancelled,
+          SUM(group_id IS NULL) AS total
         FROM bookings_rooms
       `),
       pool.query(`
@@ -139,7 +139,7 @@ export const getAdminSummary = async (req, res) => {
         ORDER BY fb.created_at ASC
         LIMIT 12
       `),
-      pool.query(`${bookingSelect} ORDER BY bk.updated_at DESC LIMIT 8`),
+      pool.query(`${bookingSelect} WHERE bk.group_id IS NULL ORDER BY bk.updated_at DESC LIMIT 8`),
       pool.query(`${venueBookingSelect} ORDER BY fb.updated_at DESC LIMIT 8`),
       pool.query(`
         SELECT check_in, check_out
