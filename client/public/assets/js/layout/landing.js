@@ -18,20 +18,6 @@ const HERO_TYPE_PHRASES = [
   'group ministry stays',
 ];
 
-<<<<<<< Updated upstream
-function initHeroImageFallbacks() {
-  const fallback = '/images/GardenPreview.jpg';
-  document.querySelectorAll('.lp-hero-visual img, .lp-hero-float img, .lp-hero-mobile-visual img').forEach((img) => {
-    img.addEventListener('error', () => {
-      if (img.dataset.fallbackApplied) return;
-      img.dataset.fallbackApplied = '1';
-      img.src = fallback;
-    }, { once: true });
-  });
-}
-
-=======
->>>>>>> Stashed changes
 function initHeroTypewriter() {
   const el = document.getElementById('lp-hero-typed');
   const cursor = document.querySelector('.lp-hero-type-cursor');
