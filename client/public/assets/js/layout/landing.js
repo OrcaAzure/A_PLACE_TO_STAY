@@ -183,7 +183,7 @@ export function initNavScroll(nav) {
 }
 
 function initNavSpy() {
-  const sectionIds = ['hero', 'facilities', 'contact'];
+  const sectionIds = ['hero', 'explore', 'facilities', 'contact'];
   const links = document.querySelectorAll('[data-nav-section]');
   const scroller = document.querySelector('.lp-section-scroller');
   if (!links.length) return;
@@ -198,11 +198,12 @@ function initNavSpy() {
   };
 
   const setActive = (id) => {
+    const navId = id === 'explore' ? 'hero' : id;
     if (!sectionIds.includes(id)) return;
     links.forEach((link) => {
-      link.classList.toggle('is-active', link.dataset.navSection === id);
+      link.classList.toggle('is-active', link.dataset.navSection === navId);
     });
-    scroller?.classList.toggle('is-on-light', id !== 'hero');
+    scroller?.classList.toggle('is-on-light', navId !== 'hero');
   };
 
   const resolveSection = () => {
@@ -253,6 +254,12 @@ function initSmoothAnchors() {
       if (id === '#hero') {
         e.preventDefault();
         window.scrollTo({ top: 0, behavior: 'auto' });
+        return;
+      }
+      if (id === '#explore') {
+        e.preventDefault();
+        const target = document.getElementById('explore');
+        if (target) target.scrollIntoView({ behavior: 'auto', block: 'start' });
         return;
       }
       const target = document.querySelector(id);
