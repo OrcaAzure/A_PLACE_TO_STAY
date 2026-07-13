@@ -73,7 +73,7 @@ export const BROWSE_CATEGORIES = [
     blurb: 'Basketball court, playground, and Rec Center — reserved in 4-hour blocks.',
     icon: 'sports_basketball',
     cta: 'Reserve',
-    image: '/images/RecEntrancePreview.jpg',
+    image: '/images/RecreationPreview.jpg',
     showsRooms: false,
     layout: 'standard',
   },
