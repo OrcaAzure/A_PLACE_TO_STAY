@@ -158,8 +158,19 @@ const ROOM_TYPE_GALLERY = {
 
 /** Optional multi-photo overrides keyed by room number (extend as uploads arrive). */
 export const ROOM_NUMBER_GALLERY = {
-  '413': ['/images/413Preview.jpg'],
-  '416': ['/images/416Preview.jpg'],
+  '413': [
+    '/images/413Preview.jpg',
+    '/images/413Preview2.jpg',
+    '/images/413Preview3.jpg',
+    '/images/413Preview4.jpg',
+  ],
+  '416': [
+    '/images/416Preview.jpg',
+    '/images/416Preview2.jpg',
+    '/images/416Preview3.jpg',
+    '/images/416Preview4.jpg',
+    '/images/416Preview5.jpg',
+  ],
 };
 
 const VENUE_CATEGORY_GALLERY = {
@@ -218,6 +229,11 @@ function uniqueUrls(urls = []) {
  */
 export function roomGalleryImages(room = {}) {
   const num = normalizeRoomNumber(room.roomNumber ?? room.room_number);
+  const roomGallery = ROOM_NUMBER_GALLERY[num];
+  if (roomGallery?.length) {
+    return uniqueUrls(roomGallery).slice(0, 5);
+  }
+
   const tier = resolveRoomVisualKey({
     room_type: room.room_type ?? room.roomType,
     room_type_label: room.room_type_label,
@@ -226,7 +242,6 @@ export function roomGalleryImages(room = {}) {
   });
   const primary = roomPreviewImage(room);
   const extras = [
-    ...(ROOM_NUMBER_GALLERY[num] || []),
     ...(ROOM_TYPE_GALLERY[tier] || [roomTypeImage(tier)]),
     DEFAULT_ROOM_IMAGE,
   ];
