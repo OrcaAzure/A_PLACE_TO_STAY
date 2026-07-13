@@ -19,7 +19,7 @@ const HERO_TYPE_PHRASES = [
 ];
 
 function initHeroImageFallbacks() {
-  const fallback = '/images/Garden.jpg';
+  const fallback = '/images/GardenPreview.jpg';
   document.querySelectorAll('.lp-hero-visual img, .lp-hero-float img, .lp-hero-mobile-visual img').forEach((img) => {
     img.addEventListener('error', () => {
       if (img.dataset.fallbackApplied) return;
