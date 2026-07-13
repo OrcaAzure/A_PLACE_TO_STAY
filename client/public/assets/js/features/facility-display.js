@@ -26,6 +26,10 @@ export const ROOM_TYPE_IMAGE = {
 
 /** Room-specific photos override type placeholders when available. */
 export const ROOM_NUMBER_IMAGE = {
+  '204': '/images/204Preview.jpg',
+  '207': '/images/207Preview.jpg',
+  '301': '/images/301Preview.jpg',
+  '401': '/images/401Preview.jpg',
   '413': '/images/413Preview.jpg',
   '416': '/images/416Preview.jpg',
 };
@@ -158,6 +162,23 @@ const ROOM_TYPE_GALLERY = {
 
 /** Optional multi-photo overrides keyed by room number (extend as uploads arrive). */
 export const ROOM_NUMBER_GALLERY = {
+  '204': [
+    '/images/204Preview.jpg',
+    '/images/204Preview2.jpg',
+  ],
+  '207': [
+    '/images/207Preview.jpg',
+    '/images/207Preview2.jpg',
+  ],
+  '301': [
+    '/images/301Preview.jpg',
+    '/images/301Preview2.jpg',
+  ],
+  '401': [
+    '/images/401Preview.jpg',
+    '/images/401Preview2.jpg',
+    '/images/401Preview3.jpg',
+  ],
   '413': [
     '/images/413Preview.jpg',
     '/images/413Preview2.jpg',
