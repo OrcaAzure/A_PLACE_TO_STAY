@@ -6,6 +6,8 @@ import {
   SERVICE_ICONS,
   ACCOMMODATION_EXTRAS_CATEGORY,
   PER_PERSON_NIGHT_ITEM,
+  GUEST_SELF_BOOK_EXCLUDED_CATEGORIES,
+  GUEST_SELF_BOOK_EXCLUDED_ITEMS,
 } from '../constants/ancillary.js';
 import {
   ROOM_RATE_BASE_TIERS,
@@ -112,10 +114,21 @@ function feeKey(name, amount) {
   return `${String(name || '').trim()}|${Number(amount)}`;
 }
 
+export function isGuestSelfBookableExtra(row) {
+  if (!row) return false;
+  if (GUEST_SELF_BOOK_EXCLUDED_CATEGORIES.includes(row.category)) return false;
+  if (GUEST_SELF_BOOK_EXCLUDED_ITEMS.includes(row.item)) return false;
+  return true;
+}
+
+export function guestBookableCatalogRows(catalogRows = []) {
+  return (catalogRows || []).filter(isGuestSelfBookableExtra);
+}
+
 /** Guests may only keep existing fees or add catalog-listed extras (not arbitrary amounts). */
 export function sanitizeGuestSubmittedFees(submitted = [], catalogRows = [], originalFees = []) {
   const catalogKeys = new Set(
-    (catalogRows || []).map((row) => feeKey(row.item, row.rate))
+    guestBookableCatalogRows(catalogRows).map((row) => feeKey(row.item, row.rate))
   );
   const originalKeys = new Set(
     (originalFees || []).map((f) => feeKey(f.fee_name || f.service_name, f.amount))

@@ -33,6 +33,15 @@ async function columnExists(table, column) {
   return rows.length > 0;
 }
 
+async function getColumnType(table, column) {
+  const [rows] = await pool.execute(
+    `SELECT COLUMN_TYPE AS column_type FROM information_schema.columns
+     WHERE table_schema = DATABASE() AND table_name = ? AND column_name = ? LIMIT 1`,
+    [table, column]
+  );
+  return rows[0]?.column_type || '';
+}
+
 async function dropForeignKey(table, constraint) {
   try {
     await pool.execute(`ALTER TABLE \`${table}\` DROP FOREIGN KEY \`${constraint}\``);
@@ -41,4 +50,4 @@ async function dropForeignKey(table, constraint) {
   }
 }
 
-export { getUserId, getRoomId, tableExists, columnExists, dropForeignKey };
+export { getUserId, getRoomId, tableExists, columnExists, getColumnType, dropForeignKey };

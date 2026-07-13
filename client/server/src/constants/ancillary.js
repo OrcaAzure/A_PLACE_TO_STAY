@@ -10,6 +10,16 @@ export const EXTRA_SERVICE_CATEGORIES = [
   'Accommodation Extras',
 ];
 
+/** Guests cannot self-add these at booking — housing adds them when needed. */
+export const GUEST_SELF_BOOK_EXCLUDED_CATEGORIES = [
+  'Corkage Fee',
+  'Maid Service',
+];
+
+export const GUEST_SELF_BOOK_EXCLUDED_ITEMS = [
+  'Aircon',
+];
+
 export const NON_VENUE_CATEGORIES = [MEAL_CATEGORY, ...EXTRA_SERVICE_CATEGORIES];
 
 export const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];

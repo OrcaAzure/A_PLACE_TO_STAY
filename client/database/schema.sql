@@ -665,8 +665,8 @@ INSERT INTO rooms (building_id, room_number, room_type, capacity_min, capacity_m
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '412', 'Superior Guest Room', 1, 4),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '413', 'Superior Guest Room', 1, 3),
     ((SELECT id FROM buildings WHERE name='Global Missions Center'), '414', 'Superior Guest Room', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '415', 'VIP', 1, 4),
-    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '416', 'Superior Guest Room', 1, 4)
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '415', 'Superior Guest Room', 1, 4),
+    ((SELECT id FROM buildings WHERE name='Global Missions Center'), '416', 'VIP', 1, 4)
 ON DUPLICATE KEY UPDATE room_type = VALUES(room_type), capacity_min = VALUES(capacity_min), capacity_max = VALUES(capacity_max);
 
 -- Dormitories (dorm) — capacity_max = max pax per FY26 lodging sheet; min 5 where pricelist requires

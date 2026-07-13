@@ -1,5 +1,5 @@
 import { pool } from '../../config/db.js';
-import { tableExists, columnExists } from '../helpers.js';
+import { tableExists, columnExists, getColumnType } from '../helpers.js';
 import {
   ACCOMMODATION_EXTRAS_CATEGORY,
   DEFAULT_ACCOMMODATION_SEASONAL_RATES,
@@ -39,6 +39,27 @@ const SUPERIOR_GUEST_ROOM_CAPACITY_BY_ROOM = {
   '410': { min: 1, max: 2 },
   '413': { min: 1, max: 3 },
 };
+
+const LODGING_CATALOG_MIGRATION_KEY = 'migration_lodging_enum_catalog_fy26';
+const DORM_CAPACITY_MIGRATION_KEY = 'migration_gmc_dorm_capacity_fy26';
+const SUPERIOR_CAPACITY_MIGRATION_KEY = 'migration_gmc_superior_capacity_fy26';
+
+async function isMigrationDone(settingKey) {
+  const [[row]] = await pool.execute(
+    `SELECT setting_value FROM system_settings WHERE setting_key = ? LIMIT 1`,
+    [settingKey]
+  );
+  return String(row?.setting_value || '') === '1';
+}
+
+async function markMigrationDone(settingKey) {
+  await pool.execute(
+    `INSERT INTO system_settings (setting_key, setting_value)
+     VALUES (?, '1')
+     ON DUPLICATE KEY UPDATE setting_value = '1'`,
+    [settingKey]
+  );
+}
 
 async function upsertDeluxeRoomRates() {
   for (const [item, season, rate] of DELUXE_2BR_RATES) {
@@ -87,6 +108,17 @@ async function runDeluxeRoomTypeMigration() {
     /* already dropped or never existed */
   }
 
+  if (await isMigrationDone(LODGING_CATALOG_MIGRATION_KEY)) {
+    return;
+  }
+
+  const roomTypeColumn = await getColumnType('rooms', 'room_type');
+  if (/^varchar/i.test(roomTypeColumn)) {
+    await markMigrationDone(LODGING_CATALOG_MIGRATION_KEY);
+    console.log('[schema] lodging catalog migration skipped (room_type is VARCHAR; admin edits are kept)');
+    return;
+  }
+
   const expandedRoomEnum = `ENUM(
     'Dorm',
     'Standard Guest Room',
@@ -95,7 +127,8 @@ async function runDeluxeRoomTypeMigration() {
     'Deluxe Apartment',
     'Deluxe 2 BR',
     'Deluxe 3 BR',
-    'Uncategorized'
+    'Uncategorized',
+    'VIP'
   )`;
   const finalRoomEnum = `ENUM(
     'Dorm',
@@ -112,7 +145,8 @@ async function runDeluxeRoomTypeMigration() {
     'Deluxe Apartment',
     'Deluxe 2 BR',
     'Deluxe 3 BR',
-    'Uncategorized'
+    'Uncategorized',
+    'VIP'
   )`;
   const finalRateEnum = `ENUM(
     'Dorm',
@@ -171,10 +205,21 @@ async function runDeluxeRoomTypeMigration() {
     console.warn('[schema] lodging enum finalize skipped:', err.message);
   }
 
+  await markMigrationDone(LODGING_CATALOG_MIGRATION_KEY);
   console.log('[schema] Superior Guest Room + Deluxe Apartment catalog updated (FY26 sheet)');
 }
 
 async function runDormCapacityMigration() {
+  if (await isMigrationDone(DORM_CAPACITY_MIGRATION_KEY)) {
+    return;
+  }
+
+  const roomTypeColumn = await getColumnType('rooms', 'room_type');
+  if (/^varchar/i.test(roomTypeColumn)) {
+    await markMigrationDone(DORM_CAPACITY_MIGRATION_KEY);
+    return;
+  }
+
   const [[gmc]] = await pool.execute(
     `SELECT id FROM buildings WHERE name = 'Global Missions Center' LIMIT 1`
   );
@@ -195,10 +240,21 @@ async function runDormCapacityMigration() {
      WHERE room_type = 'Dorm' AND capacity_max >= 5`
   );
 
+  await markMigrationDone(DORM_CAPACITY_MIGRATION_KEY);
   console.log('[schema] GMC dorm capacities updated (FY26 sheet)');
 }
 
 async function runSuperiorGuestRoomCapacityMigration() {
+  if (await isMigrationDone(SUPERIOR_CAPACITY_MIGRATION_KEY)) {
+    return;
+  }
+
+  const roomTypeColumn = await getColumnType('rooms', 'room_type');
+  if (/^varchar/i.test(roomTypeColumn)) {
+    await markMigrationDone(SUPERIOR_CAPACITY_MIGRATION_KEY);
+    return;
+  }
+
   const [[gmc]] = await pool.execute(
     `SELECT id FROM buildings WHERE name = 'Global Missions Center' LIMIT 1`
   );
@@ -213,23 +269,12 @@ async function runSuperiorGuestRoomCapacityMigration() {
     );
   }
 
+  await markMigrationDone(SUPERIOR_CAPACITY_MIGRATION_KEY);
   console.log('[schema] GMC Superior Guest Room capacities updated (FY26 sheet)');
 }
 
-/** Room 415 is the sole VIP unit — pricing is configured separately in admin. */
+/** GMC room 416 is the VIP unit — ensure rates exist and 416 stays VIP after startup migrations. */
 async function runVipRoomMigration() {
-  const [[gmc]] = await pool.execute(
-    `SELECT id FROM buildings WHERE name = 'Global Missions Center' LIMIT 1`
-  );
-  if (!gmc?.id) return;
-
-  const [result] = await pool.execute(
-    `UPDATE rooms
-     SET room_type = 'VIP', capacity_min = 1, capacity_max = 4
-     WHERE building_id = ? AND room_number = '415'`,
-    [gmc.id]
-  );
-
   const vipRates = [
     ['Single/Double Occupancy', 'Regular', 3500], ['Single/Double Occupancy', 'Peak', 3850], ['Single/Double Occupancy', 'Super Peak', 4200],
     ['Daily Maximum', 'Regular', 4200], ['Daily Maximum', 'Peak', 4600], ['Daily Maximum', 'Super Peak', 5000],
@@ -243,11 +288,59 @@ async function runVipRoomMigration() {
     );
   }
 
-  if (result.affectedRows === 0) {
-    console.warn('[schema] VIP room migration: GMC room 415 not found');
-  } else {
-    console.log('[schema] GMC room 415 set to VIP with rate rows');
+  const [[gmc]] = await pool.execute(
+    `SELECT id FROM buildings WHERE name = 'Global Missions Center' LIMIT 1`
+  );
+  if (!gmc?.id) return;
+
+  const [restore416] = await pool.execute(
+    `UPDATE rooms
+     SET room_type = 'VIP', capacity_min = 1, capacity_max = 4
+     WHERE building_id = ? AND room_number = '416'
+       AND COALESCE(NULLIF(TRIM(room_type), ''), '__EMPTY__') <> 'VIP'`,
+    [gmc.id]
+  );
+  if (restore416.affectedRows > 0) {
+    console.log('[schema] GMC room 416 restored to VIP');
   }
+
+  const [[done]] = await pool.execute(
+    `SELECT setting_value FROM system_settings WHERE setting_key = 'migration_gmc_vip_room_416' LIMIT 1`
+  );
+  if (String(done?.setting_value || '') === '1') return;
+
+  const [rows] = await pool.execute(
+    `SELECT room_number, room_type
+     FROM rooms
+     WHERE building_id = ? AND room_number IN ('415', '416')`,
+    [gmc.id]
+  );
+  const byNumber = Object.fromEntries(rows.map((row) => [String(row.room_number), row.room_type]));
+  const legacyWrong = byNumber['415'] === 'VIP';
+
+  if (legacyWrong) {
+    await pool.execute(
+      `UPDATE rooms
+       SET room_type = 'Superior Guest Room', capacity_min = 1, capacity_max = 4
+       WHERE building_id = ? AND room_number = '415'`,
+      [gmc.id]
+    );
+    await pool.execute(
+      `UPDATE rooms
+       SET room_type = 'VIP', capacity_min = 1, capacity_max = 4
+       WHERE building_id = ? AND room_number = '416'`,
+      [gmc.id]
+    );
+    console.log('[schema] GMC VIP assignment corrected: 415 → Superior Guest Room, 416 → VIP');
+  } else if (byNumber['415'] === 'Superior Guest Room' && byNumber['416'] === 'VIP') {
+    console.log('[schema] GMC VIP assignment already correct (416 VIP, 415 Superior Guest Room)');
+  }
+
+  await pool.execute(
+    `INSERT INTO system_settings (setting_key, setting_value)
+     VALUES ('migration_gmc_vip_room_416', '1')
+     ON DUPLICATE KEY UPDATE setting_value = '1'`
+  );
 }
 
 async function runSeasonSettingsMigration() {

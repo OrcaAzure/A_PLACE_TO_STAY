@@ -157,10 +157,15 @@ export const createBooking = async (req, res) => {
     });
 
     const mealRates = await getMealRates();
+    let feesToSave = fees;
+    if (!isAdmin && fees != null && fees.length) {
+      const catalogRows = await fetchExtraServiceRows();
+      feesToSave = sanitizeGuestSubmittedFees(fees, catalogRows, []);
+    }
     const grandTotal = await computeGrandTotal({
       roomTotal: prepared.total_amount,
       meals,
-      fees,
+      fees: feesToSave,
       mealRates,
     });
 
@@ -177,7 +182,7 @@ export const createBooking = async (req, res) => {
     );
 
     await saveBookingMeals(result.insertId, meals, mealRates);
-    await saveBookingFees(result.insertId, fees);
+    await saveBookingFees(result.insertId, feesToSave);
 
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [result.insertId]);
     const booking = await enrichBooking(rows[0]);

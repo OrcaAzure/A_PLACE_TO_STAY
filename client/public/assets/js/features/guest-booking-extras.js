@@ -15,7 +15,7 @@ import {
   mealTypesOrdered,
   ensureMealsShape,
 } from '/assets/js/features/reservation-shared.js';
-import { buildFeeGroups, LAUNDRY_GROUP_ID } from '/assets/js/features/booking-fee-picker.js';
+import { buildFeeGroups, LAUNDRY_GROUP_ID, filterGuestSelfBookServices } from '/assets/js/features/booking-fee-picker.js';
 
 const MEAL_META = {
   Breakfast: { icon: 'free_breakfast', tone: 'amber' },
@@ -36,6 +36,7 @@ export function createGuestBookingExtras({
   selectedFeesMount,
   onChange = () => {},
 } = {}) {
+  const feeServicesBlock = panelEl?.querySelector('[data-guest-extras-services]');
   let mealRates = { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 };
   let feeGroups = [];
   let expandedGroupId = null;
@@ -116,8 +117,9 @@ export function createGuestBookingExtras({
 
   function renderFeeChips() {
     if (!feeChipsMount) return;
+    feeServicesBlock?.classList.toggle('hidden', !feeGroups.length);
     if (!feeGroups.length) {
-      feeChipsMount.innerHTML = '<p class="guest-service-empty text-body-sm text-on-surface-variant">No extra services are configured in the catalog yet.</p>';
+      feeChipsMount.innerHTML = '';
       return;
     }
     feeChipsMount.innerHTML = feeGroups.map((group) => {
@@ -324,7 +326,7 @@ export function createGuestBookingExtras({
       ]);
       mealRates = { ...mealRates, ...rates };
       meals = ensureMealsShape(meals, mealRates);
-      feeGroups = buildFeeGroups(catalog.services || []);
+      feeGroups = buildFeeGroups(filterGuestSelfBookServices(catalog.services || []));
     } catch {
       feeGroups = [];
     }

@@ -313,8 +313,8 @@
   </div>
 
 <!-- ============ Booking modal ============ -->
-<div id="booking-modal-overlay" class="modal-overlay is-hidden fixed inset-0 bg-black/40 z-[60] flex items-center justify-center p-4">
-  <div class="modal-panel bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[92vh] overflow-y-auto nice-scroll">
+<div id="booking-modal-overlay" class="modal-overlay guest-flow-modal is-hidden fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <div class="modal-panel guest-flow-modal__panel bg-white w-full sm:max-w-2xl nice-scroll">
     <div class="p-6 border-b border-outline-variant flex items-center justify-between sticky top-0 bg-white z-10">
       <div>
         <h3 id="booking-modal-title" class="font-headline-md text-headline-md">Confirm your reservation</h3>
@@ -399,7 +399,7 @@
             <label class="guest-extras-block__label mt-3" for="booking-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
             <textarea id="booking-meal-allergens" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="e.g. nut allergy, gluten-free, vegetarian…"></textarea>
           </div>
-          <div class="guest-extras-block">
+          <div class="guest-extras-block" data-guest-extras-services>
             <p class="guest-extras-block__label">Extra services</p>
             <div id="booking-selected-fees" class="guest-added-extras hidden"></div>
             <div id="booking-fee-chips" class="guest-service-grid"></div>

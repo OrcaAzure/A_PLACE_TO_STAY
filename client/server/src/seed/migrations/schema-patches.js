@@ -438,7 +438,7 @@ export async function runSchemaPatches() {
     console.warn('[schema] room type column migration skipped:', err.message);
   }
 
-  // VIP must run after room_type is VARCHAR — ENUM columns without 'VIP' reject the update.
+  // VIP rate rows + one-time GMC room assignment (416 VIP). Must run after room_type is VARCHAR.
   try {
     await runVipRoomMigration();
   } catch (err) {
