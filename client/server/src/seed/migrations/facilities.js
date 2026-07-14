@@ -118,7 +118,7 @@ async function migrateAirconToExtraServices() {
 /**
  * Add admin-configurable venue fields (minimum booking hours, per-hour overflow
  * rate, guest-facing inclusions and policies text) to the facilities catalog.
- * Also seeds the 4-hour minimum for GMC Chapel and Burdine Commons.
+ * Seeds 4-hour package minima for GMC Chapel, Burdine Commons, and Prayer Mountain.
  */
 async function runVenueFieldsMigration() {
   if (!(await tableExists('facilities'))) return;
@@ -139,15 +139,36 @@ async function runVenueFieldsMigration() {
   }
 
   if (added) {
-    // Seed the known 4-hour minimum venues only when they have no value yet,
-    // so admin edits are never overwritten on later restarts.
+    // Seed known 4-hour package venues only when unset, so admin edits survive restarts.
     await pool.execute(
       `UPDATE facilities
        SET min_hours = 4
        WHERE min_hours IS NULL
-         AND facility_group IN ('GMC Chapel', 'Burdine Commons')`
+         AND facility_group IN ('GMC Chapel', 'Burdine Commons', 'Prayer Mountain')`
     );
     console.log('[schema] facilities venue fields (min_hours, hourly_rate, inclusions, policies) ready');
+  }
+
+  // Prayer Mountain: ₱6,000 / 4-hr package — clear any mistaken hourly_rate from earlier seeds.
+  try {
+    if (await columnExists('facilities', 'min_hours')) {
+      const hasHourly = await columnExists('facilities', 'hourly_rate');
+      const [result] = await pool.execute(
+        hasHourly
+          ? `UPDATE facilities
+             SET min_hours = 4,
+                 hourly_rate = NULL
+             WHERE facility_group = 'Prayer Mountain'`
+          : `UPDATE facilities
+             SET min_hours = 4
+             WHERE facility_group = 'Prayer Mountain'`
+      );
+      if (result.affectedRows > 0) {
+        console.log(`[schema] Prayer Mountain ₱6k / 4-hr package (${result.affectedRows} row(s))`);
+      }
+    }
+  } catch (err) {
+    console.warn('[schema] Prayer Mountain package seed skipped:', err.message);
   }
 }
 

@@ -22,7 +22,7 @@ Notes from the 18-item bug-fix pass. Tests: run `npm test` under `client/server/
 
 **Root cause:** `bookings_meals` had `(bookings_room_id, meal_type)` unique key only; UI collected `{ Breakfast: 3 }` for the whole stay.
 
-**Fix:** Migration `bug-fix-pass-jul2026.js` adds `meal_date DATE NOT NULL` and unique `(bookings_room_id, meal_type, meal_date)`. Backend `normalizeMealsPayload` / `saveBookingMeals` / `calcMealsTotal` accept per-day `{ byDate: { 'YYYY-MM-DD': { Breakfast: 1 } } }` or legacy flat totals (expanded across stay nights). Admin/guest detail uses `formatMealsBreakdownDisplay`.
+**Fix:** Migration `bookings-meals-per-day.js` adds `meal_date DATE NOT NULL` and unique `(bookings_room_id, meal_type, meal_date)`. Backend `normalizeMealsPayload` / `saveBookingMeals` / `calcMealsTotal` accept per-day `{ byDate: { 'YYYY-MM-DD': { Breakfast: 1 } } }` or legacy flat totals (expanded across stay nights). Admin/guest detail uses `formatMealsBreakdownDisplay`.
 
 **Tests:** `client/server/test/unit/booking-pricing.test.js` — extend for per-day meals if adding coverage.
 

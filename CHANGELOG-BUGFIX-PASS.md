@@ -10,7 +10,7 @@
 ---
 
 ## 2. Per-day meal counting
-**Model:** `bookings_meals` now has `meal_date` (migration `bug-fix-pass-jul2026.js`). Meals stored as `(meal_date, meal_type, quantity)`.
+**Model:** `bookings_meals` now has `meal_date` (migration `bookings-meals-per-day.js`). Meals stored as `(meal_date, meal_type, quantity)`.
 
 **API:** `normalizeMealsPayload` accepts `{ byDate: { 'YYYY-MM-DD': { Breakfast: 2 } } }` or legacy flat totals (interpreted as same qty each stay night).
 
@@ -60,10 +60,10 @@
 
 ---
 
-## 10. Prayer Mountain 4-hour minimum
-**Fix:** Migration sets `facilities.min_hours = 4` and `hourly_rate` to the Regular catalog rate for `facility_group = 'Prayer Mountain'`. Duration is enforced by `validateVenueDuration()`; billing stays hourly (`rate × hours`) via `isHourlyMinimumVenue()` — not a flat ₱6,000 package for 4 hours.
+## 10. Prayer Mountain 4-hour promo package
+**Fix:** Prayer Mountain is a **₱6,000 / 4-hour** package (Peak ₱6,500), same model as GMC Chapel. `facilities.js` venue-fields migration sets `min_hours = 4` and clears `hourly_rate` so `computeVenueTotal()` charges the package rate for up to 4 hours (not ₱6k/hr × hours). Billing charge lines use `facility_min_hours` so the UI shows the package, not “₱6,000/hr × 4”.
 
-**Note:** An earlier pass set only `min_hours`, which made saves recalculate 4-hour bookings to ₱6,000 and kept resurfacing the billing “Confirm reservation changes” dialog. Re-run seed/migrations (or restart the API so schema patches apply) so `hourly_rate` is populated.
+**Note:** Restart the API (or re-run seed) so venue-field patches apply. Existing invoices at ₱24,000 for a 4-hour Prayer Mountain stay should be adjusted or re-saved so totals match the package rate.
 
 ---
 
@@ -112,10 +112,10 @@
 ---
 
 ## Migration
-Run on server start via `runSchemaPatches()` → `runBugFixPassJul2026Migration()`:
-- `bookings_meals.meal_date`
-- `booking_ref` columns
-- `reservation_groups.is_group_stay`
-- Prayer Mountain `min_hours`
+Run on server start via `runSchemaPatches()` (domain modules under `client/server/src/seed/migrations/`):
+- `bookings-meals-per-day.js` — `bookings_meals.meal_date`
+- `booking-ref.js` — `booking_ref` columns
+- `reservation-groups-is-group-stay.js` — `reservation_groups.is_group_stay`
+- `facilities.js` (`runVenueFieldsMigration`) — Prayer Mountain `min_hours`
 
 Update `schema.sql` separately for fresh installs if desired.

@@ -1,6 +1,21 @@
 import { pool } from '../../config/db.js';
 import { tableExists } from '../helpers.js';
 
+/** Ensure Snack is present on meal_type ENUM (before VARCHAR widen). */
+export async function runBookingsMealsSnackEnum() {
+  try {
+    await pool.execute(
+      `ALTER TABLE bookings_meals
+       MODIFY meal_type ENUM('Breakfast', 'Lunch', 'Dinner', 'Snack') NOT NULL`
+    );
+  } catch {
+    await pool.execute(
+      `ALTER TABLE booking_meals
+       MODIFY meal_type ENUM('Breakfast', 'Lunch', 'Dinner', 'Snack') NOT NULL`
+    );
+  }
+}
+
 /** Allow custom meal types beyond the original Breakfast/Lunch/Dinner/Snack enum. */
 export async function runMealTypeVarcharMigration() {
   if (!(await tableExists('rates_meals'))) return;

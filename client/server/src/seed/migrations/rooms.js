@@ -490,6 +490,25 @@ async function runRoomGuestCopyMigration() {
   }
 }
 
+/** Ensure rooms.status ENUM includes Dirty. */
+async function runRoomsDirtyStatusMigration() {
+  await pool.execute(
+    `ALTER TABLE rooms
+     MODIFY status ENUM('Available', 'Occupied', 'Dirty', 'Maintenance') NOT NULL DEFAULT 'Available'`
+  );
+}
+
+/**
+ * Free-form room_type so admins can add categories.
+ * Built-in tiers still match by string (Superior Guest Room, Deluxe 2 BR, etc.).
+ */
+async function runRoomTypeVarcharMigration() {
+  await pool.execute(`DELETE FROM rates_rooms WHERE room_type = 'Uncategorized'`);
+  await pool.execute(`ALTER TABLE rooms MODIFY room_type VARCHAR(100) NOT NULL`);
+  await pool.execute(`ALTER TABLE rates_rooms MODIFY room_type VARCHAR(100) NOT NULL`);
+  await pool.execute(`ALTER TABLE rates_rooms MODIFY item VARCHAR(120) NOT NULL`);
+}
+
 export {
   upsertDeluxeRoomRates,
   runDeluxeRoomTypeMigration,
@@ -499,4 +518,6 @@ export {
   runSeasonSettingsMigration,
   runLodgingExtrasMigration,
   runRoomGuestCopyMigration,
+  runRoomsDirtyStatusMigration,
+  runRoomTypeVarcharMigration,
 };
