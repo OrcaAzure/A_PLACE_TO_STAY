@@ -24,6 +24,7 @@ import {
   renderGuestModifyRoomRow,
   renderWizardRoomTypeFilter,
   bindWizardRoomTypeFilter,
+  closeAllWizardRoomTypePanels,
   renderWizardConfirmCard,
   renderWizardPriceSummary,
 } from '/assets/js/features/wizard-visuals.js';
@@ -38,6 +39,7 @@ let feeGroups = [];
 let quickFees = [];
 let feePickerClickBound = false;
 let mealDelegationBound = false;
+let roomPickBound = false;
 
 function $(id) { return document.getElementById(id); }
 
@@ -262,6 +264,34 @@ function renderStep3() {
     ${listBlock}`;
 }
 
+function bindRoomPickDelegation() {
+  if (roomPickBound) return;
+  const root = $('reservation-wizard-body');
+  if (!root) return;
+  roomPickBound = true;
+  root.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-room-id]');
+    if (!btn || btn.disabled || !root.contains(btn)) return;
+    const roomId = btn.getAttribute('data-room-id');
+    const room = state.availableRooms.find((r) => String(r.id) === String(roomId)) || null;
+    if (!room) return;
+    if (!isRoomBookable(room.availability_status)) {
+      state.roomId = '';
+      state.selectedRoom = null;
+      state.roomTotal = 0;
+      state.error = dormMinGuestsNotice(state.guestCount)
+        || 'This room cannot be booked for the current guest count.';
+      renderBody();
+      return;
+    }
+    state.roomId = roomId;
+    state.selectedRoom = room;
+    state.roomTotal = room.estimated_total || 0;
+    state.error = null;
+    renderBody();
+  });
+}
+
 function bindMealDelegation() {
   if (mealDelegationBound) return;
   const root = $('reservation-wizard-body');
@@ -433,6 +463,7 @@ function renderStep5() {
 function renderBody() {
   const mount = $('reservation-wizard-body');
   if (!mount) return;
+  closeAllWizardRoomTypePanels();
   const fns = { 1: renderStep1, 2: renderStep2, 3: renderStep3, 4: renderStep4, 5: renderStep5 };
   mount.classList.remove('res-wizard-body--enter');
   const stepHtml = fns[state.step]?.() || '';
@@ -596,26 +627,7 @@ function bindEvents() {
     renderBody();
   });
 
-  $('reservation-wizard-body')?.querySelectorAll('[data-room-id]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const room = state.availableRooms.find((r) => String(r.id) === String(btn.getAttribute('data-room-id'))) || null;
-      if (!room) return;
-      if (!isRoomBookable(room.availability_status)) {
-        state.roomId = '';
-        state.selectedRoom = null;
-        state.roomTotal = 0;
-        state.error = dormMinGuestsNotice(state.guestCount)
-          || 'This room cannot be booked for the current guest count.';
-        renderBody();
-        return;
-      }
-      state.roomId = btn.getAttribute('data-room-id');
-      state.selectedRoom = room;
-      state.roomTotal = room.estimated_total || 0;
-      state.error = null;
-      renderBody();
-    });
-  });
+  // Room pick uses event delegation (bound once in init) so re-renders cannot drop listeners.
 
   const bodyEl = $('reservation-wizard-body');
 
@@ -813,6 +825,7 @@ function showModal() {
 }
 
 function hideModal() {
+  closeAllWizardRoomTypePanels();
   $('reservation-wizard-overlay')?.classList.add('hidden');
   $('reservation-wizard-modal')?.classList.add('hidden');
   $('reservation-wizard-modal')?.querySelector('.res-modal')?.classList.remove('res-modal--guest-modify');
@@ -948,6 +961,7 @@ export async function openReservationWizard(options = {}) {
     state.step = 2;
   } else if (modifyRequest && state.roomId && state.checkIn && state.checkOut) {
     state.step = 3;
+    state.showRecommendations = true;
   }
 
   state.meals = ensureMealsShape(state.meals, state.mealRates);
@@ -994,4 +1008,5 @@ export function initReservationWizard() {
 
   window.addEventListener('reservation-wizard:open', (e) => openReservationWizard(e.detail || {}));
   bindMealDelegation();
+  bindRoomPickDelegation();
 }

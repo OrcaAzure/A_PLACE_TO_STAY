@@ -1240,14 +1240,18 @@ body.guest-portal .wiz-group-room-card:hover:not(:disabled) {
 body.guest-portal .wiz-room-option.is-selected,
 body.guest-portal .wiz-group-room-card.is-selected {
   border-color: #1a365d;
-  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.1);
-  background: #f8fafc;
+  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.22);
+  background: #eff6ff;
 }
 
 body.guest-portal .wiz-room-option.is-disabled,
 body.guest-portal .wiz-group-room-card.is-disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+body.guest-portal .wiz-room-option.is-recommended:not(.is-selected) {
+  border-color: #90cdf4;
 }
 
 body.guest-portal .wiz-room-option__content {

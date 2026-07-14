@@ -22,6 +22,7 @@ import {
   renderGuestModifyGroupRoomRow,
   renderWizardRoomTypeFilter,
   bindWizardRoomTypeFilter,
+  closeAllWizardRoomTypePanels,
   renderWizardConfirmCard,
   renderWizardPriceSummary,
 } from '/assets/js/features/wizard-visuals.js';
@@ -481,6 +482,7 @@ function renderStep5() {
 function renderBody() {
   const mount = $('group-wizard-body');
   if (!mount) return;
+  closeAllWizardRoomTypePanels();
   const fns = { 1: renderStep1, 2: renderStep2, 3: renderStep3, 4: renderStep4, 5: renderStep5 };
   mount.classList.remove('res-wizard-body--enter');
   const stepHtml = fns[state.step]?.() || '';
