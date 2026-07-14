@@ -2,8 +2,8 @@
  * Landing page boot — preloader, welcome, then page init.
  */
 
-const FAILSAFE_MS = 10000;
-const LANDING_ASSET_V = 'scrollqa3';
+const FAILSAFE_MS = 6000;
+const LANDING_ASSET_V = 'heroleft1';
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;

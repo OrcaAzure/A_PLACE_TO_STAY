@@ -43,16 +43,16 @@
     <h1 class="text-headline-md font-bold text-primary mb-1">APTSpace</h1>
     <p class="text-body-sm text-on-surface-variant mb-6"> Welcome  to APTSpace — Log in</p>
 
-    <form id="loginForm" class="space-y-4">
+    <form id="loginForm" class="space-y-4" method="post" action="/login.html" autocomplete="on" onsubmit="return false;">
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="email">Email</label>
-        <input type="email" id="email" placeholder="Sign-in email to APTSpace"
+        <input type="email" id="email" name="email" placeholder="Sign-in email to APTSpace"
           class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" required />
       </div>
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="password">Password</label>
         <div class="relative">
-          <input type="password" id="password" placeholder="Password" autocomplete="current-password"
+          <input type="password" id="password" name="password" placeholder="Password" autocomplete="current-password"
             class="password-field__input w-full border border-outline-variant rounded-lg px-3 py-2.5 pr-10 text-body-sm" required />
           <button type="button" id="togglePassword"
             class="password-field__toggle absolute inset-y-0 right-0 flex items-center px-3 text-on-surface-variant hover:text-primary transition-colors"
@@ -77,69 +77,85 @@
     </form>
   </main>
 
+  <script nomodule>
+    (function () {
+      var el = document.getElementById('loginError');
+      if (!el) return;
+      el.textContent = 'This browser cannot run APTSpace login scripts. Please use a current Chrome, Edge, or Firefox.';
+      el.classList.remove('hidden');
+    })();
+  </script>
   <script type="module">
-    import { redirectIfLoggedIn, ADMIN_PORTAL_ROLES, setAuthSession } from '/assets/js/services/auth.js';
-    import { login } from '/assets/js/services/api.js';
-
     const errorEl = document.getElementById('loginError');
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('reason') === 'session' && errorEl) {
-      errorEl.textContent = 'You were signed out because this account was used on another device. Please log in again.';
-      errorEl.classList.remove('hidden');
-    }
-
-    redirectIfLoggedIn();
-
-    const passwordInput = document.getElementById('password');
-    const togglePasswordBtn = document.getElementById('togglePassword');
-    const iconShow = togglePasswordBtn?.querySelector('.password-field__icon--show');
-    const iconHide = togglePasswordBtn?.querySelector('.password-field__icon--hide');
-
-    if (passwordInput && togglePasswordBtn && iconShow && iconHide) {
-      togglePasswordBtn.addEventListener('click', () => {
-        const willShow = passwordInput.type === 'password';
-        passwordInput.type = willShow ? 'text' : 'password';
-        iconShow.classList.toggle('hidden', willShow);
-        iconHide.classList.toggle('hidden', !willShow);
-        togglePasswordBtn.setAttribute('aria-label', willShow ? 'Hide password' : 'Show password');
-        togglePasswordBtn.setAttribute('aria-pressed', String(willShow));
-      });
-    }
-
     const form = document.getElementById('loginForm');
-    if (form) {
-      form.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    const showLoginError = (message) => {
+      if (!errorEl) return;
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    };
 
-        const email    = document.getElementById('email').value.trim();
-        const password = document.getElementById('password').value;
-        const errorEl  = document.getElementById('loginError');
-        const btn      = form.querySelector('button[type="submit"]');
+    try {
+      const { redirectIfLoggedIn, ADMIN_PORTAL_ROLES, setAuthSession } = await import('/assets/js/services/auth.js');
+      const { login } = await import('/assets/js/services/api.js');
 
-        btn.disabled = true;
-        btn.textContent = 'Signing in...';
-        errorEl?.classList.add('hidden');
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('reason') === 'session') {
+        showLoginError('You were signed out because this account was used on another device. Please log in again.');
+      }
 
-        try {
-          const data = await login(email, password);
-          setAuthSession(data.user);
+      redirectIfLoggedIn();
 
-          const role = data.user.role || '';
-          if (ADMIN_PORTAL_ROLES.includes(role)) {
-            window.location.href = '/admin/dashboard.html';
-          } else {
-            window.location.href = '/guest/dashboard.html';
+      const passwordInput = document.getElementById('password');
+      const togglePasswordBtn = document.getElementById('togglePassword');
+      const iconShow = togglePasswordBtn?.querySelector('.password-field__icon--show');
+      const iconHide = togglePasswordBtn?.querySelector('.password-field__icon--hide');
+
+      if (passwordInput && togglePasswordBtn && iconShow && iconHide) {
+        togglePasswordBtn.addEventListener('click', () => {
+          const willShow = passwordInput.type === 'password';
+          passwordInput.type = willShow ? 'text' : 'password';
+          iconShow.classList.toggle('hidden', willShow);
+          iconHide.classList.toggle('hidden', !willShow);
+          togglePasswordBtn.setAttribute('aria-label', willShow ? 'Hide password' : 'Show password');
+          togglePasswordBtn.setAttribute('aria-pressed', String(willShow));
+        });
+      }
+
+      if (form) {
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+
+          const email = document.getElementById('email').value.trim();
+          const password = document.getElementById('password').value;
+          const btn = form.querySelector('button[type="submit"]');
+
+          btn.disabled = true;
+          btn.textContent = 'Signing in...';
+          errorEl?.classList.add('hidden');
+
+          try {
+            const data = await login(email, password);
+            setAuthSession(data.user);
+
+            const role = data.user.role || '';
+            if (ADMIN_PORTAL_ROLES.includes(role)) {
+              window.location.href = '/admin/dashboard.html';
+            } else {
+              window.location.href = '/guest/dashboard.html';
+            }
+          } catch (err) {
+            showLoginError(err.message || 'Invalid email or password');
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Log in';
           }
-        } catch (err) {
-          if (errorEl) {
-            errorEl.textContent = err.message || 'Invalid email or password';
-            errorEl.classList.remove('hidden');
-          }
-        } finally {
-          btn.disabled = false;
-          btn.textContent = 'Log in';
-        }
-      });
+        });
+      }
+    } catch (err) {
+      showLoginError(
+        `Login page failed to load (${err?.message || 'script error'}). Hard-refresh (Ctrl+F5) and try again.`,
+      );
+      console.error('[login] failed to initialize', err);
     }
   </script>
 </body>

@@ -7,7 +7,8 @@ const IDLE_LOTTIE_SRC = '/assets/animations/idle-magnifier-animation.lottie';
 const DOTLOTTIE_CDN = 'https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs';
 const WELCOME_MS = 2000;
 const EXIT_MS = 520;
-const LOTTIE_MAX_MS = 1200;
+const LOTTIE_MAX_MS = 600;
+const DOTLOTTIE_LOAD_MS = 2500;
 
 let dotLottiePromise = null;
 
@@ -28,7 +29,7 @@ function loadDotLottie() {
       window.clearTimeout(timer);
       resolve(ok);
     };
-    const timer = window.setTimeout(() => finish(false), 8000);
+    const timer = window.setTimeout(() => finish(false), DOTLOTTIE_LOAD_MS);
 
     const onReady = () => finish(!!customElements.get('dotlottie-player'));
 
