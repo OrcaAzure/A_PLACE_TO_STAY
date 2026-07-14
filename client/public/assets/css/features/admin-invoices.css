@@ -2603,6 +2603,52 @@
   color: #b45309;
 }
 
+.billing-balance-grid__credit dd {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.billing-overpay-alert {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin: 0 0 0.75rem;
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #7f1d1d;
+}
+
+.billing-overpay-alert .material-symbols-outlined {
+  flex-shrink: 0;
+  color: #dc2626;
+}
+
+.billing-overpay-alert strong {
+  display: block;
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+}
+
+.billing-overpay-alert p {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #991b1b;
+}
+
+.billing-refund-lead {
+  margin: 0 0 0.875rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.billing-panel--refund {
+  border-color: #fecaca;
+}
+
 .billing-deposit-hint {
   margin: 0;
   font-size: 0.8125rem;
