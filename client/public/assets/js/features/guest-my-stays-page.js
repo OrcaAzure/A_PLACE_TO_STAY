@@ -4,7 +4,7 @@
 import { applyRoleUI } from '/assets/js/services/auth.js';
 import {
 getBookings, getGroups, updateBooking, updateGroup,
-normalizeBooking, formatGroupId,
+normalizeBooking,
 getFacilityBookings, updateFacilityBooking, normalizeFacilityBooking, checkVenueSlotAvailability,
 getFiscalYear, getSupportContact,
 } from '/assets/js/services/api.js';
@@ -123,7 +123,6 @@ export async function bootstrapGuestMyStaysPage() {
         ? '<span class="text-emerald-600 font-bold">In progress</span>'
         : `Starts in <span class="text-primary font-bold">${days} day${days === 1 ? '' : 's'}</span>`;
       const isGroup = feat.kind === 'group';
-      const idLabel = isGroup ? formatGroupId(feat.id) : `#APT-${feat.id}`;
   
       wrap.className = silent
         ? 'relative overflow-hidden bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg p-6'
@@ -134,12 +133,9 @@ export async function bootstrapGuestMyStaysPage() {
           <div>
             <div class="flex items-center gap-2 mb-2">
               <span class="w-2 h-2 rounded-full bg-emerald-300${silent ? '' : ' live-dot'}"></span>
-              <span class="text-[11px] font-bold uppercase tracking-widest text-white/80">${isActive ? 'Active stay' : 'Approved & upcoming'}</span>
+              <span class="text-[11px] font-bold uppercase tracking-widest text-white/80">${isActive ? 'Active stay' : 'Approved & upcoming'}${isGroup ? ' · Group' : ''}</span>
             </div>
             <h3 class="font-headline-md text-headline-md">${feat.facilityLabel || feat.title}</h3>
-            <p class="text-body-sm text-white/80 flex items-center gap-1 mt-1">
-              <span class="material-symbols-outlined text-[18px]">confirmation_number</span>${idLabel}
-            </p>
             <p class="text-body-sm text-white/80 flex items-center gap-1 mt-1">
               <span class="material-symbols-outlined text-[18px]">calendar_month</span>${fmtDate(feat.startDate)} \u2192 ${fmtDate(feat.endDate)}
             </p>
@@ -166,7 +162,6 @@ export async function bootstrapGuestMyStaysPage() {
   
     function renderCard(b, index, { silent = false } = {}) {
       const isGroup = b.kind === 'group';
-      const idLabel = isGroup ? formatGroupId(b.id) : `#APT-${b.id}`;
       const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
       const amountLabel = normStatus(b.status) === 'pending' ? 'Estimated total' : 'Total';
       const lifecycleBadge = lifecycleGuestBadge(b);
@@ -183,8 +178,8 @@ export async function bootstrapGuestMyStaysPage() {
             <div class="flex-1">
               <div class="flex justify-between items-start mb-2">
                 <div>
-                  <h4 class="font-headline-sm text-headline-sm flex items-center flex-wrap gap-1">${typeBadge}${lifecycleBadge}${idLabel}</h4>
-                  <p class="text-body-sm text-on-surface-variant mt-0.5">${b.facilityLabel || b.title}</p>
+                  <h4 class="font-headline-sm text-headline-sm flex items-center flex-wrap gap-1">${typeBadge}${lifecycleBadge}</h4>
+                  <p class="text-body-sm font-medium text-on-surface mt-1">${escapeHtml(b.facilityLabel || b.title || 'Stay')}</p>
                 </div>
                 <span class="${statusBadge(b.status)} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${b.status}</span>
               </div>
@@ -417,7 +412,6 @@ export async function bootstrapGuestMyStaysPage() {
     }
   
     function renderVenueCard(b, index, { silent = false } = {}) {
-      const idLabel = `#VEN-${b.id}`;
       const amount = b.totalAmount != null ? peso(b.totalAmount) : '';
       const phaseBadge = lifecycleGuestBadge(b);
       const canCancel = !readOnly && canGuestCancelVenueBooking(b, { cutoffHours: cancellationCutoffHours });
@@ -433,7 +427,6 @@ export async function bootstrapGuestMyStaysPage() {
                   <h4 class="font-headline-sm text-headline-sm flex items-center flex-wrap gap-1">
                     <span class="bg-secondary/10 text-secondary px-2 py-0.5 rounded text-[10px] font-bold uppercase">Venue</span>
                     ${phaseBadge}
-                    <span>${idLabel}</span>
                   </h4>
                   <p class="text-body-sm font-medium text-on-surface mt-1">${escapeHtml(b.venueName || b.title)}</p>
                   <p class="text-body-sm text-on-surface-variant mt-0.5">${escapeHtml(b.venueCategory || '')}</p>
