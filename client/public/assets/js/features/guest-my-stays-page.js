@@ -10,7 +10,7 @@ getFiscalYear, getSupportContact,
 } from '/assets/js/services/api.js';
 import {
 canGuestCancelRoomBooking, canGuestCancelVenueBooking, canGuestModifyRoomBooking, canGuestModifyVenueBooking,
-lifecyclePhaseForBooking, venuePhaseLabel, normStatus, isStandaloneRoomBooking,
+lifecyclePhaseForBooking, venuePhaseLabel, normStatus, isStandaloneRoomBooking, formatMealsBreakdownDisplay, formatMoney,
 } from '/assets/js/features/reservation-shared.js';
 import {
   parseBookQuery, priceNoticeHtml, hasCompleteBookIntent,
@@ -20,6 +20,7 @@ import { initGuestRoomBookingModal } from '/assets/js/features/guest-room-bookin
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { jsonFingerprint, updateStat } from '/assets/js/layout/silent-refresh.js';
 import { openGuestModifyWizard, confirmGuestCancelReservation, cancelRoomReservation, cancelVenueReservation } from '/assets/js/features/booking-actions.js';
+import { openModal, closeModal } from '/assets/js/layout/ui.js';
 
 export async function bootstrapGuestMyStaysPage() {
     async function loadSupportReplyMail() {
@@ -205,6 +206,7 @@ export async function bootstrapGuestMyStaysPage() {
             </div>
           </div>
           <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
+            <button type="button" class="view-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">View details</button>
             ${canModify ? `<button type="button" class="modify-booking-btn px-4 py-2 text-label-md font-label-md text-primary hover:bg-primary/10 rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">Modify</button>` : ''}
             ${canCancel ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">${b.status === 'pending' ? 'Cancel request' : 'Cancel reservation'}</button>` : ''}
           </div>
@@ -225,9 +227,11 @@ export async function bootstrapGuestMyStaysPage() {
         ]);
         const singles = raw
           .filter((b) => isStandaloneRoomBooking(b))
-          .map(normalizeBooking)
+          .map((b) => ({ ...normalizeBooking(b), raw: b }))
           .filter((b) => !isBlockedBuilding(b.buildingName));
-        const groupItems = groups.map((g) => ({
+        const groupItems = groups
+          .filter((g) => g.is_group_stay !== 0 && g.is_group_stay !== false)
+          .map((g) => ({
           kind: 'group',
           id: g.id,
           title: g.group_name,
@@ -237,6 +241,7 @@ export async function bootstrapGuestMyStaysPage() {
           status: (g.status || 'Pending').toLowerCase(),
           guestCount: g.total_guests,
           totalAmount: g.grand_total,
+          raw: g,
         }));
         allBookings = [...singles, ...groupItems].sort((a, b) => String(b.startDate).localeCompare(String(a.startDate)));
 
@@ -294,7 +299,40 @@ export async function bootstrapGuestMyStaysPage() {
       list.innerHTML = bookings.map((b, i) => renderCard(b, i, { silent })).join('');
     }
   
+    function openBookingDetail(booking) {
+      const raw = booking.raw || booking;
+      const meals = raw.meals || [];
+      const fees = raw.fees || [];
+      const mealLines = formatMealsBreakdownDisplay(meals.length ? meals : raw.meals);
+      const feeLines = (fees || []).map((f) => `${f.fee_name || f.service_name}: ${formatMoney(f.amount)}`);
+      const rooms = booking.kind === 'group' && raw.bookings?.length
+        ? raw.bookings.map((r) => `${r.building_name || ''} ${r.room_number || ''} (${r.guest_count} guest(s))`.trim()).join('<br>')
+        : (booking.facilityLabel || booking.title || '—');
+      const body = `
+        <div class="space-y-4 text-body-sm">
+          <p><strong>Status:</strong> ${booking.status}</p>
+          <p><strong>Dates:</strong> ${fmtDate(booking.startDate)} → ${fmtDate(booking.endDate)}</p>
+          <p><strong>Room(s):</strong><br>${rooms}</p>
+          ${mealLines.length ? `<p><strong>Meals:</strong><br>${mealLines.join('<br>')}</p>` : ''}
+          ${feeLines.length ? `<p><strong>Extras:</strong><br>${feeLines.join('<br>')}</p>` : ''}
+          ${booking.totalAmount != null ? `<p><strong>Total:</strong> ${formatMoney(booking.totalAmount)}</p>` : ''}
+          <div class="flex justify-end pt-4">
+            <button type="button" class="px-4 py-2 rounded-lg border border-outline-variant" data-detail-close>Close</button>
+          </div>
+        </div>`;
+      openModal('Reservation details', body);
+      document.getElementById('modalBody')?.querySelector('[data-detail-close]')?.addEventListener('click', closeModal);
+    }
+
     document.getElementById('reservations-list')?.addEventListener('click', async (e) => {
+      const viewBtn = e.target.closest('.view-booking-btn');
+      if (viewBtn) {
+        const id = viewBtn.dataset.id;
+        const kind = viewBtn.dataset.kind || 'single';
+        const booking = allBookings.find((b) => String(b.id) === String(id) && (b.kind || 'single') === kind);
+        if (booking) openBookingDetail(booking);
+        return;
+      }
       const modifyBtn = e.target.closest('.modify-booking-btn');
       if (modifyBtn) {
         const id = modifyBtn.dataset.id;

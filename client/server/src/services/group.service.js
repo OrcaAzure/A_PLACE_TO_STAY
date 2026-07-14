@@ -18,7 +18,7 @@ import {
 } from './booking.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
-import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from './ancillary.service.js';
+import { fetchExtraServiceRows, sanitizeGuestSubmittedFees, resolveGuestLodgingExtraFees } from './ancillary.service.js';
 import { sendGroupModifiedEmail, sendGroupConfirmationEmail, sendGuestGroupSelfModifyEmail, sendGroupBookingCancelledEmail, sendGroupBookingDeclinedEmail, sendGroupBookingRequestReceivedEmail, extractDeclineReason } from './email.service.js';
 import { ensureInvoiceForBooking, ensureInvoicesForGroup, getInvoiceSnapshot, deletePaymentsForGroup, deletePaymentsForRoomBooking } from './payment.service.js';
 const bookingSelect = `
@@ -255,6 +255,13 @@ export async function saveGroupBookings({
     let firstBookingId = null;
     let groupGrandTotal = 0;
 
+    let feesToSave = fees;
+    if (fees != null && fees.length) {
+      const catalogRows = await fetchExtraServiceRows();
+      const sanitized = sanitizeGuestSubmittedFees(fees, catalogRows, []);
+      feesToSave = await resolveGuestLodgingExtraFees(sanitized, { checkIn, checkOut });
+    }
+
     for (let i = 0; i < rooms.length; i++) {
       const { room_id, guest_count } = rooms[i];
       const prepared = await prepareBookingInsert({
@@ -263,16 +270,19 @@ export async function saveGroupBookings({
         checkOut,
         guestCount: guest_count,
         bypassAdvanceLimit,
+        excludeGroupId: groupId,
       });
 
       let lineTotal = prepared.total_amount;
-      if (i === 0 && (meals || fees)) {
+      if (i === 0 && (meals || feesToSave)) {
         lineTotal = await computeGrandTotal({
           roomTotal: prepared.total_amount,
           meals,
-          fees,
+          fees: feesToSave,
           mealRates,
           mealUnitPrices,
+          checkIn,
+          checkOut,
         });
       }
 
@@ -293,8 +303,10 @@ export async function saveGroupBookings({
         await saveBookingMeals(firstBookingId, meals, mealRates, {
           existingRows: preservedMealRows,
           preserveExisting: preserveMealPrices,
+          checkIn,
+          checkOut,
         });
-        await saveBookingFees(firstBookingId, fees);
+        await saveBookingFees(firstBookingId, feesToSave);
       }
     }
 
@@ -336,6 +348,8 @@ export async function createReservationGroup(raw = {}) {
   const userId = raw.userId ?? raw.user_id;
   const guestName = raw.guestName || raw.guest_name;
   const email = raw.email || raw.contact_email;
+  const isGroupStay = raw.is_group_stay ?? raw.isGroupStay;
+  const bookingRef = raw.booking_ref || raw.bookingRef || null;
 
   if (isEmpty(groupName) || isEmpty(contactName) || isEmpty(checkIn) || isEmpty(checkOut)) {
     throw new Error('group_name, contact_name, check_in, and check_out are required');
@@ -351,8 +365,8 @@ export async function createReservationGroup(raw = {}) {
 
   const [result] = await pool.query(
     `INSERT INTO reservation_groups
-      (user_id, group_name, contact_name, contact_phone, contact_email, check_in, check_out, total_guests, rooms_requested, status, notes, pricing_category)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (user_id, group_name, contact_name, contact_phone, contact_email, check_in, check_out, total_guests, rooms_requested, is_group_stay, status, notes, booking_ref, pricing_category)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       effectiveUserId,
       groupName.trim(),
@@ -363,8 +377,10 @@ export async function createReservationGroup(raw = {}) {
       checkOut,
       guests,
       roomsRequested || null,
+      isGroupStay === false ? 0 : 1,
       groupStatus,
       notes || null,
+      bookingRef,
       'Guest',
     ]
   );
@@ -556,28 +572,52 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
     });
   }
 
-  await pool.query(
-    `UPDATE reservation_groups SET
-      user_id = ?,
-      group_name = COALESCE(?, group_name),
-      contact_name = COALESCE(?, contact_name),
-      contact_phone = COALESCE(?, contact_phone),
-      contact_email = COALESCE(?, contact_email),
-      check_in = ?,
-      check_out = ?,
-      total_guests = ?,
-      rooms_requested = COALESCE(?, rooms_requested),
-      status = ?,
-      notes = COALESCE(?, notes),
-      pricing_category = ?
-     WHERE id = ?`,
-    [
-      resolvedUserId,
-      group_name, contact_name, contact_phone, contact_email,
-      nextCheckIn, nextCheckOut, nextGuests, rooms_requested,
-      nextStatus, notes, 'Guest', groupId,
-    ]
-  );
+  if (rooms?.length) {
+    await pool.query(
+      `UPDATE reservation_groups SET
+        user_id = ?,
+        group_name = COALESCE(?, group_name),
+        contact_name = COALESCE(?, contact_name),
+        contact_phone = COALESCE(?, contact_phone),
+        contact_email = COALESCE(?, contact_email),
+        check_in = ?,
+        check_out = ?,
+        total_guests = ?,
+        rooms_requested = COALESCE(?, rooms_requested),
+        notes = COALESCE(?, notes),
+        pricing_category = ?
+       WHERE id = ?`,
+      [
+        resolvedUserId,
+        group_name, contact_name, contact_phone, contact_email,
+        nextCheckIn, nextCheckOut, nextGuests, rooms_requested,
+        notes, 'Guest', groupId,
+      ]
+    );
+  } else {
+    await pool.query(
+      `UPDATE reservation_groups SET
+        user_id = ?,
+        group_name = COALESCE(?, group_name),
+        contact_name = COALESCE(?, contact_name),
+        contact_phone = COALESCE(?, contact_phone),
+        contact_email = COALESCE(?, contact_email),
+        check_in = ?,
+        check_out = ?,
+        total_guests = ?,
+        rooms_requested = COALESCE(?, rooms_requested),
+        status = ?,
+        notes = COALESCE(?, notes),
+        pricing_category = ?
+       WHERE id = ?`,
+      [
+        resolvedUserId,
+        group_name, contact_name, contact_phone, contact_email,
+        nextCheckIn, nextCheckOut, nextGuests, rooms_requested,
+        nextStatus, notes, 'Guest', groupId,
+      ]
+    );
+  }
 
   if (rooms?.length) {
     const assignedGuests = rooms.reduce((s, r) => s + Number(r.guest_count || 0), 0);
@@ -624,6 +664,15 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       await ensureInvoicesForGroup(groupId);
     }
     return updated;
+  }
+
+  if (nextStatus === 'Approved' && group.status !== 'Approved') {
+    await pool.query(
+      `UPDATE bookings_rooms SET status = 'Approved'
+       WHERE group_id = ? AND status = 'Pending'`,
+      [groupId]
+    );
+    await ensureInvoicesForGroup(groupId);
   }
 
   if (nextStatus === 'Rejected' || nextStatus === 'Cancelled') {

@@ -19,6 +19,7 @@ export const submitBookingRequest = async (req, res) => {
       meals,
       fees,
       meal_allergen_notes,
+      is_group_stay,
     } = req.body;
 
     const result = await submitGuestBookingRequest({
@@ -33,7 +34,7 @@ export const submitBookingRequest = async (req, res) => {
       venues: Array.isArray(venues) ? venues : [],
       meals,
       fees,
-      meal_allergen_notes,
+      is_group_stay,
     });
 
     res.status(201).json(result);

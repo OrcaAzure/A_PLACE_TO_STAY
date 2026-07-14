@@ -129,6 +129,7 @@ async function load() {
         _search: [b.guest_name, b.room_number, b.building_name].join(' ').toLowerCase(),
       }));
     const groupRows = groups
+      .filter((g) => g.is_group_stay !== 0 && g.is_group_stay !== false)
       .filter((g) => ['approved', 'cancelled'].includes(normStatus(g.status)))
       .map((g) => ({
         kind: 'group',

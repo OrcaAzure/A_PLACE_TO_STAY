@@ -520,19 +520,8 @@ export async function initGuestRoomBookingModal({
     resetCloseButton(closeBtn);
     setModalCopy({
       title: 'Request submitted',
-      subtitle: 'You can book another room for the same stay or close this window.',
+      subtitle: 'Housing will review your request and notify you by email.',
     });
-  }
-
-  function startAnotherRoomBooking() {
-    if (!savedTrip) return;
-    hideSuccessPanel();
-    resetBookingResults();
-    document.getElementById('booking-form-error').classList.add('hidden');
-    document.getElementById('booking-notes').value = '';
-    prefillTrip(savedTrip);
-    setBookingMode('search');
-    findRooms();
   }
 
   document.getElementById('find-rooms-btn')?.addEventListener('click', () => findRooms());
@@ -545,7 +534,6 @@ export async function initGuestRoomBookingModal({
     setBookingMode('search');
     findRooms(selectedRoom?.id || roomInput.value);
   });
-  document.getElementById('booking-add-another')?.addEventListener('click', startAnotherRoomBooking);
   document.getElementById('booking-success-done')?.addEventListener('click', closeBookingModal);
   closeBtn?.addEventListener('click', closeBookingModal);
   document.getElementById('booking-cancel-btn')?.addEventListener('click', closeBookingModal);

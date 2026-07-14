@@ -7,6 +7,7 @@ import {
   deleteBooking,
   getRoomAvailability,
   getRoomStayEstimateHandler,
+  getStayQuoteHandler,
   getMealRateList,
 } from '../controllers/booking.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
@@ -19,6 +20,7 @@ router.get('/', requireAuth, getAllBookings);
 router.get('/availability', requireAuth, getRoomAvailability);
 router.get('/room-estimate', requireAuth, getRoomStayEstimateHandler);
 router.get('/meal-rates', requireAuth, cacheResponse('booking:meal-rates'), getMealRateList);
+router.post('/stay-quote', requireAuth, getStayQuoteHandler);
 router.get('/:id', requireAuth, getBookingById);
 router.post('/', requireAuth, blockReadOnly, createBooking);
 router.patch('/:id', requireAuth, blockReadOnly, updateBooking);

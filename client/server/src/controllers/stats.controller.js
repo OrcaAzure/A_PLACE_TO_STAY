@@ -60,6 +60,7 @@ export const getAdminSummary = async (req, res) => {
       [roomRows],
       [arrivingRows],
       [departingRows],
+      [inHouseRows],
       [venueTodayRows],
       [pendingRoomRows],
       [pendingGroupRows],
@@ -112,6 +113,14 @@ export const getAdminSummary = async (req, res) => {
         LIMIT 20
       `, [today]),
       pool.query(`
+        ${bookingSelect}
+        WHERE bk.status = 'Approved'
+          AND bk.check_in <= ?
+          AND bk.check_out > ?
+        ORDER BY b.name ASC, r.room_number ASC
+        LIMIT 20
+      `, [today, today]),
+      pool.query(`
         ${venueBookingSelect}
         WHERE fb.status = 'Approved' AND fb.event_date = ?
         ORDER BY fb.start_time ASC
@@ -129,7 +138,7 @@ export const getAdminSummary = async (req, res) => {
                u.email AS contact_email
         FROM reservation_groups rg
         LEFT JOIN users u ON u.id = rg.user_id
-        WHERE rg.status = 'Pending'
+        WHERE rg.status = 'Pending' AND COALESCE(rg.is_group_stay, 1) = 1
         ORDER BY rg.created_at ASC
         LIMIT 8
       `),
@@ -271,6 +280,15 @@ export const getAdminSummary = async (req, res) => {
           : (b.building_name || 'Room'),
         guests: Number(b.guest_count) || 1,
         kind: 'departure',
+      })),
+      inHouse: inHouseRows.map((b) => ({
+        id: b.id,
+        guest_name: b.guest_name,
+        label: b.room_number
+          ? `Room ${b.room_number}${b.building_name ? ` · ${b.building_name}` : ''}`
+          : (b.building_name || 'Room'),
+        guests: Number(b.guest_count) || 1,
+        kind: 'in_house',
       })),
       venues: venueTodayRows.map((v) => ({
         id: v.id,

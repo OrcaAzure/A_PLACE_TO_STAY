@@ -397,16 +397,17 @@ function bookingRoomLabel(booking) {
 export async function sendBookingRequestReceivedEmail(user, booking) {
   const name = user.full_name || user.guest_name || 'Guest';
   const details = buildRoomStayDetailSections(booking, { estimate: true });
+  const ref = booking.booking_ref || details.reference || '';
 
   return sendMail({
     to: user.email || user.guest_email,
-    subject: `Reservation request received ${details.reference || ''} — APTSpace`.trim(),
+    subject: `Reservation request received ${ref ? ref : ''} — APTSpace`.trim(),
     html: `
       <h2>Reservation Request Received</h2>
       <p>Hi ${escapeHtml(name)},</p>
       <p>We received your room reservation request. Housing staff will review the details below and email you once it is approved.</p>
       ${emailNotice('The total shown is an <strong>estimate</strong>. Housing staff will confirm your final amount after reviewing your request.', 'warn')}
-      ${details.reference ? `<p><strong>Reference:</strong> ${escapeHtml(details.reference)}</p>` : ''}
+      ${ref ? `<p><strong>Reference:</strong> ${escapeHtml(ref)}</p>` : ''}
       ${emailSection('Contact', details.contactItems)}
       ${emailSection('Stay details', details.stayItems)}
       ${details.addons}
@@ -783,6 +784,44 @@ export async function sendPaymentReceiptEmail(user, payment) {
         emailDetailItem('Amount paid', `<strong>${fmtPeso(payment.amount)}</strong>`),
         emailDetailItem('Date paid', escapeHtml(formatEmailDateTime(payment.paid_at || payment.created_at))),
         emailDetailItem('Method', escapeHtml(payment.method || '—')),
+      ].filter(Boolean)))}
+      ${emailFooter()}
+    `,
+  });
+}
+
+export async function sendVenueBookingRequestReceivedEmail(user, booking, { batchRef } = {}) {
+  const name = user.full_name || user.guest_name || 'Guest';
+  const venue = [booking.facility_category, booking.facility_name || booking.facility_room_code]
+    .filter(Boolean)
+    .join(' — ');
+  const ref = batchRef || booking.booking_ref || (booking.id ? `#VEN-${booking.id}` : '');
+  const eventDate = formatEventDate(booking.event_date);
+  const start = formatTime12(booking.start_time);
+  const end = formatTime12(booking.end_time);
+  const timeRange = start && end ? `${start} – ${end}` : '—';
+  const total = booking.total_amount != null ? fmtPeso(booking.total_amount) : '—';
+
+  return sendMail({
+    to: user.email || user.guest_email,
+    subject: `Venue booking request received ${ref ? ref : ''} — APTSpace`.trim(),
+    html: `
+      <h2>Venue Booking Request Received</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>We received your venue booking request. Housing staff will review the details below and email you once it is approved.</p>
+      ${emailNotice('The total shown is an <strong>estimate</strong>. Housing staff will confirm your final amount after reviewing your request.', 'warn')}
+      ${ref ? `<p><strong>Reference:</strong> ${escapeHtml(ref)}</p>` : ''}
+      ${emailSection('Event details', emailDetailList([
+        emailDetailItem('Venue', escapeHtml(venue)),
+        emailDetailItem('Event date', escapeHtml(eventDate)),
+        emailDetailItem('Time', escapeHtml(timeRange)),
+        emailDetailItem('Guests', escapeHtml(booking.guest_count || 1)),
+        booking.season ? emailDetailItem('Season', escapeHtml(booking.season)) : '',
+        emailDetailItem('Estimated total', total),
+      ].filter(Boolean)))}
+      ${emailSection('What happens next', emailDetailList([
+        emailDetailItem('Step 1', 'Housing reviews your request for venue availability.'),
+        emailDetailItem('Step 2', 'You receive a confirmation email with your <strong>final total</strong> when approved.'),
       ].filter(Boolean)))}
       ${emailFooter()}
     `,

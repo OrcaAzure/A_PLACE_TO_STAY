@@ -22,7 +22,7 @@ import {
 } from '../services/facility.service.js';
 import { fetchFacilitiesWithRates, FACILITY_GROUP_ICONS, formatFacilityLabel } from '../services/facilityCatalog.service.js';
 import { venueKey } from '../services/venueAdmin.service.js';
-import { sendGuestVenueSelfModifyEmail, sendVenueModifiedEmail } from '../services/email.service.js';
+import { sendGuestVenueSelfModifyEmail, sendVenueModifiedEmail, sendVenueBookingRequestReceivedEmail } from '../services/email.service.js';
 import { notifyVenueBookingCancelled, notifyVenueBookingDeclined } from '../services/booking.service.js';
 import { extractDeclineReason } from '../services/email.service.js';
 
@@ -158,6 +158,11 @@ export const createFacilityBooking = async (req, res) => {
     const [rows] = await pool.query(`${bookingSelect} WHERE fb.id = ?`, [result.insertId]);
     if (bookingStatus === 'Approved') {
       await ensureInvoiceForFacilityBooking(result.insertId, { autoEmail: true });
+    } else if (!isAdmin) {
+      void sendVenueBookingRequestReceivedEmail(
+        { full_name: rows[0].guest_name, email: rows[0].guest_email },
+        rows[0],
+      );
     }
     res.status(201).json({ message: 'Venue booking created', booking: rows[0] });
   } catch (err) {

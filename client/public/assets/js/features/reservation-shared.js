@@ -109,6 +109,45 @@ export function isRoomBookable(status) {
   return status === 'available';
 }
 
+/** True when the record represents an intentional multi-room group stay. */
+export function isGroupStayRecord(record) {
+  if (record?.kind === 'group') return record.isGroupStay !== false;
+  if (record?.is_group_stay != null) {
+    return record.is_group_stay !== 0 && record.is_group_stay !== false;
+  }
+  return Boolean(record?.isGroupStay);
+}
+
+/** Human-readable per-day meal summary from API rows or meals_breakdown. */
+export function formatMealsBreakdownSummary(meals = [], breakdown = []) {
+  if (breakdown?.length) {
+    return breakdown.map((row) => {
+      const d = new Date(`${row.date}T12:00:00`);
+      const label = Number.isNaN(d.getTime())
+        ? row.date
+        : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `${label}: ${row.summary}`;
+    }).join(' · ');
+  }
+  const byDate = {};
+  for (const row of meals || []) {
+    const date = String(row.meal_date || '').slice(0, 10);
+    if (!date || !row.meal_type || Number(row.quantity) <= 0) continue;
+    if (!byDate[date]) byDate[date] = [];
+    byDate[date].push(`${row.meal_type} × ${row.quantity}`);
+  }
+  return Object.entries(byDate)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, items]) => {
+      const d = new Date(`${date}T12:00:00`);
+      const label = Number.isNaN(d.getTime())
+        ? date
+        : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      return `${label}: ${items.join(', ')}`;
+    })
+    .join(' · ');
+}
+
 /** Room booking not tied to a reservation group (group child rows are shown via the group). */
 export function isStandaloneRoomBooking(booking) {
   const groupId = booking?.group_id ?? booking?.groupId;
@@ -619,7 +658,52 @@ export function mealsFromBooking(mealsArr = []) {
 }
 
 export function calcMealsSubtotal(meals, rates) {
-  return Object.entries(meals || {}).reduce((s, [t, q]) => s + (Number(rates[t]) || 0) * (Number(q) || 0), 0);
+  if (meals?.byDate && typeof meals.byDate === 'object') {
+    let total = 0;
+    for (const dayMeals of Object.values(meals.byDate)) {
+      for (const [t, q] of Object.entries(dayMeals || {})) {
+        total += (Number(rates[t]) || 0) * (Number(q) || 0);
+      }
+    }
+    return Math.round(total * 100) / 100;
+  }
+  return Object.entries(meals || {}).reduce((s, [t, q]) => {
+    if (t === 'byDate') return s;
+    return s + (Number(rates[t]) || 0) * (Number(q) || 0);
+  }, 0);
+}
+
+/** Human-readable per-day meal summary for admin/guest detail views. */
+export function formatMealsBreakdownDisplay(mealsOrRows) {
+  if (Array.isArray(mealsOrRows)) {
+    const byDate = {};
+    for (const row of mealsOrRows) {
+      if (!row?.meal_type) continue;
+      const date = String(row.meal_date || '').slice(0, 10);
+      if (!date) continue;
+      if (!byDate[date]) byDate[date] = [];
+      byDate[date].push(`${row.meal_type} × ${row.quantity}`);
+    }
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, items]) => `${formatDateLong(date)}: ${items.join(', ')}`);
+  }
+  if (mealsOrRows?.byDate) {
+    return Object.entries(mealsOrRows.byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, types]) => {
+        const items = Object.entries(types || {})
+          .filter(([, qty]) => Number(qty) > 0)
+          .map(([type, qty]) => `${type} × ${qty}`)
+          .join(', ');
+        return items ? `${formatDateLong(date)}: ${items}` : null;
+      })
+      .filter(Boolean);
+  }
+  const flat = Object.entries(mealsOrRows || {})
+    .filter(([t, q]) => t !== 'byDate' && Number(q) > 0)
+    .map(([t, q]) => `${t} × ${q}`);
+  return flat.length ? [flat.join(', ')] : [];
 }
 
 export function calcFeesSubtotal(fees = []) {

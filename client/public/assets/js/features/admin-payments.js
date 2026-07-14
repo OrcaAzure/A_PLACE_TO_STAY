@@ -2639,36 +2639,33 @@ function renderList() {
 
   listEl.innerHTML = `<div class="billing-table">${list.map(renderListRow).join('')}</div>`;
 
-  listEl.querySelectorAll('[data-invoice-row]').forEach((btn) => {
-    btn.addEventListener('click', async () => {
-      hideFeedback(document.getElementById('payments-feedback'));
-      await openInvoiceModal(btn.getAttribute('data-invoice-row'));
-    });
-  });
-
-  listEl.querySelectorAll('[data-delete-invoice]').forEach((btn) => {
-    btn.addEventListener('click', async (e) => {
-      e.stopPropagation();
-      hideFeedback(document.getElementById('payments-feedback'));
-      btn.disabled = true;
-      try {
-        await handleClearInvoice(btn.getAttribute('data-delete-invoice'), {
-          feedbackEl: document.getElementById('payments-feedback'),
-        });
-      } catch {
-        /* feedback shown by handler */
-      } finally {
-        btn.disabled = false;
-      }
-    });
-  });
-
   syncClearPaidButton();
+}
+
+function handleInvoiceListClick(e) {
+  const rowBtn = e.target.closest('[data-invoice-row]');
+  if (rowBtn) {
+    hideFeedback(document.getElementById('payments-feedback'));
+    void openInvoiceModal(rowBtn.getAttribute('data-invoice-row'));
+    return;
+  }
+  const deleteBtn = e.target.closest('[data-delete-invoice]');
+  if (!deleteBtn) return;
+  e.stopPropagation();
+  hideFeedback(document.getElementById('payments-feedback'));
+  deleteBtn.disabled = true;
+  void handleClearInvoice(deleteBtn.getAttribute('data-delete-invoice'), {
+    feedbackEl: document.getElementById('payments-feedback'),
+  }).catch(() => {}).finally(() => {
+    deleteBtn.disabled = false;
+  });
 }
 
 function getModal() {
   return document.getElementById('billing-invoice-modal');
 }
+
+let invoiceModalOpenGen = 0;
 
 function isBillingInvoiceModalOpen() {
   const modal = getModal();
@@ -2719,6 +2716,7 @@ async function refreshOpenInvoiceQuietly(id) {
 }
 
 async function openInvoiceModal(id) {
+  const openGen = ++invoiceModalOpenGen;
   state.selectedId = id;
   renderList();
 
@@ -2732,6 +2730,10 @@ async function openInvoiceModal(id) {
 
   try {
     const p = await getPaymentById(id);
+    if (openGen !== invoiceModalOpenGen) return;
+    if (String(state.selectedId) !== String(id)) return;
+    if (!isBillingInvoiceModalOpen()) return;
+
     const idx = state.payments.findIndex((x) => String(x.id) === String(id));
     if (idx >= 0) state.payments[idx] = p;
     else state.payments.push(p);
@@ -2742,6 +2744,7 @@ async function openInvoiceModal(id) {
     initBillingFeeEditor(p, detailEl);
     bindReservationEdit(p, detailEl);
   } catch (err) {
+    if (openGen !== invoiceModalOpenGen) return;
     if (detailEl.innerHTML.includes('billing-detail-loading')) {
       detailEl.innerHTML = renderInvoiceLoadError(id, getBillingErrorMessage(err));
       detailEl.querySelector('[data-retry-invoice]')?.addEventListener('click', () => {
@@ -2754,6 +2757,7 @@ async function openInvoiceModal(id) {
 }
 
 function closeInvoiceModal() {
+  invoiceModalOpenGen += 1;
   state.selectedId = null;
   renderList();
   const modal = getModal();
@@ -2971,8 +2975,10 @@ async function reload({ keepSelection = false, keepModalOpen = false, background
     updateSummary();
     renderList();
 
-    if (keepModalOpen && prevId && modalOpen && state.payments.some((x) => String(x.id) === String(prevId))) {
-      if (background) {
+    if (keepModalOpen && prevId && state.payments.some((x) => String(x.id) === String(prevId))) {
+      if (!isBillingInvoiceModalOpen()) {
+        /* modal was closed while reload was in flight */
+      } else if (background) {
         await refreshOpenInvoiceQuietly(prevId);
       } else {
         await openInvoiceModal(prevId);
@@ -3021,6 +3027,8 @@ function bindPaymentsPageEvents() {
   });
 
   getModal()?.querySelector('.billing-modal__backdrop')?.addEventListener('click', closeInvoiceModal);
+
+  document.getElementById('invoice-list')?.addEventListener('click', handleInvoiceListClick);
 }
 
 export function teardownPaymentsPage() {

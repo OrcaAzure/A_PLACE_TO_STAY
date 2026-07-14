@@ -11,6 +11,7 @@ import {
 import {
   escapeHtml, formatDateLong, formatMoney, formatSubmittedAt,
   statusBadge, debounce, normStatus, stayNights, isStandaloneRoomBooking,
+  formatMealsBreakdownDisplay,
 } from '/assets/js/features/reservation-shared.js';
 
 let initialized = false;
@@ -56,11 +57,9 @@ function requestLabel(r) {
 }
 
 function formatMealsSummary(meals) {
-  if (!meals?.length) return null;
-  const items = meals
-    .filter((m) => Number(m.quantity) > 0)
-    .map((m) => `${m.meal_type} × ${m.quantity}`);
-  return items.length ? items.join(', ') : null;
+  if (!meals) return null;
+  const lines = formatMealsBreakdownDisplay(meals);
+  return lines.length ? lines.join(' · ') : null;
 }
 
 function formatFeesSummary(fees) {
@@ -83,6 +82,15 @@ function renderSection(title, rowsHtml) {
     <h4 class="res-request-section-title">${escapeHtml(title)}</h4>
     <div class="res-request-facts">${rowsHtml}</div>
   </section>`;
+}
+
+function datesPassedBadge(r) {
+  if (normStatus(r.status) !== 'pending') return '';
+  const end = r.schedule?.checkOut;
+  if (!end) return '';
+  const today = new Date().toISOString().slice(0, 10);
+  if (String(end).slice(0, 10) >= today) return '';
+  return '<span class="res-pill res-pill--warn" title="Stay dates have passed — review manually">Dates passed</span>';
 }
 
 function renderNotes(notes) {
@@ -233,6 +241,7 @@ function renderRequestCard(r) {
     <div class="res-list-card-top">
       <h3 class="res-list-title">${title}</h3>
       ${statusBadge(r.status)}
+      ${datesPassedBadge(r)}
     </div>
     <p class="res-request-subtitle">${subtitle}</p>
     <p class="res-request-submitted">Submitted ${formatSubmittedAt(r.submittedAt)}</p>
@@ -325,6 +334,7 @@ async function load() {
       .filter((r) => ['pending', 'approved', 'rejected'].includes(normStatus(r.status)));
     const groupRows = groups
       .map(normalizeManageGroupRequest)
+      .filter((r) => r.isGroupStay !== false)
       .filter((r) => ['pending', 'approved', 'rejected'].includes(normStatus(r.status)));
     requests = [...singles, ...groupRows].sort((a, b) => String(b.submittedAt || b.schedule?.checkIn).localeCompare(String(a.submittedAt || a.schedule?.checkIn)));
     applyFilter(); syncBadge();

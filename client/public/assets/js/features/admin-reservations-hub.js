@@ -656,7 +656,7 @@ function filterVenues(items) {
     if (!matchesGuestUser(item)) return false;
     const cat = item._category;
     if (state.filter === 'pending' && cat !== 'pending') return false;
-    if (state.filter === 'active' && !['pending', 'today', 'upcoming'].includes(cat)) return false;
+    if (state.filter === 'active' && !['today', 'upcoming'].includes(cat)) return false;
     if (state.filter === 'past' && cat !== 'past') return false;
     if (state.filter === 'cancelled' && cat !== 'cancelled') return false;
     return matchesSearch(item._search || '');
@@ -700,7 +700,8 @@ function renderActivePanel() {
     html = renderList(items, renderStayCard, 'No group stays yet. Create one with the button above.');
     countLabel = `${items.length} group stay${items.length === 1 ? '' : 's'}`;
   } else if (state.tab === 'venues') {
-    items = filterVenues(state.venueBookings);
+    items = filterVenues(state.venueBookings)
+      .filter((v) => ['approved', 'cancelled'].includes(normStatus(v.status)));
     html = renderList(items, (v) => renderVenueCard(v), 'No venue bookings yet. Create one with the button above.');
     countLabel = `${items.length} venue booking${items.length === 1 ? '' : 's'}`;
   }
@@ -742,7 +743,9 @@ async function loadAll({ background = false } = {}) {
     ]);
 
     state.roomRequests = bookings.filter((b) => isStandaloneRoomBooking(b)).map(normalizeManageRequest);
-    state.groupRequests = groups.map(normalizeManageGroupRequest);
+    state.groupRequests = groups
+      .map(normalizeManageGroupRequest)
+      .filter((r) => r.isGroupStay !== false);
 
     state.roomStays = bookings
       .filter((b) => isStandaloneRoomBooking(b) && ['approved', 'cancelled'].includes(normStatus(b.status)))
@@ -756,6 +759,7 @@ async function loadAll({ background = false } = {}) {
       }));
 
     state.groupStays = groups
+      .filter((g) => g.is_group_stay !== 0 && g.is_group_stay !== false)
       .filter((g) => ['approved', 'cancelled'].includes(normStatus(g.status)))
       .map((g) => ({
         kind: 'group',

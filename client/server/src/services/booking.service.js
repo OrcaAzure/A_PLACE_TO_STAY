@@ -11,6 +11,11 @@ import {
 import { validateReservationDates } from './fiscalYear.service.js';
 import { DEFAULT_MEAL_RATES } from '../constants/ancillary.js';
 import { getMealRatesMap } from './ancillary.service.js';
+import {
+  fetchExtraServiceRows,
+  sanitizeGuestSubmittedFees,
+  resolveGuestLodgingExtraFees,
+} from './ancillary.service.js';
 import { resolveRateRoomType, formatRoomTypeLabel, DORM_MIN_GUEST_COUNT, SINGLE_DOUBLE_OCCUPANCY_ITEM, DAILY_MAXIMUM_ITEM, SINGLE_DOUBLE_MAX_GUESTS } from '../constants/rooms.js';
 import {
   DEFAULT_RATE_AGE_BAND,
@@ -267,6 +272,8 @@ export async function prepareBookingInsert({
   season,
   occupancyItem,
   bypassAdvanceLimit = false,
+  excludeBookingId = null,
+  excludeGroupId = null,
 }) {
   await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit });
 
@@ -282,7 +289,9 @@ export async function prepareBookingInsert({
   const capacityError = validateGuestCapacity(room, guestCount);
   if (capacityError) throw new Error(capacityError);
 
-  const overlap = await hasOverlappingBooking(roomId, checkIn, checkOut);
+  const overlap = await hasOverlappingBooking(
+    roomId, checkIn, checkOut, excludeBookingId, excludeGroupId
+  );
   if (overlap) throw new Error('This room is already reserved for the selected dates.');
 
   const rateRoomType = resolveRateRoomType(room);
@@ -337,11 +346,6 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
     || /\[Venue stay:/i.test(String(existing.notes || ''));
 
   const nextStatus = body.status ?? existing.status;
-  const skipOverlap = room.room_number === 'VENUE-STAY' || venueStay;
-  if (ACTIVE_STATUSES.includes(nextStatus) && !skipOverlap) {
-    const overlap = await hasOverlappingBooking(roomId, checkIn, checkOut, existing.id);
-    if (overlap) throw new Error('This room is already reserved for the selected dates.');
-  }
 
   let season = body.season ?? existing.season;
   let occupancyItem = body.occupancy_item ?? existing.occupancy_item;
@@ -351,6 +355,20 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
     || (body.check_out != null && body.check_out !== existing.check_out);
   const guestsChanged = body.guest_count != null && Number(body.guest_count) !== Number(existing.guest_count);
   const roomChanged = body.room_id != null && Number(body.room_id) !== Number(existing.room_id);
+  const statusOnlyApproval = nextStatus === 'Approved'
+    && existing.status === 'Pending'
+    && body.status === 'Approved'
+    && !datesChanged
+    && !guestsChanged
+    && !roomChanged;
+
+  const skipOverlap = room.room_number === 'VENUE-STAY' || venueStay || statusOnlyApproval;
+  if (ACTIVE_STATUSES.includes(nextStatus) && !skipOverlap) {
+    const overlap = await hasOverlappingBooking(
+      roomId, checkIn, checkOut, existing.id, existing.group_id ?? null
+    );
+    if (overlap) throw new Error('This room is already reserved for the selected dates.');
+  }
 
   if (!venueStay && (datesChanged || guestsChanged || roomChanged)) {
     const rateRoomType = resolveRateRoomType(room);
@@ -383,13 +401,93 @@ export async function validateBookingUpdate(existing, body, isAdmin) {
 
 export const MEAL_TYPES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 
+/** Stay nights as calendar dates (check-in through night before check-out). */
+export function mealDatesForStay(checkIn, checkOut) {
+  const nights = calcNights(checkIn, checkOut);
+  const dates = [];
+  for (let i = 0; i < nights; i += 1) {
+    dates.push(addDaysISO(checkIn, i));
+  }
+  return dates;
+}
+
+/**
+ * Normalize guest/admin meal payload to per-day rows.
+ * Supports: array [{ meal_type, meal_date, quantity }], { byDate: { 'YYYY-MM-DD': { Breakfast: 1 } } },
+ * or legacy flat { Breakfast: 2 } (same qty each stay night).
+ */
+export function normalizeMealsPayload(meals, checkIn, checkOut) {
+  if (!meals) return [];
+  if (Array.isArray(meals)) {
+    return meals
+      .filter((m) => m?.meal_type && m?.meal_date && Number(m.quantity) > 0)
+      .map((m) => ({
+        meal_type: m.meal_type,
+        meal_date: String(m.meal_date).slice(0, 10),
+        quantity: Number(m.quantity),
+      }));
+  }
+  if (meals.byDate && typeof meals.byDate === 'object') {
+    const rows = [];
+    for (const [date, dayMeals] of Object.entries(meals.byDate)) {
+      for (const [type, qtyRaw] of Object.entries(dayMeals || {})) {
+        const qty = Number(qtyRaw || 0);
+        if (qty > 0) {
+          rows.push({
+            meal_type: type,
+            meal_date: String(date).slice(0, 10),
+            quantity: qty,
+          });
+        }
+      }
+    }
+    return rows;
+  }
+  const dates = mealDatesForStay(checkIn, checkOut);
+  const rows = [];
+  for (const date of dates) {
+    for (const [type, qtyRaw] of Object.entries(meals)) {
+      if (type === 'byDate') continue;
+      const qty = Number(qtyRaw || 0);
+      if (qty > 0) {
+        rows.push({ meal_type: type, meal_date: date, quantity: qty });
+      }
+    }
+  }
+  return rows;
+}
+
+export function formatMealsBreakdown(rows = []) {
+  const payload = mealsPayloadFromRows(rows);
+  const byDate = payload.byDate || {};
+  return Object.entries(byDate)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, types]) => {
+      const items = Object.entries(types)
+        .filter(([, qty]) => Number(qty) > 0)
+        .map(([type, qty]) => `${type} × ${qty}`)
+        .join(', ');
+      return { date, summary: items };
+    })
+    .filter((row) => row.summary);
+}
+
 export async function getMealRates() {
   return getMealRatesMap();
 }
 
-export function calcMealsTotal(meals = {}, rates = DEFAULT_MEAL_RATES) {
+export function calcMealsTotal(meals = {}, rates = DEFAULT_MEAL_RATES, { checkIn, checkOut } = {}) {
+  if (checkIn && checkOut) {
+    const rows = normalizeMealsPayload(meals, checkIn, checkOut);
+    let total = 0;
+    for (const row of rows) {
+      total += (rates[row.meal_type] || 0) * row.quantity;
+    }
+    return Math.round(total * 100) / 100;
+  }
   let total = 0;
   for (const [type, qtyRaw] of Object.entries(meals || {})) {
+    if (type === 'byDate') continue;
     const qty = Number(qtyRaw || 0);
     if (qty > 0) total += (rates[type] || 0) * qty;
   }
@@ -417,9 +515,17 @@ export function mealUnitPriceMap(existingRows = []) {
 export function resolveMealUnitPricesForUpdate(meals = {}, catalogRates = {}, existingRows = []) {
   const stored = mealUnitPriceMap(existingRows);
   const prices = {};
-  for (const [type, qtyRaw] of Object.entries(meals || {})) {
-    const qty = Number(qtyRaw || 0);
-    if (qty <= 0) continue;
+  const types = new Set();
+  if (meals?.byDate) {
+    for (const dayMeals of Object.values(meals.byDate)) {
+      for (const type of Object.keys(dayMeals || {})) types.add(type);
+    }
+  } else {
+    for (const type of Object.keys(meals || {})) {
+      if (type !== 'byDate') types.add(type);
+    }
+  }
+  for (const type of types) {
     prices[type] = stored[type] != null ? stored[type] : (Number(catalogRates[type]) || 0);
   }
   return prices;
@@ -442,7 +548,15 @@ export function calcFeesTotal(fees = []) {
 export function mealsPayloadFromRows(rows = []) {
   const out = {};
   for (const row of rows || []) {
-    if (row.meal_type) out[row.meal_type] = Number(row.quantity) || 0;
+    if (!row.meal_type) continue;
+    const date = String(row.meal_date || '').slice(0, 10);
+    if (date) {
+      if (!out.byDate) out.byDate = {};
+      if (!out.byDate[date]) out.byDate[date] = {};
+      out.byDate[date][row.meal_type] = Number(row.quantity) || 0;
+    } else {
+      out[row.meal_type] = (out[row.meal_type] || 0) + (Number(row.quantity) || 0);
+    }
   }
   return out;
 }
@@ -473,13 +587,15 @@ export async function computeUpdatedBookingGrandTotal(existing, validated, { mea
     fees: feePayload,
     mealRates: rates,
     mealUnitPrices,
+    checkIn: validated.checkIn || existing.check_in,
+    checkOut: validated.checkOut || existing.check_out,
   });
 }
 
 export async function getBookingMeals(bookingId) {
   try {
     const [rows] = await pool.query(
-      'SELECT meal_type, quantity, unit_price, subtotal FROM bookings_meals WHERE bookings_room_id = ?',
+      'SELECT meal_type, meal_date, quantity, unit_price, subtotal FROM bookings_meals WHERE bookings_room_id = ? ORDER BY meal_date, meal_type',
       [bookingId]
     );
     return rows;
@@ -515,33 +631,66 @@ export async function saveBookingFees(bookingId, fees = []) {
   } catch { /* tables may not exist yet */ }
 }
 
-export async function saveBookingMeals(bookingId, meals = {}, rates = null, { existingRows = null, preserveExisting = false } = {}) {
+export async function saveBookingMeals(bookingId, meals = {}, rates = null, {
+  existingRows = null,
+  preserveExisting = false,
+  checkIn = null,
+  checkOut = null,
+} = {}) {
   const mealRates = rates || (await getMealRates());
   const storedPrices = preserveExisting
     ? mealUnitPriceMap(existingRows ?? await getBookingMeals(bookingId))
     : {};
+
+  let stayCheckIn = checkIn;
+  let stayCheckOut = checkOut;
+  if (!stayCheckIn || !stayCheckOut) {
+    const [bookingRows] = await pool.query(
+      'SELECT check_in, check_out FROM bookings_rooms WHERE id = ? LIMIT 1',
+      [bookingId]
+    );
+    stayCheckIn = stayCheckIn || bookingRows[0]?.check_in;
+    stayCheckOut = stayCheckOut || bookingRows[0]?.check_out;
+  }
+
+  const mealRows = normalizeMealsPayload(meals, stayCheckIn, stayCheckOut);
+
   try {
     await pool.query('DELETE FROM bookings_meals WHERE bookings_room_id = ?', [bookingId]);
-    for (const [type, qtyRaw] of Object.entries(meals || {})) {
-      const qty = Number(qtyRaw || 0);
-      if (qty <= 0) continue;
-      const unitPrice = preserveExisting && storedPrices[type] != null
-        ? storedPrices[type]
-        : (mealRates[type] || 0);
-      const subtotal = Math.round(unitPrice * qty * 100) / 100;
+    for (const row of mealRows) {
+      const unitPrice = preserveExisting && storedPrices[row.meal_type] != null
+        ? storedPrices[row.meal_type]
+        : (mealRates[row.meal_type] || 0);
+      const subtotal = Math.round(unitPrice * row.quantity * 100) / 100;
       await pool.query(
-        'INSERT INTO bookings_meals (bookings_room_id, meal_type, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?)',
-        [bookingId, type, qty, unitPrice, subtotal]
+        'INSERT INTO bookings_meals (bookings_room_id, meal_date, meal_type, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?, ?)',
+        [bookingId, row.meal_date, row.meal_type, row.quantity, unitPrice, subtotal]
       );
     }
   } catch { /* tables may not exist yet */ }
 }
 
-export async function computeGrandTotal({ roomTotal, meals, fees, mealRates = null, mealUnitPrices = null }) {
+export async function computeGrandTotal({
+  roomTotal, meals, fees, mealRates = null, mealUnitPrices = null, checkIn, checkOut,
+}) {
   const rates = mealRates || (await getMealRates());
-  const mealsTotal = mealUnitPrices
-    ? calcMealsTotalWithUnitPrices(meals, mealUnitPrices)
-    : calcMealsTotal(meals, rates);
+  let mealsTotal;
+  if (mealUnitPrices) {
+    const rows = checkIn && checkOut
+      ? normalizeMealsPayload(meals, checkIn, checkOut)
+      : [];
+    if (rows.length) {
+      mealsTotal = rows.reduce(
+        (sum, row) => sum + (Number(mealUnitPrices[row.meal_type]) || 0) * row.quantity,
+        0
+      );
+      mealsTotal = Math.round(mealsTotal * 100) / 100;
+    } else {
+      mealsTotal = calcMealsTotalWithUnitPrices(meals, mealUnitPrices);
+    }
+  } else {
+    mealsTotal = calcMealsTotal(meals, rates, { checkIn, checkOut });
+  }
   return Math.round((Number(roomTotal || 0) + mealsTotal + calcFeesTotal(fees)) * 100) / 100;
 }
 
@@ -809,4 +958,74 @@ export async function notifyGuestRoomSelfModified({ previous, current, wasApprov
       previousCheckOut: previous?.check_out,
     });
   })();
+}
+
+/** Itemized stay quote — shared by guest wizard, admin detail, and billing. */
+export async function getStayQuote({
+  roomId,
+  checkIn,
+  checkOut,
+  guestCount = 1,
+  meals,
+  fees,
+  bypassAdvanceLimit = false,
+}) {
+  const estimate = await getRoomStayEstimate({
+    roomId,
+    checkIn,
+    checkOut,
+    guestCount,
+    bypassAdvanceLimit,
+  });
+
+  const mealRates = await getMealRates();
+  const catalogRows = await fetchExtraServiceRows();
+  let feesToSave = fees || [];
+  if (feesToSave.length) {
+    const sanitized = sanitizeGuestSubmittedFees(feesToSave, catalogRows, []);
+    feesToSave = await resolveGuestLodgingExtraFees(sanitized, { checkIn, checkOut });
+  }
+
+  const mealsTotal = calcMealsTotal(meals, mealRates, { checkIn, checkOut });
+  const feesTotal = calcFeesTotal(feesToSave);
+  const roomTotal = Number(estimate.estimated_total || 0);
+  const grandTotal = Math.round((roomTotal + mealsTotal + feesTotal) * 100) / 100;
+
+  const mealRows = normalizeMealsPayload(meals, checkIn, checkOut);
+  const mealLines = mealRows.map((row) => ({
+    label: `${row.meal_type} (${row.meal_date})`,
+    quantity: row.quantity,
+    unit_price: mealRates[row.meal_type] || 0,
+    subtotal: Math.round((mealRates[row.meal_type] || 0) * row.quantity * 100) / 100,
+  }));
+
+  const feeLines = (feesToSave || []).map((f) => ({
+    label: f.fee_name || f.service_name || 'Extra',
+    amount: Number(f.amount || 0),
+  }));
+
+  return {
+    room: {
+      label: `Room × ${estimate.nights} night${estimate.nights === 1 ? '' : 's'}`,
+      nights: estimate.nights,
+      subtotal: roomTotal,
+      occupancy_item: estimate.occupancy_item,
+      season: estimate.season,
+    },
+    meals: mealLines,
+    fees: feeLines,
+    meals_total: mealsTotal,
+    fees_total: feesTotal,
+    room_total: roomTotal,
+    grand_total: grandTotal,
+    meals_breakdown: formatMealsBreakdown(
+      mealRows.map((row) => ({
+        meal_type: row.meal_type,
+        meal_date: row.meal_date,
+        quantity: row.quantity,
+        unit_price: mealRates[row.meal_type] || 0,
+        subtotal: Math.round((mealRates[row.meal_type] || 0) * row.quantity * 100) / 100,
+      }))
+    ),
+  };
 }
