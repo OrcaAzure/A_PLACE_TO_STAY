@@ -246,18 +246,19 @@ body.lp-shell::-webkit-scrollbar {
     grid-template-columns: minmax(0, 1fr);
     gap: 2rem;
     width: min(100%, 42rem);
-    margin-inline: auto;
+    margin-inline: 0 auto;
     align-items: center;
-    justify-items: center;
+    justify-items: start;
   }
 
   .lp-hero-copy-col {
-    justify-self: center;
+    justify-self: start;
     width: 100%;
     max-width: 38rem;
     min-width: 0;
     overflow-wrap: break-word;
     padding-right: 0;
+    text-align: left;
   }
 
   .lp-hero-type-line {
@@ -274,6 +275,7 @@ body.lp-shell::-webkit-scrollbar {
 
   .lp-hero.lp-hero--comfort > .lp-hero-content {
     justify-content: center;
+    align-items: flex-start;
     padding-top: max(calc(4.25rem + 1rem), calc(4.25rem + env(safe-area-inset-top, 0px)));
     padding-bottom: clamp(3.5rem, 6vh, 5rem);
   }

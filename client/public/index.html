@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.cdnfonts.com/css/rillosta-133416" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="/assets/css/global/landing.css?v=scrollqa3"/>
+  <link rel="stylesheet" href="/assets/css/global/landing.css?v=heroleft1"/>
   <link rel="stylesheet" href="/assets/css/global/landing-preloader.css"/>
   <script type="module" src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" data-apt-dotlottie></script>
   <style>
@@ -33,6 +33,23 @@
       vertical-align: middle;
     }
   </style>
+  <!-- Inline failsafe: if landing-boot.js never runs (blocked CDN/module), still reveal the page -->
+  <script>
+    (function () {
+      var FAILSAFE_MS = 6000;
+      window.setTimeout(function () {
+        if (document.body.classList.contains('lp-ready')) return;
+        document.body.classList.remove('lp-preloader-active', 'lp-page-hidden', 'lp-welcome-active');
+        document.body.classList.add('lp-ready');
+        var pre = document.getElementById('lp-preloader');
+        if (pre) pre.remove();
+        var wel = document.getElementById('lp-welcome');
+        if (wel) wel.remove();
+        var idle = document.getElementById('apt-landing-idle');
+        if (idle) idle.remove();
+      }, FAILSAFE_MS);
+    })();
+  </script>
 </head>
 <body class="lp-shell bg-background text-on-surface font-body-md overflow-x-hidden lp-preloader-active lp-page-hidden">
 
@@ -160,7 +177,13 @@
 
 </div><!-- /#lp-page -->
 
-<script type="module" src="/assets/js/layout/landing-boot.js"></script>
+  <script type="module" src="/assets/js/layout/landing-boot.js"></script>
+  <script nomodule>
+    document.body.classList.remove('lp-preloader-active', 'lp-page-hidden', 'lp-welcome-active');
+    document.body.classList.add('lp-ready');
+    var pre = document.getElementById('lp-preloader');
+    if (pre) pre.remove();
+  </script>
 
 </body>
 </html>

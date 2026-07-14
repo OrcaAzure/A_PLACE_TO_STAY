@@ -446,14 +446,6 @@ export async function getRoomStayEstimate(params = {}) {
   return apiRequest(`/bookings/room-estimate?${qs.toString()}`);
 }
 
-export async function getStayQuote(payload) {
-  const data = await apiRequest('/bookings/stay-quote', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  return data.quote;
-}
-
 export async function getGroups() {
   const data = await apiRequest('/groups');
   return data.groups || [];
