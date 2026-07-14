@@ -956,10 +956,13 @@ export function closeDrawer() {
 }
 
 export function openModal(title, bodyHtml, options = {}) {
-  const { subtitle = '' } = options;
+  const { subtitle = '', size = 'md', hideHeader = false } = options;
   const subtitleEl = document.getElementById('modalSubtitle');
   const titleEl = document.getElementById('modalTitle');
   const bodyEl = document.getElementById('modalBody');
+  const headerEl = document.getElementById('modal-header')
+    || document.querySelector('#app-modal > div > .border-b')
+    || document.querySelector('#app-modal > div > div:first-child');
   if (!titleEl || !bodyEl) return;
   titleEl.textContent = title;
   bodyEl.innerHTML = bodyHtml;
@@ -972,17 +975,37 @@ export function openModal(title, bodyHtml, options = {}) {
       subtitleEl.classList.add('hidden');
     }
   }
+  headerEl?.classList.toggle('hidden', Boolean(hideHeader));
+  bodyEl.classList.toggle('modal-body--flush', Boolean(hideHeader));
+  const shell = document.querySelector('#app-modal > div');
+  if (shell) {
+    shell.classList.remove('max-w-sm', 'max-w-md', 'max-w-lg', 'max-w-xl', 'max-w-2xl', 'max-w-3xl', 'max-w-4xl');
+    const widthClass = size === 'sm'
+      ? 'max-w-md'
+      : size === 'lg' || size === 'tablet'
+        ? 'max-w-3xl'
+        : 'max-w-2xl';
+    shell.classList.add(widthClass);
+  }
   document.getElementById('app-modal')?.classList.remove('hidden');
   document.getElementById('modal-overlay')?.classList.remove('hidden');
   updateBodyScrollLock();
-  document.getElementById('modal-close')?.focus();
-  const shell = document.querySelector('#app-modal > div');
+  if (!hideHeader) document.getElementById('modal-close')?.focus();
+  else bodyEl.querySelector('[data-detail-close]')?.focus();
   animateModalOpen(shell).catch(() => {});
 }
 
 export function closeModal() {
   document.getElementById('app-modal')?.classList.add('hidden');
   document.getElementById('modal-overlay')?.classList.add('hidden');
+  document.getElementById('modal-header')?.classList.remove('hidden');
+  document.querySelector('#app-modal > div > .border-b')?.classList.remove('hidden');
+  document.getElementById('modalBody')?.classList.remove('modal-body--flush');
+  const shell = document.querySelector('#app-modal > div');
+  if (shell) {
+    shell.classList.remove('max-w-sm', 'max-w-md', 'max-w-lg', 'max-w-xl', 'max-w-3xl', 'max-w-4xl');
+    if (!shell.classList.contains('max-w-2xl')) shell.classList.add('max-w-2xl');
+  }
   updateBodyScrollLock();
 }
 
