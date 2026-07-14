@@ -105,6 +105,7 @@ App HTML lives in `client/server/views/`; CSS/JS live under `client/public/asset
 | GET | `/api/notifications` | In-app notification feed (admin + guest) |
 | GET/PATCH | `/api/settings/fiscal-year` | Fiscal year config |
 | GET/POST/PATCH/DELETE | `/api/bookings` | Room reservations |
+| POST | `/api/bookings/stay-quote` | Itemized stay total (nights, meals, extras) |
 | GET/POST/PATCH/DELETE | `/api/groups` | Group reservations |
 | GET/POST/PATCH/DELETE | `/api/facility-bookings` | Venue bookings |
 | GET/POST/PATCH/DELETE | `/api/rooms` | Room inventory |
@@ -115,22 +116,22 @@ App HTML lives in `client/server/views/`; CSS/JS live under `client/public/asset
 
 Bookings auto-calculate price, season, and check room availability.
 
-## Project status (~92% complete)
+## Project status (~94% complete)
 
 | Area | Done | Notes |
 |------|------|-------|
-| Admin portal | ~91% | Dashboard, reservations, venue booking wizard (edit/modify), billing, in-app notifications |
-| Guest portal | ~93% | Redesigned browse, room/venue detail views, book/modify/cancel, notification prefs, live bell feed |
-| Backend API | ~89% | Core flows done; room/venue rates and seasonal periods in Settings |
-| Auth & email | ~93% | 12 automated email templates; guest email prefs; needs production SMTP to deliver |
-| Dev tooling | ~90% | Setup, Docker, GitHub Actions CI, health check, `npm test` (65/65 passing) |
+| Admin portal | ~94% | Dashboard, reservations hub, venue wizard (edit/modify/approve), billing, calendar, in-app notifications |
+| Guest portal | ~95% | Browse + detail views, multi-room booking requests, stay summary / View details, prefs, live bell feed |
+| Backend API | ~93% | Core flows done; stay-quote pricing, per-day meals, booking refs, seasonal rates in Settings |
+| Auth & email | ~94% | 13 automated email templates (incl. venue request received); guest email prefs; needs production SMTP |
+| Dev tooling | ~92% | Setup, Docker, GitHub Actions CI, domain seed migrations, health check, `npm test` (69/69 passing) |
 | Deployment / ops | ~65% | Docs and configs ready; staging/prod not validated with IT yet |
 
-**Product overall ~92% · production-ready ~79%** (blocked mainly on IT: DB, SSL, SMTP, staging smoke test).
+**Product overall ~94% · production-ready ~80%** (blocked mainly on IT: DB, SSL, SMTP, staging smoke test).
 
 **Still in progress:** IT staging deploy and production SMTP validation.
 
-**Recently shipped:** guest room/facility browse redesign, guest room and venue detail views, billing reservation confirm dialog with field-level change summaries, in-app notification feed (admin + guest bell), guest email notification preferences, admin venue modify/edit via booking wizard (pending + approved), landing shared partials, silent background polling.
+**Recently shipped:** Jul 2026 bug-fix pass (duplicate reservations, per-day meals, stay-quote fee breakdown, Prayer Mountain 4-hr package, guest stay summary sheet, billing/dashboard polish); domain seed migrations under `client/server/src/seed/migrations/`; guest browse redesign and detail views; in-app notification feed; admin venue modify/edit via booking wizard.
 
 ## Automated tests
 
@@ -142,7 +143,7 @@ npm run test:unit        # middleware permission guards only (no database)
 
 Integration tests use `client/server/.env` and seeded users (`admin@aptspace.com`, `maria.santos@apts.edu.ph` / `password`). They are skipped automatically when MySQL is unavailable.
 
-**Not covered yet:** booking create/update flows, guest-access workflow, guest self-modify emails.
+**Not covered yet:** full booking create/update CRUD assertions, guest-access end-to-end workflow, guest self-modify email delivery.
 
 ## Automated emails
 
@@ -158,6 +159,7 @@ Reservation-related emails (approvals, declines, modifications, invoices, receip
 | Room / group / venue declined | Admin declines a pending request |
 | Room / group modified (admin) | Admin modifies with message |
 | Guest self-modify (room / group / venue) | Guest updates pending or re-requests approved booking |
+| Venue booking request received | Guest submits a pending venue request |
 | Housing / venue invoice | Booking approved or admin sends from Billing |
 | Payment receipt | Admin records payment |
 | Support message | Guest submits support form (to `SUPPORT_EMAIL`) |
