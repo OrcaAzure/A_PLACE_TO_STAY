@@ -241,10 +241,36 @@ export function resolveExtraHourRate(facility, baseRate, minHours) {
 }
 
 /**
+ * Hourly venue that also enforces a booking floor via min_hours
+ * (e.g. Prayer Mountain: ₱6,000/hr with a 4-hour minimum).
+ *
+ * Package venues (GMC Chapel / Burdine): min_hours set, hourly_rate NULL
+ * (or an overflow rate ≈ rate / min_hours).
+ * Hourly-floor venues: hourly_rate set near the catalog season rate.
+ */
+export function isHourlyMinimumVenue(facility) {
+  const minHours = resolveMinHours(facility);
+  if (!minHours) return false;
+  const rate = Number(facility?.rate);
+  const hourly = Number(facility?.hourly_rate);
+  if (!(Number.isFinite(hourly) && hourly > 0) || !(Number.isFinite(rate) && rate > 0)) {
+    return false;
+  }
+  const impliedPackageHourly = rate / minHours;
+  // Configured overflow for a flat package block — keep package billing.
+  if (Math.abs(hourly - impliedPackageHourly) / impliedPackageHourly < 0.15) {
+    return false;
+  }
+  // hourly_rate sits near the season catalog rate (Peak/Regular may differ slightly).
+  return Math.abs(hourly - rate) / rate < 0.25;
+}
+
+/**
  * Total venue price.
- * - Minimum-block venues (min_hours set): base rate covers the minimum block,
+ * - Hourly + minimum (rate === hourly_rate): base rate × hours (floor enforced by validateVenueDuration).
+ * - Minimum-block / package (min_hours set): base rate covers the minimum block,
  *   each extra hour is charged at the overflow rate.
- * - Hourly venues: base rate × hours (at least one hour).
+ * - Pure hourly venues: base rate × hours (at least one hour).
  */
 export function computeVenueTotal(facility, startTime, endTime) {
   const rate = Number(facility?.rate);
@@ -252,6 +278,9 @@ export function computeVenueTotal(facility, startTime, endTime) {
   const minHours = resolveMinHours(facility);
   const round = (n) => Math.round(n * 100) / 100;
 
+  if (minHours && isHourlyMinimumVenue(facility)) {
+    return round(rate * Math.max(hours, 1));
+  }
   if (minHours) {
     if (hours <= minHours) return round(rate);
     const perHour = resolveExtraHourRate(facility, rate, minHours);
@@ -290,6 +319,15 @@ export function venueRateMeta(facility) {
   const rate = Number(facility?.rate);
   const minHours = resolveMinHours(facility);
   const fmt = (n) => Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
+  if (minHours && isHourlyMinimumVenue(facility)) {
+    return {
+      min_hours: minHours,
+      package_hours: null,
+      hourly_rate: rate,
+      rate_type: 'hourly_minimum',
+      rate_label: `₱${fmt(rate)} / hour · ${minHours}-hr minimum`,
+    };
+  }
   if (minHours) {
     const perHour = resolveExtraHourRate(facility, rate, minHours);
     return {
