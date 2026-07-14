@@ -2206,25 +2206,26 @@ body.guest-wizard-open #venue-wizard-modal:not(.hidden) .res-modal {
   box-shadow: 0 12px 28px rgba(26, 54, 93, 0.08);
 }
 
-.wiz-room-option.is-selected,
-.wiz-group-room-card.is-selected {
-  border-color: #1a365d;
-  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.1);
-  background: #f8fafc;
-}
-
 .wiz-room-option.is-disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
 
-.wiz-room-option.is-dorm-min {
+.wiz-room-option.is-dorm-min:not(.is-selected) {
   border-color: #fcd34d;
   background: #fffbeb;
 }
 
-.wiz-room-option.is-recommended {
+/* Suggested rooms must not override the selected ring */
+.wiz-room-option.is-recommended:not(.is-selected) {
   border-color: #90cdf4;
+}
+
+.wiz-room-option.is-selected,
+.wiz-group-room-card.is-selected {
+  border-color: #1a365d;
+  box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.22);
+  background: #eff6ff;
 }
 
 .wiz-room-option__media {
@@ -2271,6 +2272,12 @@ body.guest-wizard-open #venue-wizard-modal:not(.hidden) .res-modal {
   letter-spacing: 0.03em;
   background: #1a365d;
   color: #fff;
+}
+
+.wiz-room-option__badge--selected {
+  right: 0.625rem;
+  left: auto;
+  background: #15803d;
 }
 
 .wiz-room-option__badge--alt {

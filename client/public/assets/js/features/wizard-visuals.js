@@ -180,11 +180,15 @@ function restoreFilterPanel(panel) {
   panel.classList.add('hidden');
   panel.classList.remove('wiz-room-type-filter-panel--portal');
   resetFilterPanelStyle(panel);
-  if (home && panel.parentElement !== home) home.appendChild(panel);
+  if (home && panel.parentElement !== home) {
+    home.appendChild(panel);
+  } else if (!home && panel.parentElement === document.body) {
+    panel.remove();
+  }
   delete panel.dataset.filterHome;
 }
 
-function closeAllWizardRoomTypePanels() {
+export function closeAllWizardRoomTypePanels() {
   document.querySelectorAll('.wiz-room-type-filter-panel--portal').forEach(restoreFilterPanel);
   document.querySelectorAll('.wiz-room-type-filter .fac-filter-panel').forEach((panel) => {
     if (!panel.classList.contains('hidden')) restoreFilterPanel(panel);
@@ -315,11 +319,12 @@ export function renderWizardRoomCard(room, {
   ].filter(Boolean).join(' ');
 
   return `
-    <button type="button" class="${classes} wiz-room-card--grid" data-room-id="${room.id}" ${visible ? '' : 'disabled tabindex="-1"'}>
+    <button type="button" class="${classes} wiz-room-card--grid" data-room-id="${room.id}" aria-pressed="${selected ? 'true' : 'false'}" ${visible ? '' : 'disabled tabindex="-1"'}>
       <div class="wiz-room-option__media">
         <img src="${escapeHtml(img)}" alt="" loading="lazy" />
-        ${topPick ? '<span class="wiz-room-option__badge">Top pick</span>' : ''}
-        ${recommended && !topPick ? '<span class="wiz-room-option__badge wiz-room-option__badge--alt">Suggested</span>' : ''}
+        ${selected ? '<span class="wiz-room-option__badge wiz-room-option__badge--selected">Selected</span>' : ''}
+        ${!selected && topPick ? '<span class="wiz-room-option__badge">Top pick</span>' : ''}
+        ${!selected && recommended && !topPick ? '<span class="wiz-room-option__badge wiz-room-option__badge--alt">Suggested</span>' : ''}
       </div>
       <div class="wiz-room-option__content">
         <div class="wiz-room-option__body">
