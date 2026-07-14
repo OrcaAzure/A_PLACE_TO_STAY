@@ -10,7 +10,7 @@ getFiscalYear, getSupportContact,
 } from '/assets/js/services/api.js';
 import {
 canGuestCancelRoomBooking, canGuestCancelVenueBooking, canGuestModifyRoomBooking, canGuestModifyVenueBooking,
-lifecyclePhaseForBooking, venuePhaseLabel, normStatus, isStandaloneRoomBooking, formatMealsBreakdownDisplay, formatMoney,
+lifecyclePhaseForBooking, venuePhaseLabel, normStatus, isStandaloneRoomBooking, formatMoney,
 } from '/assets/js/features/reservation-shared.js';
 import {
   parseBookQuery, priceNoticeHtml, hasCompleteBookIntent,
@@ -125,12 +125,12 @@ export async function bootstrapGuestMyStaysPage() {
       const isGroup = feat.kind === 'group';
   
       wrap.className = silent
-        ? 'relative overflow-hidden bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg p-6'
-        : 'relative overflow-hidden bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg p-6 reveal';
+        ? 'relative overflow-hidden bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg p-5'
+        : 'relative overflow-hidden bg-gradient-to-br from-primary to-primary-container text-white rounded-2xl shadow-lg p-5 reveal';
       wrap.innerHTML = `
         <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/10 rounded-full blur-2xl${silent ? '' : ' float-blob'}"></div>
         <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
+          <div class="min-w-0">
             <div class="flex items-center gap-2 mb-2">
               <span class="w-2 h-2 rounded-full bg-emerald-300${silent ? '' : ' live-dot'}"></span>
               <span class="text-[11px] font-bold uppercase tracking-widest text-white/80">${isActive ? 'Active stay' : 'Approved & upcoming'}${isGroup ? ' · Group' : ''}</span>
@@ -140,7 +140,7 @@ export async function bootstrapGuestMyStaysPage() {
               <span class="material-symbols-outlined text-[18px]">calendar_month</span>${fmtDate(feat.startDate)} \u2192 ${fmtDate(feat.endDate)}
             </p>
           </div>
-          <div class="text-right shrink-0">
+          <div class="text-left sm:text-right shrink-0">
             <p class="text-label-sm text-white/70">${startInfo}</p>
             <p class="text-white font-bold text-headline-lg mt-1">${feat.guestCount || 1}</p>
             <p class="text-[11px] uppercase tracking-wider text-white/70">Guest(s)</p>
@@ -173,37 +173,33 @@ export async function bootstrapGuestMyStaysPage() {
       const revealCls = silent ? '' : ' reveal';
       const revealDelay = silent ? '' : ` style="animation-delay:${0.05 * index}s"`;
       return `
-        <div class="group bg-white p-5 rounded-2xl border border-outline-variant hover:border-primary/40 hover:shadow-lg lift${revealCls}"${revealDelay} data-booking-id="${b.id}" data-kind="${b.kind || 'single'}">
-          <div class="flex flex-col sm:flex-row gap-6">
-            <div class="flex-1">
-              <div class="flex justify-between items-start mb-2">
-                <div>
-                  <h4 class="font-headline-sm text-headline-sm flex items-center flex-wrap gap-1">${typeBadge}${lifecycleBadge}</h4>
-                  <p class="text-body-sm font-medium text-on-surface mt-1">${escapeHtml(b.facilityLabel || b.title || 'Stay')}</p>
-                </div>
-                <span class="${statusBadge(b.status)} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">${b.status}</span>
-              </div>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                <div>
-                  <p class="text-[11px] font-bold text-on-surface-variant uppercase">Check-in</p>
-                  <p class="text-body-sm font-medium">${fmtDate(b.startDate)}</p>
-                </div>
-                <div>
-                  <p class="text-[11px] font-bold text-on-surface-variant uppercase">Check-out</p>
-                  <p class="text-body-sm font-medium">${fmtDate(b.endDate)}</p>
-                </div>
-                <div>
-                  <p class="text-[11px] font-bold text-on-surface-variant uppercase">Guests</p>
-                  <p class="text-body-sm font-medium">${b.guestCount || 1}</p>
-                </div>
-                ${amount ? `<div><p class="text-[11px] font-bold text-on-surface-variant uppercase">${amountLabel}</p><p class="text-body-sm font-medium">${amount}</p></div>` : ''}
-              </div>
+        <div class="guest-stay-card group bg-surface-container-low/40 p-4 rounded-xl border border-outline-variant hover:border-primary/40 hover:bg-white hover:shadow-md lift${revealCls}"${revealDelay} data-booking-id="${b.id}" data-kind="${b.kind || 'single'}">
+          <div class="flex justify-between items-start gap-3 mb-3">
+            <div class="min-w-0">
+              <div class="flex items-center flex-wrap gap-1 mb-1">${typeBadge}${lifecycleBadge}</div>
+              <p class="text-body-sm font-semibold text-on-surface">${escapeHtml(b.facilityLabel || b.title || 'Stay')}</p>
             </div>
+            <span class="${statusBadge(b.status)} px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0">${b.status}</span>
           </div>
-          <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
-            <button type="button" class="view-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">View details</button>
-            ${canModify ? `<button type="button" class="modify-booking-btn px-4 py-2 text-label-md font-label-md text-primary hover:bg-primary/10 rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">Modify</button>` : ''}
-            ${canCancel ? `<button type="button" class="cancel-booking-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">${b.status === 'pending' ? 'Cancel request' : 'Cancel reservation'}</button>` : ''}
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <p class="text-[11px] font-bold text-on-surface-variant uppercase">Check-in</p>
+              <p class="text-body-sm font-medium">${fmtDate(b.startDate)}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-bold text-on-surface-variant uppercase">Check-out</p>
+              <p class="text-body-sm font-medium">${fmtDate(b.endDate)}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-bold text-on-surface-variant uppercase">Guests</p>
+              <p class="text-body-sm font-medium">${b.guestCount || 1}</p>
+            </div>
+            ${amount ? `<div><p class="text-[11px] font-bold text-on-surface-variant uppercase">${amountLabel}</p><p class="text-body-sm font-medium">${amount}</p></div>` : ''}
+          </div>
+          <div class="flex justify-end flex-wrap gap-2 mt-3 pt-3 border-t border-outline-variant/60">
+            <button type="button" class="view-booking-btn px-3 py-1.5 text-label-md font-label-md font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">View details</button>
+            ${canModify ? `<button type="button" class="modify-booking-btn px-3 py-1.5 text-label-md font-label-md text-primary hover:bg-primary/10 rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">Modify</button>` : ''}
+            ${canCancel ? `<button type="button" class="cancel-booking-btn px-3 py-1.5 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-id="${b.id}" data-kind="${b.kind || 'single'}">${b.status === 'pending' ? 'Cancel request' : 'Cancel reservation'}</button>` : ''}
           </div>
         </div>`;
     }
@@ -294,29 +290,187 @@ export async function bootstrapGuestMyStaysPage() {
       list.innerHTML = bookings.map((b, i) => renderCard(b, i, { silent })).join('');
     }
   
+    function guestStatusCopy(status) {
+      const s = normStatus(status);
+      if (s === 'approved') return { label: 'Confirmed', hint: 'Housing has approved this stay.' };
+      if (s === 'pending') return { label: 'Awaiting approval', hint: 'Housing is still reviewing your request.' };
+      if (s === 'cancelled') return { label: 'Cancelled', hint: 'This stay is no longer active.' };
+      if (s === 'rejected') return { label: 'Not approved', hint: 'This request was declined.' };
+      return { label: status || 'Unknown', hint: '' };
+    }
+
+    function stayNightCount(startDate, endDate) {
+      const a = new Date(`${String(startDate).slice(0, 10)}T12:00:00`);
+      const b = new Date(`${String(endDate).slice(0, 10)}T12:00:00`);
+      if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) return 0;
+      return Math.max(0, Math.round((b - a) / 86400000));
+    }
+
+    function fmtStayDay(d) {
+      if (!d) return '—';
+      const raw = String(d).slice(0, 10);
+      const dt = new Date(`${raw}T12:00:00`);
+      if (Number.isNaN(dt.getTime())) return raw;
+      return dt.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    }
+
+    function mealPlanSections(meals = []) {
+      const byDate = {};
+      for (const row of meals || []) {
+        const type = row?.meal_type;
+        const qty = Number(row?.quantity) || 0;
+        const date = String(row?.meal_date || '').slice(0, 10);
+        if (!type || qty <= 0 || !date) continue;
+        if (!byDate[date]) byDate[date] = [];
+        byDate[date].push({ type, qty });
+      }
+      return Object.entries(byDate)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([date, items]) => ({ date, items }));
+    }
+
     function openBookingDetail(booking) {
       const raw = booking.raw || booking;
       const meals = raw.meals || [];
       const fees = raw.fees || [];
-      const mealLines = formatMealsBreakdownDisplay(meals.length ? meals : raw.meals);
-      const feeLines = (fees || []).map((f) => `${f.fee_name || f.service_name}: ${formatMoney(f.amount)}`);
-      const rooms = booking.kind === 'group' && raw.bookings?.length
-        ? raw.bookings.map((r) => `${r.building_name || ''} ${r.room_number || ''} (${r.guest_count} guest(s))`.trim()).join('<br>')
-        : (booking.facilityLabel || booking.title || '—');
+      const mealSections = mealPlanSections(meals);
+      const status = guestStatusCopy(booking.status);
+      const nights = stayNightCount(booking.startDate, booking.endDate);
+      const guests = booking.guestCount || 1;
+      const roomTitle = booking.kind === 'group'
+        ? (booking.title || 'Group stay')
+        : (booking.facilityLabel || booking.title || 'Your room');
+      const roomList = booking.kind === 'group' && raw.bookings?.length
+        ? raw.bookings.map((r) => ({
+          label: `${r.building_name || ''} Room ${r.room_number || ''}`.trim() || 'Room',
+          guests: r.guest_count || 1,
+        }))
+        : null;
+      const isPending = normStatus(booking.status) === 'pending';
+      const totalLabel = isPending ? 'Estimated total' : 'Stay total';
+
+      const statusIcon = normStatus(booking.status) === 'approved'
+        ? 'check_circle'
+        : normStatus(booking.status) === 'pending'
+          ? 'schedule'
+          : 'info';
+      const mealIcon = (type) => {
+        const t = String(type || '').toLowerCase();
+        if (t.includes('breakfast')) return 'free_breakfast';
+        if (t.includes('lunch')) return 'lunch_dining';
+        if (t.includes('dinner')) return 'dinner_dining';
+        if (t.includes('snack')) return 'cookie';
+        return 'restaurant';
+      };
+
       const body = `
-        <div class="space-y-4 text-body-sm">
-          <p><strong>Status:</strong> ${booking.status}</p>
-          <p><strong>Dates:</strong> ${fmtDate(booking.startDate)} → ${fmtDate(booking.endDate)}</p>
-          <p><strong>Room(s):</strong><br>${rooms}</p>
-          ${mealLines.length ? `<p><strong>Meals:</strong><br>${mealLines.join('<br>')}</p>` : ''}
-          ${feeLines.length ? `<p><strong>Extras:</strong><br>${feeLines.join('<br>')}</p>` : ''}
-          ${booking.totalAmount != null ? `<p><strong>Total:</strong> ${formatMoney(booking.totalAmount)}</p>` : ''}
-          <div class="flex justify-end pt-4">
-            <button type="button" class="px-4 py-2 rounded-lg border border-outline-variant" data-detail-close>Close</button>
+        <div class="gsd">
+          <div class="gsd-accent" aria-hidden="true"></div>
+          <div class="gsd-top">
+            <div class="gsd-hero">
+              <span class="gsd-status ${statusBadge(booking.status)}">
+                <span class="material-symbols-outlined gsd-status__icon">${statusIcon}</span>
+                ${escapeHtml(status.label)}
+              </span>
+              <h4 class="gsd-title">${escapeHtml(roomTitle)}</h4>
+              ${status.hint ? `<p class="gsd-hint">${escapeHtml(status.hint)}</p>` : ''}
+            </div>
+            <button type="button" class="gsd-x" data-detail-close aria-label="Close">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+
+          <div class="gsd-when">
+            <div class="gsd-when__cell">
+              <span class="gsd-when__label">Check-in</span>
+              <strong>${fmtStayDay(booking.startDate)}</strong>
+            </div>
+            <div class="gsd-when__divider" aria-hidden="true">
+              <span class="material-symbols-outlined">nights_stay</span>
+              ${nights ? `<span>${nights} night${nights === 1 ? '' : 's'}</span>` : ''}
+            </div>
+            <div class="gsd-when__cell gsd-when__cell--end">
+              <span class="gsd-when__label">Check-out</span>
+              <strong>${fmtStayDay(booking.endDate)}</strong>
+            </div>
+          </div>
+
+          <div class="gsd-pills">
+            <span class="gsd-pill">
+              <span class="material-symbols-outlined">group</span>
+              ${guests} guest${guests === 1 ? '' : 's'}
+            </span>
+            ${booking.kind === 'group' ? `
+            <span class="gsd-pill">
+              <span class="material-symbols-outlined">meeting_room</span>
+              Group stay
+            </span>` : ''}
+            ${nights ? `
+            <span class="gsd-pill">
+              <span class="material-symbols-outlined">calendar_month</span>
+              ${nights} night${nights === 1 ? '' : 's'}
+            </span>` : ''}
+          </div>
+
+          ${roomList ? `
+          <section class="gsd-section">
+            <h5 class="gsd-section__title"><span class="material-symbols-outlined">bed</span> Rooms</h5>
+            <ul class="gsd-rooms">
+              ${roomList.map((r) => `
+                <li>
+                  <span>${escapeHtml(r.label)}</span>
+                  <span>${r.guests} guest${r.guests === 1 ? '' : 's'}</span>
+                </li>`).join('')}
+            </ul>
+          </section>` : ''}
+
+          ${mealSections.length ? `
+          <section class="gsd-section">
+            <h5 class="gsd-section__title"><span class="material-symbols-outlined">restaurant</span> Meals included</h5>
+            <div class="gsd-meals">
+              ${mealSections.map(({ date, items }) => `
+                <div class="gsd-meal-day">
+                  <p class="gsd-meal-day__date">${fmtStayDay(date)}</p>
+                  <div class="gsd-meal-chips">
+                    ${items.map((m) => `
+                      <span class="gsd-chip">
+                        <span class="material-symbols-outlined">${mealIcon(m.type)}</span>
+                        ${escapeHtml(m.type)} · ${m.qty}
+                      </span>`).join('')}
+                  </div>
+                </div>`).join('')}
+            </div>
+          </section>` : ''}
+
+          ${fees.length ? `
+          <section class="gsd-section">
+            <h5 class="gsd-section__title"><span class="material-symbols-outlined">add_circle</span> Add-ons</h5>
+            <ul class="gsd-fees">
+              ${fees.map((f) => `
+                <li>
+                  <span>${escapeHtml(f.fee_name || f.service_name || 'Add-on')}</span>
+                  <span>${formatMoney(f.amount)}</span>
+                </li>`).join('')}
+            </ul>
+          </section>` : ''}
+
+          <div class="gsd-foot">
+            ${booking.totalAmount != null ? `
+            <div class="gsd-total">
+              <div class="gsd-total__copy">
+                <span class="gsd-total__label">${totalLabel}</span>
+                ${isPending ? '<span class="gsd-total__note">May change after approval</span>' : '<span class="gsd-total__note">Includes room, meals &amp; add-ons</span>'}
+              </div>
+              <strong>${formatMoney(booking.totalAmount)}</strong>
+            </div>` : ''}
+            <button type="button" class="gsd-close" data-detail-close>Done</button>
           </div>
         </div>`;
-      openModal('Reservation details', body);
-      document.getElementById('modalBody')?.querySelector('[data-detail-close]')?.addEventListener('click', closeModal);
+
+      openModal('Your stay', body, { size: 'tablet', hideHeader: true });
+      document.getElementById('modalBody')?.querySelectorAll('[data-detail-close]').forEach((btn) => {
+        btn.addEventListener('click', () => closeModal());
+      });
     }
 
     document.getElementById('reservations-list')?.addEventListener('click', async (e) => {
@@ -371,12 +525,14 @@ export async function bootstrapGuestMyStaysPage() {
       }, 250);
     });
   
-    /* ---------- Modal helpers (animated) ---------- */
-    function openModal(overlay) {
+    /* ---------- Overlay helpers (page-specific panels, not #app-modal) ---------- */
+    function showPageOverlay(overlay) {
+      if (!overlay) return;
       overlay.classList.remove('is-hidden');
       document.body.style.overflow = 'hidden';
     }
-    function closeModal(overlay) {
+    function hidePageOverlay(overlay) {
+      if (!overlay) return;
       overlay.classList.add('is-hidden');
       document.body.style.overflow = '';
     }
@@ -419,40 +575,36 @@ export async function bootstrapGuestMyStaysPage() {
       const revealCls = silent ? '' : ' reveal';
       const revealDelay = silent ? '' : ` style="animation-delay:${0.05 * index}s"`;
       return `
-        <div class="group bg-white p-5 rounded-2xl border border-outline-variant hover:border-primary/40 hover:shadow-lg lift${revealCls}"${revealDelay} data-venue-id="${b.id}">
-          <div class="flex flex-col sm:flex-row gap-6">
-            <div class="flex-1">
-              <div class="flex justify-between items-start mb-2">
-                <div>
-                  <h4 class="font-headline-sm text-headline-sm flex items-center flex-wrap gap-1">
-                    <span class="bg-secondary/10 text-secondary px-2 py-0.5 rounded text-[10px] font-bold uppercase">Venue</span>
-                    ${phaseBadge}
-                  </h4>
-                  <p class="text-body-sm font-medium text-on-surface mt-1">${escapeHtml(b.venueName || b.title)}</p>
-                  <p class="text-body-sm text-on-surface-variant mt-0.5">${escapeHtml(b.venueCategory || '')}</p>
-                </div>
-                <span class="${statusBadge(normStatus(b.status))} px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0">${normStatus(b.status)}</span>
+        <div class="guest-stay-card group bg-surface-container-low/40 p-4 rounded-xl border border-outline-variant hover:border-primary/40 hover:bg-white hover:shadow-md lift${revealCls}"${revealDelay} data-venue-id="${b.id}">
+          <div class="flex justify-between items-start gap-3 mb-3">
+            <div class="min-w-0">
+              <div class="flex items-center flex-wrap gap-1 mb-1">
+                <span class="bg-secondary/10 text-secondary px-2 py-0.5 rounded text-[10px] font-bold uppercase">Venue</span>
+                ${phaseBadge}
               </div>
-              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                <div>
-                  <p class="text-[11px] font-bold text-on-surface-variant uppercase">Event date</p>
-                  <p class="text-body-sm font-medium">${fmtDate(b.eventDate)}</p>
-                </div>
-                <div>
-                  <p class="text-[11px] font-bold text-on-surface-variant uppercase">Time</p>
-                  <p class="text-body-sm font-medium">${escapeHtml(b.startLabel)} – ${escapeHtml(b.endLabel)}</p>
-                </div>
-                <div>
-                  <p class="text-[11px] font-bold text-on-surface-variant uppercase">Guests</p>
-                  <p class="text-body-sm font-medium">${b.guestCount || 1}</p>
-                </div>
-                ${amount ? `<div><p class="text-[11px] font-bold text-on-surface-variant uppercase">Est. total</p><p class="text-body-sm font-medium">${amount}</p></div>` : ''}
-              </div>
+              <p class="text-body-sm font-semibold text-on-surface">${escapeHtml(b.venueName || b.title)}</p>
+              ${b.venueCategory ? `<p class="text-body-sm text-on-surface-variant mt-0.5">${escapeHtml(b.venueCategory)}</p>` : ''}
             </div>
+            <span class="${statusBadge(normStatus(b.status))} px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0">${normStatus(b.status)}</span>
           </div>
-          <div class="flex justify-end gap-3 mt-4 pt-4 border-t border-outline-variant/60">
-            ${canModify ? `<button type="button" class="modify-fb-btn px-4 py-2 text-label-md font-label-md text-primary hover:bg-primary/10 rounded-lg transition-colors" data-fb-id="${b.id}">Modify</button>` : ''}
-            ${canCancel ? `<button type="button" class="cancel-fb-btn px-4 py-2 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-fb-id="${b.id}">${normStatus(b.status) === 'pending' ? 'Cancel request' : 'Cancel reservation'}</button>` : ''}
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <p class="text-[11px] font-bold text-on-surface-variant uppercase">Event date</p>
+              <p class="text-body-sm font-medium">${fmtDate(b.eventDate)}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-bold text-on-surface-variant uppercase">Time</p>
+              <p class="text-body-sm font-medium">${escapeHtml(b.startLabel)} – ${escapeHtml(b.endLabel)}</p>
+            </div>
+            <div>
+              <p class="text-[11px] font-bold text-on-surface-variant uppercase">Guests</p>
+              <p class="text-body-sm font-medium">${b.guestCount || 1}</p>
+            </div>
+            ${amount ? `<div><p class="text-[11px] font-bold text-on-surface-variant uppercase">Est. total</p><p class="text-body-sm font-medium">${amount}</p></div>` : ''}
+          </div>
+          <div class="flex justify-end flex-wrap gap-2 mt-3 pt-3 border-t border-outline-variant/60">
+            ${canModify ? `<button type="button" class="modify-fb-btn px-3 py-1.5 text-label-md font-label-md font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors" data-fb-id="${b.id}">Modify</button>` : ''}
+            ${canCancel ? `<button type="button" class="cancel-fb-btn px-3 py-1.5 text-label-md font-label-md text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors" data-fb-id="${b.id}">${normStatus(b.status) === 'pending' ? 'Cancel request' : 'Cancel reservation'}</button>` : ''}
           </div>
         </div>`;
     }
@@ -550,12 +702,12 @@ export async function bootstrapGuestMyStaysPage() {
       document.getElementById('venue-modify-approved-banner').classList.toggle('hidden', !approved);
       document.getElementById('venue-modify-message-wrap').classList.toggle('hidden', !approved);
       document.getElementById('venue-modify-error').classList.add('hidden');
-      openModal(venueModifyOverlay);
+      showPageOverlay(venueModifyOverlay);
     }
   
     function closeVenueModifyModal() {
       venueModifyTarget = null;
-      closeModal(venueModifyOverlay);
+      hidePageOverlay(venueModifyOverlay);
     }
   
     document.getElementById('venue-modify-close')?.addEventListener('click', closeVenueModifyModal);

@@ -115,6 +115,297 @@
     border-color: #1d4ed8;
     box-shadow: 0 0 0 2px rgba(29, 78, 216, 0.2);
   }
+
+  /* Guest stay detail sheet — catchy, compact */
+  #modalBody.modal-body--flush {
+    padding: 0;
+  }
+  .gsd {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    padding: 1.15rem 1.25rem 1rem;
+    overflow: hidden;
+  }
+  .gsd-accent {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #1a365d 0%, #2b6cb0 55%, #38a169 100%);
+  }
+  .gsd-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-top: 0.25rem;
+  }
+  .gsd-hero {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+  .gsd-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: none;
+    border-radius: 0.625rem;
+    background: #f8fafc;
+    color: #64748b;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .gsd-x:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+  .gsd-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+  .gsd-status__icon {
+    font-size: 1rem !important;
+  }
+  .gsd-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    line-height: 1.25;
+    color: #0f172a;
+  }
+  .gsd-hint {
+    margin: 0;
+    font-size: 0.8125rem;
+    color: #64748b;
+    line-height: 1.35;
+  }
+  .gsd-when {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0.5rem;
+    align-items: center;
+    padding: 0.7rem 0.85rem;
+    border-radius: 0.85rem;
+    background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 55%, #ecfdf5 100%);
+    border: 1px solid #dbeafe;
+  }
+  .gsd-when__label {
+    display: block;
+    margin-bottom: 0.12rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+  }
+  .gsd-when__cell strong {
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  .gsd-when__cell--end {
+    text-align: right;
+  }
+  .gsd-when__divider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    color: #2b6cb0;
+    font-size: 0.6875rem;
+    font-weight: 700;
+  }
+  .gsd-when__divider .material-symbols-outlined {
+    font-size: 1.15rem;
+  }
+  .gsd-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+  .gsd-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 9999px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #334155;
+  }
+  .gsd-pill .material-symbols-outlined {
+    font-size: 1rem;
+    color: #2b6cb0;
+  }
+  .gsd-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .gsd-section__title {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #1e293b;
+  }
+  .gsd-section__title .material-symbols-outlined {
+    font-size: 1.05rem;
+    color: #2b6cb0;
+  }
+  .gsd-meals {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+  .gsd-meal-day {
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.75rem;
+    background: linear-gradient(180deg, #fffbeb 0%, #fff 70%);
+    border: 1px solid #fde68a;
+  }
+  .gsd-meal-day__date {
+    margin: 0 0 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #92400e;
+  }
+  .gsd-meal-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+  .gsd-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.35rem 0.6rem;
+    border-radius: 9999px;
+    background: #fff;
+    border: 1px solid #fed7aa;
+    color: #9a3412;
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 0 1px 2px rgba(154, 52, 18, 0.06);
+  }
+  .gsd-chip .material-symbols-outlined {
+    font-size: 0.95rem;
+    color: #c2410c;
+  }
+  .gsd-rooms,
+  .gsd-fees {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .gsd-rooms li,
+  .gsd-fees li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 0.55rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    font-size: 0.8125rem;
+    color: #334155;
+  }
+  .gsd-rooms li span:last-child,
+  .gsd-fees li span:last-child {
+    color: #64748b;
+    white-space: nowrap;
+  }
+  .gsd-foot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-top: 0.1rem;
+  }
+  .gsd-total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0.9rem;
+    border-radius: 0.85rem;
+    background: linear-gradient(135deg, #1a365d 0%, #2c5282 100%);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(26, 54, 93, 0.22);
+  }
+  .gsd-total__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+  .gsd-total__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.8);
+  }
+  .gsd-total__note {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.65);
+    line-height: 1.3;
+  }
+  .gsd-total strong {
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+  .gsd-close {
+    width: 100%;
+    min-height: 2.4rem;
+    border: none;
+    border-radius: 0.75rem;
+    background: #edf2f7;
+    color: #1a365d;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .gsd-close:hover {
+    background: #e2e8f0;
+  }
+
+  @media (max-width: 420px) {
+    .gsd-when {
+      grid-template-columns: 1fr;
+      text-align: left;
+    }
+    .gsd-when__cell--end {
+      text-align: left;
+    }
+    .gsd-when__divider {
+      flex-direction: row;
+      justify-content: flex-start;
+      gap: 0.35rem;
+    }
+  }
 </style>
 </head>
 <body>
@@ -188,12 +479,11 @@
 
     <p class="text-body-sm text-on-surface-variant mb-4">Invoices and payments are in <a href="/guest/billing.html" class="text-primary font-semibold no-underline">Billing</a>.</p>
 
-    <div id="featured-card" class="hidden mb-xl"></div>
-
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-gutter items-start">
-      <div class="lg:col-span-8">
+      <div class="lg:col-span-8 space-y-4 min-w-0">
+        <div id="featured-card" class="hidden"></div>
 
-        <div class="bg-white rounded-xl border border-outline-variant shadow-sm reveal" style="animation-delay:.28s">
+        <div class="bg-white rounded-xl border border-outline-variant shadow-sm reveal overflow-hidden" style="animation-delay:.28s">
           <div class="flex border-b border-outline-variant px-4 pt-3 gap-1" role="tablist">
             <button type="button" role="tab" data-res-tab="room-stays" class="app-tab-btn app-tab-active" aria-selected="true">Room Stays</button>
             <button type="button" role="tab" data-res-tab="venues" class="app-tab-btn" aria-selected="false">Venue Bookings</button>
@@ -201,7 +491,7 @@
 
           <div data-res-panel="room-stays" role="tabpanel">
 
-        <div class="p-4 flex flex-wrap items-center gap-3" style="animation-delay:.3s">
+        <div class="px-4 pt-4 pb-3 flex flex-wrap items-center gap-3" style="animation-delay:.3s">
           <div class="flex flex-1 min-w-0 items-center gap-3 flex-wrap sm:flex-nowrap">
             <div class="flex items-center bg-surface-container-low px-3 py-2 rounded-lg border border-outline-variant flex-1 min-w-[12rem] focus-within:border-primary focus-within:shadow-sm transition-all">
               <span class="material-symbols-outlined text-outline text-[18px] shrink-0">search</span>
@@ -221,7 +511,7 @@
           </div>
         </div>
 
-        <div class="space-y-4" id="reservations-list">
+        <div class="space-y-3 px-4 pb-4" id="reservations-list">
           <div class="skeleton h-28 rounded-2xl"></div>
           <div class="skeleton h-28 rounded-2xl"></div>
           <div class="skeleton h-28 rounded-2xl"></div>
@@ -231,7 +521,7 @@
 
           <div data-res-panel="venues" class="is-tab-hidden hidden" role="tabpanel">
 
-        <div class="p-4 flex flex-wrap items-center gap-3">
+        <div class="px-4 pt-4 pb-3 flex flex-wrap items-center gap-3">
           <div class="flex flex-1 min-w-0 items-center gap-3 flex-wrap sm:flex-nowrap">
             <div class="flex items-center bg-surface-container-low px-3 py-2 rounded-lg border border-outline-variant flex-1 min-w-[12rem] focus-within:border-primary focus-within:shadow-sm transition-all">
               <span class="material-symbols-outlined text-outline text-[18px] shrink-0">search</span>
@@ -247,7 +537,7 @@
           </div>
         </div>
 
-        <div class="space-y-4 mt-4" id="venue-bookings-list">
+        <div class="space-y-3 px-4 pb-4" id="venue-bookings-list">
           <div class="skeleton h-28 rounded-2xl"></div>
           <div class="skeleton h-28 rounded-2xl"></div>
         </div>
@@ -257,23 +547,23 @@
         </div><!-- /tab workspace -->
       </div>
 
-      <div class="lg:col-span-4 space-y-gutter lg:sticky lg:top-6">
-        <div class="bg-primary text-white p-6 rounded-xl border border-primary shadow-sm relative overflow-hidden group reveal" style="animation-delay:.35s">
+      <div class="lg:col-span-4 space-y-4 lg:sticky lg:top-6">
+        <div class="bg-primary text-white p-5 rounded-xl border border-primary shadow-sm relative overflow-hidden group reveal" style="animation-delay:.35s">
           <div class="absolute -right-8 -top-8 w-32 h-32 bg-white/10 rounded-full blur-2xl float-blob"></div>
-          <h4 class="font-headline-sm text-headline-sm mb-4 relative z-10">Need Assistance?</h4>
-          <p class="font-body-sm text-body-sm text-white/80 mb-6 relative z-10">Our facility managers are available to help you with special equipment requests or catering.</p>
+          <h4 class="font-headline-sm text-headline-sm mb-2 relative z-10">Need Assistance?</h4>
+          <p class="font-body-sm text-body-sm text-white/80 mb-4 relative z-10 leading-relaxed">Our facility managers can help with special equipment requests or catering.</p>
           <button type="button" id="contact-support-btn" class="w-full bg-white text-primary py-3 rounded-xl font-bold font-label-md text-label-md hover:bg-primary-fixed transition-all relative z-10 active:scale-[0.98] hover:shadow-lg">
             Contact Support
           </button>
         </div>
 
-        <div class="bg-white p-6 rounded-xl border border-outline-variant shadow-sm reveal" style="animation-delay:.38s" id="guest-support-mail-card">
+        <div class="bg-white p-5 rounded-xl border border-outline-variant shadow-sm reveal" style="animation-delay:.38s" id="guest-support-mail-card">
           <div class="flex items-start gap-3">
-            <span class="material-symbols-outlined text-primary mt-1">mail</span>
+            <span class="material-symbols-outlined text-primary mt-0.5 shrink-0">mail</span>
             <div class="min-w-0">
-              <h5 class="font-label-md text-label-md font-bold text-on-surface mb-2">Admin reply email</h5>
+              <h5 class="font-label-md text-label-md font-bold text-on-surface mb-1.5">Admin reply email</h5>
               <p class="text-body-sm text-on-surface-variant leading-relaxed mb-3">
-                Replies to your support messages and reservation updates are sent from this address. Check your inbox (and spam folder) for messages from the facilities team.
+                Replies to support messages and reservation updates come from this address. Check inbox and spam.
               </p>
               <a id="guest-support-reply-mail" href="mailto:facilities@apts.edu.ph" class="inline-flex items-start gap-1.5 text-body-sm font-semibold text-primary hover:underline no-underline break-all">
                 <span class="material-symbols-outlined text-[18px] shrink-0">outgoing_mail</span>
@@ -283,11 +573,11 @@
           </div>
         </div>
 
-        <div class="bg-surface-container-low p-6 rounded-xl border border-outline-variant reveal" style="animation-delay:.42s">
+        <div class="bg-surface-container-low p-5 rounded-xl border border-outline-variant reveal" style="animation-delay:.42s">
           <div class="flex items-start gap-3">
-            <span class="material-symbols-outlined text-amber-600 mt-1">info</span>
-            <div>
-              <h5 class="font-label-md text-label-md font-bold text-on-surface mb-2">Reservation Policy</h5>
+            <span class="material-symbols-outlined text-amber-600 mt-0.5 shrink-0">info</span>
+            <div class="min-w-0">
+              <h5 class="font-label-md text-label-md font-bold text-on-surface mb-1.5">Reservation Policy</h5>
               <p class="text-body-sm text-on-surface-variant leading-relaxed" id="res-policy-text">
                 Loading cancellation policy…
               </p>
