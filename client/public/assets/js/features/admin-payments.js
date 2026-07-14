@@ -789,13 +789,22 @@ function syncRecordPaymentUi(detailEl, p) {
   if (checkLabel) checkLabel.textContent = recordConfirmLabel(isWaived, txType);
 
   const methodField = detailEl.querySelector('[data-record-method-field]');
-  if (methodField) methodField.classList.toggle('hidden', isWaived || txType === 'Refund');
+  if (methodField) methodField.classList.toggle('hidden', isWaived);
+
+  const methodLabel = methodField?.querySelector('span');
+  if (methodLabel && !isWaived) {
+    methodLabel.textContent = txType === 'Refund' ? 'Refund method' : 'Payment method';
+  }
 
   const recordBtn = detailEl.querySelector('[data-confirm-paid]');
   const checked = detailEl.querySelector('[data-approve-check]')?.checked;
-  if (recordBtn) {
-    const needsMethod = !isWaived || txType === 'Refund';
-    recordBtn.disabled = (needsMethod && !method) || !checked || (!isWaived && displayAmount <= 0);
+  if (recordBtn && !recordBtn.dataset.busy) {
+    const needsMethod = !isWaived;
+    const amountOk = isWaived || displayAmount > 0;
+    recordBtn.disabled = (needsMethod && !method) || !checked || !amountOk;
+    recordBtn.innerHTML = txType === 'Refund'
+      ? '<span class="material-symbols-outlined" aria-hidden="true">currency_exchange</span> Record refund'
+      : '<span class="material-symbols-outlined" aria-hidden="true">task_alt</span> Record payment';
   }
 }
 
@@ -2306,10 +2315,25 @@ function formatTxAt(value) {
   });
 }
 
+function renderOverpaymentAlert(summary) {
+  const credit = Number(summary?.credit_balance || 0);
+  if (credit <= 0) return '';
+  return `
+    <div class="billing-overpay-alert" role="status">
+      <span class="material-symbols-outlined" aria-hidden="true">currency_exchange</span>
+      <div>
+        <strong>Overpayment — refund applicable</strong>
+        <p>Guest paid <strong>${fmt(summary.amount_paid)}</strong> against <strong>${fmt(summary.total_due)}</strong> due.
+        Record a refund of up to <strong>${fmt(credit)}</strong> below.</p>
+      </div>
+    </div>`;
+}
+
 function renderPaymentSummaryCard(p) {
   const summary = paymentSummary(p);
   const suggested = Number(p.suggested_deposit || 0);
   const depositOutstanding = Number(p.deposit_outstanding || 0);
+  const hasCredit = Number(summary.credit_balance || 0) > 0;
 
   return `
     <section class="billing-panel billing-panel--summary">
@@ -2317,13 +2341,59 @@ function renderPaymentSummaryCard(p) {
         <span class="material-symbols-outlined" aria-hidden="true">account_balance_wallet</span>
         Payment balance
       </h4>
+      ${renderOverpaymentAlert(summary)}
       <dl class="billing-balance-grid">
         <div><dt>Total due</dt><dd>${fmt(summary.total_due)}</dd></div>
         <div><dt>Paid so far</dt><dd>${fmt(summary.amount_paid)}</dd></div>
         <div class="billing-balance-grid__due"><dt>Balance due</dt><dd>${fmt(summary.balance_due)}</dd></div>
-        ${summary.credit_balance > 0 ? `<div><dt>Credit</dt><dd>${fmt(summary.credit_balance)}</dd></div>` : ''}
+        ${hasCredit ? `<div class="billing-balance-grid__credit"><dt>Credit / refundable</dt><dd>${fmt(summary.credit_balance)}</dd></div>` : ''}
       </dl>
       ${suggested > 0 ? `<p class="billing-deposit-hint">Suggested deposit: <strong>${fmt(suggested)}</strong>${depositOutstanding > 0 ? ` · <strong>${fmt(depositOutstanding)}</strong> still outstanding` : ''}</p>` : ''}
+    </section>`;
+}
+
+function renderRefundPanel(p) {
+  const summary = paymentSummary(p);
+  const credit = Number(summary.credit_balance || 0);
+  if (credit <= 0) return '';
+  const methodOptions = PAYMENT_METHODS.map((m) => `<option value="${m}">${m}</option>`).join('');
+
+  return `
+    <section class="billing-panel billing-panel--refund" aria-label="Record refund">
+      <h4 class="billing-section-title">
+        <span class="material-symbols-outlined" aria-hidden="true">undo</span>
+        Record refund
+      </h4>
+      <p class="billing-refund-lead">Return the overpaid amount to the guest. This creates a Refund ledger entry and clears the credit balance.</p>
+      <form class="billing-tx-form" data-tx-form="${p.id}">
+        <input type="hidden" name="tx_type" value="Refund" />
+        <label class="billing-edit-form__field">
+          <span>Refund amount (₱)</span>
+          <input type="number" class="billing-edit-form__input" name="tx_amount" min="0.01" max="${credit}" step="0.01"
+            value="${credit}" data-live-record />
+        </label>
+        <label class="billing-edit-form__field billing-record-method" data-record-method-field>
+          <span>Refund method</span>
+          <select class="billing-edit-form__input" name="tx_method" data-pay-method="${p.id}">
+            <option value="">Select how guest was refunded…</option>
+            ${methodOptions}
+          </select>
+        </label>
+        <label class="billing-edit-form__field">
+          <span>Notes (optional)</span>
+          <input type="text" class="billing-edit-form__input" name="tx_notes" maxlength="255"
+            placeholder="e.g. Refund of overpayment after discount" />
+        </label>
+      </form>
+      <p class="billing-record-summary" data-record-summary>${recordSummaryHtml(p, credit, '', 'Refund')}</p>
+      <label class="billing-record-check" data-record-check>
+        <input type="checkbox" data-approve-check />
+        <span>${recordConfirmLabel(false, 'Refund')}</span>
+      </label>
+      <button type="button" class="invoice-btn-confirm billing-panel__btn" data-confirm-paid="${p.id}" disabled>
+        <span class="material-symbols-outlined" aria-hidden="true">currency_exchange</span>
+        Record refund
+      </button>
     </section>`;
 }
 
@@ -2360,12 +2430,16 @@ function renderBillingColumn(p, { isPending }) {
   const summary = paymentSummary(p);
   const defaultType = defaultTxType(p);
   const defaultAmount = defaultTxAmount(p, defaultType);
-  const txTypeOptions = TX_TYPES.map((t) => `<option value="${t}"${t === defaultType ? ' selected' : ''}>${t}</option>`).join('');
+  const typeChoices = summary.credit_balance > 0
+    ? ['Refund', ...TX_TYPES.filter((t) => t !== 'Refund')]
+    : TX_TYPES;
+  const txTypeOptions = typeChoices.map((t) => `<option value="${t}"${t === defaultType ? ' selected' : ''}>${t}</option>`).join('');
 
   if (!isPending) {
     const paidWhen = formatPaidAt(p.paid_at);
     return `
       ${renderPaymentSummaryCard(p)}
+      ${renderRefundPanel(p)}
       <section class="billing-panel billing-panel--ledger">
         <h4 class="billing-section-title">
           <span class="material-symbols-outlined" aria-hidden="true">receipt_long</span>
@@ -2511,7 +2585,7 @@ function renderBillingColumn(p, { isPending }) {
         <span class="material-symbols-outlined" aria-hidden="true">task_alt</span>
         Record payment
       </button>
-      <p class="billing-record-note">Deposits and advances reduce the balance due. Settlement pays the remaining balance.</p>
+      <p class="billing-record-note">Deposits and advances reduce the balance due. Settlement pays the remaining balance. Payments beyond the amount due create a refundable credit.</p>
     </section>
     <section class="billing-panel billing-panel--ledger">
       <h4 class="billing-section-title">
@@ -2857,14 +2931,14 @@ function bindDetailActions(p) {
     const subtotal = Number(fresh.subtotal ?? fresh.booking_total ?? fresh.amount ?? 0);
     const { discount_amount } = readBillingFormValues(billingForm, subtotal);
     const totalDue = computeDue(subtotal, discount_amount);
-    const isWaived = totalDue <= 0;
     const type = txForm?.querySelector('[name="tx_type"]')?.value || 'Settlement';
+    const isWaived = totalDue <= 0 && type !== 'Refund';
     const amount = Number(txForm?.querySelector('[name="tx_amount"]')?.value || 0);
     const method = isWaived ? 'Waived' : (txForm?.querySelector('[name="tx_method"]')?.value || getPayMethodSelect(detailEl)?.value);
     const notes = String(txForm?.querySelector('[name="tx_notes"]')?.value || '').trim();
 
     if (!isWaived && !method) {
-      showFeedback(detailFeedback, 'Select payment method before recording.', 'error');
+      showFeedback(detailFeedback, type === 'Refund' ? 'Select refund method before recording.' : 'Select payment method before recording.', 'error');
       txForm?.querySelector('[name="tx_method"]')?.focus();
       return;
     }
@@ -2879,13 +2953,37 @@ function bindDetailActions(p) {
       return;
     }
     if (!check?.checked) {
-      showFeedback(detailFeedback, 'Check the confirmation box to record payment.', 'error');
+      showFeedback(detailFeedback, type === 'Refund' ? 'Check the confirmation box to record the refund.' : 'Check the confirmation box to record payment.', 'error');
       check?.focus();
       return;
     }
 
+    if (type === 'Refund') {
+      const credit = Number(paymentSummary(fresh).credit_balance || 0);
+      if (!(amount > 0)) {
+        showFeedback(detailFeedback, 'Enter a refund amount greater than zero.', 'error');
+        return;
+      }
+      if (amount > credit + 0.001) {
+        showFeedback(detailFeedback, `Refund cannot exceed available credit (${fmt(credit)}).`, 'error');
+        return;
+      }
+    } else if (!isWaived) {
+      const summary = paymentSummary(fresh);
+      const projectedPaid = Math.round((Number(summary.amount_paid || 0) + amount) * 100) / 100;
+      const overpay = Math.round((projectedPaid - Number(summary.total_due || 0)) * 100) / 100;
+      if (overpay > 0) {
+        const ok = window.confirm(
+          `This payment creates an overpayment of ${fmt(overpay)}.\n\n`
+          + 'A refund of that credit will be available after recording. Continue?'
+        );
+        if (!ok) return;
+      }
+    }
+
     hideFeedback(detailFeedback);
     btn.disabled = true;
+    btn.dataset.busy = '1';
     const label = btn.innerHTML;
     btn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span> Recording…';
     try {
@@ -2901,15 +2999,24 @@ function bindDetailActions(p) {
         });
       }
       const updated = result.payment || fresh;
-      const stillOpen = isOpenInvoice(updated);
-      await reload({ keepSelection: true, keepModalOpen: stillOpen });
-      if (!stillOpen) closeInvoiceModal();
-      showFeedback(pageFeedback, result.message || `${type} recorded for ${fresh.guest_name}.`, 'ok');
+      const keepOpen = isOpenInvoice(updated)
+        || type === 'Refund'
+        || Number(paymentSummary(updated).credit_balance || 0) > 0;
+      await reload({ keepSelection: true, keepModalOpen: keepOpen });
+      if (!keepOpen) closeInvoiceModal();
+      showFeedback(
+        pageFeedback,
+        result.message || (type === 'Refund'
+          ? `Refund recorded for ${fresh.guest_name}.`
+          : `${type} recorded for ${fresh.guest_name}.`),
+        'ok',
+      );
     } catch (err) {
       showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
       syncRecordPaymentUi(detailEl, fresh);
       btn.disabled = false;
       btn.innerHTML = label;
+      delete btn.dataset.busy;
     }
   });
 
