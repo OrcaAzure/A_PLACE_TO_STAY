@@ -369,9 +369,20 @@ export async function getBuildings() {
   return data.buildings || [];
 }
 
-export async function getBookings() {
-  const data = await apiRequest('/bookings');
+export async function getBookings(params = {}) {
+  const qs = new URLSearchParams();
+  if (params.include_group_children) qs.set('include_group_children', '1');
+  const query = qs.toString();
+  const data = await apiRequest(`/bookings${query ? `?${query}` : ''}`);
   return data.bookings || [];
+}
+
+export async function getStayQuote(payload) {
+  const data = await apiRequest('/bookings/stay-quote', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return data.quote;
 }
 
 export async function getBookingById(id) {
@@ -435,6 +446,14 @@ export async function getRoomStayEstimate(params = {}) {
   return apiRequest(`/bookings/room-estimate?${qs.toString()}`);
 }
 
+export async function getStayQuote(payload) {
+  const data = await apiRequest('/bookings/stay-quote', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return data.quote;
+}
+
 export async function getGroups() {
   const data = await apiRequest('/groups');
   return data.groups || [];
@@ -469,9 +488,11 @@ export async function deleteGroup(id) {
 export function formatGroupId(id) { return `#GRP-${id}`; }
 
 export function normalizeManageGroupRequest(group) {
+  const isGroupStay = group.is_group_stay !== 0 && group.is_group_stay !== false;
   return {
     id: group.id,
-    kind: 'group',
+    kind: isGroupStay ? 'group' : 'single',
+    isGroupStay,
     displayId: formatGroupId(group.id),
     groupName: group.group_name,
     status: (group.status || 'Pending').toLowerCase(),
@@ -482,6 +503,7 @@ export function normalizeManageGroupRequest(group) {
     totalGuests: group.total_guests,
     roomsRequested: group.rooms_requested,
     roomCount: group.room_count || 0,
+    bookingRef: group.booking_ref || null,
     notes: group.notes,
     requester: {
       name: group.contact_name || group.requester_name || 'Unknown',

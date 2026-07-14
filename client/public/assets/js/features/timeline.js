@@ -2,7 +2,7 @@
  * Reservation Master Timeline — simple upcoming list + optional room calendar.
  */
 import { openModal, closeModal, syncTimelineScroll, scrollTimelineToToday } from '/assets/js/layout/ui.js';
-import { getRooms, getBookings, getFacilityBookings, getFiscalYear, normalizeRoom, normalizeBooking, normalizeManageRequest, normalizeFacilityBooking } from '/assets/js/services/api.js';
+import { getRooms, getBookings, getGroups, getFacilityBookings, getFiscalYear, normalizeRoom, normalizeBooking, normalizeManageRequest, normalizeFacilityBooking } from '/assets/js/services/api.js';
 import {
   buildSeasonMap,
   normalizeSeasonCalendar,
@@ -1164,10 +1164,26 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
 
   async function refresh({ background = false } = {}) {
     try {
-      const [rawBookings, rawVenues] = await Promise.all([getBookings(), getFacilityBookings()]);
-      const roomRows = rawBookings
-        .filter((b) => isStandaloneRoomBooking(b) && ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
-        .map((b) => ({ ...normalizeBooking(b), kind: 'room' }));
+      const [rawBookings, rawGroups, rawVenues] = await Promise.all([
+        getBookings(), getGroups(), getFacilityBookings(),
+      ]);
+      const groupRoomRows = (rawGroups || []).flatMap((g) =>
+        (g.bookings || []).map((b) => ({
+          ...b,
+          group_id: g.id,
+          guest_name: g.contact_name || g.requester_name || b.guest_name,
+          status: g.status || b.status,
+          building_name: b.building_name,
+        }))
+      );
+      const roomRows = [
+        ...rawBookings
+          .filter((b) => isStandaloneRoomBooking(b) && ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
+          .map((b) => ({ ...normalizeBooking(b), kind: 'room' })),
+        ...groupRoomRows
+          .filter((b) => ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
+          .map((b) => ({ ...normalizeBooking(b), kind: 'room' })),
+      ];
       const venueRows = rawVenues
         .filter((b) => ['pending', 'approved', 'cancelled'].includes(normStatus(b.status)))
         .map(normalizeFacilityBooking);

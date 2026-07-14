@@ -6,6 +6,13 @@ import { getAdminSummary } from '/assets/js/services/api.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 import { animateCountUp, revealPageContent, staggerReveal } from '/assets/js/layout/animations.js';
 
+let lastActionQueueFingerprint = '';
+let lastTodayFingerprint = '';
+
+function jsonFingerprint(value) {
+  return JSON.stringify(value);
+}
+
 function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
@@ -43,17 +50,22 @@ function todayRows(rows, emptyText, href, mapRow) {
     ${rows.length > 3 ? `<p class="dashboard-more">+${rows.length - 3} more</p>` : ''}`;
 }
 
-function renderTodayBoard(board = {}) {
+function renderTodayBoard(board = {}, { background = false } = {}) {
   const mount = document.getElementById('today-mount');
   if (!mount) return;
 
+  const fp = jsonFingerprint(board || {});
+  if (background && fp === lastTodayFingerprint) return;
+  lastTodayFingerprint = fp;
+
   const arriving = board.arriving || [];
   const departing = board.departing || [];
+  const inHouse = board.inHouse || [];
   const venues = board.venues || [];
-  const total = arriving.length + departing.length + venues.length;
+  const total = arriving.length + departing.length + inHouse.length + venues.length;
 
   setText('today-summary', total
-    ? `${arriving.length} coming in · ${departing.length} leaving`
+    ? `${arriving.length} coming in · ${inHouse.length} in-house · ${departing.length} leaving`
     : 'Nothing scheduled');
 
   mount.innerHTML = `
@@ -61,6 +73,10 @@ function renderTodayBoard(board = {}) {
       <div class="dashboard-today__col">
         <h3 class="dashboard-today__heading">Coming in</h3>
         ${todayRows(arriving, 'None today', 'calendar.html', (r) => r.label || 'Room')}
+      </div>
+      <div class="dashboard-today__col">
+        <h3 class="dashboard-today__heading">In-house</h3>
+        ${todayRows(inHouse, 'None today', 'calendar.html', (r) => r.label || 'Room')}
       </div>
       <div class="dashboard-today__col">
         <h3 class="dashboard-today__heading">Leaving</h3>
@@ -78,9 +94,13 @@ function renderTodayBoard(board = {}) {
     </div>`;
 }
 
-function renderActionQueue(items, kpis) {
+function renderActionQueue(items, kpis, { background = false } = {}) {
   const mount = document.getElementById('action-queue-mount');
   if (!mount) return;
+
+  const fp = jsonFingerprint({ items: items || [], pending: kpis?.pending ?? 0 });
+  if (background && fp === lastActionQueueFingerprint) return;
+  lastActionQueueFingerprint = fp;
 
   const summary = document.getElementById('queue-summary');
   if (summary) {
@@ -120,7 +140,9 @@ function renderActionQueue(items, kpis) {
     </div>
     ${items.length > 5 ? `<p class="dashboard-more"><a href="reservations.html?tab=pending">See ${items.length - 5} more</a></p>` : ''}`;
 
-  staggerReveal('.dashboard-action-item', mount).catch(() => {});
+  if (!background) {
+    staggerReveal('.dashboard-action-item', mount).catch(() => {});
+  }
 }
 
 function renderHouse(kpis = {}, analytics = {}) {
@@ -221,8 +243,8 @@ export async function loadDashboard({ background = false } = {}) {
   const summary = await getAdminSummary();
   const { kpis, actionItems, todayBoard, weekOutlook, analytics } = summary;
 
-  renderActionQueue(actionItems, kpis);
-  renderTodayBoard(todayBoard);
+  renderActionQueue(actionItems, kpis, { background });
+  renderTodayBoard(todayBoard, { background });
   renderHouse(kpis, analytics || {});
   renderHousekeepingLoad(weekOutlook || [], analytics || {});
 

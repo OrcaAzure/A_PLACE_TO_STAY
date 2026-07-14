@@ -1,5 +1,9 @@
 import { pool } from '../config/db.js';
 import {
+  LODGING_EXTRA_ITEM,
+  calculateLodgingExtraTotalForStay,
+} from './lodgingExtras.service.js';
+import {
   DEFAULT_MEAL_RATES,
   MEAL_ICONS,
   MEAL_TYPES,
@@ -134,9 +138,55 @@ export function sanitizeGuestSubmittedFees(submitted = [], catalogRows = [], ori
     (originalFees || []).map((f) => feeKey(f.fee_name || f.service_name, f.amount))
   );
   return (submitted || []).filter((f) => {
-    const key = feeKey(f.fee_name || f.service_name || f.name, f.amount);
+    const name = f.fee_name || f.service_name || f.name;
+    if (isLodgingExtraFeeName(name)) return true;
+    const key = feeKey(name, f.amount);
     return catalogKeys.has(key) || originalKeys.has(key);
   });
+}
+
+const LODGING_EXTRA_ALIASES = new Set([
+  LODGING_EXTRA_ITEM,
+  'Extra bed',
+  'Extra person',
+  'Extra Bed or Extra Person',
+]);
+
+function isLodgingExtraFeeName(name) {
+  const raw = String(name || '').trim();
+  if (!raw) return false;
+  if (LODGING_EXTRA_ALIASES.has(raw)) return true;
+  return /^extra\s+(bed|person)/i.test(raw);
+}
+
+/**
+ * Re-price guest-selected lodging extras (extra bed/person) from stay dates.
+ * Guests submit the canonical item name without choosing a rate tier.
+ */
+export async function resolveGuestLodgingExtraFees(submitted = [], { checkIn, checkOut } = {}) {
+  if (!checkIn || !checkOut) return submitted || [];
+  const resolved = [];
+  for (const fee of submitted || []) {
+    const name = String(fee.fee_name || fee.service_name || fee.name || '').trim();
+    if (!isLodgingExtraFeeName(name)) {
+      resolved.push(fee);
+      continue;
+    }
+    const qty = Math.max(1, Number(fee.quantity) || 1);
+    const amount = await calculateLodgingExtraTotalForStay({
+      item: LODGING_EXTRA_ITEM,
+      checkIn,
+      checkOut,
+      quantity: qty,
+    });
+    if (amount == null) continue;
+    resolved.push({
+      fee_name: LODGING_EXTRA_ITEM,
+      amount,
+      quantity: qty,
+    });
+  }
+  return resolved;
 }
 
 export async function fetchRoomRateRows() {

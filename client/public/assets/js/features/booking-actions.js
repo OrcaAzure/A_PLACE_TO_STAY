@@ -61,16 +61,6 @@ export function promptApproveReservation(r) {
 }
 
 export async function approveSingleRequest(r) {
-  const avail = await getRoomAvailability({
-    check_in: r.schedule?.checkIn,
-    check_out: r.schedule?.checkOut,
-    guest_count: r.guestCount || 1,
-    exclude_booking_id: r.id,
-  });
-  const room = (avail.rooms || []).find((x) => String(x.id) === String(r.roomId));
-  if (!room || room.availability_status !== 'available') {
-    throw new Error('The requested room is no longer available on these dates. Use Modify to pick another room.');
-  }
   await updateBooking(r.id, {
     status: 'Approved',
     notify_guest: true,

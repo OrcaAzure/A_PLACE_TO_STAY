@@ -19,6 +19,7 @@ import {
   runGmcAblockMigration,
   runVenueFieldsMigration,
 } from './facilities.js';
+import { runBugFixPassJul2026Migration } from './bug-fix-pass-jul2026.js';
 
 export async function runSchemaPatches() {
   try {
@@ -806,6 +807,12 @@ export async function runSchemaPatches() {
     }
   } catch (err) {
     console.warn('[schema] users profile fields skipped:', err.message);
+  }
+
+  try {
+    await runBugFixPassJul2026Migration();
+  } catch (err) {
+    console.warn('[schema] bug-fix-pass-jul2026 migration skipped:', err.message);
   }
 }
 

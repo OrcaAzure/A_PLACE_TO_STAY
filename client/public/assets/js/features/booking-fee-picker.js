@@ -68,12 +68,14 @@ function groupLabel(category) {
 
 function mapCatalogItem(group, row) {
   const name = row.item;
-  const season = row.season && row.season !== 'N/A' ? row.season : '';
+  const isLodgingExtra = group.category === 'Accommodation Extras';
+  const season = !isLodgingExtra && row.season && row.season !== 'N/A' ? row.season : '';
   return {
     name,
     label: season ? `${name} (${season})` : name,
     amount: Number(row.rate),
     category: group.category,
+    canonicalName: isLodgingExtra ? name : undefined,
   };
 }
 
@@ -96,6 +98,20 @@ export function buildFeeGroups(services = []) {
     }
 
     if (!items.length) continue;
+
+    if (group.category === 'Accommodation Extras') {
+      const lodging = items.find((i) => i.name === 'Extra Bed or Extra Person') || items[0];
+      if (lodging) {
+        topLevel.push({
+          id: group.category,
+          label: 'Extra bed / extra person',
+          icon: GROUP_ICONS[group.category] || 'bed',
+          type: 'single',
+          item: { ...lodging, name: lodging.name, label: 'Extra bed / extra person (rate by stay dates)' },
+        });
+      }
+      continue;
+    }
 
     if (items.length === 1) {
       const item = items[0];

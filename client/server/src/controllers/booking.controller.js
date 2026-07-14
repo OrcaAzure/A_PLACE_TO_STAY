@@ -21,10 +21,11 @@ import {
   getRoomById,
   resolveSeason,
   getRoomStayEstimate,
+  getStayQuote,
 } from '../services/booking.service.js';
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
-import { fetchExtraServiceRows, sanitizeGuestSubmittedFees } from '../services/ancillary.service.js';
+import { fetchExtraServiceRows, sanitizeGuestSubmittedFees, resolveGuestLodgingExtraFees } from '../services/ancillary.service.js';
 import { extractDeclineReason } from '../services/email.service.js';
 import { getInvoiceSnapshot, ensureInvoiceForBooking, deletePaymentsForRoomBooking } from '../services/payment.service.js';
 
@@ -55,12 +56,17 @@ async function enrichBooking(row) {
 export const getAllBookings = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
+    const includeGroupChildren = req.query.include_group_children === '1'
+      || req.query.include_group_children === 'true';
+    const groupFilter = includeGroupChildren ? '' : ' AND bk.group_id IS NULL';
     let rows;
     if (isAdminPortalRole(role)) {
-      [rows] = await pool.query(`${bookingSelect} ORDER BY bk.check_in ASC`);
+      [rows] = await pool.query(
+        `${bookingSelect} WHERE 1=1${groupFilter} ORDER BY bk.check_in ASC`
+      );
     } else {
       [rows] = await pool.query(
-        `${bookingSelect} WHERE bk.user_id = ? ORDER BY bk.check_in ASC`,
+        `${bookingSelect} WHERE bk.user_id = ?${groupFilter} ORDER BY bk.check_in ASC`,
         [userId]
       );
     }
@@ -151,6 +157,41 @@ export const getRoomStayEstimateHandler = async (req, res) => {
   }
 };
 
+export const getStayQuoteHandler = async (req, res) => {
+  try {
+    const {
+      room_id, check_in, check_out, guest_count, meals, fees,
+    } = req.body;
+    if (isEmpty(room_id) || isEmpty(check_in) || isEmpty(check_out)) {
+      return res.status(400).json({ message: 'room_id, check_in, and check_out are required' });
+    }
+    const isAdmin = isAdminRole(req.user.role);
+    const room = await getRoomById(room_id);
+    if (!room) return res.status(404).json({ message: 'Room not found' });
+    if (!isAdmin) {
+      const allowed = filterRoomsForGuestUser(
+        [{ ...room, building_name: room.building_name }],
+        req.user.email,
+      );
+      if (!allowed.length) {
+        return res.status(403).json({ message: 'You do not have access to this room' });
+      }
+    }
+    const quote = await getStayQuote({
+      roomId: room_id,
+      checkIn: check_in,
+      checkOut: check_out,
+      guestCount: guest_count || 1,
+      meals,
+      fees,
+      bypassAdvanceLimit: isAdmin,
+    });
+    res.status(200).json({ quote });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 export const getMealRateList = async (req, res) => {
   try {
     res.status(200).json({ rates: await getMealRates() });
@@ -197,13 +238,18 @@ export const createBooking = async (req, res) => {
     let feesToSave = fees;
     if (!isAdmin && fees != null && fees.length) {
       const catalogRows = await fetchExtraServiceRows();
-      feesToSave = sanitizeGuestSubmittedFees(fees, catalogRows, []);
+      const sanitized = sanitizeGuestSubmittedFees(fees, catalogRows, []);
+      feesToSave = await resolveGuestLodgingExtraFees(sanitized, { checkIn: check_in, checkOut: check_out });
+    } else if (isAdmin && fees != null && fees.length) {
+      feesToSave = await resolveGuestLodgingExtraFees(fees, { checkIn: check_in, checkOut: check_out });
     }
     const grandTotal = await computeGrandTotal({
       roomTotal: prepared.total_amount,
       meals,
       fees: feesToSave,
       mealRates,
+      checkIn: check_in,
+      checkOut: check_out,
     });
 
     const bookingStatus = isAdminRole(role) ? (status || 'Approved') : 'Pending';
@@ -218,7 +264,7 @@ export const createBooking = async (req, res) => {
       ]
     );
 
-    await saveBookingMeals(result.insertId, meals, mealRates);
+    await saveBookingMeals(result.insertId, meals, mealRates, { checkIn: check_in, checkOut: check_out });
     await saveBookingFees(result.insertId, feesToSave);
 
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [result.insertId]);

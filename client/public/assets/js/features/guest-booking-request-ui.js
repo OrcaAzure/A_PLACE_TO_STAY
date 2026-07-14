@@ -512,6 +512,7 @@ async function submitBookingRequestForm() {
         room_id: row.roomId,
         guest_count: row.guestCount,
       })),
+      is_group_stay: rooms.length > 1,
       venues: venues.map((row) => ({
         facility_id: row.facilityId,
         event_date: row.eventDate,
