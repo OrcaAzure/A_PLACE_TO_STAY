@@ -87,7 +87,7 @@ function renderCard(p) {
     <article class="guest-invoice-card ${isPaid ? 'guest-invoice-card--paid' : 'guest-invoice-card--due'}">
       <div class="guest-invoice-card__head">
         <div>
-          <p class="guest-invoice-card__id">Invoice #${p.id} · ${isVenue ? 'Venue' : 'Housing'}</p>
+          <p class="guest-invoice-card__id">${isVenue ? 'Venue booking' : 'Room stay'}</p>
           <h4 class="guest-invoice-card__room">${escapeHtml(invoiceTitle(p))}</h4>
           <p class="guest-invoice-card__dates">${escapeHtml(when)}</p>
         </div>
