@@ -61,7 +61,9 @@
 ---
 
 ## 10. Prayer Mountain 4-hour minimum
-**Fix:** Migration sets `facilities.min_hours = 4` for `facility_group = 'Prayer Mountain'`. Server validation already uses `validateVenueDuration()`; guest wizard uses same via `venueRateMeta`.
+**Fix:** Migration sets `facilities.min_hours = 4` and `hourly_rate` to the Regular catalog rate for `facility_group = 'Prayer Mountain'`. Duration is enforced by `validateVenueDuration()`; billing stays hourly (`rate × hours`) via `isHourlyMinimumVenue()` — not a flat ₱6,000 package for 4 hours.
+
+**Note:** An earlier pass set only `min_hours`, which made saves recalculate 4-hour bookings to ₱6,000 and kept resurfacing the billing “Confirm reservation changes” dialog. Re-run seed/migrations (or restart the API so schema patches apply) so `hourly_rate` is populated.
 
 ---
 

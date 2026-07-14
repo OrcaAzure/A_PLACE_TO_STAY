@@ -262,6 +262,7 @@ CREATE TABLE IF NOT EXISTS reservation_groups (
     check_out       DATE NOT NULL,
     total_guests    INT NOT NULL DEFAULT 1,
     rooms_requested INT DEFAULT NULL,
+    is_group_stay   TINYINT(1) NOT NULL DEFAULT 1,
     status          ENUM(
                       'Pending',
                       'Approved',
@@ -269,6 +270,7 @@ CREATE TABLE IF NOT EXISTS reservation_groups (
                       'Cancelled'
                     ) NOT NULL DEFAULT 'Pending',
     notes           TEXT DEFAULT NULL,
+    booking_ref     VARCHAR(40) DEFAULT NULL,
     pricing_category VARCHAR(80) NOT NULL DEFAULT 'Guest',
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -311,6 +313,7 @@ CREATE TABLE IF NOT EXISTS bookings_rooms (
                      'Cancelled'
                    ) NOT NULL DEFAULT 'Pending',
     notes               TEXT DEFAULT NULL,
+    booking_ref         VARCHAR(40) DEFAULT NULL,
     contact_phone       VARCHAR(30) DEFAULT NULL,
     meal_allergen_notes TEXT DEFAULT NULL,
     pricing_category    VARCHAR(80) NOT NULL DEFAULT 'Guest',
@@ -344,13 +347,14 @@ CREATE INDEX idx_bookings_rooms_group ON bookings_rooms (group_id);
 CREATE TABLE IF NOT EXISTS bookings_meals (
     id               INT AUTO_INCREMENT PRIMARY KEY,
     bookings_room_id INT NOT NULL,
+    meal_date        DATE NOT NULL,
     meal_type        ENUM('Breakfast', 'Lunch', 'Dinner', 'Snack') NOT NULL,
     quantity         INT NOT NULL DEFAULT 0,
     unit_price       DECIMAL(10,2) NOT NULL,
     subtotal         DECIMAL(10,2) NOT NULL,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_bookings_meals_room FOREIGN KEY (bookings_room_id) REFERENCES bookings_rooms(id) ON DELETE CASCADE,
-    UNIQUE KEY uq_bookings_meals (bookings_room_id, meal_type)
+    UNIQUE KEY uq_bookings_meals_day (bookings_room_id, meal_type, meal_date)
 );
 
 CREATE TABLE IF NOT EXISTS bookings_extra_services (
@@ -460,6 +464,7 @@ CREATE TABLE IF NOT EXISTS bookings_facilities (
                    'Cancelled'
                  ) NOT NULL DEFAULT 'Pending',
     notes        TEXT DEFAULT NULL,
+    booking_ref  VARCHAR(40) DEFAULT NULL,
     contact_phone VARCHAR(30) DEFAULT NULL,
 
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -734,23 +739,24 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 -- Event spaces — not lodging rooms
 -- ============================================
 
-INSERT INTO facilities (name, room_code, description, package_name, facility_group, capacity_min, capacity_max, min_hours) VALUES
-    ('GMC Chapel', NULL, NULL, 'Church',  'GMC Chapel', NULL, NULL, 4),
-    ('GMC Chapel', NULL, NULL, 'Wedding', 'GMC Chapel', NULL, NULL, 4),
-    ('Burdine Commons', NULL, NULL, 'Meeting and other functions', 'Burdine Commons', NULL, NULL, 4),
-    ('Burdine Commons', NULL, NULL, 'Wedding and reception', 'Burdine Commons', NULL, NULL, 4),
-    ('Osgood Garden', NULL, 'Outdoor garden venue.', NULL, 'Garden', 1, 150, NULL),
-    ('Prayer Mountain', NULL, NULL, 'Retreat use', 'Prayer Mountain', NULL, NULL, NULL),
-    ('Prayer Tower', NULL, NULL, 'Function', 'Prayer Tower', NULL, NULL, NULL),
-    ('Prayer Tower', NULL, NULL, 'Baptism', 'Prayer Tower', NULL, NULL, NULL),
-    ('Basketball Court', NULL, NULL, 'Sporting event', 'Recreation', NULL, NULL, NULL),
-    ('Childrens Playground', NULL, NULL, 'Playground use', 'Recreation', NULL, NULL, NULL),
-    ('Recreational Center', NULL, NULL, 'Recreation use', 'Recreation', NULL, NULL, NULL),
-    ('Russ Turney Educational Center', 'A-101', 'Large educational and meeting hall on the A-block.', NULL, 'GMC Conference Rooms', 1, 100, NULL),
-    ('Classroom Multi-Purpose Room', 'A-504', 'Multi-purpose classroom space.', NULL, 'GMC Conference Rooms', 1, 30, NULL),
-    ('Classroom Multi-Purpose Room', 'A-505', 'Multi-purpose classroom space.', NULL, 'GMC Conference Rooms', 1, 30, NULL),
-    ('Conference Room', 'A-506', 'Conference room on the A-block.', NULL, 'GMC Conference Rooms', 1, 15, NULL),
-    ('Conference Room', 'A-507', 'Conference room on the A-block (formerly A-105).', NULL, 'GMC Conference Rooms', 1, 15, NULL)
+INSERT INTO facilities (name, room_code, description, package_name, facility_group, capacity_min, capacity_max, min_hours, hourly_rate) VALUES
+    ('GMC Chapel', NULL, NULL, 'Church',  'GMC Chapel', NULL, NULL, 4, NULL),
+    ('GMC Chapel', NULL, NULL, 'Wedding', 'GMC Chapel', NULL, NULL, 4, NULL),
+    ('Burdine Commons', NULL, NULL, 'Meeting and other functions', 'Burdine Commons', NULL, NULL, 4, NULL),
+    ('Burdine Commons', NULL, NULL, 'Wedding and reception', 'Burdine Commons', NULL, NULL, 4, NULL),
+    ('Osgood Garden', NULL, 'Outdoor garden venue.', NULL, 'Garden', 1, 150, NULL, NULL),
+    -- Prayer Mountain: hourly ₱6k / ₱6.5k with a 4-hour booking floor (not a flat package)
+    ('Prayer Mountain', NULL, NULL, 'Retreat use', 'Prayer Mountain', NULL, NULL, 4, 6000.00),
+    ('Prayer Tower', NULL, NULL, 'Function', 'Prayer Tower', NULL, NULL, NULL, NULL),
+    ('Prayer Tower', NULL, NULL, 'Baptism', 'Prayer Tower', NULL, NULL, NULL, NULL),
+    ('Basketball Court', NULL, NULL, 'Sporting event', 'Recreation', NULL, NULL, NULL, NULL),
+    ('Childrens Playground', NULL, NULL, 'Playground use', 'Recreation', NULL, NULL, NULL, NULL),
+    ('Recreational Center', NULL, NULL, 'Recreation use', 'Recreation', NULL, NULL, NULL, NULL),
+    ('Russ Turney Educational Center', 'A-101', 'Large educational and meeting hall on the A-block.', NULL, 'GMC Conference Rooms', 1, 100, NULL, NULL),
+    ('Classroom Multi-Purpose Room', 'A-504', 'Multi-purpose classroom space.', NULL, 'GMC Conference Rooms', 1, 30, NULL, NULL),
+    ('Classroom Multi-Purpose Room', 'A-505', 'Multi-purpose classroom space.', NULL, 'GMC Conference Rooms', 1, 30, NULL, NULL),
+    ('Conference Room', 'A-506', 'Conference room on the A-block.', NULL, 'GMC Conference Rooms', 1, 15, NULL, NULL),
+    ('Conference Room', 'A-507', 'Conference room on the A-block (formerly A-105).', NULL, 'GMC Conference Rooms', 1, 15, NULL, NULL)
 ON DUPLICATE KEY UPDATE
     name = VALUES(name),
     description = VALUES(description),
@@ -758,7 +764,8 @@ ON DUPLICATE KEY UPDATE
     facility_group = VALUES(facility_group),
     capacity_min = VALUES(capacity_min),
     capacity_max = VALUES(capacity_max),
-    min_hours = VALUES(min_hours);
+    min_hours = VALUES(min_hours),
+    hourly_rate = VALUES(hourly_rate);
 
 INSERT INTO rates_facilities (facility_id, season, rate)
 SELECT f.id, s.season, s.rate

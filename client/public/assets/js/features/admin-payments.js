@@ -1663,9 +1663,9 @@ function readReservationEditForm(form) {
     return {
       ...base,
       facility_id: Number(form.querySelector('[name="facility_id"]')?.value),
-      event_date: form.querySelector('[name="event_date"]')?.value,
-      start_time: form.querySelector('[name="start_time"]')?.value,
-      end_time: form.querySelector('[name="end_time"]')?.value,
+      event_date: sliceDate(form.querySelector('[name="event_date"]')?.value),
+      start_time: sliceTime(form.querySelector('[name="start_time"]')?.value),
+      end_time: sliceTime(form.querySelector('[name="end_time"]')?.value),
     };
   }
   return {
@@ -1711,9 +1711,9 @@ function reservationEditHasChanges(p, draft) {
   }
   if (draft.invoice_kind === 'venue') {
     return String(draft.facility_id) !== String(p.facility_id)
-      || draft.event_date !== sliceDate(p.event_date)
-      || draft.start_time !== sliceTime(p.start_time)
-      || draft.end_time !== sliceTime(p.end_time)
+      || sliceDate(draft.event_date) !== sliceDate(p.event_date)
+      || sliceTime(draft.start_time) !== sliceTime(p.start_time)
+      || sliceTime(draft.end_time) !== sliceTime(p.end_time)
       || Number(draft.guest_count) !== Number(p.guest_count || 1);
   }
   return (draft.notes || '') !== (parseBookingNotes(p.notes).guestNotes || '')
@@ -1767,13 +1767,13 @@ function buildReservationChangeSummary(p, draft) {
     if (String(draft.facility_id) !== String(p.facility_id)) {
       lines.push({ level: 'warn', text: `Venue space changes from ${venueLabel(p)}.` });
     }
-    if (draft.event_date !== sliceDate(p.event_date)) {
+    if (sliceDate(draft.event_date) !== sliceDate(p.event_date)) {
       lines.push({
         level: 'warn',
         text: `Event date: ${formatDateLongSingle(sliceDate(p.event_date))} → ${formatDateLongSingle(draft.event_date)}.`,
       });
     }
-    if (draft.start_time !== sliceTime(p.start_time) || draft.end_time !== sliceTime(p.end_time)) {
+    if (sliceTime(draft.start_time) !== sliceTime(p.start_time) || sliceTime(draft.end_time) !== sliceTime(p.end_time)) {
       lines.push({
         level: 'warn',
         text: `Event time: ${formatTime12(p.start_time)} – ${formatTime12(p.end_time)} → ${formatTime12(draft.start_time)} – ${formatTime12(draft.end_time)}.`,
