@@ -1,7 +1,7 @@
 import { pool } from '../config/db.js';
 
 async function getUserId(email) {
-  const [rows] = await pool.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [email]);
+  const [rows] = await pool.execute('SELECT id from users WHERE email = ? LIMIT 1', [email]);
   return rows[0]?.id || null;
 }
 
@@ -50,4 +50,21 @@ async function dropForeignKey(table, constraint) {
   }
 }
 
-export { getUserId, getRoomId, tableExists, columnExists, getColumnType, dropForeignKey };
+/** Run a migration step; log and continue on failure (idempotent patches). */
+async function safeRun(label, fn) {
+  try {
+    await fn();
+  } catch (err) {
+    console.warn(`[schema] ${label} skipped:`, err?.message || err);
+  }
+}
+
+export {
+  getUserId,
+  getRoomId,
+  tableExists,
+  columnExists,
+  getColumnType,
+  dropForeignKey,
+  safeRun,
+};
