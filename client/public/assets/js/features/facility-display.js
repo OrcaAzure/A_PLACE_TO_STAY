@@ -30,8 +30,12 @@ export const ROOM_NUMBER_IMAGE = {
   '207': '/images/207Preview.jpg',
   '301': '/images/301Preview.jpg',
   '401': '/images/401Preview.jpg',
+  '404': '/images/404Preview.jpg',
+  '410': '/images/410Preview.jpg',
+  '411': '/images/411Preview.jpg',
   '413': '/images/413Preview.jpg',
   '416': '/images/416Preview.jpg',
+  'A-501': '/images/501Preview.jpg',
 };
 
 const DEFAULT_ROOM_IMAGE =
@@ -187,6 +191,27 @@ export const ROOM_NUMBER_GALLERY = {
     '/images/401Preview.jpg',
     '/images/401Preview2.jpg',
     '/images/401Preview3.jpg',
+    '/images/401Preview4.jpg',
+    '/images/401Preview5.jpg',
+  ],
+  '404': [
+    '/images/404Preview.jpg',
+    '/images/404Preview2.jpg',
+    '/images/404Preview3.jpg',
+    '/images/404Preview4.jpg',
+    '/images/404Preview5.jpg',
+    '/images/404Preview6.jpg',
+  ],
+  '410': [
+    '/images/410Preview.jpg',
+    '/images/410Preview2.jpg',
+    '/images/410Preview3.jpg',
+    '/images/410Preview4.jpg',
+  ],
+  '411': [
+    '/images/411Preview.jpg',
+    '/images/411Preview2.jpg',
+    '/images/411Preview3.jpg',
   ],
   '413': [
     '/images/413Preview.jpg',
@@ -200,6 +225,13 @@ export const ROOM_NUMBER_GALLERY = {
     '/images/416Preview3.jpg',
     '/images/416Preview4.jpg',
     '/images/416Preview5.jpg',
+  ],
+  'A-501': [
+    '/images/501Preview.jpg',
+    '/images/501Preview2.jpg',
+    '/images/501Preview3.jpg',
+    '/images/501Preview4.jpg',
+    '/images/501Preview5.jpg',
   ],
 };
 
