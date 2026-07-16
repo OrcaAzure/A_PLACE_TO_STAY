@@ -24,5 +24,8 @@
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f app"
+  },
+  "devDependencies": {
+    "qrcode": "^1.5.4"
   }
 }
