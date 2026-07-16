@@ -43,15 +43,15 @@ const DEFAULT_ROOM_IMAGE =
 
 /** Local / stock placeholders until real venue photos are uploaded. */
 export const VENUE_CATEGORY_IMAGE = {
-  'GMC Chapel': 'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1200&q=80',
+  'GMC Chapel': '/images/GMCChapelPreview.webp',
   'Burdine Commons': 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
-  'GMC Conference Rooms': 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+  'GMC Conference Rooms': '/images/A-101Preview.webp',
   GMC: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
   'Prayer Mountain': '/images/PrayerMountainPreview.webp',
   'Prayer Tower': '/images/PrayerTowerPreview.webp',
   Garden: '/images/GardenPreview.webp',
   Recreation: '/images/RecreationPreview.webp',
-  'Basketball Court': '/images/RecreationPreview.webp',
+  'Basketball Court': '/images/BasketballCourtPreview.webp',
   'Childrens Playground': '/images/RecreationPreview.webp',
   'Recreational Center': '/images/RecreationPreview.webp',
 };
@@ -62,6 +62,9 @@ export const LANDING_AMENITY_IMAGE = {
   prayerMountain: VENUE_CATEGORY_IMAGE['Prayer Mountain'],
   prayerTower: VENUE_CATEGORY_IMAGE['Prayer Tower'],
   recreation: VENUE_CATEGORY_IMAGE.Recreation,
+  chapel: VENUE_CATEGORY_IMAGE['GMC Chapel'],
+  conference: VENUE_CATEGORY_IMAGE['GMC Conference Rooms'],
+  basketballCourt: VENUE_CATEGORY_IMAGE['Basketball Court'],
 };
 
 /**
@@ -69,21 +72,21 @@ export const LANDING_AMENITY_IMAGE = {
  * Add real campus photos here as they become available (same pattern as ROOM_NUMBER_IMAGE).
  */
 export const VENUE_NAME_IMAGE = {
-  'GMC Chapel': 'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1200&q=80',
+  'GMC Chapel': '/images/GMCChapelPreview.webp',
   'Burdine Commons': 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=1200&q=80',
   'Prayer Mountain': '/images/PrayerMountainPreview.webp',
   'Prayer Tower': '/images/PrayerTowerPreview.webp',
   Garden: '/images/GardenPreview.webp',
   'Osgood Hall': '/images/GardenPreview.webp',
   'Osgood Garden': '/images/GardenPreview.webp',
-  'Basketball Court': '/images/RecreationPreview.webp',
+  'Basketball Court': '/images/BasketballCourtPreview.webp',
   'Childrens Playground': '/images/RecreationPreview.webp',
   'Recreational Center': '/images/RecreationPreview.webp',
-  'A-101': 'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80',
-  'A-504': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
-  'A-505': 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
-  'A-506': 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
-  'A-507': 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
+  'A-101': '/images/A-101Preview.webp',
+  'A-504': '/images/A-504Preview.webp',
+  'A-505': '/images/A-505Preview.webp',
+  'A-506': '/images/A-101Preview.webp',
+  'A-507': '/images/A-101Preview.webp',
 };
 
 const DEFAULT_VENUE_IMAGE =
@@ -235,11 +238,40 @@ export const ROOM_NUMBER_GALLERY = {
   ],
 };
 
+/** Optional multi-photo overrides keyed by venue name / room code. */
+export const VENUE_NAME_GALLERY = {
+  'GMC Chapel': [
+    '/images/GMCChapelPreview.webp',
+    '/images/GMCChapelPreview2.webp',
+    '/images/GMCChapelPreview3.webp',
+  ],
+  'Basketball Court': [
+    '/images/BasketballCourtPreview.webp',
+    '/images/BasketballCourtPreview2.webp',
+    '/images/BasketballCourtPreview3.webp',
+  ],
+  'A-101': [
+    '/images/A-101Preview.webp',
+    '/images/A-101Preview2.webp',
+    '/images/A-101Preview3.webp',
+  ],
+  'A-504': [
+    '/images/A-504Preview.webp',
+    '/images/A-504Preview2.webp',
+    '/images/A-504Preview3.webp',
+  ],
+  'A-505': [
+    '/images/A-505Preview.webp',
+    '/images/A-505Preview2.webp',
+    '/images/A-505Preview3.webp',
+  ],
+};
+
 const VENUE_CATEGORY_GALLERY = {
   'GMC Chapel': [
-    'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1400&q=80',
-    'https://images.unsplash.com/photo-1519167758481-83f29da8e3a3?auto=format&fit=crop&w=1400&q=80',
-    '/images/PrayerTowerPreview.webp',
+    '/images/GMCChapelPreview.webp',
+    '/images/GMCChapelPreview2.webp',
+    '/images/GMCChapelPreview3.webp',
   ],
   'Burdine Commons': [
     'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=1400&q=80',
@@ -247,9 +279,11 @@ const VENUE_CATEGORY_GALLERY = {
     'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1400&q=80',
   ],
   'GMC Conference Rooms': [
-    'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1400&q=80',
-    'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1400&q=80',
-    'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1400&q=80',
+    '/images/A-101Preview.webp',
+    '/images/A-101Preview2.webp',
+    '/images/A-504Preview.webp',
+    '/images/A-505Preview.webp',
+    '/images/A-101Preview3.webp',
   ],
   'Prayer Mountain': [
     '/images/PrayerMountainPreview.webp',
@@ -268,12 +302,17 @@ const VENUE_CATEGORY_GALLERY = {
     '/images/GardenPreview3.webp',
     '/images/GardenPreview4.webp',
   ],
+  'Basketball Court': [
+    '/images/BasketballCourtPreview.webp',
+    '/images/BasketballCourtPreview2.webp',
+    '/images/BasketballCourtPreview3.webp',
+  ],
   Recreation: [
+    '/images/BasketballCourtPreview.webp',
     '/images/RecreationPreview.webp',
     '/images/RecreationPreview2.webp',
     '/images/RecreationPreview3.webp',
     '/images/RecreationPreview4.webp',
-    '/images/RecreationPreview5.webp',
   ],
 };
 
@@ -316,12 +355,22 @@ export function roomGalleryImages(room = {}) {
 
 /**
  * Gallery list for a venue card/detail modal.
+ * Uses venue-specific photos first, then category gallery placeholders.
  */
 export function venueGalleryImages(venue = {}) {
   const code = normalizeVenueKey(venue.room_code ?? venue.roomCode);
   const candidates = [venue.name, venue.label, venue.item, venue.facility_group, venue.category]
     .map(normalizeVenueKey)
     .filter(Boolean);
+
+  if (code && VENUE_NAME_GALLERY[code]?.length) {
+    return uniqueUrls(VENUE_NAME_GALLERY[code]).slice(0, 5);
+  }
+  for (const key of candidates) {
+    if (VENUE_NAME_GALLERY[key]?.length) {
+      return uniqueUrls(VENUE_NAME_GALLERY[key]).slice(0, 5);
+    }
+  }
 
   let categoryKey = '';
   for (const key of candidates) {
@@ -336,7 +385,8 @@ export function venueGalleryImages(venue = {}) {
     else if (/prayer mountain|retreat|hut/.test(blob)) categoryKey = 'Prayer Mountain';
     else if (/prayer tower/.test(blob)) categoryKey = 'Prayer Tower';
     else if (/garden|osgood/.test(blob)) categoryKey = 'Garden';
-    else if (/basketball|playground|recreation|sport|court|gym/.test(blob)) categoryKey = 'Recreation';
+    else if (/basketball/.test(blob)) categoryKey = 'Basketball Court';
+    else if (/playground|recreation|sport|court|gym/.test(blob)) categoryKey = 'Recreation';
     else if (/conference|classroom|commons|meeting|a-\d{3}/.test(blob)) categoryKey = 'GMC Conference Rooms';
   }
 
@@ -394,7 +444,10 @@ export function venuePreviewImage({
   if (/garden|osgood/.test(blob)) {
     return VENUE_CATEGORY_IMAGE.Garden;
   }
-  if (/basketball|playground|recreation|sport|court|gym/.test(blob)) {
+  if (/basketball/.test(blob)) {
+    return VENUE_CATEGORY_IMAGE['Basketball Court'];
+  }
+  if (/playground|recreation|sport|court|gym/.test(blob)) {
     return VENUE_CATEGORY_IMAGE.Recreation;
   }
   if (/conference|classroom|commons|meeting|a-\d{3}/.test(blob)) {
