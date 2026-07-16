@@ -3,6 +3,7 @@ import { testConnection, closePool } from './config/db.js';
 import { runSeed } from './seed/index.js';
 import { validateEnv } from './config/validateEnv.js';
 import { PORT, HOST, isProduction, UI_ONLY } from './config/env.js';
+import { printNetworkAccessUrls } from './utils/networkUrls.js';
 
 async function start() {
   validateEnv();
@@ -34,6 +35,9 @@ async function start() {
   const server = app.listen(port, host, () => {
     console.log(`[server] ${isProduction ? 'Production' : 'Development'} mode${UI_ONLY ? ' (UI_ONLY)' : ''}`);
     console.log(`[server] Listening on http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
+    if (!isProduction) {
+      printNetworkAccessUrls(port);
+    }
     if (UI_ONLY) {
       console.log('[server] UI preview — open /?skipIntro=1, /login.html, /guest/dashboard.html, /admin/dashboard.html');
       console.log('[server] Data APIs and login are disabled without MySQL.');

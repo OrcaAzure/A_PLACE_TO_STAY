@@ -26,9 +26,16 @@ export const ROOM_TYPE_IMAGE = {
 
 /** Room-specific photos override type placeholders when available. */
 export const ROOM_NUMBER_IMAGE = {
-  '204': '/images/204Preview.webp',
-  '207': '/images/207Preview.webp',
+  '202': '/images/DormPreview.webp',
+  '204': '/images/DormPreview.webp',
+  '206': '/images/DormPreview.webp',
+  '207': '/images/DormPreview.webp',
+  '208': '/images/DormPreview.webp',
+  '209': '/images/DormPreview.webp',
   '301': '/images/301Preview.webp',
+  '305': '/images/DormPreview.webp',
+  '306': '/images/DormPreview.webp',
+  '308': '/images/DormPreview.webp',
   '401': '/images/401Preview.webp',
   '404': '/images/404Preview.webp',
   '410': '/images/410Preview.webp',
@@ -178,17 +185,57 @@ const ROOM_TYPE_GALLERY = {
 
 /** Optional multi-photo overrides keyed by room number (extend as uploads arrive). */
 export const ROOM_NUMBER_GALLERY = {
+  '202': [
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
+  ],
   '204': [
-    '/images/204Preview.webp',
-    '/images/204Preview2.webp',
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
+  ],
+  '206': [
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
   ],
   '207': [
-    '/images/207Preview.webp',
-    '/images/207Preview2.webp',
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
+  ],
+  '208': [
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
+  ],
+  '209': [
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
   ],
   '301': [
     '/images/301Preview.webp',
     '/images/301Preview2.webp',
+  ],
+  '305': [
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
+  ],
+  '306': [
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
+  ],
+  '307': [
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
+  ],
+  '308': [
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
+  ],
+  '309': [
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
+  ],
+  '310': [
+    '/images/DormPreview.webp',
+    '/images/DormPreview2.webp',
   ],
   '401': [
     '/images/401Preview.webp',
