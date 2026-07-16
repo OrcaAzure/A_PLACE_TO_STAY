@@ -14,22 +14,6 @@ function clearLandingBlockers() {
   document.body.classList.add('lp-ready');
   document.getElementById('lp-preloader')?.remove();
   document.getElementById('lp-welcome')?.remove();
-  document.getElementById('apt-landing-idle')?.remove();
-}
-
-function waitForIdleDismiss(idle) {
-  if (!idle || idle.classList.contains('is-hidden')) return Promise.resolve();
-
-  return new Promise((resolve) => {
-    const done = () => {
-      observer.disconnect();
-      resolve();
-    };
-    const observer = new MutationObserver(() => {
-      if (idle.classList.contains('is-hidden')) done();
-    });
-    observer.observe(idle, { attributes: true, attributeFilter: ['class'] });
-  });
 }
 
 async function revealLandingPage(startHeroHandoff) {
@@ -51,7 +35,6 @@ async function bootLandingPage({ skipHeroEntrance = true } = {}) {
 
 async function boot() {
   const params = new URLSearchParams(window.location.search);
-  const previewIdle = params.has('previewIdle') || params.get('idle') === 'preview';
   const skipIntro = params.has('skipIntro') || params.get('intro') === 'skip' || params.get('intro') === '0';
 
   try {
@@ -59,27 +42,6 @@ async function boot() {
     await mountPublicLandingContent();
   } catch (err) {
     console.error('[landing] content mount failed:', err);
-  }
-
-  if (previewIdle) {
-    document.getElementById('lp-preloader')?.remove();
-    document.getElementById('lp-welcome')?.remove();
-    document.body.classList.add('lp-page-hidden');
-
-    const { showAptIdlePreview } = await import('/assets/js/layout/splash-idle.js');
-    const idle = await showAptIdlePreview({ portal: 'guest' });
-    await waitForIdleDismiss(idle);
-
-    document.body.classList.remove('lp-preloader-active');
-    document.body.classList.add('lp-ready');
-
-    try {
-      await bootLandingPage({ skipHeroEntrance: true });
-    } catch (err) {
-      console.error('[landing] page init failed:', err);
-      document.body.classList.remove('lp-page-hidden');
-    }
-    return;
   }
 
   if (skipIntro) {

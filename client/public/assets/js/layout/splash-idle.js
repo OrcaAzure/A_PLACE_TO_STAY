@@ -1,17 +1,15 @@
 /**
- * APTS splash (initial load) + idle (screensaver) — admin & guest portals.
+ * APTS splash (initial load) + admin idle (screensaver).
+ * Guest portal uses splash only — no idle screensaver.
  * Vanilla JS; clocks use local 24-hour HH:MM:SS with no timezone labels.
  */
 
 
 const SPLASH_DURATION_MS = 1500;
 const IDLE_TIMEOUT_MS = 300_000;
-const IDLE_PREVIEW_PARAM = 'previewIdle';
 const GUEST_LOTTIE_SRC = '/assets/animations/splash-animation.lottie';
-const GUEST_IDLE_LOTTIE_SRC = '/assets/animations/idle-magnifier-animation.lottie';
 const DOTLOTTIE_PLAYER_CDN = 'https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs';
 const DOTLOTTIE_LOAD_TIMEOUT_MS = 8000;
-const GUEST_IDLE_SLIDE_MS = 8000;
 
 /** @type {Promise<void> | null} */
 let dotLottiePromise = null;
@@ -94,20 +92,6 @@ function guestSplashLottieMarkup() {
     <p class="apt-splash--guest__brand">APTS</p>`;
 }
 
-function guestIdleLottieMarkup() {
-  return `
-    <div class="apt-idle--guest__lottie-wrap" role="img" aria-label="APTS mascot">
-      <dotlottie-player
-        class="apt-idle--guest__lottie"
-        src="${GUEST_IDLE_LOTTIE_SRC}"
-        autoplay
-        loop
-        mode="normal"
-        background="transparent"
-      ></dotlottie-player>
-    </div>`;
-}
-
 function startGuestLottiePlayer(container) {
   const player = container?.querySelector('dotlottie-player');
   if (!player) return;
@@ -180,17 +164,8 @@ function guestCloudCatMarkup({ compact = false } = {}) {
     </div>`;
 }
 
-const GUEST_FACILITY_IMAGES = [
-  'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1920&q=80',
-  'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1400&q=80',
-  'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1438032455732-1033d28535fd?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=1200&q=80',
-];
-
 let clockInterval = null;
 let idleTimer = null;
-let slideInterval = null;
 let splashDismissTimer = null;
 /** @returns {string} 24-hour clock, e.g. 14:05:09 — no timezone suffix */
 export function formatClock24(date = new Date()) {
@@ -198,10 +173,6 @@ export function formatClock24(date = new Date()) {
   const m = String(date.getMinutes()).padStart(2, '0');
   const s = String(date.getSeconds()).padStart(2, '0');
   return `${h}:${m}:${s}`;
-}
-
-function prefersReducedMotion() {
-  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /** Hide overlays before CSS arrives — guest dashboard does not preload splash-idle.css. */
@@ -290,48 +261,6 @@ function buildAdminSplash() {
   return overlay;
 }
 
-function guestIdleSceneInnerMarkup({ useLottie = true, showHint = true } = {}) {
-  const slides = GUEST_FACILITY_IMAGES.map((url, i) =>
-    `<div class="apt-idle--guest__slide${i === 0 ? ' is-active' : ''}" style="background-image:url('${url}')"></div>`,
-  ).join('');
-
-  const cards = GUEST_FACILITY_IMAGES.slice(0, 4).map((url) =>
-    `<div class="apt-idle--guest__card" style="background-image:url('${url}')"></div>`,
-  ).join('');
-
-  const mascot = useLottie
-    ? guestIdleLottieMarkup()
-    : guestCloudCatMarkup({ compact: true });
-
-  const hint = showHint
-    ? '<p class="apt-idle--guest__hint">Touch anywhere to return</p>'
-    : '';
-
-  return `
-    <div class="apt-idle--guest__slides">${slides}</div>
-    <div class="apt-idle--guest__vignette" aria-hidden="true"></div>
-    <div class="apt-idle--guest__cards">${cards}</div>
-    <div class="apt-idle--guest__message">
-      ${mascot}
-      <h2>Welcome to APTS – Tap to explore.</h2>
-      ${hint}
-    </div>`;
-}
-
-function buildGuestIdle({ useLottie = true } = {}) {
-  const overlay = document.createElement('div');
-  overlay.id = 'apt-idle';
-  overlay.className = 'apt-overlay apt-idle apt-idle--guest is-hidden';
-  overlay.setAttribute('data-layout-preserve', '');
-  overlay.setAttribute('aria-hidden', 'true');
-  overlay.setAttribute('hidden', '');
-  overlay.style.display = 'none';
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-label', 'APTS screensaver');
-  overlay.innerHTML = guestIdleSceneInnerMarkup({ useLottie, showHint: true });
-  return overlay;
-}
-
 function buildAdminIdle() {
   const overlay = document.createElement('div');
   overlay.id = 'apt-idle';
@@ -350,11 +279,6 @@ function buildAdminIdle() {
   return overlay;
 }
 
-function wantsIdlePreview() {
-  const params = new URLSearchParams(window.location.search);
-  return params.has(IDLE_PREVIEW_PARAM) || params.get('idle') === 'preview';
-}
-
 function dismissSplash(overlay) {
   if (!overlay || overlay.classList.contains('is-hidden')) return;
   overlay.classList.add('is-hidden');
@@ -370,25 +294,19 @@ export function dismissAptSplash() {
 }
 
 /**
- * Show the guest/admin idle screensaver immediately (for demos and QA).
+ * Show the admin idle screensaver immediately (for demos and QA).
+ * Guest portal has no idle screensaver.
  * @param {{ portal?: 'admin'|'guest' }} [options]
  * @returns {Promise<HTMLElement | null>}
  */
 export async function showAptIdlePreview({ portal = 'guest' } = {}) {
-  const isGuest = portal !== 'admin';
-  await ensureStylesheet();
+  if (portal !== 'admin') return null;
 
-  let guestUseLottie = false;
-  if (isGuest) {
-    guestUseLottie = await Promise.race([
-      ensureDotLottiePlayer().then(() => true).catch(() => false),
-      new Promise((resolve) => { window.setTimeout(() => resolve(false), 2000); }),
-    ]);
-  }
+  await ensureStylesheet();
 
   let idle = document.getElementById('apt-idle');
   if (!idle) {
-    idle = isGuest ? buildGuestIdle({ useLottie: guestUseLottie }) : buildAdminIdle();
+    idle = buildAdminIdle();
     document.body.appendChild(idle);
     if (!idle.dataset.activityBound) {
       bindIdleActivity(idle);
@@ -401,50 +319,16 @@ export async function showAptIdlePreview({ portal = 'guest' } = {}) {
   return idle;
 }
 
-/** @returns {boolean} */
-export function isIdlePreviewRequested() {
-  return wantsIdlePreview();
-}
-
-function delay(ms) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
-}
-
 function showIdle(overlay) {
   if (!overlay || !overlay.classList.contains('is-hidden')) return;
   setOverlayHidden(overlay, false);
   bindLiveClock(overlay.querySelector('[data-apt-clock]'));
-
-  if (overlay.classList.contains('apt-idle--guest')) {
-    startGuestSlideShow(overlay);
-    startGuestLottiePlayer(overlay);
-  }
 }
 
 function hideIdle(overlay) {
   if (!overlay || overlay.classList.contains('is-hidden')) return;
   setOverlayHidden(overlay, true);
-  stopGuestSlideShow();
   resetIdleTimer(overlay);
-}
-
-function startGuestSlideShow(overlay) {
-  stopGuestSlideShow();
-  const slides = [...overlay.querySelectorAll('.apt-idle--guest__slide')];
-  if (slides.length < 2 || prefersReducedMotion()) return;
-  let index = 0;
-  slideInterval = window.setInterval(() => {
-    slides[index]?.classList.remove('is-active');
-    index = (index + 1) % slides.length;
-    slides[index]?.classList.add('is-active');
-  }, GUEST_IDLE_SLIDE_MS);
-}
-
-function stopGuestSlideShow() {
-  if (slideInterval) {
-    clearInterval(slideInterval);
-    slideInterval = null;
-  }
 }
 
 function resetIdleTimer(idleOverlay) {
@@ -533,15 +417,20 @@ export async function initSplashIdle({
   }
 
   let idle = document.getElementById('apt-idle');
-  if (!idle) {
-    idle = isAdmin ? buildAdminIdle() : buildGuestIdle({ useLottie: guestUseLottie });
-    document.body.appendChild(idle);
-    if (!skipIdle && !idle.dataset.activityBound) {
-      bindIdleActivity(idle);
-      idle.dataset.activityBound = '1';
+  if (isAdmin) {
+    if (!idle) {
+      idle = buildAdminIdle();
+      document.body.appendChild(idle);
+      if (!skipIdle && !idle.dataset.activityBound) {
+        bindIdleActivity(idle);
+        idle.dataset.activityBound = '1';
+      }
+    } else if (idle.classList.contains('is-hidden')) {
+      setOverlayHidden(idle, true);
     }
-  } else if (idle.classList.contains('is-hidden')) {
-    setOverlayHidden(idle, true);
+  } else {
+    idle?.remove();
+    idle = null;
   }
 
   if (splash && showSplash && autoDismiss) {
@@ -550,11 +439,6 @@ export async function initSplashIdle({
   } else if (!showSplash && !splash) {
     document.body.classList.remove('is-splash-active');
     document.querySelector('.admin-shell')?.classList.remove('is-splash-active');
-  }
-
-  if (wantsIdlePreview() && idle) {
-    if (splash) dismissSplash(splash);
-    window.setTimeout(() => showIdle(idle), 0);
   }
 
   return { splash, idle };
