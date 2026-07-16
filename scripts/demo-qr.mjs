@@ -27,7 +27,7 @@ const primaryIp = ips[0]
 // Prefer LAN IP so phones on Wi‑Fi can open the link (PC names often fail on Android).
 const useHostname = process.argv.includes('--hostname');
 const finalHost = useHostname ? hostname : (primaryIp || hostname);
-const demoUrl = `http://${finalHost}:${port}/?skipIntro=1`;
+const demoUrl = `http://${finalHost}:${port}/`;
 
 const outRoot = path.join(root, 'demo-qr.html');
 const outPublic = path.join(root, 'client', 'public', 'demo-qr.html');
@@ -88,7 +88,7 @@ const html = `<!DOCTYPE html>
 </head>
 <body>
   <h1>Scan to open APTSpace</h1>
-  <p>Same Wi‑Fi required. Opens the landing page (intro skipped).</p>
+  <p>Same Wi‑Fi required. Opens the landing page with the full intro.</p>
   <div id="qr-wrap">
     <img id="qr" src="${qrDataUrl}" width="320" height="320" alt="QR code linking to APTSpace demo" />
   </div>
