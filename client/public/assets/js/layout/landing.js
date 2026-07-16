@@ -411,6 +411,8 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   const LOCK_DUR = Math.max(BG_DUR, SCROLL_DUR) + 0.05;
   const WHEEL_THRESHOLD = 12;
   const TOUCH_THRESHOLD = 36;
+  // Desktop: wheel-locked stepper. Mobile/tablet: native scroll + ScrollTrigger snap.
+  const useWheelStepper = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   let currentIndex = 0;
   let bgTween = null;
@@ -435,6 +437,12 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   function snapProgressForIndex(index) {
     if (count <= 1) return 0;
     return index / (count - 1);
+  }
+
+  function progressToIndex(progress) {
+    if (count <= 1) return 0;
+    const steps = count - 1;
+    return Math.min(steps, Math.max(0, Math.round(progress * steps)));
   }
 
   function scrollYForIndex(index) {
@@ -585,8 +593,21 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     pinReparent: false,
     anticipatePin: 1,
     invalidateOnRefresh: true,
-    // No ScrollTrigger.snap — it races native wheel and interrupts fades.
+    snap: !useWheelStepper && count > 1 ? {
+      snapTo: (value) => snapProgressForIndex(progressToIndex(value)),
+      duration: { min: 0.3, max: 0.55 },
+      delay: 0.02,
+      ease: 'power2.inOut',
+    } : false,
     onToggle: (self) => setSnapActive(self.isActive),
+    onUpdate(self) {
+      if (useWheelStepper) return;
+      const idx = progressToIndex(self.progress);
+      if (idx === currentIndex) return;
+      const prev = currentIndex;
+      currentIndex = idx;
+      applySlideVisuals(idx, prev, true);
+    },
     onEnter() {
       // Visuals only — do not window.scrollTo here (fights pin/refresh).
       currentIndex = 0;
@@ -696,11 +717,14 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     }
   }
 
-  window.addEventListener('wheel', onWheel, { passive: false });
-  window.addEventListener('touchstart', onTouchStart, { passive: true });
-  window.addEventListener('touchmove', onTouchMove, { passive: false });
-  window.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('keydown', onKeyDown);
+
+  if (useWheelStepper) {
+    window.addEventListener('wheel', onWheel, { passive: false });
+    window.addEventListener('touchstart', onTouchStart, { passive: true });
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onTouchEnd, { passive: true });
+  }
 
   section.classList.add('is-ready');
 

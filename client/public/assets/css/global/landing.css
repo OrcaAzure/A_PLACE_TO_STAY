@@ -1370,6 +1370,25 @@ body.lp-scroll-snap-active .lp-section-scroller {
     display: none;
   }
 
+  .lp-scroll-section {
+    touch-action: pan-y;
+  }
+
+  .lp-scroll-pin {
+    min-height: 100svh;
+    min-height: 100dvh;
+  }
+
+  .lp-scroll-phrases {
+    width: min(94vw, 56rem);
+    padding-inline: 0.5rem;
+  }
+
+  .lp-scroll-text-hint {
+    font-size: 0.5625rem;
+    letter-spacing: 0.28em;
+  }
+
   .lp-scroll-phrase-line {
     font-size: clamp(2rem, 11vw, 2.75rem);
   }
@@ -1470,6 +1489,15 @@ body.lp-scroll-snap-active .lp-section-scroller {
   .lp-facility-card {
     min-height: 14.5rem;
     border-radius: 1rem;
+  }
+
+  .lp-facility-card--hero,
+  .lp-facility-card--tall {
+    min-height: 17.5rem;
+  }
+
+  .lp-facility-card img {
+    object-position: center;
   }
 
   .lp-facility-body {
