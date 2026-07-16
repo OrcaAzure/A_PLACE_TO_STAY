@@ -19,6 +19,7 @@
     "test:smoke": "npm run test:smoke --prefix client/server",
     "verify": "node scripts/verify-local.mjs",
     "demo:urls": "node scripts/demo-urls.mjs",
+    "demo:qr": "node scripts/demo-qr.mjs",
     "verify:staging": "node scripts/verify-staging.mjs",
     "docker:up": "docker compose up --build -d",
     "docker:down": "docker compose down",
