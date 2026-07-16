@@ -66,7 +66,7 @@ describe('Pages smoke (public)', () => {
     const res = await agent.get('/assets/js/layout/landing.js');
     assert.equal(res.status, 200);
     assert.match(res.text, /initScrollShowcase/);
-    assert.match(res.text, /setSlideIndex/);
+    assert.match(res.text, /goToSlide/);
   });
 
   it('GET legal pages are served', async () => {
