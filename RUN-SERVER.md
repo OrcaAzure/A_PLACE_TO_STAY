@@ -161,16 +161,24 @@ npm run docker:down
 
 If someone else on your network wants to test **your** running server:
 
-1. Find your PC’s IP address:
-   - **Windows:** open CMD → `ipconfig` → look for `IPv4 Address` (e.g. `192.168.1.45`)
-2. They open: `http://YOUR_IP:3000` (e.g. `http://192.168.1.45:3000`)
-3. You may need to allow port **3000** in Windows Firewall.
-4. Edit `client/server/.env` and add your IP:
+1. Start the server (`npm run dev`). The terminal prints **Wi‑Fi demo URLs**, including:
+   - **By name:** `http://YOUR-PC-NAME:3000` (e.g. `http://DESKTOP-ABC:3000`)
+   - **mDNS:** `http://YOUR-PC-NAME.local:3000` (often works on iPhone/Mac)
+   - **By IP:** `http://192.168.x.x:3000`
+2. Or run anytime: `npm run demo:urls`
+3. On your PC, set the network profile to **Private** and allow port **3000** in Windows Firewall if prompted.
+4. Guests on the same Wi‑Fi open the **name** or **IP** URL in their phone browser.
+
+**Tip — easier name than IP:** Use your Windows computer name (Settings → System → About → **Device name**). Many phones accept `http://DeviceName:3000` or `http://DeviceName.local:3000` without typing the IP.
+
+5. Optional — edit `client/server/.env` for links and CORS if you use a custom hostname:
    ```env
-   ALLOWED_ORIGIN=http://localhost:3000,http://192.168.1.45:3000
-   APP_URL=http://192.168.1.45:3000
+   ALLOWED_ORIGIN=http://localhost:3000,http://192.168.1.45:3000,http://YOUR-PC-NAME:3000
+   APP_URL=http://YOUR-PC-NAME:3000
    ```
-5. Restart the server (`Ctrl+C`, then `npm run dev` again).
+6. Restart the server (`Ctrl+C`, then `npm run dev` again).
+
+**Note:** A custom domain like `aptspace.demo` only works if you add it to each device’s hosts file or run a local DNS server — for presentations, the PC name or `.local` URL is simplest.
 
 ---
 
