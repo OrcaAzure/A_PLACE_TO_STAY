@@ -13,7 +13,7 @@
   <link href="https://fonts.cdnfonts.com/css/rillosta-133416" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="/assets/css/global/landing.css?v=heroleft1"/>
-  <link rel="stylesheet" href="/assets/css/global/landing-preloader.css"/>
+  <link rel="stylesheet" href="/assets/css/global/landing-preloader.css?v=welcome-swoosh2"/>
   <script type="module" src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" data-apt-dotlottie></script>
   <style>
     /* Critical: hide landing until intro finishes (before external CSS loads) */
@@ -36,7 +36,7 @@
   <!-- Inline failsafe: if landing-boot.js never runs (blocked CDN/module), still reveal the page -->
   <script>
     (function () {
-      var FAILSAFE_MS = 6000;
+      var FAILSAFE_MS = 12000;
       window.setTimeout(function () {
         if (document.body.classList.contains('lp-ready')) return;
         document.body.classList.remove('lp-preloader-active', 'lp-page-hidden', 'lp-welcome-active');
@@ -57,7 +57,15 @@
   <div class="lp-preloader-surface" aria-hidden="true"></div>
   <div class="lp-preloader-circle" aria-hidden="true"></div>
   <div class="lp-preloader-content">
-    <p class="lp-preloader-brand">APTS</p>
+    <img
+      class="lp-preloader-logo"
+      src="/assets/logo/apts-favicon.svg"
+      alt=""
+      width="40"
+      height="40"
+      decoding="async"
+      aria-hidden="true"
+    />
     <p class="lp-preloader-word" id="lp-preloader-word">Hello</p>
   </div>
   <div class="lp-preloader-progress" aria-hidden="true"><span class="lp-preloader-progress-bar"></span></div>
