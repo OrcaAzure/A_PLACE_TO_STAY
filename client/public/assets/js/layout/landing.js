@@ -404,13 +404,25 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return;
   }
 
-  const BG_DUR = 0.32;
+  // Wheel-locked stepper: ScrollTrigger only pins. Native snap is disabled —
+  // free scroll + snap was causing skips, killed fades, and clunky races.
+  const BG_DUR = 0.45;
+  const SCROLL_DUR = 0.55;
+  const LOCK_DUR = Math.max(BG_DUR, SCROLL_DUR) + 0.05;
+  const WHEEL_THRESHOLD = 12;
+  const TOUCH_THRESHOLD = 36;
 
-  let currentIndex = -1;
+  let currentIndex = 0;
   let bgTween = null;
-  let isSnapping = false;
+  let scrollTween = null;
+  let locked = false;
+  let unlockTimer = 0;
+  let ignoreInputUntil = 0;
+  let touchStartY = null;
+  let showcaseActive = false;
 
   function setSnapActive(active) {
+    showcaseActive = active;
     document.body.classList.toggle('lp-scroll-snap-active', active);
     document.documentElement.classList.toggle('lp-scroll-snap-active', active);
     pin.style.willChange = active ? 'transform' : '';
@@ -425,45 +437,61 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     return index / (count - 1);
   }
 
-  function progressToIndex(progress) {
-    if (count <= 1) return 0;
-    const steps = count - 1;
-    return Math.min(steps, Math.max(0, Math.round(progress * steps)));
+  function scrollYForIndex(index) {
+    if (count <= 1) return st.start;
+    const progress = snapProgressForIndex(index);
+    return st.start + progress * (st.end - st.start);
   }
 
-  function setSlideIndex(nextIndex, { animateBg = false } = {}) {
-    const idx = Math.min(count - 1, Math.max(0, nextIndex));
-    const prev = currentIndex;
-    if (idx === prev && !animateBg) return idx;
-
-    currentIndex = idx;
+  function applySlideVisuals(idx, prev, animate) {
+    const dur = animate && prev !== idx ? BG_DUR : 0;
 
     phraseData.forEach((phrase, i) => {
       const on = i === idx;
       gsap.set(phrase.el, {
-        opacity: on ? 1 : 0,
         xPercent: -50,
         yPercent: -50,
         y: 0,
         scale: 1,
       });
+      if (dur > 0) {
+        gsap.to(phrase.el, {
+          opacity: on ? 1 : 0,
+          duration: dur,
+          ease: 'power2.out',
+          overwrite: true,
+        });
+      } else {
+        gsap.set(phrase.el, { opacity: on ? 1 : 0 });
+      }
       setPhraseVisible(phrase, on);
     });
 
-    if (hint) gsap.set(hint, { opacity: idx === 0 ? 1 : 0 });
+    if (hint) {
+      if (dur > 0) {
+        gsap.to(hint, {
+          opacity: idx === 0 ? 1 : 0,
+          duration: dur * 0.8,
+          ease: 'power2.out',
+          overwrite: true,
+        });
+      } else {
+        gsap.set(hint, { opacity: idx === 0 ? 1 : 0 });
+      }
+    }
     rails.forEach((rail) => {
       rail.style.opacity = '0.55';
     });
 
     bgTween?.kill();
     bgTween = null;
-    section.classList.remove('is-transitioning');
 
-    if (!animateBg || prev < 0 || prev === idx) {
+    if (dur <= 0) {
+      section.classList.remove('is-transitioning');
       bgImages.forEach((img, i) => {
         gsap.set(img, { opacity: i === idx ? 1 : 0 });
       });
-      return idx;
+      return;
     }
 
     section.classList.add('is-transitioning');
@@ -474,42 +502,81 @@ function initScrollShowcase(gsap, ScrollTrigger) {
       },
     });
 
-    if (bgImages[prev]) {
-      bgTween.to(bgImages[prev], { opacity: 0, duration: BG_DUR * 0.85, ease: 'power2.in' }, 0);
-    }
-    if (bgImages[idx]) {
-      gsap.set(bgImages[idx], { opacity: 0 });
-      bgTween.to(bgImages[idx], { opacity: 1, duration: BG_DUR, ease: 'power2.out' }, BG_DUR * 0.08);
-    }
-    return idx;
-  }
-
-  function scrollYForIndex(index) {
-    if (count <= 1) return st.start;
-    const progress = snapProgressForIndex(index);
-    return st.start + progress * (st.end - st.start);
-  }
-
-  function scrollToIndex(index) {
-    const idx = Math.min(count - 1, Math.max(0, index));
-    const y = scrollYForIndex(idx);
-    isSnapping = true;
-    gsap.to(window, {
-      scrollTo: { y, autoKill: true },
-      duration: 0.45,
-      ease: 'power2.inOut',
-      overwrite: true,
-      onComplete: () => {
-        isSnapping = false;
-        setSlideIndex(idx, { animateBg: true });
-        ScrollTrigger.update();
-      },
+    bgImages.forEach((img, i) => {
+      if (i === idx) {
+        bgTween.to(img, { opacity: 1, duration: BG_DUR, ease: 'power2.out' }, 0);
+      } else if (i === prev) {
+        bgTween.to(img, { opacity: 0, duration: BG_DUR * 0.85, ease: 'power2.in' }, 0);
+      } else {
+        gsap.set(img, { opacity: 0 });
+      }
     });
   }
 
-  setSlideIndex(0, { animateBg: false });
+  function releaseLock() {
+    locked = false;
+    window.clearTimeout(unlockTimer);
+    unlockTimer = 0;
+    // Swallow leftover trackpad inertia so it cannot immediately step again.
+    ignoreInputUntil = performance.now() + 180;
+  }
 
-  const st = ScrollTrigger.create({
+  function armLock() {
+    locked = true;
+    window.clearTimeout(unlockTimer);
+    unlockTimer = window.setTimeout(releaseLock, LOCK_DUR * 1000);
+  }
+
+  function inputBlocked() {
+    return locked || performance.now() < ignoreInputUntil;
+  }
+
+  /**
+   * Single entry for slide changes. While locked, new input is ignored so
+   * fast wheel bursts cannot skip or kill the in-flight crossfade.
+   */
+  function goToSlide(index, { animate = true, force = false } = {}) {
+    const idx = Math.min(count - 1, Math.max(0, index));
+    if (!force && inputBlocked()) return false;
+    if (idx === currentIndex && animate) return false;
+
+    const prev = currentIndex;
+    currentIndex = idx;
+
+    if (animate && prev !== idx) armLock();
+    applySlideVisuals(idx, prev, animate);
+
+    // st may still be null while ScrollTrigger.create() is running (onRefresh/
+    // onEnter fire synchronously). Never read st before assignment — that was
+    // a TDZ ReferenceError that aborted init and broke the whole landing page.
+    if (!st) return true;
+
+    const y = scrollYForIndex(idx);
+    scrollTween?.kill();
+    if (animate && prev !== idx) {
+      scrollTween = gsap.to(window, {
+        scrollTo: { y, autoKill: false },
+        duration: SCROLL_DUR,
+        ease: 'power2.inOut',
+        overwrite: true,
+        onComplete: () => {
+          scrollTween = null;
+          ScrollTrigger.update();
+        },
+      });
+    } else if (animate) {
+      window.scrollTo(0, y);
+      scrollTween = null;
+    }
+    return true;
+  }
+
+  applySlideVisuals(0, -1, false);
+
+  // Use let (not const) so create-time callbacks can safely see st === null
+  // instead of throwing "Cannot access 'st' before initialization".
+  let st = null;
+  st = ScrollTrigger.create({
     trigger: section,
     start: 'top top',
     end: () => `+=${Math.round(window.innerHeight * Math.max(count - 1, 1))}`,
@@ -518,64 +585,121 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     pinReparent: false,
     anticipatePin: 1,
     invalidateOnRefresh: true,
-    snap: count > 1 ? {
-      snapTo: (value) => snapProgressForIndex(progressToIndex(value)),
-      duration: { min: 0.2, max: 0.5 },
-      delay: 0.04,
-      ease: 'power2.inOut',
-      inertia: false,
-      onStart: () => { isSnapping = true; },
-      onComplete: () => {
-        isSnapping = false;
-        setSlideIndex(progressToIndex(st.progress), { animateBg: false });
-      },
-    } : false,
+    // No ScrollTrigger.snap — it races native wheel and interrupts fades.
     onToggle: (self) => setSnapActive(self.isActive),
-    onEnter(self) {
-      setSlideIndex(progressToIndex(self.progress), { animateBg: false });
+    onEnter() {
+      // Visuals only — do not window.scrollTo here (fights pin/refresh).
+      currentIndex = 0;
+      applySlideVisuals(0, -1, false);
     },
-    onEnterBack(self) {
-      setSlideIndex(progressToIndex(self.progress), { animateBg: false });
+    onEnterBack() {
+      currentIndex = count - 1;
+      applySlideVisuals(count - 1, -1, false);
     },
-    onUpdate(self) {
-      if (isSnapping) return;
-      const idx = progressToIndex(self.progress);
-      if (idx !== currentIndex) {
-        setSlideIndex(idx, { animateBg: false });
-      }
-    },
-    onRefresh(self) {
-      setSlideIndex(progressToIndex(self.progress), { animateBg: false });
+    onRefresh() {
+      // Never scrollTo during refresh — that collapses pin spacing / hides
+      // sections below. Just keep the current slide visuals in sync.
+      applySlideVisuals(currentIndex, currentIndex, false);
     },
     onLeave: () => {
       bgTween?.kill();
       bgTween = null;
-      isSnapping = false;
+      scrollTween?.kill();
+      scrollTween = null;
+      releaseLock();
       section.classList.remove('is-transitioning');
       setSnapActive(false);
     },
     onLeaveBack: () => {
       bgTween?.kill();
       bgTween = null;
-      isSnapping = false;
+      scrollTween?.kill();
+      scrollTween = null;
+      releaseLock();
       section.classList.remove('is-transitioning');
       setSnapActive(false);
     },
   });
 
+  if (st.isActive) setSnapActive(true);
+
+  function step(direction) {
+    if (!showcaseActive) return false;
+    const next = currentIndex + direction;
+    if (next < 0 || next > count - 1) return false;
+    return goToSlide(next, { animate: true });
+  }
+
+  function onWheel(e) {
+    if (!showcaseActive) return;
+
+    const goingDown = e.deltaY > 0;
+    const atLast = currentIndex >= count - 1;
+    const atFirst = currentIndex <= 0;
+
+    // At edges, allow native scroll to leave the pinned section.
+    if (!locked) {
+      if (goingDown && atLast) return;
+      if (!goingDown && atFirst) return;
+    }
+
+    // Consume wheel inside the showcase (and while locked) so progress cannot
+    // jump multiple snap points ahead of the visual transition.
+    e.preventDefault();
+    if (inputBlocked()) return;
+    if (Math.abs(e.deltaY) < WHEEL_THRESHOLD) return;
+
+    step(goingDown ? 1 : -1);
+  }
+
+  function onTouchStart(e) {
+    if (!showcaseActive || !e.touches[0]) return;
+    touchStartY = e.touches[0].clientY;
+  }
+
+  function onTouchMove(e) {
+    if (!showcaseActive || touchStartY == null || !e.touches[0]) return;
+
+    const dy = touchStartY - e.touches[0].clientY;
+    if (Math.abs(dy) < TOUCH_THRESHOLD) return;
+
+    const goingDown = dy > 0;
+    const atLast = currentIndex >= count - 1;
+    const atFirst = currentIndex <= 0;
+
+    if (!locked) {
+      if (goingDown && atLast) return;
+      if (!goingDown && atFirst) return;
+    }
+
+    e.preventDefault();
+    if (inputBlocked()) return;
+
+    touchStartY = null;
+    step(goingDown ? 1 : -1);
+  }
+
+  function onTouchEnd() {
+    touchStartY = null;
+  }
+
   function onKeyDown(e) {
-    if (!st.isActive) return;
+    if (!showcaseActive || inputBlocked()) return;
     if (e.key === 'ArrowDown' || e.key === 'PageDown') {
       if (currentIndex >= count - 1) return;
       e.preventDefault();
-      scrollToIndex(currentIndex + 1);
+      step(1);
     } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
       if (currentIndex <= 0) return;
       e.preventDefault();
-      scrollToIndex(currentIndex - 1);
+      step(-1);
     }
   }
 
+  window.addEventListener('wheel', onWheel, { passive: false });
+  window.addEventListener('touchstart', onTouchStart, { passive: true });
+  window.addEventListener('touchmove', onTouchMove, { passive: false });
+  window.addEventListener('touchend', onTouchEnd, { passive: true });
   window.addEventListener('keydown', onKeyDown);
 
   section.classList.add('is-ready');
@@ -586,7 +710,7 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     resizeTimer = window.setTimeout(() => {
       scheduleScrollRefresh(ScrollTrigger);
       if (st.isActive) {
-        setSlideIndex(progressToIndex(st.progress), { animateBg: false });
+        goToSlide(currentIndex, { animate: false, force: true });
       }
     }, 200);
   }, { passive: true });
@@ -674,6 +798,10 @@ function mountScrollShowcase(gsap, ScrollTrigger) {
     initScrollShowcase(gsap, ScrollTrigger);
     scheduleScrollRefresh(ScrollTrigger);
     window.__lpRemeasureNav?.();
+  }).catch((err) => {
+    console.error('[landing] scroll showcase failed to init', err);
+    section.classList.remove('is-pending-init');
+    section.classList.add('is-ready');
   });
 }
 
