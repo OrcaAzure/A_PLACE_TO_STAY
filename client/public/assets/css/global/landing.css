@@ -1,5 +1,15 @@
 /* APTSpace landing page */
 
+/* Brand tagline */
+.apts-brand-tagline {
+  font-family: 'Cormorant Garamond', 'Times New Roman', Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #D4A017;
+  line-height: 1.2;
+}
+
 .lp-shell {
   --lp-section-light: #f6f5f4;
   --lp-trust-bg: var(--lp-section-light);

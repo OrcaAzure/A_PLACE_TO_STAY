@@ -28,13 +28,13 @@
   <text
     x="120" y="198" text-anchor="middle"
     fill="#1A365D"
-    font-family="Inter, IBM Plex Sans, Arial, sans-serif"
+    font-family="IBM Plex Sans, Inter, Arial, sans-serif"
     font-size="48" font-weight="700" letter-spacing="0.04em"
   >APTS</text>
   <text
-    x="120" y="232" text-anchor="middle"
+    x="120" y="234" text-anchor="middle"
     fill="#D4A017"
-    font-family="Inter, IBM Plex Sans, Arial, sans-serif"
-    font-size="15" font-weight="500" letter-spacing="0.18em"
+    font-family="Cormorant Garamond, Times New Roman, Georgia, serif"
+    font-size="20" font-weight="600" font-style="italic" letter-spacing="0.08em"
   >a place to stay</text>
 </svg>

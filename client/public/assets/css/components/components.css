@@ -118,3 +118,13 @@
   border-color: #1A365D !important;
   color: #1A365D !important;
 }
+
+/* Brand tagline — A Place to Stay */
+.apts-brand-tagline {
+  font-family: 'Cormorant Garamond', 'Times New Roman', Georgia, serif;
+  font-style: italic;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #D4A017;
+  line-height: 1.2;
+}
