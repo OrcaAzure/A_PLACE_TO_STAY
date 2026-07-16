@@ -11,9 +11,39 @@ function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
-/** Mobile / tablet (or coarse touch) — horizontal carousel instead of pinned scroll. */
+/**
+ * True only for real touch / mobile / tablet primary input — never based on viewport width.
+ * Desktop & laptop browsers keep the GSAP showcase even when the window is narrowed.
+ */
 function isScrollShowcaseMobile() {
-  return window.matchMedia('(max-width: 1024px), (hover: none) and (pointer: coarse)').matches;
+  const fineWithHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  // Mouse / trackpad primary (typical desktop & laptop) → always desktop showcase
+  if (fineWithHover) return false;
+
+  const coarsePrimary = window.matchMedia('(pointer: coarse)').matches;
+  const anyCoarse = window.matchMedia('(any-pointer: coarse)').matches;
+  const hoverNone = window.matchMedia('(hover: none)').matches;
+  const touchPoints = Number(navigator.maxTouchPoints) || 0;
+  const hasTouchEvent = 'ontouchstart' in window;
+
+  // Phones / tablets: coarse pointer, or touch-primary with no hover
+  if (coarsePrimary || (hoverNone && (touchPoints > 0 || hasTouchEvent))) return true;
+
+  // Touch-capable device without a fine+hover primary pointer
+  if ((touchPoints > 0 || hasTouchEvent) && anyCoarse) return true;
+
+  return false;
+}
+
+/** Media queries that reflect input modality (not viewport size). */
+function getScrollShowcaseInputMqls() {
+  return [
+    window.matchMedia('(pointer: coarse)'),
+    window.matchMedia('(pointer: fine)'),
+    window.matchMedia('(hover: hover)'),
+    window.matchMedia('(hover: none)'),
+    window.matchMedia('(any-pointer: coarse)'),
+  ];
 }
 
 const HERO_TYPE_PHRASES = [
@@ -1059,12 +1089,13 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   const section = document.querySelector('.lp-scroll-section');
   if (!section) return;
 
-  const mq = window.matchMedia('(max-width: 1024px), (hover: none) and (pointer: coarse)');
+  // Mode follows input modality only — never window width / CSS breakpoints.
+  const inputMqls = getScrollShowcaseInputMqls();
   let mode = null;
   let cleanup = null;
 
   const apply = () => {
-    const next = mq.matches ? 'mobile' : 'desktop';
+    const next = isScrollShowcaseMobile() ? 'mobile' : 'desktop';
     if (next === mode) return;
     cleanup?.();
     cleanup = null;
@@ -1078,10 +1109,10 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   };
 
   apply();
-  mq.addEventListener('change', apply);
+  inputMqls.forEach((mql) => mql.addEventListener('change', apply));
 
   return () => {
-    mq.removeEventListener('change', apply);
+    inputMqls.forEach((mql) => mql.removeEventListener('change', apply));
     cleanup?.();
   };
 }
