@@ -1,48 +1,40 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280" fill="none" role="img" aria-label="APTS — a place to stay">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280" fill="none" role="img" aria-label="APTS — A Place to Stay">
+  <defs>
+    <clipPath id="apts-logo-blue-disc"><circle cx="120" cy="78" r="68"/></clipPath>
+  </defs>
   <circle cx="120" cy="78" r="68" fill="#1A365D"/>
   <path
-    d="M84 98 L120 48 L156 98"
-    stroke="#D4A017"
-    stroke-width="20"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <path
-    d="M84 98 L120 48 L156 98"
-    stroke="#FFFFFF"
-    stroke-width="12"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <rect
-    x="99"
-    y="44"
-    width="10"
-    height="20"
-    rx="1.5"
+    clip-path="url(#apts-logo-blue-disc)"
     fill="#FFFFFF"
     stroke="#D4A017"
-    stroke-width="2.75"
-    transform="rotate(-40 104 54)"
+    stroke-width="4.25"
+    stroke-linejoin="miter"
+    stroke-miterlimit="2.5"
+    paint-order="stroke fill"
+    d="
+      M 56 118
+      L 96 66.75
+      L 96 36
+      L 110 36
+      L 110 48.8125
+      L 120 36
+      L 184 118
+      L 164 118
+      L 120 62
+      L 76 118
+      Z
+    "
   />
   <text
-    x="120"
-    y="198"
-    text-anchor="middle"
+    x="120" y="198" text-anchor="middle"
     fill="#1A365D"
     font-family="Inter, IBM Plex Sans, Arial, sans-serif"
-    font-size="48"
-    font-weight="700"
-    letter-spacing="0.04em"
+    font-size="48" font-weight="700" letter-spacing="0.04em"
   >APTS</text>
   <text
-    x="120"
-    y="232"
-    text-anchor="middle"
+    x="120" y="232" text-anchor="middle"
     fill="#D4A017"
     font-family="Inter, IBM Plex Sans, Arial, sans-serif"
-    font-size="15"
-    font-weight="500"
-    letter-spacing="0.18em"
+    font-size="15" font-weight="500" letter-spacing="0.18em"
   >a place to stay</text>
 </svg>

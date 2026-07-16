@@ -1,31 +1,32 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="APTS">
+  <defs>
+    <clipPath id="apts-disc"><circle cx="60" cy="60" r="60"/></clipPath>
+  </defs>
   <circle cx="60" cy="60" r="60" fill="#1A365D"/>
-  <!-- Gold outline accent -->
+  <!--
+    Single silhouette: straight A roof + chimney bump on outer left edge only.
+    Gold stroke = outer rim (paint-order keeps fill covering inner half of stroke).
+  -->
   <path
-    d="M28 78 L60 34 L92 78"
-    stroke="#D4A017"
-    stroke-width="18"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <!-- White roof -->
-  <path
-    d="M28 78 L60 34 L92 78"
-    stroke="#FFFFFF"
-    stroke-width="11"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-  />
-  <!-- Chimney with gold outline -->
-  <rect
-    x="41"
-    y="30"
-    width="9"
-    height="18"
-    rx="1.5"
+    clip-path="url(#apts-disc)"
     fill="#FFFFFF"
     stroke="#D4A017"
-    stroke-width="2.5"
-    transform="rotate(-40 45.5 39)"
+    stroke-width="3.75"
+    stroke-linejoin="miter"
+    stroke-miterlimit="2.5"
+    paint-order="stroke fill"
+    d="
+      M 6 94
+      L 37 52.667
+      L 37 22
+      L 48 22
+      L 48 38
+      L 60 22
+      L 114 94
+      L 98 94
+      L 60 44
+      L 22 94
+      Z
+    "
   />
 </svg>
