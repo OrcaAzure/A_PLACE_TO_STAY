@@ -14,13 +14,13 @@ describe('Pages smoke (public)', () => {
       return;
     }
     assert.equal(res.status, 200);
-    assert.match(res.text, /APTSpace/i);
+    assert.match(res.text, /APTS/i);
   });
 
   it('GET /index.html serves landing shell', async () => {
     const res = await agent.get('/index.html');
     assert.equal(res.status, 200);
-    assert.match(res.text, /APTSpace/i);
+    assert.match(res.text, /APTS/i);
     assert.match(res.text, /lp-preloader/);
     assert.match(res.text, /landing-boot\.js/);
   });

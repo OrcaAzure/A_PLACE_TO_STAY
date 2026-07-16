@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" fill="none" role="img" aria-label="APTS">
+  <circle cx="60" cy="60" r="60" fill="#1A365D"/>
+  <!-- Gold outline accent -->
+  <path
+    d="M28 78 L60 34 L92 78"
+    stroke="#D4A017"
+    stroke-width="18"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- White roof -->
+  <path
+    d="M28 78 L60 34 L92 78"
+    stroke="#FFFFFF"
+    stroke-width="11"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <!-- Chimney with gold outline -->
+  <rect
+    x="41"
+    y="30"
+    width="9"
+    height="18"
+    rx="1.5"
+    fill="#FFFFFF"
+    stroke="#D4A017"
+    stroke-width="2.5"
+    transform="rotate(-40 45.5 39)"
+  />
+</svg>
