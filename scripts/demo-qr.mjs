@@ -1,14 +1,16 @@
 #!/usr/bin/env node
 /**
- * Write a standalone HTML page with a scannable demo QR code.
+ * Write a standalone HTML page with a scannable demo QR code (embedded image — no CDN).
  * Usage: npm run demo:qr
- *        npm run demo:qr -- --ip   (use LAN IP if PC name fails on phones)
+ *        npm run demo:qr -- --hostname   (use PC name instead of LAN IP)
  *
- * Open demo-qr.html in a browser (full screen for guests to scan).
+ * Open http://localhost:PORT/demo-qr.html with the server running,
+ * or open the generated demo-qr.html file directly.
  */
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import QRCode from 'qrcode';
 import { getNetworkAccessUrls } from '../client/server/src/utils/networkUrls.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,10 +24,20 @@ const primaryIp = ips[0]
   ? ips[0].replace('http://', '').replace(`:${port}`, '')
   : null;
 
-const useIp = process.argv.includes('--ip');
-const host = useIp && primaryIp ? primaryIp : hostname;
-const demoUrl = `http://${host}:${port}/?skipIntro=1`;
-const outFile = path.join(root, 'demo-qr.html');
+// Prefer LAN IP so phones on Wi‑Fi can open the link (PC names often fail on Android).
+const useHostname = process.argv.includes('--hostname');
+const finalHost = useHostname ? hostname : (primaryIp || hostname);
+const demoUrl = `http://${finalHost}:${port}/?skipIntro=1`;
+
+const outRoot = path.join(root, 'demo-qr.html');
+const outPublic = path.join(root, 'client', 'public', 'demo-qr.html');
+
+const qrDataUrl = await QRCode.toDataURL(demoUrl, {
+  width: 320,
+  margin: 2,
+  errorCorrectionLevel: 'M',
+  color: { dark: '#1a365d', light: '#ffffff' },
+});
 
 const html = `<!DOCTYPE html>
 <html lang="en">
@@ -56,8 +68,13 @@ const html = `<!DOCTYPE html>
       padding: 1.25rem;
       border-radius: 1rem;
       line-height: 0;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.25);
     }
-    canvas { display: block; max-width: min(80vw, 320px); height: auto !important; }
+    #qr-wrap img {
+      display: block;
+      width: min(80vw, 320px);
+      height: auto;
+    }
     .url {
       font-family: ui-monospace, Consolas, monospace;
       font-size: 0.8125rem;
@@ -66,33 +83,35 @@ const html = `<!DOCTYPE html>
       padding: 0 0.5rem;
     }
     .hint { font-size: 0.8125rem; opacity: 0.65; }
+    a { color: #bee3f8; }
   </style>
 </head>
 <body>
   <h1>Scan to open APTSpace</h1>
   <p>Same Wi‑Fi required. Opens the landing page (intro skipped).</p>
-  <div id="qr-wrap"><canvas id="qr"></canvas></div>
+  <div id="qr-wrap">
+    <img id="qr" src="${qrDataUrl}" width="320" height="320" alt="QR code linking to APTSpace demo" />
+  </div>
   <p class="url">${demoUrl}</p>
   <p class="hint">Server must be running: <code>npm run dev</code></p>
-  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.4/build/qrcode.min.js"><\/script>
-  <script>
-    QRCode.toCanvas(document.getElementById('qr'), ${JSON.stringify(demoUrl)}, {
-      width: 320,
-      margin: 2,
-      color: { dark: '#1a365d', light: '#ffffff' },
-    });
-  <\/script>
+  <p class="hint">This page: <a href="http://localhost:${port}/demo-qr.html">http://localhost:${port}/demo-qr.html</a></p>
 </body>
 </html>
 `;
 
-fs.writeFileSync(outFile, html, 'utf8');
+fs.writeFileSync(outRoot, html, 'utf8');
+fs.writeFileSync(outPublic, html, 'utf8');
 
 console.log('\nAPTSpace demo QR\n');
 console.log('URL in QR:', demoUrl);
-console.log('Saved:    ', outFile);
-console.log('\nOpen demo-qr.html in your browser (full screen) for guests to scan.');
-if (!useIp && primaryIp) {
-  console.log('If phones cannot open the link, regenerate with IP: npm run demo:qr -- --ip');
+console.log('Saved:    ', outRoot);
+console.log('Served as:', `http://localhost:${port}/demo-qr.html`);
+console.log('\n1. Keep the server running:  npm run dev');
+console.log(`2. Open the QR page:        http://localhost:${port}/demo-qr.html`);
+console.log('   (hard-refresh if you still see an old blank white box)\n');
+if (!useHostname && primaryIp) {
+  console.log('Using LAN IP so phones can connect. For PC hostname instead:');
+  console.log('  npm run demo:qr -- --hostname\n');
+} else if (!primaryIp) {
+  console.log('No LAN IP found — QR uses hostname. Phones may need Wi‑Fi + firewall access.\n');
 }
-console.log(`With server running, also visit: http://localhost:${port}/demo-qr.html\n`);
