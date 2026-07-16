@@ -5,9 +5,15 @@
 const GSAP_URL = 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js';
 const ST_URL   = 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollTrigger.min.js';
 const SCROLLTO_URL = 'https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/ScrollToPlugin.min.js';
+const EMBLA_URL = 'https://cdn.jsdelivr.net/npm/embla-carousel@8.6.0/embla-carousel.umd.js';
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/** Mobile / tablet (or coarse touch) — horizontal carousel instead of pinned scroll. */
+function isScrollShowcaseMobile() {
+  return window.matchMedia('(max-width: 1024px), (hover: none) and (pointer: coarse)').matches;
 }
 
 const HERO_TYPE_PHRASES = [
@@ -367,6 +373,17 @@ function setSlidesStatic(phraseData, bgImages, index, hint) {
 }
 
 async function preloadScrollShowcaseImages(section) {
+  if (isScrollShowcaseMobile()) {
+    const first = section.querySelector('.lp-scroll-bg-img');
+    if (!first) return;
+    if (first.complete && first.naturalWidth > 0) return;
+    await new Promise((resolve) => {
+      first.addEventListener('load', resolve, { once: true });
+      first.addEventListener('error', resolve, { once: true });
+    });
+    return;
+  }
+
   const imgs = [...section.querySelectorAll('.lp-scroll-bg-img')];
   await Promise.all(imgs.map((img) => {
     if (img.complete && img.naturalWidth > 0) return Promise.resolve();
@@ -377,17 +394,359 @@ async function preloadScrollShowcaseImages(section) {
   }));
 }
 
-function initScrollShowcase(gsap, ScrollTrigger) {
+function collectExploreSlides(section) {
+  const pin = section.querySelector('[data-explore-desktop]') || section.querySelector('.lp-scroll-pin');
+  if (!pin) return [];
+
+  const imgs = [...pin.querySelectorAll('.lp-scroll-bg-img')];
+  const phrases = [...pin.querySelectorAll('.lp-scroll-phrase')];
+
+  return phrases.map((phraseEl, i) => {
+    const line = phraseEl.querySelector('[data-scroll-line]');
+    const title = (line?.textContent || '').trim() || `Space ${i + 1}`;
+    const img = imgs[i];
+    return {
+      title,
+      accent: Boolean(line?.classList.contains('lp-scroll-phrase-line--accent')),
+      src: img?.getAttribute('src') || '',
+      desc: phraseEl.dataset.exploreDesc || '',
+      cta: phraseEl.dataset.exploreCta || 'Explore',
+      href: phraseEl.dataset.exploreHref || '#facilities',
+    };
+  }).filter((slide) => slide.src);
+}
+
+async function loadEmblaCarousel() {
+  if (typeof window.EmblaCarousel === 'function') return window.EmblaCarousel;
+  await loadScript(EMBLA_URL);
+  if (typeof window.EmblaCarousel !== 'function') {
+    throw new Error('EmblaCarousel failed to load');
+  }
+  return window.EmblaCarousel;
+}
+
+/**
+ * Mobile / tablet: Embla (or native CSS snap fallback) horizontal carousel.
+ * No ScrollTrigger pin, snap, wheel lock, or touch interception.
+ */
+function initScrollShowcaseMobile(gsap) {
+  const section = document.querySelector('.lp-scroll-section');
+  const root = section?.querySelector('[data-explore-mobile]');
+  const viewport = root?.querySelector('[data-explore-viewport]');
+  const track = root?.querySelector('[data-explore-track]');
+  const dotsWrap = root?.querySelector('[data-explore-dots]');
+  const prevBtn = root?.querySelector('.lp-explore-carousel-nav--prev');
+  const nextBtn = root?.querySelector('.lp-explore-carousel-nav--next');
+  if (!section || !root || !viewport || !track || !dotsWrap) return () => {};
+
+  const slides = collectExploreSlides(section);
+  if (!slides.length) {
+    section.classList.remove('is-pending-init');
+    section.classList.add('is-ready', 'lp-scroll-section--mobile');
+    root.hidden = false;
+    return () => {};
+  }
+
+  section.classList.add('lp-scroll-section--mobile');
+  section.classList.remove('lp-scroll-section--desktop', 'is-pending-init');
+  document.body.classList.remove('lp-scroll-snap-active');
+  document.documentElement.classList.remove('lp-scroll-snap-active');
+  root.hidden = false;
+
+  track.replaceChildren();
+  dotsWrap.replaceChildren();
+
+  const reduceMotion = prefersReducedMotion();
+  const cardNodes = [];
+
+  slides.forEach((slide, index) => {
+    const card = document.createElement('article');
+    card.className = 'lp-explore-card';
+    card.dataset.index = String(index);
+    card.setAttribute('aria-roledescription', 'slide');
+    card.setAttribute('aria-label', `${index + 1} of ${slides.length}: ${slide.title}`);
+
+    const media = document.createElement('div');
+    media.className = 'lp-explore-card-media';
+
+    const img = document.createElement('img');
+    img.src = slide.src;
+    img.alt = slide.title;
+    img.width = 1200;
+    img.height = 1500;
+    img.decoding = 'async';
+    img.loading = index === 0 ? 'eager' : 'lazy';
+    if (index === 0) img.fetchPriority = 'high';
+    media.appendChild(img);
+
+    const body = document.createElement('div');
+    body.className = 'lp-explore-card-body';
+
+    const title = document.createElement('h3');
+    title.className = `lp-explore-card-title${slide.accent ? ' lp-explore-card-title--accent' : ''}`;
+    title.textContent = slide.title;
+
+    const desc = document.createElement('p');
+    desc.className = 'lp-explore-card-desc';
+    desc.textContent = slide.desc;
+
+    const cta = document.createElement('a');
+    cta.className = 'lp-explore-card-cta';
+    cta.href = slide.href;
+    cta.innerHTML = `${slide.cta}<span class="material-symbols-outlined" aria-hidden="true">arrow_forward</span>`;
+
+    body.append(title, desc, cta);
+    card.append(media, body);
+    track.appendChild(card);
+    cardNodes.push(card);
+
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = 'lp-explore-carousel-dot';
+    dot.setAttribute('role', 'tab');
+    dot.setAttribute('aria-label', `Go to ${slide.title}`);
+    dot.dataset.index = String(index);
+    dotsWrap.appendChild(dot);
+  });
+
+  const dots = [...dotsWrap.querySelectorAll('.lp-explore-carousel-dot')];
+
+  function setSelected(index, { animateText = true } = {}) {
+    cardNodes.forEach((card, i) => {
+      const on = i === index;
+      card.classList.toggle('is-selected', on);
+      card.setAttribute('aria-hidden', on ? 'false' : 'true');
+    });
+    dots.forEach((dot, i) => {
+      const on = i === index;
+      dot.classList.toggle('is-active', on);
+      dot.setAttribute('aria-selected', on ? 'true' : 'false');
+      dot.tabIndex = on ? 0 : -1;
+    });
+
+    if (!gsap || reduceMotion || !animateText) return;
+    const body = cardNodes[index]?.querySelector('.lp-explore-card-body');
+    if (!body) return;
+    gsap.fromTo(body, { y: 16, opacity: 0.4 }, {
+      y: 0,
+      opacity: 1,
+      duration: 0.42,
+      ease: 'power2.out',
+      overwrite: true,
+    });
+  }
+
+  setSelected(0, { animateText: false });
+  if (prevBtn) {
+    prevBtn.hidden = false;
+    prevBtn.disabled = true;
+  }
+  if (nextBtn) {
+    nextBtn.hidden = false;
+    nextBtn.disabled = cardNodes.length <= 1;
+  }
+
+  let embla = null;
+  let destroyNative = null;
+  let cancelled = false;
+
+  function syncNav(index, canPrev, canNext) {
+    if (prevBtn) {
+      prevBtn.hidden = false;
+      prevBtn.disabled = !canPrev;
+    }
+    if (nextBtn) {
+      nextBtn.hidden = false;
+      nextBtn.disabled = !canNext;
+    }
+    setSelected(index);
+  }
+
+  function initNativeSnap() {
+    root.classList.add('is-native-snap');
+    const gap = 12;
+    const sidePad = () => Math.max(16, Math.round(viewport.clientWidth * 0.05));
+
+    const layout = () => {
+      const pad = sidePad();
+      viewport.style.paddingLeft = `${pad}px`;
+      viewport.style.paddingRight = `${pad}px`;
+      cardNodes.forEach((card) => {
+        card.style.flexBasis = '90%';
+        card.style.marginRight = `${gap}px`;
+      });
+      if (cardNodes.length) cardNodes[cardNodes.length - 1].style.marginRight = '0';
+    };
+
+    layout();
+    setSelected(0, { animateText: false });
+
+    const onScroll = () => {
+      const center = viewport.scrollLeft + viewport.clientWidth / 2;
+      let best = 0;
+      let bestDist = Infinity;
+      cardNodes.forEach((card, i) => {
+        const mid = card.offsetLeft + card.offsetWidth / 2;
+        const dist = Math.abs(mid - center);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = i;
+        }
+      });
+      syncNav(best, best > 0, best < cardNodes.length - 1);
+    };
+
+    const scrollToIndex = (index) => {
+      const card = cardNodes[index];
+      if (!card) return;
+      const left = card.offsetLeft - (viewport.clientWidth - card.offsetWidth) / 2;
+      viewport.scrollTo({ left: Math.max(0, left), behavior: reduceMotion ? 'auto' : 'smooth' });
+    };
+
+    dots.forEach((dot) => {
+      dot.addEventListener('click', () => scrollToIndex(Number(dot.dataset.index)));
+    });
+    prevBtn?.addEventListener('click', () => {
+      const idx = cardNodes.findIndex((c) => c.classList.contains('is-selected'));
+      scrollToIndex(Math.max(0, idx - 1));
+    });
+    nextBtn?.addEventListener('click', () => {
+      const idx = cardNodes.findIndex((c) => c.classList.contains('is-selected'));
+      scrollToIndex(Math.min(cardNodes.length - 1, idx + 1));
+    });
+
+    const onKeyDown = (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (!viewport.contains(document.activeElement) && document.activeElement !== viewport) return;
+      e.preventDefault();
+      const idx = cardNodes.findIndex((c) => c.classList.contains('is-selected'));
+      if (e.key === 'ArrowLeft') scrollToIndex(Math.max(0, idx - 1));
+      else scrollToIndex(Math.min(cardNodes.length - 1, idx + 1));
+    };
+
+    viewport.addEventListener('scroll', onScroll, { passive: true });
+    viewport.addEventListener('keydown', onKeyDown);
+    const onResize = () => {
+      layout();
+      onScroll();
+    };
+    window.addEventListener('resize', onResize, { passive: true });
+    syncNav(0, false, cardNodes.length > 1);
+
+    destroyNative = () => {
+      viewport.removeEventListener('scroll', onScroll);
+      viewport.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', onResize);
+      root.classList.remove('is-native-snap');
+      viewport.style.paddingLeft = '';
+      viewport.style.paddingRight = '';
+    };
+  }
+
+  loadEmblaCarousel().then((EmblaCarousel) => {
+    if (cancelled) return;
+
+    const ac = new AbortController();
+    const { signal } = ac;
+    const sidePad = () => Math.max(16, Math.round(viewport.clientWidth * 0.05));
+
+    const applyPadding = () => {
+      const pad = sidePad();
+      viewport.style.paddingLeft = `${pad}px`;
+      viewport.style.paddingRight = `${pad}px`;
+    };
+
+    applyPadding();
+
+    embla = EmblaCarousel(viewport, {
+      align: 'center',
+      containScroll: 'trimSnaps',
+      dragFree: false,
+      skipSnaps: false,
+      duration: reduceMotion ? 0 : 22,
+      watchDrag: true,
+      startIndex: 0,
+    });
+
+    const onSelect = () => {
+      const index = embla.selectedScrollSnap();
+      syncNav(index, embla.canScrollPrev(), embla.canScrollNext());
+    };
+
+    embla.on('select', onSelect);
+    embla.on('reInit', onSelect);
+    onSelect();
+
+    dots.forEach((dot) => {
+      dot.addEventListener('click', () => embla.scrollTo(Number(dot.dataset.index)), { signal });
+    });
+    prevBtn?.addEventListener('click', () => embla.scrollPrev(), { signal });
+    nextBtn?.addEventListener('click', () => embla.scrollNext(), { signal });
+
+    const onKeyDown = (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      if (!root.contains(document.activeElement) && document.activeElement !== viewport) return;
+      e.preventDefault();
+      if (e.key === 'ArrowLeft') embla.scrollPrev();
+      else embla.scrollNext();
+    };
+    viewport.addEventListener('keydown', onKeyDown, { signal });
+
+    let resizeTimer = 0;
+    const onResize = () => {
+      window.clearTimeout(resizeTimer);
+      resizeTimer = window.setTimeout(() => {
+        applyPadding();
+        embla.reInit();
+      }, 160);
+    };
+    window.addEventListener('resize', onResize, { passive: true, signal });
+
+    destroyNative = () => {
+      window.clearTimeout(resizeTimer);
+      ac.abort();
+      viewport.style.paddingLeft = '';
+      viewport.style.paddingRight = '';
+      embla?.destroy();
+      embla = null;
+    };
+  }).catch(() => {
+    if (!cancelled) initNativeSnap();
+  });
+
+  section.classList.add('is-ready');
+
+  return () => {
+    cancelled = true;
+    destroyNative?.();
+    destroyNative = null;
+    track.replaceChildren();
+    dotsWrap.replaceChildren();
+    root.hidden = true;
+    section.classList.remove('lp-scroll-section--mobile', 'is-ready');
+  };
+}
+
+/**
+ * Desktop: GSAP ScrollTrigger pin + wheel-locked stepper.
+ * Touch / snap mobile paths intentionally omitted — use initScrollShowcaseMobile.
+ */
+function initScrollShowcaseDesktop(gsap, ScrollTrigger) {
   const section = document.querySelector('.lp-scroll-section');
   const pin = section?.querySelector('.lp-scroll-pin');
-  if (!section || !pin) return;
+  if (!section || !pin) return () => {};
+
+  section.classList.add('lp-scroll-section--desktop');
+  section.classList.remove('lp-scroll-section--mobile');
+  const mobileRoot = section.querySelector('[data-explore-mobile]');
+  if (mobileRoot) mobileRoot.hidden = true;
 
   const hint = pin.querySelector('.lp-scroll-text-hint');
   const phrases = [...pin.querySelectorAll('.lp-scroll-phrase')];
   const bgImages = [...pin.querySelectorAll('.lp-scroll-bg-img')];
   const rails = pin.querySelectorAll('.lp-scroll-rail');
   const count = phrases.length;
-  if (!count) return;
+  if (!count) return () => {};
 
   const phraseData = phrases.map((phraseEl) => {
     const line = phraseEl.querySelector('[data-scroll-line]');
@@ -401,7 +760,9 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     setSlidesStatic(phraseData, bgImages, 0, hint);
     if (hint) hint.style.display = 'none';
     section.classList.add('is-ready');
-    return;
+    return () => {
+      section.classList.remove('lp-scroll-section--desktop', 'is-ready');
+    };
   }
 
   // Wheel-locked stepper: ScrollTrigger only pins. Native snap is disabled —
@@ -410,9 +771,6 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   const SCROLL_DUR = 0.55;
   const LOCK_DUR = Math.max(BG_DUR, SCROLL_DUR) + 0.05;
   const WHEEL_THRESHOLD = 12;
-  const TOUCH_THRESHOLD = 36;
-  // Desktop: wheel-locked stepper. Mobile/tablet: native scroll + ScrollTrigger snap.
-  const useWheelStepper = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
   let currentIndex = 0;
   let bgTween = null;
@@ -420,7 +778,6 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   let locked = false;
   let unlockTimer = 0;
   let ignoreInputUntil = 0;
-  let touchStartY = null;
   let showcaseActive = false;
 
   function setSnapActive(active) {
@@ -437,12 +794,6 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   function snapProgressForIndex(index) {
     if (count <= 1) return 0;
     return index / (count - 1);
-  }
-
-  function progressToIndex(progress) {
-    if (count <= 1) return 0;
-    const steps = count - 1;
-    return Math.min(steps, Math.max(0, Math.round(progress * steps)));
   }
 
   function scrollYForIndex(index) {
@@ -593,21 +944,8 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     pinReparent: false,
     anticipatePin: 1,
     invalidateOnRefresh: true,
-    snap: !useWheelStepper && count > 1 ? {
-      snapTo: (value) => snapProgressForIndex(progressToIndex(value)),
-      duration: { min: 0.3, max: 0.55 },
-      delay: 0.02,
-      ease: 'power2.inOut',
-    } : false,
+    snap: false,
     onToggle: (self) => setSnapActive(self.isActive),
-    onUpdate(self) {
-      if (useWheelStepper) return;
-      const idx = progressToIndex(self.progress);
-      if (idx === currentIndex) return;
-      const prev = currentIndex;
-      currentIndex = idx;
-      applySlideVisuals(idx, prev, true);
-    },
     onEnter() {
       // Visuals only — do not window.scrollTo here (fights pin/refresh).
       currentIndex = 0;
@@ -673,37 +1011,6 @@ function initScrollShowcase(gsap, ScrollTrigger) {
     step(goingDown ? 1 : -1);
   }
 
-  function onTouchStart(e) {
-    if (!showcaseActive || !e.touches[0]) return;
-    touchStartY = e.touches[0].clientY;
-  }
-
-  function onTouchMove(e) {
-    if (!showcaseActive || touchStartY == null || !e.touches[0]) return;
-
-    const dy = touchStartY - e.touches[0].clientY;
-    if (Math.abs(dy) < TOUCH_THRESHOLD) return;
-
-    const goingDown = dy > 0;
-    const atLast = currentIndex >= count - 1;
-    const atFirst = currentIndex <= 0;
-
-    if (!locked) {
-      if (goingDown && atLast) return;
-      if (!goingDown && atFirst) return;
-    }
-
-    e.preventDefault();
-    if (inputBlocked()) return;
-
-    touchStartY = null;
-    step(goingDown ? 1 : -1);
-  }
-
-  function onTouchEnd() {
-    touchStartY = null;
-  }
-
   function onKeyDown(e) {
     if (!showcaseActive || inputBlocked()) return;
     if (e.key === 'ArrowDown' || e.key === 'PageDown') {
@@ -718,28 +1025,65 @@ function initScrollShowcase(gsap, ScrollTrigger) {
   }
 
   window.addEventListener('keydown', onKeyDown);
-
-  if (useWheelStepper) {
-    window.addEventListener('wheel', onWheel, { passive: false });
-    window.addEventListener('touchstart', onTouchStart, { passive: true });
-    window.addEventListener('touchmove', onTouchMove, { passive: false });
-    window.addEventListener('touchend', onTouchEnd, { passive: true });
-  }
+  window.addEventListener('wheel', onWheel, { passive: false });
 
   section.classList.add('is-ready');
 
   let resizeTimer = 0;
-  window.addEventListener('resize', () => {
+  const onResize = () => {
     window.clearTimeout(resizeTimer);
     resizeTimer = window.setTimeout(() => {
       scheduleScrollRefresh(ScrollTrigger);
-      if (st.isActive) {
+      if (st?.isActive) {
         goToSlide(currentIndex, { animate: false, force: true });
       }
     }, 200);
-  }, { passive: true });
+  };
+  window.addEventListener('resize', onResize, { passive: true });
 
-  return st;
+  return () => {
+    window.clearTimeout(resizeTimer);
+    window.clearTimeout(unlockTimer);
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('wheel', onWheel);
+    window.removeEventListener('resize', onResize);
+    bgTween?.kill();
+    scrollTween?.kill();
+    setSnapActive(false);
+    st?.kill();
+    section.classList.remove('lp-scroll-section--desktop', 'is-ready', 'is-transitioning');
+  };
+}
+
+function initScrollShowcase(gsap, ScrollTrigger) {
+  const section = document.querySelector('.lp-scroll-section');
+  if (!section) return;
+
+  const mq = window.matchMedia('(max-width: 1024px), (hover: none) and (pointer: coarse)');
+  let mode = null;
+  let cleanup = null;
+
+  const apply = () => {
+    const next = mq.matches ? 'mobile' : 'desktop';
+    if (next === mode) return;
+    cleanup?.();
+    cleanup = null;
+    mode = next;
+    if (mode === 'mobile') {
+      cleanup = initScrollShowcaseMobile(gsap) || (() => {});
+    } else {
+      cleanup = initScrollShowcaseDesktop(gsap, ScrollTrigger) || (() => {});
+      scheduleScrollRefresh(ScrollTrigger);
+    }
+  };
+
+  apply();
+  mq.addEventListener('change', apply);
+
+  return () => {
+    mq.removeEventListener('change', apply);
+    cleanup?.();
+  };
 }
 
 function setCountersStatic() {

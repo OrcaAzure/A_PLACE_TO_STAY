@@ -1,6 +1,7 @@
 <!-- SCROLL — chapel / garden / rooms with synced photos -->
 <section id="explore" class="lp-scroll-section is-pending-init" aria-label="Explore campus spaces">
-  <div class="lp-scroll-pin">
+  <!-- Desktop: GSAP ScrollTrigger pin showcase -->
+  <div class="lp-scroll-pin" data-explore-desktop>
     <span class="lp-scroll-rail lp-scroll-rail--left" aria-hidden="true">Scroll down</span>
     <span class="lp-scroll-rail lp-scroll-rail--right" aria-hidden="true">Scroll down</span>
     <div class="lp-scroll-bg" aria-hidden="true">
@@ -11,16 +12,36 @@
     <div class="lp-scroll-bg-overlay" aria-hidden="true"></div>
     <p class="lp-scroll-text-hint" aria-hidden="true">Scroll</p>
     <div class="lp-scroll-phrases">
-      <p class="lp-scroll-phrase" data-scroll-phrase="0">
+      <p class="lp-scroll-phrase" data-scroll-phrase="0" data-explore-desc="Worship, receptions, and outdoor gatherings across GMC spaces." data-explore-cta="See rates" data-explore-href="{{LINK_CHAPEL}}">
         <span class="lp-scroll-phrase-line" data-scroll-line>The chapel</span>
       </p>
-      <p class="lp-scroll-phrase" data-scroll-phrase="1">
+      <p class="lp-scroll-phrase" data-scroll-phrase="1" data-explore-desc="Quiet outdoor space for reflection, gatherings, and campus events." data-explore-cta="Explore" data-explore-href="{{LINK_CHAPEL}}">
         <span class="lp-scroll-phrase-line" data-scroll-line>The garden</span>
       </p>
-      <p class="lp-scroll-phrase" data-scroll-phrase="2">
+      <p class="lp-scroll-phrase" data-scroll-phrase="2" data-explore-desc="Superior, standard, deluxe, and dorm units at GMC — for individuals, families, and ministry groups." data-explore-cta="View rooms" data-explore-href="{{LINK_GMC}}">
         <span class="lp-scroll-phrase-line lp-scroll-phrase-line--accent" data-scroll-line>The rooms</span>
       </p>
     </div>
+  </div>
+
+  <!-- Mobile / tablet: horizontal swipe carousel (built from desktop slide data) -->
+  <div class="lp-explore-carousel" data-explore-mobile hidden>
+    <div class="lp-explore-carousel-head">
+      <p class="lp-explore-carousel-label">Explore</p>
+      <h2 class="lp-explore-carousel-title">Campus spaces</h2>
+    </div>
+    <div class="lp-explore-carousel-shell">
+      <button type="button" class="lp-explore-carousel-nav lp-explore-carousel-nav--prev" aria-label="Previous space" hidden>
+        <span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>
+      </button>
+      <div class="lp-explore-carousel-viewport" data-explore-viewport tabindex="0" role="region" aria-roledescription="carousel" aria-label="Campus spaces carousel">
+        <div class="lp-explore-carousel-track" data-explore-track></div>
+      </div>
+      <button type="button" class="lp-explore-carousel-nav lp-explore-carousel-nav--next" aria-label="Next space" hidden>
+        <span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>
+      </button>
+    </div>
+    <div class="lp-explore-carousel-dots" data-explore-dots role="tablist" aria-label="Slide indicators"></div>
   </div>
 </section>
 
