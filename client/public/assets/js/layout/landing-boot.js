@@ -3,7 +3,7 @@
  */
 
 const FAILSAFE_MS = 12000;
-const LANDING_ASSET_V = 'heroleft1';
+const LANDING_ASSET_V = 'explore-carousel1';
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
