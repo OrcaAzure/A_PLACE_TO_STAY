@@ -57,7 +57,7 @@ function parseAdminPageMeta(html, pageName) {
   const content = doc.getElementById('page-content');
   const script = doc.querySelector('script[type="module"]')?.textContent || '';
   const title = script.match(/title:\s*['"]([^'"]+)['"]/)?.[1]
-    || doc.title.replace(/\s*\|\s*APTSpace.*$/i, '').trim();
+    || doc.title.replace(/\s*\|\s*APTS.*$/i, '').trim();
   const subtitle = script.match(/subtitle:\s*['"]([^'"]*)['"]/)?.[1] ?? '';
   const activePage = script.match(/activePage:\s*['"]([^'"]+)['"]/)?.[1]
     || pageName.replace('.html', '');

@@ -1,5 +1,5 @@
 /**
- * APTSpace splash (initial load) + idle (screensaver) — admin & guest portals.
+ * APTS splash (initial load) + idle (screensaver) — admin & guest portals.
  * Vanilla JS; clocks use local 24-hour HH:MM:SS with no timezone labels.
  */
 
@@ -91,12 +91,12 @@ function guestSplashLottieMarkup() {
         style="width: min(18rem, 78vw); height: min(18rem, 52vh);"
       ></dotlottie-player>
     </div>
-    <p class="apt-splash--guest__brand">APTSpace</p>`;
+    <p class="apt-splash--guest__brand">APTS</p>`;
 }
 
 function guestIdleLottieMarkup() {
   return `
-    <div class="apt-idle--guest__lottie-wrap" role="img" aria-label="APTSpace mascot">
+    <div class="apt-idle--guest__lottie-wrap" role="img" aria-label="APTS mascot">
       <dotlottie-player
         class="apt-idle--guest__lottie"
         src="${GUEST_IDLE_LOTTIE_SRC}"
@@ -127,10 +127,10 @@ function guestCloudCatMarkup({ compact = false } = {}) {
     ? 'apt-cloud-cat apt-cloud-cat--compact'
     : 'apt-cloud-cat apt-cloud-cat--splash';
   return `
-    <div class="${rootClass}" role="img" aria-label="APTSpace cloud cat mascot">
+    <div class="${rootClass}" role="img" aria-label="APTS cloud cat mascot">
       <div class="apt-cloud-cat__scene">
         <div class="apt-cloud-cat__sign" aria-hidden="true">
-          <span class="apt-cloud-cat__brand">APTSpace</span>
+          <span class="apt-cloud-cat__brand">APTS</span>
         </div>
         <svg class="apt-cloud-cat__svg" viewBox="0 0 220 150" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
@@ -254,10 +254,10 @@ function buildGuestSplash({ useLottie = true } = {}) {
   overlay.setAttribute('data-layout-preserve', '');
   overlay.setAttribute('role', 'status');
   overlay.setAttribute('aria-live', 'polite');
-  overlay.setAttribute('aria-label', 'Loading APTSpace');
+  overlay.setAttribute('aria-label', 'Loading APTS');
   const mascot = useLottie
     ? guestSplashLottieMarkup()
-    : `${guestCloudCatMarkup()}<p class="apt-splash--guest__brand">APTSpace</p>`;
+    : `${guestCloudCatMarkup()}<p class="apt-splash--guest__brand">APTS</p>`;
   overlay.innerHTML = `
     <div class="apt-splash--guest__inner">
       ${mascot}
@@ -284,7 +284,7 @@ function buildAdminSplash() {
         Secure boot
       </div>
       <div class="apt-splash--admin__clock" data-apt-clock>00:00:00</div>
-      <p class="apt-splash--admin__label">APTSpace Admin</p>
+      <p class="apt-splash--admin__label">APTS Admin</p>
       <div class="apt-splash--admin__progress" aria-hidden="true"><span></span></div>
     </div>`;
   return overlay;
@@ -313,7 +313,7 @@ function guestIdleSceneInnerMarkup({ useLottie = true, showHint = true } = {}) {
     <div class="apt-idle--guest__cards">${cards}</div>
     <div class="apt-idle--guest__message">
       ${mascot}
-      <h2>Welcome to APTSpace – Tap to explore.</h2>
+      <h2>Welcome to APTS – Tap to explore.</h2>
       ${hint}
     </div>`;
 }
@@ -327,7 +327,7 @@ function buildGuestIdle({ useLottie = true } = {}) {
   overlay.setAttribute('hidden', '');
   overlay.style.display = 'none';
   overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-label', 'APTSpace screensaver');
+  overlay.setAttribute('aria-label', 'APTS screensaver');
   overlay.innerHTML = guestIdleSceneInnerMarkup({ useLottie, showHint: true });
   return overlay;
 }
@@ -345,7 +345,7 @@ function buildAdminIdle() {
   overlay.innerHTML = `
     <div class="apt-idle--admin__inner">
       <div class="apt-idle--admin__clock" data-apt-clock>00:00:00</div>
-      <p class="apt-idle--admin__sub">APTSpace · Tap or move to resume</p>
+      <p class="apt-idle--admin__sub">APTS · Tap or move to resume</p>
     </div>`;
   return overlay;
 }
@@ -476,7 +476,7 @@ function bindIdleActivity(idleOverlay) {
 }
 
 function shouldShowSplash(portal) {
-  const key = `aptspace.splash.${portal}`;
+  const key = `APTS.splash.${portal}`;
   if (sessionStorage.getItem(key) === '1') return false;
   sessionStorage.setItem(key, '1');
   return true;

@@ -84,7 +84,7 @@ app.use('/api', (req, res, next) => {
 app.use(requestLogger);
 
 app.get('/api', (req, res) => {
-  res.json({ message: 'APTSpace API is running' });
+  res.json({ message: 'APTS API is running' });
 });
 
 app.get('/api/health', async (req, res) => {

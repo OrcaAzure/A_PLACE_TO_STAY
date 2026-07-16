@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280" fill="none" role="img" aria-label="APTS  a place to stay">
+  <circle cx="120" cy="78" r="68" fill="#1A365D"/>
+  <path
+    d="M84 98 L120 48 L156 98"
+    stroke="#FFFFFF"
+    stroke-width="14.5"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <rect
+    x="99"
+    y="44"
+    width="10"
+    height="20"
+    rx="1.5"
+    fill="#FFFFFF"
+    transform="rotate(-40 104 54)"
+  />
+  <text
+    x="120"
+    y="198"
+    text-anchor="middle"
+    fill="#D4A017"
+    font-family="Inter, IBM Plex Sans, Arial, sans-serif"
+    font-size="48"
+    font-weight="700"
+    letter-spacing="0.04em"
+  >APTS</text>
+  <text
+    x="120"
+    y="232"
+    text-anchor="middle"
+    fill="#1A202C"
+    font-family="Inter, IBM Plex Sans, Arial, sans-serif"
+    font-size="15"
+    font-weight="500"
+    letter-spacing="0.18em"
+  >a place to stay</text>
+</svg>

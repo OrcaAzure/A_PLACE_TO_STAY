@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Login | APTSpace</title>
+  <title>Login | APTS</title>
+  <link rel="icon" href="/assets/img/apts-favicon.svg" type="image/svg+xml"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/assets/js/config/tailwind-theme-base.js"></script>
   <script src="/assets/js/config/tailwind-admin.js"></script>
@@ -40,13 +41,17 @@
 </head>
 <body class="bg-background min-h-screen flex items-center justify-center p-4">
   <main class="w-full max-w-md bg-white border border-outline-variant rounded-xl shadow-sm p-8">
-    <h1 class="text-headline-md font-bold text-primary mb-1">APTSpace</h1>
-    <p class="text-body-sm text-on-surface-variant mb-6"> Welcome  to APTSpace — Log in</p>
+    <div class="flex flex-col items-center text-center mb-6">
+      <img src="/assets/img/apts-mark.svg" alt="APTS" width="64" height="64" class="w-16 h-16 mb-3" decoding="async"/>
+      <h1 class="text-headline-md font-bold text-primary mb-0.5">APTS</h1>
+      <p class="text-[12px] font-medium tracking-wide mb-2" style="color:#D4A017">A Place to Stay</p>
+      <p class="text-body-sm text-on-surface-variant">Welcome — Log in</p>
+    </div>
 
     <form id="loginForm" class="space-y-4" method="post" action="/login.html" autocomplete="on" onsubmit="return false;">
       <div>
         <label class="text-label-sm text-on-surface-variant block mb-1" for="email">Email</label>
-        <input type="email" id="email" name="email" placeholder="Sign-in email to APTSpace"
+        <input type="email" id="email" name="email" placeholder="Sign-in email to APTS"
           class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" required />
       </div>
       <div>
@@ -81,7 +86,7 @@
     (function () {
       var el = document.getElementById('loginError');
       if (!el) return;
-      el.textContent = 'This browser cannot run APTSpace login scripts. Please use a current Chrome, Edge, or Firefox.';
+      el.textContent = 'This browser cannot run APTS login scripts. Please use a current Chrome, Edge, or Firefox.';
       el.classList.remove('hidden');
     })();
   </script>
