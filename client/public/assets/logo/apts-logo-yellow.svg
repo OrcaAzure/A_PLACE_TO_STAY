@@ -34,7 +34,7 @@
   <text
     x="120" y="234" text-anchor="middle"
     fill="#1A202C"
-    font-family="Cormorant Garamond, Times New Roman, Georgia, serif"
-    font-size="20" font-weight="600" font-style="italic" letter-spacing="0.08em"
-  >a place to stay</text>
+    font-family="IBM Plex Sans, Inter, Arial, sans-serif"
+    font-size="20" font-weight="700" letter-spacing="0.06em"
+  >A Place To Stay</text>
 </svg>

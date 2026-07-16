@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 280" fill="none" role="img" aria-label="APTS — A Place to Stay">
   <defs>
-    <clipPath id="apts-logo-blue-disc"><circle cx="120" cy="78" r="68"/></clipPath>
+    <clipPath id="apts-logo-disc"><circle cx="120" cy="78" r="68"/></clipPath>
   </defs>
   <circle cx="120" cy="78" r="68" fill="#1A365D"/>
   <path
-    clip-path="url(#apts-logo-blue-disc)"
+    clip-path="url(#apts-logo-disc)"
     fill="#FFFFFF"
     stroke="#D4A017"
     stroke-width="4.25"
@@ -34,7 +34,7 @@
   <text
     x="120" y="234" text-anchor="middle"
     fill="#D4A017"
-    font-family="Cormorant Garamond, Times New Roman, Georgia, serif"
-    font-size="20" font-weight="600" font-style="italic" letter-spacing="0.08em"
-  >a place to stay</text>
+    font-family="IBM Plex Sans, Inter, Arial, sans-serif"
+    font-size="20" font-weight="700" letter-spacing="0.06em"
+  >A Place To Stay</text>
 </svg>

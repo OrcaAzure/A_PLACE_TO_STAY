@@ -133,7 +133,7 @@ function buildWelcomeOverlay() {
             <h1 class="lp-welcome__brand" aria-label="APTS — A Place to Stay">
               <span class="lp-welcome__apts">APTS</span>
             </h1>
-            <p class="lp-welcome__tagline">A Place to Stay</p>
+            <p class="lp-welcome__tagline">A Place To Stay</p>
           </div>
           <div class="lp-welcome__icon-track" aria-hidden="true">
             <div class="lp-welcome__icon">
