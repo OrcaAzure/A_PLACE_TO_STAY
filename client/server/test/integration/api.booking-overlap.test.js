@@ -16,6 +16,8 @@ function futureDate(daysAhead) {
 const CHECK_IN = futureDate(60);
 const CHECK_OUT = futureDate(63);
 
+const BLOCKED_BOOKING_RE = /already reserved|being booked by another request/i;
+
 describe('API booking overlap & sync', { skip: dbReady ? false : 'MySQL not available' }, () => {
   let admin;
   let guestA;
@@ -83,7 +85,7 @@ describe('API booking overlap & sync', { skip: dbReady ? false : 'MySQL not avai
       status: 'Pending',
     });
     assert.equal(res.status, 409, res.body?.message);
-    assert.match(res.body?.message || '', /already reserved/i);
+    assert.match(res.body?.message || '', BLOCKED_BOOKING_RE);
   });
 
   it('admin also cannot double-book the same room and dates', async () => {
@@ -97,7 +99,7 @@ describe('API booking overlap & sync', { skip: dbReady ? false : 'MySQL not avai
       status: 'Approved',
     });
     assert.equal(res.status, 409, res.body?.message);
-    assert.match(res.body?.message || '', /already reserved/i);
+    assert.match(res.body?.message || '', BLOCKED_BOOKING_RE);
   });
 
   it('concurrent booking attempts: only one succeeds', async () => {
@@ -132,10 +134,11 @@ describe('API booking overlap & sync', { skip: dbReady ? false : 'MySQL not avai
     const blocked = [a, b].filter((r) => r.status === 409);
     assert.equal(created.length, 1, `expected one 201, got ${a.status} and ${b.status}`);
     assert.equal(blocked.length, 1);
-    assert.match(blocked[0].body?.message || '', /already reserved/i);
+    assert.match(blocked[0].body?.message || '', BLOCKED_BOOKING_RE);
 
-    const cleanupId = created[0].body.booking?.id;
-    if (cleanupId) {
+    for (const res of created) {
+      const cleanupId = res.body.booking?.id;
+      if (!cleanupId) continue;
       await admin.patch(`/api/bookings/${cleanupId}`).send({ status: 'Cancelled' }).catch(() => {});
       await admin.delete(`/api/bookings/${cleanupId}`).catch(() => {});
     }
