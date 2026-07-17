@@ -88,3 +88,23 @@ export async function seedGuestStayExamples() {
     console.log('[seed] Demo in-stay booking for external guest');
   }
 }
+
+export async function seedGuestAccessRequests() {
+  const [existing] = await pool.execute(
+    `SELECT id FROM guest_access_requests WHERE email = ? LIMIT 1`,
+    ['retreat@gcc.org']
+  );
+  if (existing.length) return;
+
+  await pool.execute(
+    `INSERT INTO guest_access_requests (full_name, email, organization, notes, status)
+     VALUES (?, ?, ?, ?, 'Pending')`,
+    [
+      'Grace Community Church',
+      'retreat@gcc.org',
+      'Grace Community Church',
+      'Emailed housing office requesting portal access for a July retreat.',
+    ]
+  );
+  console.log('[seed] Demo pending guest access request');
+}
