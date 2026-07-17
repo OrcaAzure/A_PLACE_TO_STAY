@@ -31,11 +31,22 @@ let extraCategoryOptions = [...DEFAULT_EXTRA_CATEGORIES];
 const SEASONS = ['Regular', 'Peak', 'Super Peak', 'N/A'];
 const SEASONAL_EXTRA_CATEGORIES = new Set(['Accommodation Extras']);
 
+function mealTypeName(row) {
+  return String(row?.item || row?.meal_type || '').trim();
+}
+
+function normalizeMealCatalogRow(row) {
+  if (!row) return null;
+  const item = mealTypeName(row);
+  if (!item) return null;
+  return { ...row, item };
+}
+
 function syncMealTypeOptions(meals = []) {
   const seen = new Set(DEFAULT_MEAL_NAMES);
   mealTypeOptions = [...DEFAULT_MEAL_NAMES];
   for (const meal of meals) {
-    const name = String(meal?.item || '').trim();
+    const name = mealTypeName(meal);
     if (name && !seen.has(name)) {
       seen.add(name);
       mealTypeOptions.push(name);
@@ -107,6 +118,7 @@ function addCustomOption(optionKey, rawName) {
   if (optionKey === 'meal') {
     if (!mealTypeOptions.includes(name)) mealTypeOptions.push(name);
     setSelectOptions('cat-item', mealTypeOptions, name);
+    updateMealTypeSelectedHint(name);
     return name;
   }
 
@@ -116,6 +128,22 @@ function addCustomOption(optionKey, rawName) {
     refreshExtraFormForCategory(name);
   }
   return name;
+}
+
+function updateMealTypeSelectedHint(name = '') {
+  const hint = document.getElementById('cat-meal-type-hint');
+  if (!hint) return;
+  const label = String(name || '').trim();
+  hint.textContent = label ? `Selected meal type: ${label}` : '';
+  hint.classList.toggle('hidden', !label);
+}
+
+function bindMealTypeField() {
+  const select = $('cat-item');
+  if (!select || select.tagName !== 'SELECT') return;
+  const sync = () => updateMealTypeSelectedHint(select.value);
+  select.addEventListener('change', sync);
+  sync();
 }
 
 function captureExtraFormDraft() {
@@ -201,9 +229,119 @@ function variantFields(row = {}, defaults = {}) {
   `;
 }
 
-function variantSummary() {
-  return '';
+function extraGuestVisible(item) {
+  if (item?.guest_visible === false || item?.guest_visible === 0 || item?.guest_visible === '0') return false;
+  return true;
 }
+
+function extraGuestToggle(id, visible) {
+  const on = extraGuestVisible({ guest_visible: visible });
+  return `
+    <button type="button"
+      class="catalog-guest-toggle${on ? ' is-on' : ''}"
+      data-extra-guest-visible="${id}"
+      aria-pressed="${on ? 'true' : 'false'}"
+      title="${on ? 'Shown to guests — click to hide' : 'Hidden from guests — click to show'}">
+      <span class="catalog-guest-toggle__ui" aria-hidden="true"></span>
+      <span class="catalog-guest-toggle__text">Guests</span>
+    </button>`;
+}
+
+function showRowGuestToggleError(rowEl, message) {
+  if (!rowEl) return;
+  let hint = rowEl.querySelector('.catalog-guest-toggle-error');
+  if (!hint) {
+    rowEl.querySelector('.catalog-price-row__meta')?.insertAdjacentHTML(
+      'afterbegin',
+      '<span class="catalog-guest-toggle-error" role="alert"></span>'
+    );
+    hint = rowEl.querySelector('.catalog-guest-toggle-error');
+  }
+  if (!hint) return;
+  hint.textContent = message;
+  hint.classList.add('is-visible');
+  window.clearTimeout(hint._errTimer);
+  hint._errTimer = window.setTimeout(() => hint.classList.remove('is-visible'), 4000);
+}
+
+function bindExtrasGridActions() {
+  const mount = $('extras-grid-mount');
+  if (!mount || mount.dataset.guestToggleBound === '1') return;
+  mount.dataset.guestToggleBound = '1';
+  mount.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-extra-guest-visible]');
+    if (!btn || btn.disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    toggleExtraGuestVisible(btn);
+  });
+}
+
+function patchExtraGuestVisibleInCache(id, guestVisible) {
+  catalogCache.services = catalogCache.services.map((group) => ({
+    ...group,
+    items: (group.items || []).map((item) => (
+      Number(item.id) === Number(id) ? { ...item, guest_visible: guestVisible } : item
+    )),
+  }));
+}
+
+function applyExtraRowGuestVisible(rowEl, guestVisible) {
+  if (!rowEl) return;
+  const on = extraGuestVisible({ guest_visible: guestVisible });
+  rowEl.classList.toggle('catalog-price-row--guest-off', !on);
+
+  const btn = rowEl.querySelector('[data-extra-guest-visible]');
+  if (btn) {
+    btn.classList.toggle('is-on', on);
+    btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    btn.title = on ? 'Shown to guests — click to hide' : 'Hidden from guests — click to show';
+  }
+
+  const labelCol = rowEl.querySelector('.min-w-0');
+  const badge = rowEl.querySelector('.catalog-price-row__guest-badge');
+  if (!on && !badge && labelCol) {
+    labelCol.insertAdjacentHTML('beforeend', '<p class="catalog-price-row__guest-badge">Admin only</p>');
+  } else if (on && badge) {
+    badge.remove();
+  }
+}
+
+const guestToggleInflight = new Set();
+
+async function toggleExtraGuestVisible(btn) {
+  const id = Number(btn.getAttribute('data-extra-guest-visible'));
+  if (!id || guestToggleInflight.has(id)) return;
+
+  const next = !btn.classList.contains('is-on');
+  const prev = !next;
+  const row = btn.closest('.catalog-price-row');
+
+  guestToggleInflight.add(id);
+  btn.disabled = true;
+  btn.classList.add('catalog-guest-toggle--saving');
+  row?.querySelector('.catalog-guest-toggle-error')?.classList.remove('is-visible');
+
+  btn.classList.toggle('is-on', next);
+  btn.setAttribute('aria-pressed', next ? 'true' : 'false');
+  applyExtraRowGuestVisible(row, next);
+
+  try {
+    await updateExtraServiceRate(id, { guest_visible: next });
+    patchExtraGuestVisibleInCache(id, next);
+  } catch (err) {
+    btn.classList.toggle('is-on', prev);
+    btn.setAttribute('aria-pressed', prev ? 'true' : 'false');
+    applyExtraRowGuestVisible(row, prev);
+    patchExtraGuestVisibleInCache(id, prev);
+    showRowGuestToggleError(row, err?.message || 'Could not save. Try again.');
+  } finally {
+    guestToggleInflight.delete(id);
+    btn.disabled = false;
+    btn.classList.remove('catalog-guest-toggle--saving');
+  }
+}
+
 
 function variantChips() {
   return '';
@@ -304,6 +442,7 @@ export function teardownFacilityCatalog() {
   hideFacilityCatalogModal();
   document.getElementById('catalog-modal')?.remove();
   document.getElementById('catalog-modal-overlay')?.remove();
+  document.getElementById('extras-grid-mount')?.removeAttribute('data-guest-toggle-bound');
   catalogModalEventsBound = false;
 }
 
@@ -343,21 +482,28 @@ function renderModalForm() {
   deleteBtn?.classList.toggle('hidden', mode !== 'edit' || !row?.id);
 
   if (kind === 'meal') {
+    const mealName = mealTypeName(row) || mealTypeOptions[0] || '';
     fields.innerHTML = `
+      ${mode === 'edit' ? `
+      <label class="catalog-label" for="cat-item">Meal type</label>
+      <input id="cat-item" class="catalog-input" type="text" value="${escapeHtml(mealName)}" readonly />
+      ` : `
       ${renderSelectWithAdd({
         selectId: 'cat-item',
         optionKey: 'meal',
         label: 'Meal type',
         options: mealTypeOptions,
-        selected: row?.item || mealTypeOptions[0],
-        disabled: mode === 'edit',
+        selected: mealName,
+        disabled: false,
       })}
+      <p id="cat-meal-type-hint" class="catalog-meal-type-hint${mealName ? '' : ' hidden'}">${mealName ? `Selected meal type: ${escapeHtml(mealName)}` : ''}</p>`}
       <input type="hidden" id="cat-category" value="Food Service" />
       <input type="hidden" id="cat-season" value="N/A" />
       <label class="catalog-label" for="cat-rate">Price per person (₱)</label>
       <input id="cat-rate" class="catalog-input" type="number" min="1" step="1" value="${row?.rate ?? ''}" placeholder="e.g. 225" />
       ${variantFields(row, { billing_unit: 'per meal' })}
     `;
+    if (mode === 'add') bindMealTypeField();
     return;
   }
 
@@ -387,6 +533,14 @@ function renderModalForm() {
       </select>` : '<input type="hidden" id="cat-season" value="N/A" />'}
       <label class="catalog-label">Price (₱)</label>
       <input id="cat-rate" class="catalog-input" type="number" min="1" step="1" value="${row?.rate ?? ''}" placeholder="e.g. 500" />
+      <label class="catalog-guest-toggle catalog-guest-toggle--field" for="cat-guest-visible">
+        <input id="cat-guest-visible" type="checkbox" class="catalog-guest-toggle__input" ${extraGuestVisible(row ?? { guest_visible: true }) ? 'checked' : ''} />
+        <span class="catalog-guest-toggle__ui" aria-hidden="true"></span>
+        <span class="catalog-guest-toggle__copy">
+          <span class="catalog-guest-toggle__text">Show to guests</span>
+          <span class="catalog-guest-toggle__hint">When on, this fee appears in guest booking flows.</span>
+        </span>
+      </label>
       ${variantFields(row, { billing_unit: seasonal ? 'per night' : 'per item' })}
     `;
     return;
@@ -427,8 +581,10 @@ async function openCatalogModal({ mode, kind, row = null }) {
 }
 
 function readPayload() {
+  const { kind } = modalState;
   const category = $('cat-category')?.value?.trim();
-  const item = $('cat-item')?.value?.trim();
+  const itemRaw = $('cat-item')?.value?.trim();
+  const item = itemRaw;
   const season = $('cat-season')?.value || 'N/A';
   const rate = Number($('cat-rate')?.value);
   const capMinEl = $('cat-cap-min');
@@ -441,16 +597,39 @@ function readPayload() {
   const billing_unit = $('cat-billing-unit')?.value?.trim() || 'per item';
   const notes = $('cat-notes')?.value?.trim() || null;
 
+  if (kind === 'meal') {
+    if (!item) throw new Error('Choose or add a meal type name.');
+    if (!rate || rate <= 0) throw new Error('Enter a valid price greater than zero.');
+    return {
+      category: 'Food Service',
+      item,
+      meal_type: item,
+      season: 'N/A',
+      rate,
+      capacity_min: null,
+      capacity_max: null,
+      audience,
+      age_band,
+      currency,
+      billing_unit: billing_unit || 'per meal',
+      notes,
+    };
+  }
+
   if (!category || !item || !rate || rate <= 0) {
     throw new Error('Please fill in all required fields with a valid price.');
   }
 
-  return { category, item, season, rate, capacity_min, capacity_max, audience, age_band, currency, billing_unit, notes };
+  const base = { category, item, season, rate, capacity_min, capacity_max, audience, age_band, currency, billing_unit, notes };
+  if (kind === 'extra') {
+    base.guest_visible = $('cat-guest-visible')?.checked !== false;
+  }
+  return base;
 }
 
 function catalogItemLabel(kind, row = {}) {
   const data = row || {};
-  if (kind === 'meal') return data.item || 'Meal';
+  if (kind === 'meal') return mealTypeName(data) || 'Meal';
   if (kind === 'extra') return `${data.category || 'Extra'} — ${data.item || 'Service'}`;
   return `${data.category || 'Venue'} — ${data.item || 'Price'}`;
 }
@@ -479,13 +658,17 @@ async function saveModal() {
     setFeedback('Saving…');
 
     if (mode === 'edit' && row?.id) {
-      if (kind === 'meal') await updateMealRate(row.id, payload);
-      else if (kind === 'extra') await updateExtraServiceRate(row.id, payload);
+      if (kind === 'meal') {
+        const updated = await updateMealRate(row.id, payload);
+        applyMealCatalogUpsert(updated?.meal);
+      } else if (kind === 'extra') await updateExtraServiceRate(row.id, payload);
       else await updateFacilityRate(row.id, payload);
       setFeedback('Saved!', true);
     } else {
-      if (kind === 'meal') await createMealRate(payload);
-      else if (kind === 'extra') await createExtraServiceRate(payload);
+      if (kind === 'meal') {
+        const created = await createMealRate(payload);
+        applyMealCatalogUpsert(created?.meal);
+      } else if (kind === 'extra') await createExtraServiceRate(payload);
       else await createFacilityRate(payload);
       setFeedback('Added!', true);
     }
@@ -538,7 +721,7 @@ function resolveRow(kind, id) {
     return m ? {
       id: m.id,
       category: 'Food Service',
-      item: m.item,
+      item: mealTypeName(m),
       season: 'N/A',
       rate: m.rate,
       audience: m.audience,
@@ -558,6 +741,7 @@ function resolveRow(kind, id) {
           item: item.item,
           season: item.season,
           rate: item.rate,
+          guest_visible: item.guest_visible,
           audience: item.audience,
           age_band: item.age_band,
           currency: item.currency,
@@ -597,6 +781,15 @@ function editBtn(kind, id) {
   return `<button type="button" class="catalog-edit-btn" data-catalog-edit="${kind}" data-id="${id}" aria-label="Edit this price">
     <span class="material-symbols-outlined text-[18px]">edit</span> Edit
   </button>`;
+}
+
+function applyMealCatalogUpsert(rawMeal) {
+  const meal = normalizeMealCatalogRow(rawMeal);
+  if (!meal?.id) return;
+  const next = catalogCache.meals.filter((m) => Number(m.id) !== Number(meal.id));
+  next.push(meal);
+  next.sort((a, b) => mealTypeName(a).localeCompare(mealTypeName(b)));
+  renderMealsCatalog(next);
 }
 
 function applyCatalogRemoval(kind, id) {
@@ -746,12 +939,12 @@ export function renderVenuesCatalog(venues) {
 }
 
 export function renderMealsCatalog(meals) {
-  catalogCache.meals = meals || [];
+  catalogCache.meals = (meals || []).map((meal) => normalizeMealCatalogRow(meal)).filter(Boolean);
   syncMealTypeOptions(catalogCache.meals);
   const mount = $('meals-grid-mount');
   if (!mount) return;
 
-  const visible = meals || [];
+  const visible = catalogCache.meals;
 
   if (!visible.length) {
     mount.innerHTML = '<p class="fac-catalog-grid__empty">No meal prices yet. Use <strong>Add meal</strong> to get started.</p>';
@@ -763,7 +956,7 @@ export function renderMealsCatalog(meals) {
       <div class="fac-meal-card__icon">
         <span class="material-symbols-outlined">${escapeHtml(meal.icon || 'restaurant')}</span>
       </div>
-      <h4 class="fac-meal-card__title">${escapeHtml(meal.item)}</h4>
+      <h4 class="fac-meal-card__title">${escapeHtml(mealTypeName(meal) || 'Meal')}</h4>
       <p class="fac-meal-card__price">${peso(meal.rate)}</p>
       ${variantChips(meal)}
       <div class="catalog-card-actions">
@@ -783,21 +976,26 @@ export function renderExtrasCatalog(services) {
     const items = group.items || [];
     if (!items.length) return '';
 
-    const itemsHtml = items.map((item) => `
-      <li class="catalog-price-row">
+    const itemsHtml = items.map((item) => {
+      const guestOn = extraGuestVisible(item);
+      return `
+      <li class="catalog-price-row${guestOn ? '' : ' catalog-price-row--guest-off'}">
         <div class="min-w-0">
           <p class="catalog-price-row__label">${escapeHtml(item.item)}</p>
           ${item.season && item.season !== 'N/A' ? `<p class="catalog-price-row__season">${escapeHtml(item.season)}</p>` : ''}
           ${variantChips(item)}
+          ${guestOn ? '' : '<p class="catalog-price-row__guest-badge">Admin only</p>'}
         </div>
         <div class="catalog-price-row__meta">
+          ${extraGuestToggle(item.id, item.guest_visible)}
           <p class="catalog-price-row__price">${peso(item.rate)}</p>
           <div class="catalog-card-actions">
             ${editBtn('extra', item.id)}
             ${deleteBtn('extra', item.id)}
           </div>
         </div>
-      </li>`).join('');
+      </li>`;
+    }).join('');
 
     return `
       <article class="fac-extra-card">
@@ -817,9 +1015,12 @@ export function renderExtrasCatalog(services) {
   }
 
   mount.innerHTML = cards.join('');
+  bindExtrasGridActions();
 }
 
 function handleCatalogPageClick(e) {
+  if (e.target.closest('[data-extra-guest-visible]')) return;
+
   const editToggle = e.target.closest('[data-catalog-edit-toggle]');
   if (editToggle) {
     e.preventDefault();
@@ -873,4 +1074,5 @@ export async function initFacilityCatalog({ refresh }) {
   await ensureFacilityCatalogModalMounted();
   bindCatalogModalEvents();
   bindCatalogPageActions();
+  bindExtrasGridActions();
 }

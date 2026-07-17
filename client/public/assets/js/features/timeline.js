@@ -1,8 +1,8 @@
 /**
  * Reservation Master Timeline — simple upcoming list + optional room calendar.
  */
-import { openModal, closeModal, syncTimelineScroll, scrollTimelineToToday } from '/assets/js/layout/ui.js';
-import { getRooms, getBookings, getGroups, getFacilityBookings, getFiscalYear, normalizeRoom, normalizeBooking, normalizeManageRequest, normalizeFacilityBooking } from '/assets/js/services/api.js';
+import { openModal, closeModal, syncTimelineScroll, scrollTimelineToToday, showAlertModal } from '/assets/js/layout/ui.js';
+import { getRooms, getBookings, getGroups, getFacilityBookings, getFiscalYear, normalizeRoom, normalizeBooking, normalizeManageRequest, normalizeManageGroupRequest, normalizeFacilityBooking } from '/assets/js/services/api.js';
 import {
   buildSeasonMap,
   normalizeSeasonCalendar,
@@ -11,14 +11,16 @@ import {
 } from '/assets/js/features/season-calendar.js';
 import {
   approveRequest, rejectRequest, openModifyRequestWizard, openModifyVenueWizard, openAdminEditVenueWizard,
-  confirmDeclineRequest,
+  confirmDeclineRequest, confirmAdminCancelReservation,
+  cancelRoomReservation, cancelVenueReservation,
   notifyBookingUpdated,
 } from '/assets/js/features/booking-actions.js';
 import { updateFacilityBooking } from '/assets/js/services/api.js';
 import {
   escapeHtml, formatDate, formatDateLong, formatMoney, normStatus, stayNights,
   toLocalDateString, lifecyclePhaseForBooking, lifecycleEventClass, venuePhaseLabel,
-  canAdminModifyVenueBooking, isStandaloneRoomBooking,
+  canAdminModifyVenueBooking, canAdminCancelRoomBooking, canAdminCancelVenueBooking,
+  isStandaloneRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { jsonFingerprint } from '/assets/js/layout/silent-refresh.js';
@@ -351,14 +353,21 @@ function countCancelledInMonth(bookings, year, month) {
     && overlapsRange(b.startDate, b.endDate, monthStart, monthEnd)).length;
 }
 
-function bindMonthCalendar(root, { bookings, rawBookingsById, rawVenueById, onRefresh }) {
+function bindMonthCalendar(root, { bookings, rawBookingsById, rawGroupsById, rawVenueById, onRefresh }) {
   if (!root) return;
+
+  const openRoom = (id) => {
+    const raw = rawBookingsById[String(id)];
+    if (!raw) return;
+    const groupId = raw.group_id ?? raw.groupId;
+    const group = groupId != null ? rawGroupsById[String(groupId)] : null;
+    openBookingModal(raw, { onRefresh, group });
+  };
 
   root.querySelectorAll('[data-booking-id]').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const id = btn.getAttribute('data-booking-id');
-      openBookingModal(rawBookingsById[String(id)], { onRefresh });
+      openRoom(btn.getAttribute('data-booking-id'));
     });
   });
 
@@ -406,7 +415,7 @@ function bindMonthCalendar(root, { bookings, rawBookingsById, rawVenueById, onRe
       document.getElementById('modalBody')?.querySelectorAll('[data-booking-id]').forEach((el) => {
         el.addEventListener('click', () => {
           closeModal();
-          openBookingModal(rawBookingsById[String(el.getAttribute('data-booking-id'))], { onRefresh });
+          openRoom(el.getAttribute('data-booking-id'));
         });
       });
       document.getElementById('modalBody')?.querySelectorAll('[data-venue-booking-id]').forEach((el) => {
@@ -617,14 +626,19 @@ function renderBookingStatusBadge(status) {
   return `<span class="inline-flex items-center text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-full ${pill}">${escapeHtml(label)}</span>`;
 }
 
-function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', actionBusy = false } = {}) {
+function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', actionBusy = false, group = null } = {}) {
   const booking = normalizeManageRequest(rawBooking);
-  const facilityLabel = `${booking.facility.building} — ${booking.facility.roomNumber}`;
+  const isGroup = Boolean(group);
+  const facilityParts = [booking.facility.building, booking.facility.roomNumber].filter(Boolean);
+  const facilityLabel = facilityParts.join(' — ') || 'Room pending assignment';
   const nights = stayNights(booking.schedule.checkIn, booking.schedule.checkOut);
   const pending = normStatus(booking.status) === 'pending';
+  const approved = normStatus(booking.status) === 'approved';
+  const canCancel = canAdminCancelRoomBooking(rawBooking) && !pending;
 
   const reservationRows = [
     renderDetailRow('Status', statusLabel(booking.status)),
+    isGroup ? renderDetailRow('Group', group.group_name || group.contact_name || `Group #${group.id}`) : '',
     renderDetailRow('Check-in', formatDateLong(booking.schedule.checkIn)),
     renderDetailRow('Check-out', formatDateLong(booking.schedule.checkOut)),
     nights ? renderDetailRow('Length of stay', `${nights} night${nights === 1 ? '' : 's'}`) : '',
@@ -645,11 +659,15 @@ function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', 
   ].join('');
 
   if (mode === 'reject') {
+    const who = isGroup
+      ? (group.group_name || group.contact_name || 'this group')
+      : (booking.requester?.name || booking.title || 'this guest');
     return `
       <div class="tl-reject-panel">
         <div class="tl-reject-icon" aria-hidden="true"><span class="material-symbols-outlined">warning</span></div>
-        <h4 class="tl-reject-title">Decline request from ${escapeHtml(booking.requester?.name || booking.title || 'this guest')}?</h4>
+        <h4 class="tl-reject-title">Decline request from ${escapeHtml(who)}?</h4>
         <p class="tl-reject-lead">${escapeHtml(booking.requester.name)} · ${formatDateLong(booking.schedule.checkIn)} → ${formatDateLong(booking.schedule.checkOut)}</p>
+        ${isGroup ? '<p class="tl-reject-lead">This declines the whole group stay, not only this room.</p>' : ''}
         <label class="tl-field-label" for="tl-reject-note">Reason (optional — saved in notes)</label>
         <textarea id="tl-reject-note" class="tl-input tl-textarea" rows="3" placeholder="e.g. Dates unavailable, room conflict…"></textarea>
         ${actionError ? `<p class="tl-action-error">${escapeHtml(actionError)}</p>` : ''}
@@ -678,18 +696,25 @@ function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', 
       </button>
     </div>` : `
     <div class="tl-detail-actions">
-      ${normStatus(booking.status) === 'approved' ? `
-        <button type="button" class="res-btn res-btn--modify res-btn--wide" data-tl-action="modify">
+      ${approved ? `
+        <button type="button" class="res-btn res-btn--modify res-btn--wide" data-tl-action="modify" ${actionBusy ? 'disabled' : ''}>
           <span class="material-symbols-outlined">edit</span>
           Modify reservation
         </button>` : ''}
-      <p class="tl-detail-done">This reservation is ${escapeHtml(statusLabel(booking.status).toLowerCase())}${booking.updatedAt ? ` · updated ${formatDate(booking.updatedAt)}` : ''}.</p>
+      ${canCancel ? `
+        <button type="button" class="res-btn res-btn--reject res-btn--wide" data-tl-action="cancel" ${actionBusy ? 'disabled' : ''}>
+          <span class="material-symbols-outlined">cancel</span>
+          ${isGroup ? 'Cancel group stay' : 'Cancel reservation'}
+        </button>` : ''}
+      ${!canCancel && !approved ? `
+        <p class="tl-detail-done">This reservation is ${escapeHtml(statusLabel(booking.status).toLowerCase())}${booking.updatedAt ? ` · updated ${formatDate(booking.updatedAt)}` : ''}.</p>
+      ` : ''}
     </div>`;
 
   return `
     <div class="tl-detail">
       <div class="tl-detail-head">
-        <p class="tl-detail-lead">Reservation overview</p>
+        <p class="tl-detail-lead">${isGroup ? 'Group room stay' : 'Reservation overview'}</p>
         ${renderBookingStatusBadge(booking.status)}
       </div>
       ${renderDetailSection('Stay details', reservationRows)}
@@ -704,7 +729,40 @@ function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', 
     </div>`;
 }
 
-let detailState = { raw: null, mode: 'view', busy: false, error: '' };
+let detailState = { raw: null, group: null, mode: 'view', busy: false, error: '' };
+
+function detailRenderOpts() {
+  return {
+    mode: detailState.mode,
+    actionBusy: detailState.busy,
+    actionError: detailState.error,
+    group: detailState.group,
+  };
+}
+
+function detailActionTarget() {
+  if (detailState.group) return normalizeManageGroupRequest(detailState.group);
+  return normalizeManageRequest(detailState.raw);
+}
+
+function paintBookingDetail(onRefresh) {
+  const body = document.getElementById('modalBody');
+  if (!body || !detailState.raw) return;
+  body.innerHTML = renderBookingDetailBody(detailState.raw, detailRenderOpts());
+  bindDetailActions(onRefresh);
+}
+
+function openApprovedEditWizard(target) {
+  if (target.kind === 'group') {
+    window.dispatchEvent(new CustomEvent('group-wizard:open', {
+      detail: { mode: 'edit', groupId: target.id },
+    }));
+    return;
+  }
+  window.dispatchEvent(new CustomEvent('reservation-wizard:open', {
+    detail: { mode: 'edit', bookingId: target.id },
+  }));
+}
 
 function bindDetailActions(onRefresh) {
   const body = document.getElementById('modalBody');
@@ -713,72 +771,103 @@ function bindDetailActions(onRefresh) {
   body.querySelectorAll('[data-tl-action]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const action = btn.getAttribute('data-tl-action');
-      const booking = normalizeManageRequest(detailState.raw);
+      const target = detailActionTarget();
 
       if (action === 'cancel-reject') {
         detailState.mode = 'view';
         detailState.error = '';
-        body.innerHTML = renderBookingDetailBody(detailState.raw, detailState);
-        bindDetailActions(onRefresh);
+        paintBookingDetail(onRefresh);
         return;
       }
 
       if (action === 'reject') {
         detailState.mode = 'reject';
         detailState.error = '';
-        body.innerHTML = renderBookingDetailBody(detailState.raw, detailState);
-        bindDetailActions(onRefresh);
+        paintBookingDetail(onRefresh);
         document.getElementById('tl-reject-note')?.focus();
         return;
       }
 
       if (action === 'modify') {
         closeModal();
-        openModifyRequestWizard(booking, { modifyRequest: true });
+        if (normStatus(target.status) === 'pending') {
+          openModifyRequestWizard(target, { modifyRequest: true });
+        } else {
+          openApprovedEditWizard(target);
+        }
+        return;
+      }
+
+      if (action === 'cancel') {
+        const label = target.kind === 'group'
+          ? (target.groupName || target.requester?.name || 'this group stay')
+          : (target.requester?.name || target.title || 'this reservation');
+        closeModal();
+        const confirmed = await confirmAdminCancelReservation(label, { pending: false });
+        if (!confirmed) return;
+        try {
+          if (target.kind === 'group') {
+            await cancelRoomReservation(target.id, { kind: 'group' });
+          } else {
+            await cancelRoomReservation(target.id, { kind: 'single' });
+          }
+          notifyBookingUpdated();
+          await onRefresh();
+        } catch (err) {
+          await showAlertModal('Could not cancel reservation', err.message || 'Could not cancel this reservation.');
+        }
         return;
       }
 
       if (action === 'confirm-reject' || action === 'approve') {
+        if (action === 'approve') {
+          closeModal();
+          try {
+            const approved = await approveRequest(target);
+            if (!approved) return;
+            notifyBookingUpdated();
+            await onRefresh();
+          } catch (err) {
+            await showAlertModal('Could not approve', err.message || 'Action failed.');
+          }
+          return;
+        }
+
         detailState.busy = true;
         detailState.error = '';
-        body.innerHTML = renderBookingDetailBody(detailState.raw, detailState);
-        bindDetailActions(onRefresh);
-
+        paintBookingDetail(onRefresh);
         try {
-          if (action === 'approve') {
-            const approved = await approveRequest(booking);
-            if (!approved) {
-              detailState.busy = false;
-              body.innerHTML = renderBookingDetailBody(detailState.raw, detailState);
-              bindDetailActions(onRefresh);
-              return;
-            }
-          } else {
-            const note = document.getElementById('tl-reject-note')?.value?.trim() || '';
-            await rejectRequest(booking, note);
-          }
+          const note = document.getElementById('tl-reject-note')?.value?.trim() || '';
+          await rejectRequest(target, note);
           notifyBookingUpdated();
           closeModal();
           await onRefresh();
         } catch (err) {
           detailState.busy = false;
           detailState.error = err.message || 'Action failed.';
-          body.innerHTML = renderBookingDetailBody(detailState.raw, detailState);
-          bindDetailActions(onRefresh);
+          paintBookingDetail(onRefresh);
         }
       }
     });
   });
 }
 
-export function openBookingModal(rawBooking, { onRefresh } = {}) {
+export function openBookingModal(rawBooking, { onRefresh, group = null } = {}) {
   if (!rawBooking) return;
   const booking = normalizeManageRequest(rawBooking);
-  detailState = { raw: rawBooking, mode: 'view', busy: false, error: '' };
-  const title = booking.requester.name || booking.title || 'Booking';
+  detailState = {
+    raw: rawBooking,
+    group: group || null,
+    mode: 'view',
+    busy: false,
+    error: '',
+  };
+  const title = group
+    ? (group.group_name || booking.requester.name || 'Group stay')
+    : (booking.requester.name || booking.title || 'Booking');
   const subtitle = [booking.facility?.building, booking.facility?.roomNumber].filter(Boolean).join(' ')
     || formatDateLong(booking.schedule?.checkIn);
-  openModal(title, renderBookingDetailBody(rawBooking, detailState), { subtitle });
+  openModal(title, renderBookingDetailBody(rawBooking, detailRenderOpts()), { subtitle });
   bindDetailActions(onRefresh || (() => {}));
 }
 
@@ -786,6 +875,7 @@ function renderVenueDetailBody(raw, { busy = false, error = '' } = {}) {
   const b = normalizeFacilityBooking(raw);
   const pending = normStatus(b.status) === 'pending';
   const canModify = canAdminModifyVenueBooking(b);
+  const canCancel = canAdminCancelVenueBooking(b) && !pending;
   const rows = [
     renderDetailRow('Status', statusLabel(b.status)),
     renderDetailRow('Venue', `${b.venueCategory} — ${b.venueName}`),
@@ -797,16 +887,27 @@ function renderVenueDetailBody(raw, { busy = false, error = '' } = {}) {
     b.notes ? renderDetailRow('Notes', b.notes) : '',
   ].join('');
 
-  const actions = pending ? `
+  let actions;
+  if (pending) {
+    actions = `
     <div class="tl-detail-actions">
       <button type="button" class="res-btn res-btn--approve res-btn--wide" data-vd-approve ${busy ? 'disabled' : ''}>Approve</button>
       <button type="button" class="res-btn res-btn--modify res-btn--wide" data-vd-modify ${busy ? 'disabled' : ''}>Modify</button>
       <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vd-decline ${busy ? 'disabled' : ''}>Decline</button>
-    </div>` : (canModify ? `
+    </div>`;
+  } else if (canModify || canCancel) {
+    actions = `
     <div class="tl-detail-actions">
-      <button type="button" class="res-btn res-btn--primary res-btn--wide" data-vd-edit ${busy ? 'disabled' : ''}>Edit booking</button>
-    </div>` : `
-    <p class="tl-detail-done">This venue booking is ${escapeHtml(statusLabel(b.status).toLowerCase())}.</p>`);
+      ${canModify ? `<button type="button" class="res-btn res-btn--primary res-btn--wide" data-vd-edit ${busy ? 'disabled' : ''}>Edit booking</button>` : ''}
+      ${canCancel ? `
+        <button type="button" class="res-btn res-btn--reject res-btn--wide" data-vd-cancel ${busy ? 'disabled' : ''}>
+          <span class="material-symbols-outlined">cancel</span>
+          Cancel booking
+        </button>` : ''}
+    </div>`;
+  } else {
+    actions = `<p class="tl-detail-done">This venue booking is ${escapeHtml(statusLabel(b.status).toLowerCase())}.</p>`;
+  }
 
   return `
     <div class="tl-detail">
@@ -820,44 +921,62 @@ function renderVenueDetailBody(raw, { busy = false, error = '' } = {}) {
     </div>`;
 }
 
+function bindVenueDetailActions(rawBooking, onRefresh) {
+  const body = document.getElementById('modalBody');
+  if (!body) return;
+  const b = normalizeFacilityBooking(rawBooking);
+
+  body.querySelector('[data-vd-approve]')?.addEventListener('click', async () => {
+    closeModal();
+    try {
+      await updateFacilityBooking(b.id, { status: 'Approved' });
+      notifyBookingUpdated();
+      await onRefresh?.();
+    } catch (err) {
+      await showAlertModal('Could not approve', err.message || 'Could not approve.');
+    }
+  });
+  body.querySelector('[data-vd-modify]')?.addEventListener('click', () => {
+    closeModal();
+    openModifyVenueWizard(b, { modifyRequest: true });
+  });
+  body.querySelector('[data-vd-edit]')?.addEventListener('click', () => {
+    closeModal();
+    openAdminEditVenueWizard(b);
+  });
+  body.querySelector('[data-vd-decline]')?.addEventListener('click', async () => {
+    closeModal();
+    const confirmed = await confirmDeclineRequest(b.guestName || 'this venue request');
+    if (!confirmed) return;
+    try {
+      await updateFacilityBooking(b.id, { status: 'Rejected' });
+      notifyBookingUpdated();
+      await onRefresh?.();
+    } catch (err) {
+      await showAlertModal('Could not decline', err.message || 'Could not decline.');
+    }
+  });
+  body.querySelector('[data-vd-cancel]')?.addEventListener('click', async () => {
+    closeModal();
+    const confirmed = await confirmAdminCancelReservation(b.guestName || 'this venue booking', { pending: false });
+    if (!confirmed) return;
+    try {
+      await cancelVenueReservation(b.id);
+      notifyBookingUpdated();
+      await onRefresh?.();
+    } catch (err) {
+      await showAlertModal('Could not cancel', err.message || 'Could not cancel this booking.');
+    }
+  });
+}
+
 export function openVenueBookingModal(rawBooking, { onRefresh } = {}) {
   if (!rawBooking) return;
   const b = normalizeFacilityBooking(rawBooking);
   openModal(b.guestName || 'Venue booking', renderVenueDetailBody(rawBooking), {
     subtitle: `${b.venueCategory} — ${b.venueName}`,
   });
-
-  const body = document.getElementById('modalBody');
-  body?.querySelector('[data-vd-approve]')?.addEventListener('click', async () => {
-    try {
-      await updateFacilityBooking(b.id, { status: 'Approved' });
-      notifyBookingUpdated();
-      closeModal();
-      await onRefresh?.();
-    } catch (err) {
-      if (body) body.innerHTML = renderVenueDetailBody(rawBooking, { error: err.message || 'Could not approve.' });
-    }
-  });
-  body?.querySelector('[data-vd-modify]')?.addEventListener('click', () => {
-    closeModal();
-    openModifyVenueWizard(b, { modifyRequest: true });
-  });
-  body?.querySelector('[data-vd-edit]')?.addEventListener('click', () => {
-    closeModal();
-    openAdminEditVenueWizard(b);
-  });
-  body?.querySelector('[data-vd-decline]')?.addEventListener('click', async () => {
-    const confirmed = await confirmDeclineRequest(b.guestName || 'this venue request');
-    if (!confirmed) return;
-    try {
-      await updateFacilityBooking(b.id, { status: 'Rejected' });
-      notifyBookingUpdated();
-      closeModal();
-      await onRefresh?.();
-    } catch (err) {
-      if (body) body.innerHTML = renderVenueDetailBody(rawBooking, { error: err.message || 'Could not decline.' });
-    }
-  });
+  bindVenueDetailActions(rawBooking, onRefresh || (() => {}));
 }
 
 const DEFAULT_CAL_FILTERS = {
@@ -1043,6 +1162,7 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
   let allBookings = [];
   let lastRefreshFingerprint = '';
   let rawBookingsById = {};
+  let rawGroupsById = {};
   let rawVenueById = {};
   let seasonCalendar = normalizeSeasonCalendar({});
   let filters = structuredClone(DEFAULT_CAL_FILTERS);
@@ -1124,6 +1244,7 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
     bindMonthCalendar(mount, {
       bookings: visible,
       rawBookingsById,
+      rawGroupsById,
       rawVenueById,
       onRefresh: refresh,
     });
@@ -1193,7 +1314,11 @@ function createCalendarController({ mountEl, title, onData, withFilters = false 
       lastRefreshFingerprint = fp;
 
       allBookings = nextBookings;
-      rawBookingsById = Object.fromEntries(rawBookings.map((b) => [String(b.id), b]));
+      rawBookingsById = Object.fromEntries([
+        ...rawBookings.map((b) => [String(b.id), b]),
+        ...groupRoomRows.map((b) => [String(b.id), b]),
+      ]);
+      rawGroupsById = Object.fromEntries((rawGroups || []).map((g) => [String(g.id), g]));
       rawVenueById = Object.fromEntries(rawVenues.map((b) => [String(b.id), b]));
 
       if (withFilters) {

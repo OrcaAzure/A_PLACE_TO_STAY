@@ -10,8 +10,6 @@ import {
   SERVICE_ICONS,
   ACCOMMODATION_EXTRAS_CATEGORY,
   PER_PERSON_NIGHT_ITEM,
-  GUEST_SELF_BOOK_EXCLUDED_CATEGORIES,
-  GUEST_SELF_BOOK_EXCLUDED_ITEMS,
 } from '../constants/ancillary.js';
 import {
   ROOM_RATE_BASE_TIERS,
@@ -35,6 +33,22 @@ import {
   pickBookingRateRow,
 } from '../constants/rateVariants.js';
 
+/** MySQL TINYINT may arrive as 0, "0", false, etc. — treat all as hidden. */
+export function normalizeGuestVisible(value) {
+  if (value === false || value === 0 || value === '0') return false;
+  if (value === true || value === 1 || value === '1') return true;
+  return true;
+}
+
+export function filterGuestBookableServiceGroups(services = []) {
+  return (services || [])
+    .map((group) => ({
+      ...group,
+      items: (group.items || []).filter((item) => normalizeGuestVisible(item?.guest_visible)),
+    }))
+    .filter((group) => (group.items || []).length > 0);
+}
+
 export async function fetchMealRateRows() {
   const [rows] = await pool.query(
     `SELECT id, meal_type AS item, rate, audience, age_band, currency, billing_unit, notes
@@ -46,7 +60,7 @@ export async function fetchMealRateRows() {
 
 export async function fetchExtraServiceRows() {
   const [rows] = await pool.query(
-    `SELECT id, category, item, season, rate, audience, age_band, currency, billing_unit, notes
+    `SELECT id, category, item, season, rate, audience, age_band, currency, billing_unit, notes, guest_visible
      FROM rates_extra_services
      ORDER BY category ASC, item ASC, FIELD(season, 'Regular', 'Peak', 'Super Peak', 'N/A')`
   );
@@ -93,6 +107,7 @@ export function groupServiceRows(rows) {
       item: row.item,
       season: row.season || 'N/A',
       rate: Number(row.rate),
+      guest_visible: normalizeGuestVisible(row.guest_visible),
       ...variant,
     });
   }
@@ -120,9 +135,7 @@ function feeKey(name, amount) {
 
 export function isGuestSelfBookableExtra(row) {
   if (!row) return false;
-  if (GUEST_SELF_BOOK_EXCLUDED_CATEGORIES.includes(row.category)) return false;
-  if (GUEST_SELF_BOOK_EXCLUDED_ITEMS.includes(row.item)) return false;
-  return true;
+  return normalizeGuestVisible(row.guest_visible);
 }
 
 export function guestBookableCatalogRows(catalogRows = []) {

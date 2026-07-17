@@ -256,7 +256,7 @@ export const getAdminSummary = async (req, res) => {
         when_label: `${dateOnly(v.event_date)} · ${formatTimeLabel(v.start_time)}–${formatTimeLabel(v.end_time)}`,
         guests: Number(v.guest_count) || 1,
         submitted_at: v.created_at,
-        href: 'reservations.html?tab=venues',
+        href: 'reservations.html?tab=pending',
       })),
     ]
       .sort((a, b) => new Date(a.submitted_at) - new Date(b.submitted_at))

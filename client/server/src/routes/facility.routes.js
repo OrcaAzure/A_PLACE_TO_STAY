@@ -16,11 +16,17 @@ import {
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { requireAdmin } from '../middleware/role.middleware.js';
 import { cacheResponse } from '../middleware/cache.middleware.js';
+import { isAdminPortalRole } from '../utils/constants.js';
 
 const router = Router();
 const adminOnly = requireAdmin;
 
-router.get('/overview', requireAuth, cacheResponse('facilities:overview'), getFacilitiesOverview);
+router.get(
+  '/overview',
+  requireAuth,
+  cacheResponse((req) => `facilities:overview:${isAdminPortalRole(req.user?.role) ? 'admin' : 'guest'}`),
+  getFacilitiesOverview
+);
 router.get(
   '/venue-rate',
   requireAuth,

@@ -5,6 +5,7 @@ import {
   fetchMealRateRows,
   groupDefaultMealRows,
   groupDefaultServiceRows,
+  filterGuestBookableServiceGroups,
 } from '../services/ancillary.service.js';
 import {
   fetchFacilitiesWithRates,
@@ -29,6 +30,7 @@ import {
 } from '../services/venueAdmin.service.js';
 import { resolveLodgingSeasonForDate } from '../services/season.service.js';
 import { bustCatalogAndFacilities } from '../utils/cache.js';
+import { isAdminPortalRole } from '../utils/constants.js';
 
 const VALID_SEASONS = ['Regular', 'Peak', 'N/A'];
 
@@ -43,11 +45,20 @@ export const getFacilitiesOverview = async (req, res) => {
       resolveLodgingSeasonForDate(today),
     ]);
 
+    const allServices = groupDefaultServiceRows(extraRows);
+    const services = isAdminPortalRole(req.user?.role)
+      ? allServices
+      : filterGuestBookableServiceGroups(allServices);
+
+    if (!isAdminPortalRole(req.user?.role)) {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+
     res.status(200).json({
       venues: groupFacilitiesForOverview(facilities),
       facilities,
       meals: groupDefaultMealRows(mealRows),
-      services: groupDefaultServiceRows(extraRows),
+      services,
       active_lodging_season,
     });
   } catch (error) {

@@ -54,6 +54,7 @@ import {
 import { runBuildingsCleanup } from './buildings-cleanup.js';
 import { runRatesAncillaryExtract } from './rates-ancillary-extract.js';
 import { runRatesVariantsMigration } from './rates-variants.js';
+import { runExtraGuestVisibleMigration } from './extra-guest-visible.js';
 
 export async function runSchemaPatches() {
   // 1. Rooms Dirty ENUM
@@ -99,6 +100,7 @@ export async function runSchemaPatches() {
   await safeRun('rates variants migration', runRatesVariantsMigration);
   await safeRun('guest-only rate cleanup', runGuestOnlyRateCleanup);
   await safeRun('meal type varchar migration', runMealTypeVarcharMigration);
+  await safeRun('extra guest visible migration', runExtraGuestVisibleMigration);
   // 16. Payments evolution
   await safeRun('payments evolution', runPaymentsEvolution);
   // 17. Login attempts → user sessions → pricing_category

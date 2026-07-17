@@ -861,8 +861,50 @@ export async function sendVenueInvoiceEmail(user, payment) {
         payment.facility_package ? emailDetailItem('Package', escapeHtml(payment.facility_package)) : '',
         emailDetailItem('Subtotal', fmtPeso(subtotal)),
         discountLine,
-        emailDetailItem('Amount due', `<strong>${fmtPeso(due)}</strong>`),
+        emailDetailItem('Total amount', `<strong>${fmtPeso(due)}</strong>`),
         emailDetailItem('Status', 'Approved'),
+      ].filter(Boolean)))}
+      ${emailFooter({ includePayment: true })}
+    `,
+  });
+}
+
+export async function sendRoomInvoiceEmail(user, payment) {
+  const name = user.full_name || user.guest_name || 'Guest';
+  const room = [payment.building_name, payment.room_number ? `Room ${payment.room_number}` : null]
+    .filter(Boolean)
+    .join(' · ') || 'Room stay';
+  const stay = payment.check_in && payment.check_out
+    ? `${formatStayDate(payment.check_in)} – ${formatStayDate(payment.check_out)}`
+    : '—';
+  const subtotal = Number(payment.subtotal ?? payment.amount ?? 0);
+  const discount = Number(payment.discount_amount || 0);
+  const due = Number(payment.amount ?? subtotal);
+  const discountLine = discount > 0
+    ? emailDetailItem('Discount', `−${fmtPeso(discount)}${payment.discount_note ? ` (${escapeHtml(payment.discount_note)})` : ''}`)
+    : '';
+  const groupLine = payment.group_name
+    ? emailDetailItem('Group stay', escapeHtml(payment.group_name))
+    : '';
+
+  return sendMail({
+    to: user.email || user.guest_email,
+    subject: `Housing invoice #${payment.id} — ${payment.group_name || room} | APTS`,
+    html: `
+      <h2>Housing Invoice</h2>
+      <p>Hi ${escapeHtml(name)},</p>
+      <p>Here is your invoice for your approved stay at APTS.</p>
+      <p><strong>Invoice #${payment.id}</strong>${payment.booking_id ? ` · Booking #RM-${payment.booking_id}` : ''}</p>
+      ${emailSection('Stay details', emailDetailList([
+        groupLine,
+        emailDetailItem(payment.group_name ? 'Primary room' : 'Room', escapeHtml(room)),
+        emailDetailItem('Stay dates', escapeHtml(stay)),
+        emailDetailItem('Guests', escapeHtml(payment.guest_count || 1)),
+        payment.season ? emailDetailItem('Season', escapeHtml(payment.season)) : '',
+        emailDetailItem('Subtotal', fmtPeso(subtotal)),
+        discountLine,
+        emailDetailItem('Total amount', `<strong>${fmtPeso(due)}</strong>`),
+        emailDetailItem('Status', escapeHtml(payment.status || 'Pending')),
       ].filter(Boolean)))}
       ${emailFooter({ includePayment: true })}
     `,

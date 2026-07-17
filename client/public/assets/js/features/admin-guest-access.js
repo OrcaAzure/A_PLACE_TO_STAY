@@ -7,7 +7,6 @@ import {
   createGuestUser,
   updateUser,
   getGuestAccessRequests,
-  createGuestAccessRequest,
   approveGuestAccessRequest,
   rejectGuestAccessRequest,
   bulkDeactivateGuests,
@@ -250,30 +249,7 @@ function applyFilter(filter) {
   updateAccountsCount();
 }
 
-function getAddMode() {
-  return document.querySelector('input[name="ga-add-mode"]:checked')?.value || 'grant';
-}
-
-function syncAddGuestModal() {
-  const mode = getAddMode();
-  const isGrant = mode === 'grant';
-
-  $('ga-queue-notes')?.classList.toggle('hidden', isGrant);
-  $('ga-grant-hint')?.classList.toggle('hidden', !isGrant);
-
-  const hint = $('ga-mode-hint');
-  const submit = $('guest-access-submit');
-  if (hint) {
-    hint.textContent = isGrant
-      ? 'Use this when you are ready to send login details to the guest.'
-      : 'Adds to the waiting list below. Approve when you are ready to send credentials.';
-  }
-  if (submit) {
-    submit.textContent = isGrant ? 'Create account' : 'Save to queue';
-  }
-}
-
-function showAddGuestModal(mode = 'form', { defer = false } = {}) {
+function showAddGuestModal(mode = 'form') {
   if (mode === 'form') clearGuestFormValidation();
   $('guest-access-modal-overlay')?.classList.remove('hidden');
   const modal = $('guest-access-modal');
@@ -290,11 +266,6 @@ function showAddGuestModal(mode = 'form', { defer = false } = {}) {
   if (title) title.textContent = mode === 'success' ? 'Access granted' : 'Add guest';
 
   if (mode === 'form') {
-    const queueRadio = document.querySelector('input[name="ga-add-mode"][value="queue"]');
-    const grantRadio = document.querySelector('input[name="ga-add-mode"][value="grant"]');
-    if (defer && queueRadio) queueRadio.checked = true;
-    else if (grantRadio) grantRadio.checked = true;
-    syncAddGuestModal();
     $('guest-name')?.focus();
   }
 }
@@ -312,8 +283,6 @@ function hideAddGuestModal() {
   $('guest-access-success')?.classList.add('hidden');
   $('guest-access-form')?.classList.remove('hidden');
   $('guest-temp-password-wrap')?.classList.remove('hidden');
-  document.querySelector('input[name="ga-add-mode"][value="grant"]')?.click();
-  syncAddGuestModal();
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -789,7 +758,6 @@ async function submitAddGuest(e) {
   const full_name = $('guest-name')?.value?.trim() || '';
   const email = $('guest-email')?.value?.trim() || '';
   const organization = $('guest-org')?.value?.trim() || undefined;
-  const isGrant = getAddMode() === 'grant';
 
   clearGuestFormValidation();
 
@@ -800,10 +768,8 @@ async function submitAddGuest(e) {
   }
 
   const confirmed = await confirmAction(
-    isGrant ? 'Create guest account' : 'Save to queue',
-    isGrant
-      ? `Are you sure you want to create login for <strong>${escapeHtml(full_name)}</strong> (${escapeHtml(email)})? A temporary password will be emailed to the guest.`
-      : `Are you sure you want to save <strong>${escapeHtml(full_name)}</strong> (${escapeHtml(email)}) to the waiting list?`,
+    'Grant guest access',
+    `Are you sure you want to create login for <strong>${escapeHtml(full_name)}</strong> (${escapeHtml(email)})? A temporary password will be emailed to the guest.`,
   );
   if (!confirmed) return;
 
@@ -811,23 +777,13 @@ async function submitAddGuest(e) {
   setFormFeedback('');
 
   try {
-    if (isGrant) {
-      const result = await createGuestUser({ full_name, email, organization });
-      clearGuestFormValidation();
-      showGrantSuccess({
-        full_name: result.user.full_name,
-        email: result.user.email,
-        temporaryPassword: result.temporaryPassword,
-      });
-    } else {
-      await createGuestAccessRequest({
-        full_name,
-        email,
-        organization,
-        notes: $('guest-notes')?.value?.trim(),
-      });
-      hideAddGuestModal();
-    }
+    const result = await createGuestUser({ full_name, email, organization });
+    clearGuestFormValidation();
+    showGrantSuccess({
+      full_name: result.user.full_name,
+      email: result.user.email,
+      temporaryPassword: result.temporaryPassword,
+    });
 
     await refreshGuestAccessData();
   } catch (err) {
@@ -1042,7 +998,6 @@ function bindGuestPageListeners() {
     }
   }, { signal });
 
-  syncAddGuestModal();
   updateFilterUi();
 }
 
@@ -1072,10 +1027,6 @@ export function initGuestAccessPage() {
           'Please select and copy the password manually.',
         );
       }
-    });
-
-    document.querySelectorAll('input[name="ga-add-mode"]').forEach((radio) => {
-      radio.addEventListener('change', syncAddGuestModal);
     });
 
     bindPendingModalActions();

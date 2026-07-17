@@ -4,7 +4,7 @@ import './env-setup.mjs';
 import app from '../../src/app.js';
 import { testConnection } from '../../src/config/db.js';
 import { AUTH_COOKIE } from '../../src/utils/cookies.js';
-import { runSchemaPatches } from '../../src/seed/index.js';
+import { runSchemaPatches, seedUsers, seedDemoUsers } from '../../src/seed/index.js';
 
 export { app };
 
@@ -16,6 +16,8 @@ async function ensureSchemaReady() {
       try {
         await testConnection();
         await runSchemaPatches();
+        await seedUsers();
+        await seedDemoUsers();
         return true;
       } catch {
         return false;

@@ -768,6 +768,17 @@
   margin-top: 0.625rem;
 }
 
+.catalog-meal-type-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #1a365d;
+}
+
+.catalog-meal-type-hint.hidden {
+  display: none;
+}
+
 .catalog-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

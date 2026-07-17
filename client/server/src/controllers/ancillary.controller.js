@@ -260,8 +260,20 @@ export const createMealRate = async (req, res) => {
       [mealType, rate, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes]
     );
 
-    const [rows] = await pool.query('SELECT * FROM rates_meals WHERE id = ?', [result.insertId]);
+    const [rows] = await pool.query(
+      `SELECT id, meal_type AS item, meal_type, rate, audience, age_band, currency, billing_unit, notes
+       FROM rates_meals WHERE id = ?`,
+      [result.insertId]
+    );
     const row = rows[0];
+    const storedType = String(row?.meal_type ?? '').trim();
+    if (!storedType || storedType !== mealType) {
+      await pool.query('DELETE FROM rates_meals WHERE id = ?', [result.insertId]);
+      return res.status(500).json({
+        message:
+          'Meal type could not be saved. Restart the server so database migrations can finish, then try again.',
+      });
+    }
     bustCatalogAndFacilities();
     res.status(201).json({
       message: 'Meal price created',
@@ -305,7 +317,11 @@ export const updateMealRate = async (req, res) => {
       [mealType || null, rate, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes, req.params.id]
     );
 
-    const [rows] = await pool.query('SELECT * FROM rates_meals WHERE id = ?', [req.params.id]);
+    const [rows] = await pool.query(
+      `SELECT id, meal_type AS item, meal_type, rate, audience, age_band, currency, billing_unit, notes
+       FROM rates_meals WHERE id = ?`,
+      [req.params.id]
+    );
     const row = rows[0];
     bustCatalogAndFacilities();
     res.status(200).json({
@@ -343,6 +359,7 @@ export const createExtraService = async (req, res) => {
     const variant = normalizeRateVariant(req.body, {
       billing_unit: category === ACCOMMODATION_EXTRAS_CATEGORY ? 'per night' : DEFAULT_EXTRA_BILLING_UNIT,
     });
+    const guestVisible = req.body.guest_visible === false || req.body.guest_visible === 0 ? 0 : 1;
 
     if (!rate || rate <= 0) {
       return res.status(400).json({ message: 'category, item, and rate are required' });
@@ -353,9 +370,9 @@ export const createExtraService = async (req, res) => {
 
     const [result] = await pool.query(
       `INSERT INTO rates_extra_services
-         (category, item, season, rate, audience, age_band, currency, billing_unit, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [category, item, season, rate, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes]
+         (category, item, season, rate, audience, age_band, currency, billing_unit, notes, guest_visible)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [category, item, season, rate, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes, guestVisible]
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_extra_services WHERE id = ?', [result.insertId]);
@@ -383,7 +400,29 @@ export const updateExtraService = async (req, res) => {
     const nextItem = !isEmpty(item)
       ? normalizeCatalogLabel(item, { max: 100, label: 'Item name' })
       : null;
-    const variant = normalizeRateVariant(req.body, {
+    const hasVariantFields = ['audience', 'age_band', 'currency', 'billing_unit', 'notes'].some(
+      (key) => req.body[key] !== undefined
+    );
+    const variant = hasVariantFields
+      ? normalizeRateVariant(req.body, {
+        billing_unit: (nextCategory || existing[0].category) === ACCOMMODATION_EXTRAS_CATEGORY ? 'per night' : DEFAULT_EXTRA_BILLING_UNIT,
+      })
+      : null;
+    const guestVisible = req.body.guest_visible != null
+      ? (req.body.guest_visible === false || req.body.guest_visible === 0 ? 0 : 1)
+      : null;
+
+    if (guestVisible != null && !nextCategory && !nextItem && rate == null && isEmpty(season) && !hasVariantFields) {
+      await pool.query(
+        'UPDATE rates_extra_services SET guest_visible = ? WHERE id = ?',
+        [guestVisible, req.params.id]
+      );
+      const [rows] = await pool.query('SELECT * FROM rates_extra_services WHERE id = ?', [req.params.id]);
+      bustCatalogAndFacilities();
+      return res.status(200).json({ message: 'Extra service updated', service: rows[0] });
+    }
+
+    const resolvedVariant = variant || normalizeRateVariant({}, {
       billing_unit: (nextCategory || existing[0].category) === ACCOMMODATION_EXTRAS_CATEGORY ? 'per night' : DEFAULT_EXTRA_BILLING_UNIT,
     });
 
@@ -404,9 +443,22 @@ export const updateExtraService = async (req, res) => {
         age_band = COALESCE(?, age_band),
         currency = COALESCE(?, currency),
         billing_unit = COALESCE(?, billing_unit),
-        notes = ?
+        notes = COALESCE(?, notes),
+        guest_visible = COALESCE(?, guest_visible)
        WHERE id = ?`,
-      [nextCategory, nextItem, season || null, rate ?? null, variant.audience, variant.age_band, variant.currency, variant.billing_unit, variant.notes, req.params.id]
+      [
+        nextCategory,
+        nextItem,
+        season || null,
+        rate ?? null,
+        hasVariantFields ? resolvedVariant.audience : null,
+        hasVariantFields ? resolvedVariant.age_band : null,
+        hasVariantFields ? resolvedVariant.currency : null,
+        hasVariantFields ? resolvedVariant.billing_unit : null,
+        hasVariantFields ? resolvedVariant.notes : null,
+        guestVisible,
+        req.params.id,
+      ]
     );
 
     const [rows] = await pool.query('SELECT * FROM rates_extra_services WHERE id = ?', [req.params.id]);

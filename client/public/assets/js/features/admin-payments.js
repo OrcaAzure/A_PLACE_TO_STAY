@@ -9,6 +9,7 @@ import {
 } from '/assets/js/services/api.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
+import { confirmModal } from '/assets/js/layout/ui.js';
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer', 'Waived'];
@@ -87,6 +88,9 @@ function invoiceEmailHint(p) {
 }
 
 function roomShort(p) {
+  if (p.group_name) {
+    return `Group · ${p.group_name}`;
+  }
   if (showAsVenueOvernightBilling(p)) {
     const code = venueStayCodeFromNotes(p.notes) || p.facility_room_code || venueSpaceLabel(p);
     return `${code} · overnight`;
@@ -828,12 +832,13 @@ function renderListRow(p) {
     statusLabel = 'Paid';
   }
 
-  let amountLabel = 'Amount due';
-  let amountValue = fmt(balance);
+  let amountLabel = 'Total amount';
+  let amountValue = fmt(summary.total_due);
   let amountSub = '';
 
   if (state.activeFilter === 'paid' || (!isOpen && state.activeFilter !== 'partial')) {
     amountValue = fmt(summary.amount_paid || p.amount);
+    amountLabel = 'Paid';
   } else if (isPartial || (isOpen && summary.amount_paid > 0)) {
     amountLabel = 'Balance due';
     amountValue = fmt(balance);
@@ -1049,7 +1054,7 @@ function renderChargeTable(p) {
           <td class="billing-charge-amount">−${fmt(discount)}</td>
         </tr>` : ''}
         <tr class="billing-charges-due">
-          <td>Amount due</td>
+          <td>Total amount</td>
           <td class="billing-charge-amount">${fmt(due)}</td>
         </tr>
       </tfoot>
@@ -1387,7 +1392,7 @@ function renderRoomStayEditForm(p) {
         </label>
         <label class="billing-res-edit-field">
           <span>Guests in room</span>
-          <input type="number" min="1" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" />
+          <input type="number" min="1" max="500" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" inputmode="numeric" />
         </label>
         <label class="billing-res-edit-field">
           <span>Contact phone</span>
@@ -1500,7 +1505,7 @@ function renderVenueReservationEditForm(p, catalogs = {}) {
 
         <label class="billing-res-edit-field">
           <span>Guest count</span>
-          <input type="number" min="1" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" />
+          <input type="number" min="1" max="500" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" inputmode="numeric" />
         </label>
 
         <label class="billing-res-edit-field billing-res-edit-field--wide">
@@ -1546,7 +1551,7 @@ function renderVenueOvernightEditForm(p) {
         </label>
         <label class="billing-res-edit-field">
           <span>Guests</span>
-          <input type="number" min="1" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" />
+          <input type="number" min="1" max="500" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" inputmode="numeric" />
         </label>
         <label class="billing-res-edit-field billing-res-edit-field--wide">
           <span>Booking notes</span>
@@ -1602,7 +1607,7 @@ function renderVenueOvernightRevertForm(p) {
         </label>
         <label class="billing-res-edit-field">
           <span>Guests</span>
-          <input type="number" min="1" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" />
+          <input type="number" min="1" max="500" class="billing-edit-form__input" name="guest_count" value="${p.guest_count || 1}" inputmode="numeric" />
         </label>
         <label class="billing-res-edit-field billing-res-edit-field--wide">
           <span>Booking notes</span>
@@ -2534,9 +2539,10 @@ function renderBillingColumn(p, { isPending }) {
         </label>
 
         <div class="billing-edit-footer">
-          <div class="billing-detail-total billing-detail-total--inline${isWaived ? ' billing-detail-total--waived' : ''}" data-due-display>
-            <span>${isWaived ? 'Complimentary' : 'Amount due'}</span>
-            <strong>${fmt(due)}</strong>
+          <div class="billing-detail-total billing-detail-total--inline${isWaived ? ' billing-detail-total--waived' : ''}" data-due-display data-saved-total="${due}">
+            <span>${isWaived ? 'Complimentary' : 'Total amount'}</span>
+            <strong data-due-saved>${fmt(due)}</strong>
+            <small class="billing-detail-total__preview hidden" data-due-preview></small>
           </div>
           <div class="billing-edit-footer__actions">
             <button type="submit" class="invoice-btn-secondary billing-edit-footer__save">Save changes</button>
@@ -2642,25 +2648,40 @@ function renderDetailPanel(p) {
 
 function updateLiveDue(form) {
   const dueEl = form.closest('.billing-detail')?.querySelector('[data-due-display]');
-  const dueStrong = dueEl?.querySelector('strong');
+  const dueStrong = dueEl?.querySelector('[data-due-saved]');
   const dueLabel = dueEl?.querySelector('span');
+  const previewEl = dueEl?.querySelector('[data-due-preview]');
   const pesoHint = form.querySelector('[data-discount-peso]');
   if (!dueStrong) return;
 
+  const savedTotal = Number(dueEl?.getAttribute('data-saved-total') || dueStrong.textContent.replace(/[^\d.]/g, '') || 0);
   const subtotal = getFormSubtotal(form);
   const mode = getDiscountMode(form);
   const { discount_amount } = readBillingFormValues(form, subtotal);
-  const due = computeDue(subtotal, discount_amount);
-  const isWaived = due <= 0;
+  const draftDue = computeDue(subtotal, discount_amount);
+  const isWaived = draftDue <= 0;
+  const draftChanged = Math.abs(draftDue - savedTotal) > 0.004;
 
-  dueStrong.textContent = fmt(due);
+  // Keep the saved total until Confirm/Save — only show a draft preview.
   if (dueLabel) {
-    dueLabel.textContent = isWaived ? 'Complimentary' : 'Amount due';
+    dueLabel.textContent = Number(savedTotal) <= 0 ? 'Complimentary' : 'Total amount';
   }
-  dueEl?.classList.toggle('billing-detail-total--waived', isWaived);
+  dueEl?.classList.toggle('billing-detail-total--waived', Number(savedTotal) <= 0);
   form.setAttribute('data-subtotal', String(subtotal));
 
   if (pesoHint) pesoHint.textContent = `−${fmt(discount_amount)} off subtotal`;
+
+  if (previewEl) {
+    if (draftChanged) {
+      previewEl.textContent = isWaived
+        ? 'Preview if saved: Complimentary'
+        : `Preview if saved: ${fmt(draftDue)}`;
+      previewEl.classList.remove('hidden');
+    } else {
+      previewEl.textContent = '';
+      previewEl.classList.add('hidden');
+    }
+  }
 
   const detailEl = form.closest('.billing-detail');
   if (detailEl) syncRecordPaymentUi(detailEl, selectedPayment());
@@ -2862,9 +2883,18 @@ function bindDetailActions(p) {
   form?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = form.querySelector('button[type="submit"]');
-    btn.disabled = true;
     const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
     const { subtotal: nextSubtotal, discount_amount, discount_note } = readBillingFormValues(form, subtotal);
+    const nextDue = computeDue(nextSubtotal, discount_amount);
+
+    const confirmed = await confirmModal({
+      title: 'Save billing changes',
+      message: `Apply these invoice changes? New total amount will be <strong>${fmt(nextDue)}</strong>.`,
+      confirmLabel: 'Confirm save',
+    });
+    if (!confirmed) return;
+
+    btn.disabled = true;
     try {
       await updatePayment(p.id, {
         subtotal: nextSubtotal,

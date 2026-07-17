@@ -447,6 +447,7 @@ async function openReviewModal() {
   document.getElementById('br-review-success')?.classList.add('hidden');
   document.getElementById('br-review-error')?.classList.add('hidden');
   document.getElementById('br-review-form-wrap')?.classList.remove('hidden');
+  document.querySelector('#br-review-modal .br-review-modal__foot')?.classList.remove('hidden');
   document.getElementById('br-submit-btn').textContent = 'Submit booking request';
   document.getElementById('br-submit-btn').disabled = bookingRequestCount() < 1;
 
@@ -528,13 +529,24 @@ async function submitBookingRequestForm() {
     paintBookingRequestChrome();
 
     if (successEl) {
+      const ref = result.batch_ref ? ` Reference <strong>${escapeHtml(result.batch_ref)}</strong>.` : '';
       successEl.innerHTML = `
-        <p class="font-semibold text-emerald-800">Booking request submitted</p>
-        <p class="text-body-sm text-emerald-900/80 mt-1">Reference <strong>${escapeHtml(result.batch_ref || '')}</strong>. Track status in Reservation History.</p>
-        <a href="/guest/reservations.html" class="inline-flex mt-3 text-primary font-semibold no-underline">Go to Reservation History →</a>`;
+        <div class="guest-booking-success">
+          <span class="material-symbols-outlined guest-booking-success__icon" aria-hidden="true">check_circle</span>
+          <div class="guest-booking-success__copy">
+            <h4 class="guest-booking-success__title">Request submitted</h4>
+            <p class="guest-booking-success__msg">Your booking request has been sent and is pending approval.${ref}</p>
+            <p class="guest-booking-success__hint">Housing will review your request and email you when it is confirmed.</p>
+          </div>
+          <div class="guest-booking-success__actions">
+            <a href="/guest/reservations.html" class="guest-booking-success__primary">View Reservation History</a>
+            <button type="button" class="guest-booking-success__secondary" data-br-review-close>Done</button>
+          </div>
+        </div>`;
       successEl.classList.remove('hidden');
     }
     formWrap?.classList.add('hidden');
+    document.querySelector('#br-review-modal .br-review-modal__foot')?.classList.add('hidden');
     submitBtn.textContent = 'Submitted';
   } catch (err) {
     errorEl.textContent = err.message || 'Submission failed. Please try again.';

@@ -8,22 +8,18 @@ import { escapeHtml, formatMoney, PER_PERSON_NIGHT_EXTRA_ITEM, servicesToQuickFe
 const LAUNDRY_CATEGORIES = new Set(['Laundry', 'Laundry-Iron']);
 export const LAUNDRY_GROUP_ID = 'laundry';
 
-/** Housing-managed extras — not shown in guest self-booking UI. */
-const GUEST_SELF_BOOK_EXCLUDED_CATEGORIES = new Set([
-  'Corkage Fee',
-  'Maid Service',
-]);
+export function normalizeGuestVisible(value) {
+  if (value === false || value === 0 || value === '0') return false;
+  if (value === true || value === 1 || value === '1') return true;
+  return true;
+}
 
-const GUEST_SELF_BOOK_EXCLUDED_ITEMS = new Set([
-  'Aircon',
-]);
-
+/** Filter catalog rows to fees guests may self-add when booking. */
 export function filterGuestSelfBookServices(services = []) {
   return (services || [])
-    .filter((group) => !GUEST_SELF_BOOK_EXCLUDED_CATEGORIES.has(group.category))
     .map((group) => ({
       ...group,
-      items: (group.items || []).filter((item) => !GUEST_SELF_BOOK_EXCLUDED_ITEMS.has(item.item)),
+      items: (group.items || []).filter((item) => normalizeGuestVisible(item?.guest_visible)),
     }))
     .filter((group) => (group.items || []).length > 0);
 }

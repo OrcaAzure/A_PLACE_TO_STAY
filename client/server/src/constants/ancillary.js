@@ -10,7 +10,7 @@ export const EXTRA_SERVICE_CATEGORIES = [
   'Accommodation Extras',
 ];
 
-/** Guests cannot self-add these at booking — housing adds them when needed. */
+/** Legacy defaults for guest_visible migration — admin controls visibility per fee in Facilities. */
 export const GUEST_SELF_BOOK_EXCLUDED_CATEGORIES = [
   'Corkage Fee',
   'Maid Service',

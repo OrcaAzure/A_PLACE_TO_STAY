@@ -638,7 +638,7 @@
           <p id="booking-window-hint" class="text-[12px] text-on-surface-variant hidden"></p>
           <div>
             <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-guests">Guests</label>
-            <input type="number" id="booking-guests" min="1" value="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+            <input type="number" id="booking-guests" min="1" max="500" value="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" inputmode="numeric" />
             <p class="text-[12px] text-on-surface-variant mt-1">Dorm bookings require at least 5 guests and are priced per person per night.</p>
           </div>
 
@@ -717,17 +717,16 @@
         </div>
       </div>
 
-      <div id="booking-success-panel" class="hidden text-center space-y-4 py-2">
-        <span class="material-symbols-outlined text-[52px] text-emerald-600">check_circle</span>
-        <div>
-          <h4 class="font-headline-sm text-headline-sm text-on-surface">Request submitted</h4>
-          <p id="booking-success-msg" class="text-body-sm text-on-surface-variant mt-2"></p>
+      <div id="booking-success-panel" class="guest-booking-success hidden" role="status">
+        <span class="material-symbols-outlined guest-booking-success__icon" aria-hidden="true">check_circle</span>
+        <div class="guest-booking-success__copy">
+          <h4 class="guest-booking-success__title">Request submitted</h4>
+          <p id="booking-success-msg" class="guest-booking-success__msg"></p>
+          <p class="guest-booking-success__hint">Housing will review your request and email you when it is confirmed.</p>
         </div>
-        <p class="text-body-sm text-on-surface-variant leading-relaxed max-w-sm mx-auto">
-          Track your request in Reservation History. For multiple rooms, use the group booking flow from Browse.
-        </p>
-        <div class="flex flex-col sm:flex-row gap-3 pt-2">
-          <button type="button" id="booking-success-done" class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90 transition-all">Done</button>
+        <div class="guest-booking-success__actions">
+          <a href="/guest/reservations.html" class="guest-booking-success__primary">View Reservation History</a>
+          <button type="button" id="booking-success-done" class="guest-booking-success__secondary">Done</button>
         </div>
       </div>
     </form>

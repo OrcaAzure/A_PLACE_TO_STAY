@@ -547,6 +547,142 @@
   white-space: nowrap;
 }
 
+.catalog-price-row--guest-off .catalog-price-row__label {
+  color: #64748b;
+}
+
+.catalog-price-row__guest-badge {
+  margin: 0.25rem 0 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.catalog-guest-toggle--saving {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.catalog-guest-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+}
+
+.catalog-guest-toggle:disabled {
+  cursor: wait;
+}
+
+.catalog-guest-toggle--field {
+  margin-top: 0.25rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.625rem;
+  background: #f8fafc;
+  gap: 0.75rem;
+}
+
+.catalog-guest-toggle__input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.catalog-guest-toggle.is-on .catalog-guest-toggle__ui,
+.catalog-guest-toggle__input:checked + .catalog-guest-toggle__ui {
+  background: #1a365d;
+}
+
+.catalog-guest-toggle.is-on .catalog-guest-toggle__ui::after,
+.catalog-guest-toggle__input:checked + .catalog-guest-toggle__ui::after {
+  transform: translateX(0.875rem);
+}
+
+.catalog-guest-toggle-error {
+  display: none;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #b91c1c;
+  white-space: nowrap;
+}
+
+.catalog-guest-toggle-error.is-visible {
+  display: block;
+}
+
+.catalog-guest-toggle__ui {
+  position: relative;
+  flex-shrink: 0;
+  width: 2.125rem;
+  height: 1.25rem;
+  border-radius: 999px;
+  background: #cbd5e1;
+  transition: background 0.2s;
+}
+
+.catalog-guest-toggle__ui::after {
+  content: '';
+  position: absolute;
+  top: 0.125rem;
+  left: 0.125rem;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.16);
+  transition: transform 0.2s;
+}
+
+.catalog-guest-toggle:focus-visible .catalog-guest-toggle__ui {
+  outline: 2px solid #3182ce;
+  outline-offset: 2px;
+}
+
+.catalog-guest-toggle__text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  white-space: nowrap;
+}
+
+.catalog-guest-toggle__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.catalog-guest-toggle--field .catalog-guest-toggle__text {
+  font-size: 0.875rem;
+  color: #334155;
+}
+
+.catalog-guest-toggle__hint {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+@media (max-width: 640px) {
+  .catalog-price-row__meta {
+    flex-wrap: wrap;
+  }
+
+  .catalog-guest-toggle {
+    order: -1;
+  }
+}
+
 /* ── Room prices matrix ── */
 .fac-catalog-grid--room-rates {
   grid-template-columns: 1fr;

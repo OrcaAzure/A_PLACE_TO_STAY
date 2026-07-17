@@ -90,7 +90,13 @@
                       <label class="settings-row__label" for="settings-current-password">Current</label>
                     </div>
                     <div class="settings-row__control-col">
-                      <input type="password" id="settings-current-password" class="settings-input" autocomplete="current-password" />
+                      <div class="settings-password-field">
+                        <input type="password" id="settings-current-password" class="settings-input settings-input--password" autocomplete="current-password" />
+                        <button type="button" class="settings-password-toggle" data-password-toggle="settings-current-password" aria-label="Show password" aria-pressed="false">
+                          <span class="material-symbols-outlined text-[20px] settings-password-icon settings-password-icon--show" aria-hidden="true">visibility</span>
+                          <span class="material-symbols-outlined text-[20px] settings-password-icon settings-password-icon--hide hidden" aria-hidden="true">visibility_off</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div class="settings-row settings-row--split" data-settings-search="password security account">
@@ -98,7 +104,13 @@
                       <label class="settings-row__label" for="settings-new-password">New</label>
                     </div>
                     <div class="settings-row__control-col">
-                      <input type="password" id="settings-new-password" class="settings-input" autocomplete="new-password" />
+                      <div class="settings-password-field">
+                        <input type="password" id="settings-new-password" class="settings-input settings-input--password" autocomplete="new-password" />
+                        <button type="button" class="settings-password-toggle" data-password-toggle="settings-new-password" aria-label="Show password" aria-pressed="false">
+                          <span class="material-symbols-outlined text-[20px] settings-password-icon settings-password-icon--show" aria-hidden="true">visibility</span>
+                          <span class="material-symbols-outlined text-[20px] settings-password-icon settings-password-icon--hide hidden" aria-hidden="true">visibility_off</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                   <div class="settings-row settings-row--split" data-settings-search="password security account">
@@ -106,7 +118,13 @@
                       <label class="settings-row__label" for="settings-confirm-password">Confirm</label>
                     </div>
                     <div class="settings-row__control-col">
-                      <input type="password" id="settings-confirm-password" class="settings-input" autocomplete="new-password" />
+                      <div class="settings-password-field">
+                        <input type="password" id="settings-confirm-password" class="settings-input settings-input--password" autocomplete="new-password" />
+                        <button type="button" class="settings-password-toggle" data-password-toggle="settings-confirm-password" aria-label="Show password" aria-pressed="false">
+                          <span class="material-symbols-outlined text-[20px] settings-password-icon settings-password-icon--show" aria-hidden="true">visibility</span>
+                          <span class="material-symbols-outlined text-[20px] settings-password-icon settings-password-icon--hide hidden" aria-hidden="true">visibility_off</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
