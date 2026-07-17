@@ -196,7 +196,7 @@ const ROOM_BOOKING_LOCK_PREFIX = 'aptspace:booking:room:';
 
 /** Serialize bookings per room (works across concurrent HTTP requests). */
 export async function lockRoomRow(conn, roomId) {
-  const [roomRows] = await conn.query('SELECT id FROM rooms WHERE id = ?', [roomId]);
+  const [roomRows] = await conn.query('SELECT id FROM rooms WHERE id = ? FOR UPDATE', [roomId]);
   if (!roomRows.length) throw new Error('Room not found');
   const [lockRows] = await conn.query('SELECT GET_LOCK(?, 30) AS acquired', [`${ROOM_BOOKING_LOCK_PREFIX}${roomId}`]);
   if (!Number(lockRows[0]?.acquired)) {
