@@ -1,22 +1,21 @@
 import bcrypt from 'bcryptjs';
 import { pool } from '../../config/db.js';
 
-const SEED_USERS = [
+/* Essential accounts — required so someone can log in and administer the system. */
+const CORE_USERS = [
   { full_name: 'System Administrator', email: 'admin@aptspace.com',       role: 'Super Admin', status: 'Active' },
   { full_name: 'Lyshael Bernal',       email: 'lyshael.bernal@apts.edu', role: 'Super Admin', status: 'Active' },
-  { full_name: 'Audit Viewer',         email: 'viewer@aptspace.com',     role: 'View-Only Admin', status: 'Active' },
-  { full_name: 'Maria Santos',         email: 'maria.santos@apts.edu.ph', role: 'Guest',       status: 'Active' },
-  { full_name: 'James Reyes',          email: 'james.reyes@apts.edu.ph',  role: 'Guest',       status: 'Active' },
-  { full_name: 'Rev. Samuel Park',     email: 'samuel.park@gracechurch.org', role: 'Guest',    status: 'Active' },
-  { full_name: 'Manila Bible Church',  email: 'mbc.retreat@example.org', role: 'Guest',        status: 'Inactive' },
-  { full_name: 'Pacific Outreach Group', email: 'outreach@example.org', role: 'Guest',         status: 'Active' },
 ];
 
-export async function seedUsers() {
-  const password = process.env.DEFAULT_PASSWORD || 'password';
-  const hash = await bcrypt.hash(password, 10);
+/* Test accounts used by the integration suite — only created alongside demo data. */
+const DEMO_USERS = [
+  { full_name: 'Audit Viewer',         email: 'viewer@aptspace.com',     role: 'View-Only Admin', status: 'Active' },
+  { full_name: 'Maria Santos',         email: 'maria.santos@apts.edu.ph', role: 'Guest',       status: 'Active' },
+  { full_name: 'Rev. Samuel Park',     email: 'samuel.park@gracechurch.org', role: 'Guest',    status: 'Active' },
+];
 
-  for (const u of SEED_USERS) {
+async function upsertUsers(users, hash) {
+  for (const u of users) {
     const [existing] = await pool.execute('SELECT id, role FROM users WHERE email = ? LIMIT 1', [u.email]);
     if (existing.length > 0) {
       if (existing[0].role !== u.role) {
@@ -32,4 +31,12 @@ export async function seedUsers() {
     );
     console.log(`[seed] Created user: ${u.email} [${u.role}]`);
   }
+}
+
+export async function seedUsers({ includeDemo = false } = {}) {
+  const password = process.env.DEFAULT_PASSWORD || 'password';
+  const hash = await bcrypt.hash(password, 10);
+
+  await upsertUsers(CORE_USERS, hash);
+  if (includeDemo) await upsertUsers(DEMO_USERS, hash);
 }

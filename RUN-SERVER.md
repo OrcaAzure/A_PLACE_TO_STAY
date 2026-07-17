@@ -63,9 +63,9 @@ Password for all: **`password`**
 | Role | Email |
 |------|-------|
 | **Admin** | `admin@aptspace.com` |
-| **Guest** | `maria.santos@apts.edu.ph` |
+| **Guest** | `maria.santos@apts.edu.ph` (only with `ENABLE_DEMO_DATA=true`) |
 
-The server seeds additional guest users on first boot.
+Only the admin accounts are seeded by default. Demo guest accounts and sample bookings are created only when `ENABLE_DEMO_DATA=true` is set in `client/server/.env`.
 
 ---
 
