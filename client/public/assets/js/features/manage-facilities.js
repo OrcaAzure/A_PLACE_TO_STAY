@@ -15,6 +15,7 @@ import { animateModalOpen } from '/assets/js/layout/animations.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
 import { roomStatusLabel, roomStatusOptions, roomStatusMeta } from '/assets/js/features/room-status.js';
 import { debounce, escapeHtml } from '/assets/js/features/reservation-shared.js';
+import { isReadOnlyRole, refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
 
 /** Sentinel value used by the room-type <select> to reveal the "new type" field. */
 const ADD_TYPE_VALUE = '__add_type__';
@@ -437,9 +438,9 @@ function renderDetailView(r) {
           <h4>Policies</h4>
           <ul>${policyLines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
         </div>` : ''}
-      ${!r.description && !inclusionLines.length && !policyLines.length ? `
+      ${!isReadOnlyRole() ? (!r.description && !inclusionLines.length && !policyLines.length ? `
         <p class="mf-detail-note">No guest description, inclusions, or policies yet. Use <strong>Edit room</strong> to add text shown in the browse details panel.</p>` : `
-        <p class="mf-detail-note">Use <strong>Edit room</strong> to change setup or guest-facing copy.</p>`}
+        <p class="mf-detail-note">Use <strong>Edit room</strong> to change setup or guest-facing copy.</p>`) : ''}
     </div>`;
 }
 
@@ -520,16 +521,19 @@ function renderDetail() {
   }
 
   mount.innerHTML = renderDetailView(selected);
+  const readOnly = isReadOnlyRole();
   actions.innerHTML = `
     <button type="button" id="manage-facilities-footer-close" class="admin-crud-btn-ghost">Close</button>
-    <button type="button" id="manage-facilities-edit" class="admin-crud-btn-primary">
+    ${readOnly ? '' : `<button type="button" id="manage-facilities-edit" class="admin-crud-btn-primary">
       <span class="material-symbols-outlined text-[18px]">edit</span> Edit room
-    </button>`;
+    </button>`}`;
+  if (readOnly) refreshAdminReadOnlyUI();
 }
 
 function render() {
   renderList();
   renderDetail();
+  if (isReadOnlyRole()) refreshAdminReadOnlyUI();
 }
 
 /* ── Form <-> state syncing ── */
