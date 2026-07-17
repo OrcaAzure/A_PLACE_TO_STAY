@@ -12,7 +12,7 @@ import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/asset
 import { initGuestPortalChrome } from '/assets/js/layout/guest-portal.js';
 import { initSplashIdle, dismissAptSplash } from '/assets/js/layout/splash-idle.js';
 import { bindNotificationBell } from '/assets/js/layout/notifications.js';
-import { formatRoleLabel, getCurrentUser } from '/assets/js/services/auth.js';
+import { formatRoleLabel, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 import {
   isDesktopSidebar,
@@ -667,6 +667,7 @@ export async function initAppLayout(config = {}) {
       updateActiveNav(activePage, navItems);
       updateAdminHeader({ title, subtitle, userName, userRole, userInitial });
       ensureSidebarUi();
+      if (!isGuest) applyRoleUI();
       lockStaticChrome();
       if (!deferEnhancements && !isGuest) initAdminEnhancements().catch(() => releaseChromeBoot());
       else releaseChromeBoot();
@@ -730,6 +731,7 @@ export async function initAppLayout(config = {}) {
       releaseChromeBoot();
     } else {
       ensureSidebarUi();
+      applyRoleUI();
       initManageRequestsModal();
       initManageReservationsModal();
       initManageVenueBookingsModal();

@@ -23,6 +23,7 @@ import {
   canAdminDeleteStayRecord, canAdminDeleteVenueRecord, collectStayInvoiceSummary, isStandaloneRoomBooking,
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
+import { refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
 const TABS = [
   { id: 'pending', label: 'Pending' },
   { id: 'rooms', label: 'Room stays' },
@@ -719,6 +720,7 @@ function renderActivePanel() {
     countEl.textContent = `${countLabel}${guestSuffix}`;
   }
   renderTabBadges();
+  refreshAdminReadOnlyUI();
 }
 
 function venueCategory(row) {

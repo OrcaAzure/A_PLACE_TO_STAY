@@ -119,6 +119,22 @@ export async function runUsersRoleSimplify() {
   console.log('[schema] Simplified users.role to Super Admin / Supervisory User / Guest');
 }
 
+/** Add View-Only Admin role for supervisors and auditors with admin portal read access. */
+export async function runUsersViewOnlyAdminRole() {
+  if (!(await tableExists('users'))) return;
+
+  await pool.execute(
+    `ALTER TABLE users
+     MODIFY role ENUM(
+       'Super Admin',
+       'Supervisory User',
+       'View-Only Admin',
+       'Guest'
+     ) NOT NULL DEFAULT 'Guest'`
+  );
+  console.log('[schema] Added users.role value: View-Only Admin');
+}
+
 /** Repair empty/null roles to Guest. */
 export async function runUsersEmptyRoleRepair() {
   if (!(await tableExists('users'))) return;

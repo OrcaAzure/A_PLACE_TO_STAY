@@ -7,6 +7,7 @@
 import { getRoomRatesCatalog, saveRoomRates } from '/assets/js/services/api.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
+import { refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
 
 const SEASONS = ['Regular', 'Peak', 'Super Peak'];
 
@@ -155,6 +156,7 @@ function paint() {
     mount.innerHTML = groups.map(renderCard).join('');
   }
   updateToggle();
+  refreshAdminReadOnlyUI();
 }
 
 function updateToggle() {
