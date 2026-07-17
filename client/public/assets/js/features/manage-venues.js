@@ -17,6 +17,7 @@ import {
   deleteAdminVenue,
 } from '/assets/js/services/api.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 /** Sentinel value used by the category <select> to reveal the "new category" field. */
 const ADD_CATEGORY_VALUE = '__add_category__';
@@ -31,14 +32,6 @@ let cid = 0;
 
 function $(id) {
   return document.getElementById(id);
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 function peso(n) {

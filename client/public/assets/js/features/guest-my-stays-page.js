@@ -10,7 +10,7 @@ getFiscalYear, getSupportContact,
 } from '/assets/js/services/api.js';
 import {
 canGuestCancelRoomBooking, canGuestCancelVenueBooking, canGuestModifyRoomBooking, canGuestModifyVenueBooking,
-lifecyclePhaseForBooking, venuePhaseLabel, normStatus, isStandaloneRoomBooking, formatMoney,
+lifecyclePhaseForBooking, venuePhaseLabel, normStatus, isStandaloneRoomBooking, formatMoney, escapeHtml,
 } from '/assets/js/features/reservation-shared.js';
 import {
   parseBookQuery, priceNoticeHtml, hasCompleteBookIntent,
@@ -545,10 +545,6 @@ export async function bootstrapGuestMyStaysPage() {
     });
 
     /* ---------- Venue Bookings tab ---------- */
-    function escapeHtml(str) {
-      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-  
     let allVenueBookings = [];
     let venueActiveStatus = '';
     let venueSearchTerm = '';

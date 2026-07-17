@@ -6,6 +6,7 @@
 
 import { getRoomRatesCatalog, saveRoomRates } from '/assets/js/services/api.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 const SEASONS = ['Regular', 'Peak', 'Super Peak'];
 
@@ -26,14 +27,6 @@ function $(id) {
 
 function peso(n) {
   return `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 function escapeAttr(value) {

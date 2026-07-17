@@ -3,7 +3,7 @@
  */
 
 import { getVenueScheduleOverview } from '/assets/js/services/api.js';
-import { venueEventPhase } from '/assets/js/features/reservation-shared.js';
+import { venueEventPhase, debounce, escapeHtml } from '/assets/js/features/reservation-shared.js';
 import { venuePreviewImage } from '/assets/js/features/facility-display.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 
@@ -23,23 +23,6 @@ let venueBoardInitialized = false;
 let onBookingUpdated = null;
 /** @type {(() => void) | null} */
 let stopBookingPoll = null;
-
-function escapeHtml(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
-function debounce(fn, ms = 280) {
-  let t;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
-  };
-}
 
 function dateOnly(d = new Date()) {
   return d.toISOString().slice(0, 10);

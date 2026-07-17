@@ -34,9 +34,6 @@ export function canGuestAccessRoom(room, emailOrIsInternal) {
   return canGuestAccessBuilding(emailOrIsInternal, building);
 }
 
-/** @deprecated Prefer canGuestAccessRoom — kept for existing guest UI call sites. */
-export const roomAllowedForGuest = canGuestAccessRoom;
-
 export function filterRoomsForGuestUser(rooms, email) {
   return (rooms || []).filter((room) => canGuestAccessRoom(room, email));
 }

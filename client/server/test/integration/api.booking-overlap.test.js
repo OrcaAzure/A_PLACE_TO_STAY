@@ -100,7 +100,7 @@ describe('API booking overlap & sync', { skip: dbReady ? false : 'MySQL not avai
     assert.match(res.body?.message || '', /already reserved/i);
   });
 
-  it('concurrent booking race: at least one succeeds (row lock not enforced)', async () => {
+  it('concurrent booking attempts: only one succeeds', async () => {
     const avail = await admin.get('/api/bookings/availability').query({
       check_in: futureDate(70),
       check_out: futureDate(73),
@@ -130,16 +130,14 @@ describe('API booking overlap & sync', { skip: dbReady ? false : 'MySQL not avai
 
     const created = [a, b].filter((r) => r.status === 201);
     const blocked = [a, b].filter((r) => r.status === 409);
-    assert.ok(created.length >= 1, 'at least one concurrent request should succeed');
-    // Without DB row locking, both can succeed if they race past the overlap check.
-    // Sequential bookings (normal UX) are always blocked — see tests above.
-    assert.ok(created.length + blocked.length === 2);
+    assert.equal(created.length, 1, `expected one 201, got ${a.status} and ${b.status}`);
+    assert.equal(blocked.length, 1);
+    assert.match(blocked[0].body?.message || '', /already reserved/i);
 
-    for (const res of created) {
-      const id = res.body.booking?.id;
-      if (!id) continue;
-      await admin.patch(`/api/bookings/${id}`).send({ status: 'Cancelled' }).catch(() => {});
-      await admin.delete(`/api/bookings/${id}`).catch(() => {});
+    const cleanupId = created[0].body.booking?.id;
+    if (cleanupId) {
+      await admin.patch(`/api/bookings/${cleanupId}`).send({ status: 'Cancelled' }).catch(() => {});
+      await admin.delete(`/api/bookings/${cleanupId}`).catch(() => {});
     }
   });
 

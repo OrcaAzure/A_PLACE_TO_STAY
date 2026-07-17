@@ -3,19 +3,9 @@
  */
 
 import { getRoomStayEstimate } from '/assets/js/services/api.js';
-import { DORM_MIN_GUEST_COUNT } from '/assets/js/features/reservation-shared.js';
+import { DORM_MIN_GUEST_COUNT, escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-
-function escapeHtml(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
-
 
 let modalEl = null;
 let activeSession = null;

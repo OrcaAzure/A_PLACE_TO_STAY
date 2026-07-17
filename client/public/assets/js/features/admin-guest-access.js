@@ -16,17 +16,10 @@ import {
 } from '/assets/js/services/api.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { openModal, closeModal } from '/assets/js/layout/ui.js';
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 function $(id) {
   return document.getElementById(id);
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 let overview = { summary: {}, guests: [] };
