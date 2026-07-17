@@ -24,6 +24,7 @@ import {
 } from '/assets/js/features/reservation-shared.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { jsonFingerprint } from '/assets/js/layout/silent-refresh.js';
+import { isReadOnlyRole } from '/assets/js/services/auth.js';
 
 export const DAY_WIDTH = 80;
 
@@ -680,7 +681,9 @@ function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', 
       </div>`;
   }
 
-  const actions = pending ? `
+  const readOnly = isReadOnlyRole();
+  const actions = readOnly ? `
+    <p class="tl-detail-done">This reservation is ${escapeHtml(statusLabel(booking.status).toLowerCase())}${booking.updatedAt ? ` · updated ${formatDate(booking.updatedAt)}` : ''}.</p>` : (pending ? `
     <div class="tl-detail-actions tl-detail-actions--triple">
       <button type="button" class="res-btn res-btn--approve res-btn--wide" data-tl-action="approve" ${actionBusy ? 'disabled' : ''}>
         <span class="material-symbols-outlined">${actionBusy ? 'hourglass_top' : 'check_circle'}</span>
@@ -709,7 +712,7 @@ function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', 
       ${!canCancel && !approved ? `
         <p class="tl-detail-done">This reservation is ${escapeHtml(statusLabel(booking.status).toLowerCase())}${booking.updatedAt ? ` · updated ${formatDate(booking.updatedAt)}` : ''}.</p>
       ` : ''}
-    </div>`;
+    </div>`);
 
   return `
     <div class="tl-detail">
@@ -887,8 +890,11 @@ function renderVenueDetailBody(raw, { busy = false, error = '' } = {}) {
     b.notes ? renderDetailRow('Notes', b.notes) : '',
   ].join('');
 
+  const readOnly = isReadOnlyRole();
   let actions;
-  if (pending) {
+  if (readOnly) {
+    actions = `<p class="tl-detail-done">This venue booking is ${escapeHtml(statusLabel(b.status).toLowerCase())}.</p>`;
+  } else if (pending) {
     actions = `
     <div class="tl-detail-actions">
       <button type="button" class="res-btn res-btn--approve res-btn--wide" data-vd-approve ${busy ? 'disabled' : ''}>Approve</button>

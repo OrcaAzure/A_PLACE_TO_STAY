@@ -3,13 +3,7 @@ import { getUserId, getRoomId } from '../helpers.js';
 
 const DEMO_BOOKINGS = [
   { email: 'maria.santos@apts.edu.ph',    building: 'Global Missions Center', room: '201', check_in: '2026-07-01', check_out: '2026-07-05', guests: 2, season: 'Regular', item: 'Single/Double Occupancy', total: 10000, status: 'Approved', notes: 'Conference attendance' },
-  { email: 'james.reyes@apts.edu.ph',     building: 'Global Missions Center', room: '205', check_in: '2026-07-10', check_out: '2026-07-12', guests: 1, season: 'Regular', item: 'Single/Double Occupancy', total: 4500,  status: 'Pending',  notes: 'Short study visit' },
-  { email: 'ruth.villanueva@apts.edu.ph', building: 'Global Missions Center', room: '304', check_in: '2026-06-20', check_out: '2026-06-25', guests: 3, season: 'Regular', item: 'Daily Maximum',           total: 15250, status: 'Approved', notes: 'Staff retreat' },
-  { email: 'paul.mendoza@apts.edu.ph',    building: 'Global Missions Center', room: '202', check_in: '2026-08-01', check_out: '2026-08-07', guests: 2, season: 'Regular', item: 'Single/Double Occupancy', total: 15000, status: 'Pending',  notes: 'Mission partner visit' },
   { email: 'maria.santos@apts.edu.ph',    building: 'Global Missions Center', room: '401', check_in: '2026-07-15', check_out: '2026-07-20', guests: 4, season: 'Regular', item: 'Daily Maximum',           total: 22750, status: 'Rejected', notes: 'Family retreat — rejected due to room conflict' },
-  { email: 'james.reyes@apts.edu.ph',     building: 'Global Missions Center', room: '203', check_in: '2026-09-05', check_out: '2026-09-10', guests: 1, season: 'Regular', item: 'Single/Double Occupancy', total: 11250, status: 'Approved', notes: 'Academic conference' },
-  { email: 'paul.mendoza@apts.edu.ph',    building: 'Global Missions Center', room: 'A-501', check_in: '2026-10-01', check_out: '2026-10-03', guests: 6, season: 'Regular', item: 'Daily Maximum',           total: 8700,  status: 'Pending',  notes: 'Mission team accommodation' },
-  { email: 'ruth.villanueva@apts.edu.ph', building: 'Global Missions Center', room: '306', check_in: '2026-07-22', check_out: '2026-07-24', guests: 2, season: 'Regular', item: 'Single/Double Occupancy', total: 5000,  status: 'Cancelled', notes: 'Cancelled — travel plans changed' },
 ];
 
 const ROOM_STATUS_UPDATES = [
@@ -44,9 +38,6 @@ export async function seedDemoData() {
 
   const paymentSeeds = [
     { email: 'maria.santos@apts.edu.ph',    check_in: '2026-07-01', amount: 10000, method: 'GCash',         status: 'Paid',    paid_at: '2026-07-01 10:00:00' },
-    { email: 'ruth.villanueva@apts.edu.ph', check_in: '2026-06-20', amount: 15250, method: 'Bank Transfer', status: 'Paid',    paid_at: '2026-06-20 09:00:00' },
-    { email: 'james.reyes@apts.edu.ph',     check_in: '2026-09-05', amount: 11250, method: 'Cash',          status: 'Paid',    paid_at: '2026-09-05 08:30:00' },
-    { email: 'paul.mendoza@apts.edu.ph',    check_in: '2026-08-01', amount: 15000, method: 'GCash',         status: 'Pending', paid_at: null },
   ];
 
   for (const p of paymentSeeds) {
@@ -77,9 +68,8 @@ export async function seedDemoData() {
 
 export async function seedGuestStayExamples() {
   const samuelId = await getUserId('samuel.park@gracechurch.org');
-  const mbcId = await getUserId('mbc.retreat@example.org');
   const roomId = await getRoomId('Global Missions Center', '301');
-  if (!roomId) return;
+  if (!roomId || !samuelId) return;
 
   const today = new Date();
   const iso = (offset) => {
@@ -88,60 +78,13 @@ export async function seedGuestStayExamples() {
     return d.toISOString().slice(0, 10);
   };
 
-  if (samuelId) {
-    const [exists] = await pool.execute('SELECT id FROM bookings_rooms WHERE user_id = ? LIMIT 1', [samuelId]);
-    if (!exists.length) {
-      await pool.execute(
-        `INSERT INTO bookings_rooms (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [samuelId, roomId, iso(-2), iso(4), 2, 'Regular', 'Single/Double Occupancy', 8500, 'Approved', 'External guest — ministry retreat']
-      );
-      console.log('[seed] Demo in-stay booking for external guest');
-    }
+  const [exists] = await pool.execute('SELECT id FROM bookings_rooms WHERE user_id = ? LIMIT 1', [samuelId]);
+  if (!exists.length) {
+    await pool.execute(
+      `INSERT INTO bookings_rooms (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [samuelId, roomId, iso(-2), iso(4), 2, 'Regular', 'Single/Double Occupancy', 8500, 'Approved', 'External guest — ministry retreat']
+    );
+    console.log('[seed] Demo in-stay booking for external guest');
   }
-
-  if (mbcId) {
-    const [exists] = await pool.execute('SELECT id FROM bookings_rooms WHERE user_id = ? LIMIT 1', [mbcId]);
-    if (!exists.length) {
-      await pool.execute(
-        `INSERT INTO bookings_rooms (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [mbcId, roomId, iso(-20), iso(-14), 8, 'Regular', 'Daily Maximum', 42000, 'Approved', 'Past group retreat — access review']
-      );
-      console.log('[seed] Demo ended-stay booking for external guest');
-    }
-  }
-
-  const outreachId = await getUserId('outreach@example.org');
-  if (outreachId) {
-    const [exists] = await pool.execute('SELECT id FROM bookings_rooms WHERE user_id = ? LIMIT 1', [outreachId]);
-    if (!exists.length) {
-      await pool.execute(
-        `INSERT INTO bookings_rooms (user_id, room_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [outreachId, roomId, iso(-14), iso(-10), 5, 'Regular', 'Daily Maximum', 18000, 'Approved', 'Completed outreach — deactivate access']
-      );
-      console.log('[seed] Demo review-access booking for external guest');
-    }
-  }
-}
-
-export async function seedGuestAccessRequests() {
-  const [existing] = await pool.execute(
-    `SELECT id FROM guest_access_requests WHERE email = ? LIMIT 1`,
-    ['retreat@gcc.org']
-  );
-  if (existing.length) return;
-
-  await pool.execute(
-    `INSERT INTO guest_access_requests (full_name, email, organization, notes, status)
-     VALUES (?, ?, ?, ?, 'Pending')`,
-    [
-      'Grace Community Church',
-      'retreat@gcc.org',
-      'Grace Community Church',
-      'Emailed housing office requesting portal access for a July retreat.',
-    ]
-  );
-  console.log('[seed] Demo pending guest access request');
 }

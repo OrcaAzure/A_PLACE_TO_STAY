@@ -1,8 +1,20 @@
 import { pool } from '../../config/db.js';
-import { tableExists, columnExists } from '../helpers.js';
+import { tableExists, columnExists, getColumnType } from '../helpers.js';
+
+/**
+ * Legacy role enums (pre-simplification) all contain 'Faculty'.
+ * Once roles are simplified the enum no longer has it — re-running the
+ * historical ALTERs then would truncate newer roles like 'View-Only Admin'.
+ */
+async function hasLegacyRoleEnum() {
+  const type = (await getColumnType('users', 'role')).toLowerCase();
+  return type.includes("'faculty'");
+}
 
 /** Expand users.role enum through historical stages (legacy DBs). */
 export async function runUsersRoleExpansion() {
+  if (!(await tableExists('users')) || !(await hasLegacyRoleEnum())) return;
+
   await pool.execute(
     `ALTER TABLE users
      MODIFY role ENUM(
@@ -98,7 +110,7 @@ export async function runUsersSessionColumns() {
 
 /** Collapse historical roles to Super Admin / Supervisory User / Guest. */
 export async function runUsersRoleSimplify() {
-  if (!(await tableExists('users'))) return;
+  if (!(await tableExists('users')) || !(await hasLegacyRoleEnum())) return;
 
   await pool.execute(
     `ALTER TABLE users
@@ -117,6 +129,24 @@ export async function runUsersRoleSimplify() {
      MODIFY role ENUM('Super Admin', 'Supervisory User', 'Guest') NOT NULL DEFAULT 'Guest'`
   );
   console.log('[schema] Simplified users.role to Super Admin / Supervisory User / Guest');
+}
+
+/** Add View-Only Admin role for supervisors and auditors with admin portal read access. */
+export async function runUsersViewOnlyAdminRole() {
+  if (!(await tableExists('users'))) return;
+  const type = (await getColumnType('users', 'role')).toLowerCase();
+  if (type.includes("'view-only admin'")) return;
+
+  await pool.execute(
+    `ALTER TABLE users
+     MODIFY role ENUM(
+       'Super Admin',
+       'Supervisory User',
+       'View-Only Admin',
+       'Guest'
+     ) NOT NULL DEFAULT 'Guest'`
+  );
+  console.log('[schema] Added users.role value: View-Only Admin');
 }
 
 /** Repair empty/null roles to Guest. */

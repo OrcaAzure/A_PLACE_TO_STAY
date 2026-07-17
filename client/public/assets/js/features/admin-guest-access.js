@@ -16,6 +16,7 @@ import {
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { openModal, closeModal } from '/assets/js/layout/ui.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
+import { refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
 
 function $(id) {
   return document.getElementById(id);
@@ -611,6 +612,7 @@ function renderPendingModal() {
       ? '1 person is waiting for approval before they can log in.'
       : `${pending.length} people are waiting for approval before they can log in.`;
   }
+  refreshAdminReadOnlyUI();
 }
 
 async function refreshGuestAccessData({ background = false } = {}) {
@@ -648,6 +650,7 @@ function renderAccountsTable() {
         : 'No guest accounts yet. Use <strong>Add guest</strong> to grant access or save a request for later.'
     }</p></td></tr>`;
     updateAccountsCount();
+    refreshAdminReadOnlyUI();
     return;
   }
 
@@ -666,6 +669,7 @@ function renderAccountsTable() {
     </tr>`;
   }).join('');
   updateAccountsCount();
+  refreshAdminReadOnlyUI();
 }
 
 function renderActivityList() {

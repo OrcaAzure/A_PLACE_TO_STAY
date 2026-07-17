@@ -9,6 +9,7 @@ export const AUDIT_ACTIONS = {
   GUEST_ACCESS_REQUEST_CREATED: 'guest_access_request_created',
   GUEST_ACCESS_REQUEST_APPROVED: 'guest_access_request_approved',
   GUEST_ACCESS_REQUEST_REJECTED: 'guest_access_request_rejected',
+  UNAUTHORIZED_WRITE_ATTEMPT: 'unauthorized_write_attempt',
 };
 
 const GUEST_ACCESS_ACTIONS = new Set(Object.values(AUDIT_ACTIONS));
@@ -25,6 +26,23 @@ export async function logAudit({ actorUserId = null, action, entityType, entityI
       details ? JSON.stringify(details) : null,
     ]
   );
+}
+
+/** Best-effort audit when a view-only role attempts a blocked write. */
+export async function logUnauthorizedAccess(req, extra = {}) {
+  if (!req?.user?.id) return;
+  await logAudit({
+    actorUserId: req.user.id,
+    action: AUDIT_ACTIONS.UNAUTHORIZED_WRITE_ATTEMPT,
+    entityType: 'api',
+    entityId: null,
+    details: {
+      method: req.method,
+      path: req.originalUrl || req.url,
+      role: req.user.role,
+      ...extra,
+    },
+  });
 }
 
 function formatAuditSummary(row) {
@@ -55,6 +73,8 @@ function formatAuditSummary(row) {
       return `${actor} approved access request for ${target || 'a guest'}`;
     case AUDIT_ACTIONS.GUEST_ACCESS_REQUEST_REJECTED:
       return `${actor} rejected access request for ${target || 'a guest'}`;
+    case AUDIT_ACTIONS.UNAUTHORIZED_WRITE_ATTEMPT:
+      return `${actor} attempted unauthorized ${details.method || 'write'} on ${details.path || 'an endpoint'}`;
     default:
       return `${actor} performed ${row.action}`;
   }

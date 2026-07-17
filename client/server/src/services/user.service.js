@@ -9,7 +9,11 @@ import { logAudit, AUDIT_ACTIONS } from './audit.service.js';
 
 export function isInternalPortalUser(user) {
   if (!user) return false;
-  if (user.role === ROLES.SUPER_ADMIN || user.role === ROLES.SUPERVISORY_USER) return true;
+  if (
+    user.role === ROLES.SUPER_ADMIN
+    || user.role === ROLES.SUPERVISORY_USER
+    || user.role === ROLES.VIEW_ONLY_ADMIN
+  ) return true;
   return user.role === ROLES.GUEST && isInternalGuestEmail(user.email);
 }
 

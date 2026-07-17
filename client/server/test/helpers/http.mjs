@@ -5,6 +5,7 @@ import app from '../../src/app.js';
 import { testConnection } from '../../src/config/db.js';
 import { AUTH_COOKIE } from '../../src/utils/cookies.js';
 import { runSchemaPatches, seedUsers, seedDemoUsers } from '../../src/seed/index.js';
+import { purgeTestAccounts } from './db-cleanup.mjs';
 
 export { app };
 
@@ -16,6 +17,7 @@ async function ensureSchemaReady() {
       try {
         await testConnection();
         await runSchemaPatches();
+        await purgeTestAccounts();
         await seedUsers();
         await seedDemoUsers();
         return true;
