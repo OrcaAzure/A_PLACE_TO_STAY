@@ -14,6 +14,7 @@ import {
 import { animateModalOpen } from '/assets/js/layout/animations.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
 import { roomStatusLabel, roomStatusOptions, roomStatusMeta } from '/assets/js/features/room-status.js';
+import { debounce, escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 /** Sentinel value used by the room-type <select> to reveal the "new type" field. */
 const ADD_TYPE_VALUE = '__add_type__';
@@ -53,23 +54,6 @@ const state = {
   message: null,
   mobileForm: false,
 };
-
-function debounce(fn, ms = 300) {
-  let t;
-  return (...args) => {
-    clearTimeout(t);
-    t = setTimeout(() => fn(...args), ms);
-  };
-}
-
-function escapeHtml(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function roomStatusBadge(status) {
   const tone = roomStatusMeta(status).tone;

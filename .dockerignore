@@ -7,3 +7,16 @@ client/server/.env.*
 *.log
 client/server/logs
 .DS_Store
+Thumbs.db
+desktop.ini
+
+client/server/test
+.github
+deploy
+scripts
+CHANGELOG*.md
+RUN-SERVER.md
+.env.*.example
+.vscode
+demo-qr.png
+dist

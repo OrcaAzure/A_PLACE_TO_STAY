@@ -11,7 +11,7 @@ import {
 import { isRoomListVisible } from '/assets/js/features/reservation-shared.js';
 import { LANDING_AMENITY_IMAGE } from '/assets/js/features/facility-display.js';
 
-export { isInternalGuest, canGuestAccessRoom as roomAllowedForGuest };
+export { isInternalGuest, canGuestAccessRoom };
 export { EXTERNAL_ROOM_BUILDINGS, GUEST_BLOCKED_BUILDINGS };
 
 export const PRICE_DISCLAIMER =

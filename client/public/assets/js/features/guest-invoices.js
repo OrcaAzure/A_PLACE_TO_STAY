@@ -3,17 +3,9 @@
  */
 
 import { getPayments } from '/assets/js/services/api.js';
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-
-function escapeHtml(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function dueAmount(p) {
   const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
