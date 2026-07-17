@@ -1490,3 +1490,45 @@ html.admin-chrome-boot .app-tab-panels {
     margin-right: 1rem;
   }
 }
+
+/* View-only admin portal — read-only indicator and disabled write affordances */
+.admin-readonly-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  margin-right: 0.5rem;
+  border-radius: 9999px;
+  background: rgb(245 158 11 / 0.12);
+  border: 1px solid rgb(245 158 11 / 0.35);
+  color: #92400e;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.admin-readonly-banner__icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+html.is-readonly .admin-readonly-banner.hidden {
+  display: inline-flex;
+}
+
+html.is-readonly .admin-shell .readonly-write-suppressed,
+html.is-readonly .admin-shell .js-requires-write {
+  display: none !important;
+}
+
+html.is-readonly .admin-shell input[readonly],
+html.is-readonly .admin-shell textarea[readonly],
+html.is-readonly .admin-shell select:disabled {
+  cursor: default;
+  opacity: 0.92;
+}
+
+html.is-readonly .admin-shell .ga-col-actions:has(.readonly-write-suppressed),
+html.is-readonly .admin-shell .ga-col-actions:empty {
+  display: none;
+}

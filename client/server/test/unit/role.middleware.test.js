@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import '../helpers/env-setup.mjs';
-import { requireRole, denyRole, blockReadOnly } from '../../src/middleware/role.middleware.js';
+import { requireRole, denyRole, blockReadOnly, requireAdminPortal } from '../../src/middleware/role.middleware.js';
 
 function mockRes() {
   const res = { statusCode: 200, body: null };
@@ -66,6 +66,31 @@ describe('denyRole / blockReadOnly', () => {
   it('allows Guest through blockReadOnly', () => {
     const { res, nextCalled } = runMiddleware(blockReadOnly, {
       user: { role: 'Guest' },
+    });
+    assert.equal(nextCalled, true);
+    assert.equal(res.statusCode, 200);
+  });
+
+  it('blocks View-Only Admin via blockReadOnly', () => {
+    const { res, nextCalled } = runMiddleware(blockReadOnly, {
+      user: { role: 'View-Only Admin' },
+    });
+    assert.equal(res.statusCode, 403);
+    assert.match(res.body.message, /view-only/);
+    assert.equal(nextCalled, false);
+  });
+
+  it('allows Super Admin through blockReadOnly', () => {
+    const { res, nextCalled } = runMiddleware(blockReadOnly, {
+      user: { role: 'Super Admin' },
+    });
+    assert.equal(nextCalled, true);
+    assert.equal(res.statusCode, 200);
+  });
+
+  it('allows View-Only Admin through requireAdminPortal', () => {
+    const { res, nextCalled } = runMiddleware(requireAdminPortal, {
+      user: { role: 'View-Only Admin' },
     });
     assert.equal(nextCalled, true);
     assert.equal(res.statusCode, 200);

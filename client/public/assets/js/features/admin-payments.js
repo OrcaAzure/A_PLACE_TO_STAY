@@ -8,6 +8,7 @@ import {
   updateFacilityBooking, convertPaymentReservation, revertPaymentOvernight, getFacilitiesOverview,
 } from '/assets/js/services/api.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
+import { refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
@@ -2706,6 +2707,7 @@ function renderList() {
   listEl.innerHTML = `<div class="billing-table">${list.map(renderListRow).join('')}</div>`;
 
   syncClearPaidButton();
+  refreshAdminReadOnlyUI();
 }
 
 function handleInvoiceListClick(e) {
@@ -2776,6 +2778,7 @@ async function refreshOpenInvoiceQuietly(id) {
     bindDetailActions(fresh);
     initBillingFeeEditor(fresh, detailEl);
     bindReservationEdit(fresh, detailEl);
+    refreshAdminReadOnlyUI();
   } catch {
     /* keep current panel on background refresh failure */
   }
@@ -2809,6 +2812,7 @@ async function openInvoiceModal(id) {
     bindDetailActions(p);
     initBillingFeeEditor(p, detailEl);
     bindReservationEdit(p, detailEl);
+    refreshAdminReadOnlyUI();
   } catch (err) {
     if (openGen !== invoiceModalOpenGen) return;
     if (detailEl.innerHTML.includes('billing-detail-loading')) {

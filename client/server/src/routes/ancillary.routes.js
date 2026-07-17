@@ -12,23 +12,24 @@ import {
   saveRoomRates,
 } from '../controllers/ancillary.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
-import { requireAdmin } from '../middleware/role.middleware.js';
+import { requireAdmin, requireAdminPortal } from '../middleware/role.middleware.js';
 import { cacheResponse } from '../middleware/cache.middleware.js';
 
 const router = Router();
-const adminOnly = requireAdmin;
+const adminRead = [requireAuth, requireAdminPortal];
+const adminWrite = [requireAuth, requireAdmin];
 
-router.get('/meal-rates', requireAuth, adminOnly, cacheResponse('catalog:meal-rates'), getMealRatesCatalog);
-router.post('/meal-rates', requireAuth, adminOnly, createMealRate);
-router.patch('/meal-rates/:id', requireAuth, adminOnly, updateMealRate);
-router.delete('/meal-rates/:id', requireAuth, adminOnly, deleteMealRate);
+router.get('/meal-rates', ...adminRead, cacheResponse('catalog:meal-rates'), getMealRatesCatalog);
+router.post('/meal-rates', ...adminWrite, createMealRate);
+router.patch('/meal-rates/:id', ...adminWrite, updateMealRate);
+router.delete('/meal-rates/:id', ...adminWrite, deleteMealRate);
 
-router.get('/extra-services', requireAuth, adminOnly, cacheResponse('catalog:extra-services'), getExtraServicesCatalog);
-router.post('/extra-services', requireAuth, adminOnly, createExtraService);
-router.patch('/extra-services/:id', requireAuth, adminOnly, updateExtraService);
-router.delete('/extra-services/:id', requireAuth, adminOnly, deleteExtraService);
+router.get('/extra-services', ...adminRead, cacheResponse('catalog:extra-services'), getExtraServicesCatalog);
+router.post('/extra-services', ...adminWrite, createExtraService);
+router.patch('/extra-services/:id', ...adminWrite, updateExtraService);
+router.delete('/extra-services/:id', ...adminWrite, deleteExtraService);
 
-router.get('/room-rates', requireAuth, adminOnly, cacheResponse('catalog:room-rates'), getRoomRatesCatalog);
-router.put('/room-rates', requireAuth, adminOnly, saveRoomRates);
+router.get('/room-rates', ...adminRead, cacheResponse('catalog:room-rates'), getRoomRatesCatalog);
+router.put('/room-rates', ...adminWrite, saveRoomRates);
 
 export default router;
