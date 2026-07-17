@@ -166,7 +166,8 @@ export async function calculateTotalAmount({
   return Math.round(total * 100) / 100;
 }
 
-export async function hasOverlappingBooking(roomId, checkIn, checkOut, excludeBookingId = null, excludeGroupId = null) {
+export async function hasOverlappingBooking(roomId, checkIn, checkOut, excludeBookingId = null, excludeGroupId = null, conn = null) {
+  const db = conn || pool;
   const params = [roomId, checkOut, checkIn];
   let sql = `
     SELECT id FROM bookings_rooms
@@ -187,8 +188,29 @@ export async function hasOverlappingBooking(roomId, checkIn, checkOut, excludeBo
   }
 
   sql += ' LIMIT 1';
-  const [rows] = await pool.query(sql, params);
+  const [rows] = await db.query(sql, params);
   return rows.length > 0;
+}
+
+const ROOM_BOOKING_LOCK_PREFIX = 'aptspace:booking:room:';
+
+/** Serialize bookings per room (works across concurrent HTTP requests). */
+export async function lockRoomRow(conn, roomId) {
+  const [roomRows] = await conn.query('SELECT id FROM rooms WHERE id = ? FOR UPDATE', [roomId]);
+  if (!roomRows.length) throw new Error('Room not found');
+  const [lockRows] = await conn.query('SELECT GET_LOCK(?, 30) AS acquired', [`${ROOM_BOOKING_LOCK_PREFIX}${roomId}`]);
+  if (!Number(lockRows[0]?.acquired)) {
+    throw new Error('This room is being booked by another request. Please try again.');
+  }
+}
+
+export async function releaseRoomBookingLock(conn, roomId) {
+  if (!conn || roomId == null) return;
+  try {
+    await conn.query('SELECT RELEASE_LOCK(?)', [`${ROOM_BOOKING_LOCK_PREFIX}${roomId}`]);
+  } catch {
+    /* ignore */
+  }
 }
 
 const ACTIVE_BOOKING_STATUSES = ['Pending', 'Approved'];
@@ -274,8 +296,12 @@ export async function prepareBookingInsert({
   bypassAdvanceLimit = false,
   excludeBookingId = null,
   excludeGroupId = null,
+  conn = null,
+  skipRoomLock = false,
 }) {
   await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit });
+
+  if (conn && !skipRoomLock) await lockRoomRow(conn, roomId);
 
   const room = await getRoomById(roomId);
   if (!room) throw new Error('Room not found');
@@ -290,7 +316,7 @@ export async function prepareBookingInsert({
   if (capacityError) throw new Error(capacityError);
 
   const overlap = await hasOverlappingBooking(
-    roomId, checkIn, checkOut, excludeBookingId, excludeGroupId
+    roomId, checkIn, checkOut, excludeBookingId, excludeGroupId, conn
   );
   if (overlap) throw new Error('This room is already reserved for the selected dates.');
 

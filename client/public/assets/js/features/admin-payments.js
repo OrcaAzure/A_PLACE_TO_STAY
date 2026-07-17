@@ -9,7 +9,11 @@ import {
 } from '/assets/js/services/api.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
+<<<<<<< HEAD
 import { confirmModal } from '/assets/js/layout/ui.js';
+=======
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
+>>>>>>> 4b3aa67456624dcab9a56bea8de2ff9e4181c02a
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer', 'Waived'];
@@ -26,15 +30,6 @@ let stopBookingPoll = null;
 /** @type {(() => void) | null} */
 let onBookingUpdated = null;
 let paymentsPageBound = false;
-
-function escapeHtml(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function formatDateShort(checkIn, checkOut) {
   if (!checkIn || !checkOut) return '—';

@@ -108,7 +108,7 @@ function initHeroTypewriter() {
   return () => window.clearTimeout(timerId);
 }
 
-function loadScript(src) {
+function loadScript(src, timeoutMs = 12000) {
   return new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${src}"]`)) {
       resolve();
@@ -117,8 +117,17 @@ function loadScript(src) {
     const s = document.createElement('script');
     s.src = src;
     s.async = true;
-    s.onload = () => resolve();
-    s.onerror = () => reject(new Error(`Failed to load ${src}`));
+    let settled = false;
+    const finish = (err) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      if (err) reject(err);
+      else resolve();
+    };
+    const timer = window.setTimeout(() => finish(new Error(`Timed out loading ${src}`)), timeoutMs);
+    s.onload = () => finish();
+    s.onerror = () => finish(new Error(`Failed to load ${src}`));
     document.head.appendChild(s);
   });
 }
@@ -138,8 +147,6 @@ async function loadGsapWithScrollTrigger() {
 
 /** Ensure all content is visible if GSAP fails or is skipped */
 function revealStatic() {
-  if (!document.body.classList.contains('lp-ready')) return;
-
   document.querySelectorAll('.lp-trust-item').forEach((el) => {
     el.style.opacity = '1';
     el.style.transform = 'none';
@@ -151,6 +158,14 @@ function revealStatic() {
   if (window.gsap) {
     window.gsap.set('.lp-hero-badge, .lp-hero-line, .lp-hero-rule, .lp-hero-sub, .lp-hero-cta > *, .lp-hero-tags > *, .lp-stat, .lp-scroll-hint', {
       clearProps: 'all',
+    });
+  } else {
+    document.querySelectorAll(
+      '.lp-hero-badge, .lp-hero-line, .lp-hero-rule, .lp-hero-sub, .lp-hero-cta > *, .lp-hero-tags > *, .lp-stat, .lp-scroll-hint',
+    ).forEach((el) => {
+      el.style.removeProperty('opacity');
+      el.style.removeProperty('visibility');
+      el.style.removeProperty('transform');
     });
   }
   document.querySelectorAll('.lp-scroll-char').forEach((el) => {
@@ -1364,7 +1379,9 @@ function buildLandingReveal(startHeroHandoff, finalize) {
 }
 
 export async function initLandingPage(options = {}) {
-  if (landingPageInitialized) return;
+  if (landingPageInitialized) {
+    return () => { revealStatic(); };
+  }
   landingPageInitialized = true;
 
   const { skipHeroEntrance = true } = options;
@@ -1388,32 +1405,47 @@ export async function initLandingPage(options = {}) {
     });
   }
 
+  // Load GSAP in parallel — never block page reveal on CDN scripts.
+  const gsapReady = loadGsapWithScrollTrigger().catch((err) => {
+    console.warn('[landing] GSAP unavailable, using static reveal', err);
+    return null;
+  });
+
   let revealTimer = null;
   if (!skipHeroEntrance) {
     revealTimer = window.setTimeout(revealStatic, 4500);
   }
 
-  let gsap;
-  try {
-    gsap = await loadGsapWithScrollTrigger();
-  } catch {
-    return buildLandingReveal(null, () => {
-      mountScrollShowcase(null, null);
-      revealStatic();
+  const startHeroHandoff = () => {
+    if (revealTimer) {
+      window.clearTimeout(revealTimer);
+      revealTimer = null;
+    }
+    return gsapReady.then((gsap) => {
+      if (!gsap) {
+        revealStatic();
+        return null;
+      }
+      if (skipHeroEntrance) {
+        animateCountersHandoff(gsap);
+        revealStatic();
+        return null;
+      }
+      prepareHeroHandoff(gsap);
+      animateCountersHandoff(gsap);
+      return playHeroHandoff(gsap);
     });
-  }
-
-  const ST = window.ScrollTrigger;
-
-  let startHeroHandoff = null;
-
-  prepareHeroHandoff(gsap);
-  startHeroHandoff = () => {
-    animateCountersHandoff(gsap);
-    return playHeroHandoff(gsap);
   };
 
   return buildLandingReveal(startHeroHandoff, () => {
-    mountLandingScrollAnimations(gsap, ST);
+    gsapReady.then((gsap) => {
+      if (gsap) {
+        mountLandingScrollAnimations(gsap, window.ScrollTrigger);
+        return;
+      }
+      mountScrollShowcase(null, null);
+      setCountersStatic();
+      revealStatic();
+    });
   });
 }

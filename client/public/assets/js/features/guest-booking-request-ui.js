@@ -19,17 +19,9 @@ import {
   groupGuestAssignmentStatus,
   roomGuestLimits,
 } from '/assets/js/features/guest-booking-request-store.js';
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-
-function escapeHtml(str) {
-  if (str == null) return '';
-  return String(str)
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
 
 function formatStayRange(checkIn, checkOut) {
   if (!checkIn || !checkOut) return '—';

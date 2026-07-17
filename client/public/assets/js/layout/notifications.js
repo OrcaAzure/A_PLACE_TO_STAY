@@ -4,14 +4,7 @@
 
 import { getNotifications } from '/assets/js/services/api.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
-
-function escapeHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 function levelClass(level) {
   if (level === 'warn') return 'notif-item--warn';

@@ -99,6 +99,21 @@ export const VENUE_NAME_IMAGE = {
 const DEFAULT_VENUE_IMAGE =
   'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80';
 
+const GALLERY_MAX_ROOM = 5;
+const GALLERY_MAX_VENUE = 12;
+
+function inferVenueCategory(blob) {
+  const text = String(blob || '').toLowerCase();
+  if (/chapel|church|wedding|baptism/.test(text)) return 'GMC Chapel';
+  if (/prayer mountain|retreat|hut/.test(text)) return 'Prayer Mountain';
+  if (/prayer tower/.test(text)) return 'Prayer Tower';
+  if (/garden|osgood/.test(text)) return 'Garden';
+  if (/basketball/.test(text)) return 'Basketball Court';
+  if (/playground|recreation|sport|court|gym/.test(text)) return 'Recreation';
+  if (/conference|classroom|commons|meeting|a-\d{3}/.test(text)) return 'GMC Conference Rooms';
+  return '';
+}
+
 /** @type {Record<string, { label: string, badge: string }>} */
 const AVAIL_BADGES = {
   available: { label: 'Available', badge: 'fac-badge--available' },
@@ -282,6 +297,7 @@ export const ROOM_NUMBER_GALLERY = {
     '/images/501Preview3.webp',
     '/images/501Preview4.webp',
     '/images/501Preview5.webp',
+    '/images/501Preview6.webp',
   ],
 };
 
@@ -360,6 +376,13 @@ const VENUE_CATEGORY_GALLERY = {
     '/images/RecreationPreview2.webp',
     '/images/RecreationPreview3.webp',
     '/images/RecreationPreview4.webp',
+    '/images/RecreationPreview5.webp',
+    '/images/RecreationPreview6.webp',
+    '/images/RecreationPreview8.webp',
+    '/images/RecreationPreview9.webp',
+    '/images/RecreationPreview10.webp',
+    '/images/RecreationPreview11.webp',
+    '/images/RecreationPreview12.webp',
   ],
 };
 
@@ -383,7 +406,7 @@ export function roomGalleryImages(room = {}) {
   const num = normalizeRoomNumber(room.roomNumber ?? room.room_number);
   const roomGallery = ROOM_NUMBER_GALLERY[num];
   if (roomGallery?.length) {
-    return uniqueUrls(roomGallery).slice(0, 5);
+    return uniqueUrls(roomGallery).slice(0, GALLERY_MAX_ROOM);
   }
 
   const tier = resolveRoomVisualKey({
@@ -397,7 +420,7 @@ export function roomGalleryImages(room = {}) {
     ...(ROOM_TYPE_GALLERY[tier] || [roomTypeImage(tier)]),
     DEFAULT_ROOM_IMAGE,
   ];
-  return uniqueUrls([primary, ...extras]).slice(0, 5);
+  return uniqueUrls([primary, ...extras]).slice(0, GALLERY_MAX_ROOM);
 }
 
 /**
@@ -411,11 +434,11 @@ export function venueGalleryImages(venue = {}) {
     .filter(Boolean);
 
   if (code && VENUE_NAME_GALLERY[code]?.length) {
-    return uniqueUrls(VENUE_NAME_GALLERY[code]).slice(0, 5);
+    return uniqueUrls(VENUE_NAME_GALLERY[code]).slice(0, GALLERY_MAX_VENUE);
   }
   for (const key of candidates) {
     if (VENUE_NAME_GALLERY[key]?.length) {
-      return uniqueUrls(VENUE_NAME_GALLERY[key]).slice(0, 5);
+      return uniqueUrls(VENUE_NAME_GALLERY[key]).slice(0, GALLERY_MAX_VENUE);
     }
   }
 
@@ -427,19 +450,12 @@ export function venueGalleryImages(venue = {}) {
     }
   }
   if (!categoryKey) {
-    const blob = candidates.join(' ').toLowerCase();
-    if (/chapel|church|wedding|baptism/.test(blob)) categoryKey = 'GMC Chapel';
-    else if (/prayer mountain|retreat|hut/.test(blob)) categoryKey = 'Prayer Mountain';
-    else if (/prayer tower/.test(blob)) categoryKey = 'Prayer Tower';
-    else if (/garden|osgood/.test(blob)) categoryKey = 'Garden';
-    else if (/basketball/.test(blob)) categoryKey = 'Basketball Court';
-    else if (/playground|recreation|sport|court|gym/.test(blob)) categoryKey = 'Recreation';
-    else if (/conference|classroom|commons|meeting|a-\d{3}/.test(blob)) categoryKey = 'GMC Conference Rooms';
+    categoryKey = inferVenueCategory(candidates.join(' '));
   }
 
   const categoryGallery = VENUE_CATEGORY_GALLERY[categoryKey];
   if (categoryGallery?.length) {
-    return uniqueUrls(categoryGallery).slice(0, 5);
+    return uniqueUrls(categoryGallery).slice(0, GALLERY_MAX_VENUE);
   }
 
   const primary = venuePreviewImage(venue);
@@ -449,7 +465,7 @@ export function venueGalleryImages(venue = {}) {
     DEFAULT_VENUE_IMAGE,
   ].filter(Boolean);
 
-  return uniqueUrls([primary, ...extras]).slice(0, 5);
+  return uniqueUrls([primary, ...extras]).slice(0, GALLERY_MAX_VENUE);
 }
 
 function normalizeVenueKey(value) {
@@ -478,27 +494,10 @@ export function venuePreviewImage({
     if (VENUE_CATEGORY_IMAGE[key]) return VENUE_CATEGORY_IMAGE[key];
   }
 
-  const blob = candidates.join(' ').toLowerCase();
-  if (/chapel|church|wedding|baptism/.test(blob)) {
-    return VENUE_CATEGORY_IMAGE['GMC Chapel'];
-  }
-  if (/prayer mountain|retreat|hut/.test(blob)) {
-    return VENUE_CATEGORY_IMAGE['Prayer Mountain'];
-  }
-  if (/prayer tower/.test(blob)) {
-    return VENUE_CATEGORY_IMAGE['Prayer Tower'];
-  }
-  if (/garden|osgood/.test(blob)) {
-    return VENUE_CATEGORY_IMAGE.Garden;
-  }
-  if (/basketball/.test(blob)) {
-    return VENUE_CATEGORY_IMAGE['Basketball Court'];
-  }
-  if (/playground|recreation|sport|court|gym/.test(blob)) {
-    return VENUE_CATEGORY_IMAGE.Recreation;
-  }
-  if (/conference|classroom|commons|meeting|a-\d{3}/.test(blob)) {
-    return VENUE_CATEGORY_IMAGE['GMC Conference Rooms'];
+  const blob = candidates.join(' ');
+  const categoryKey = inferVenueCategory(blob);
+  if (categoryKey && VENUE_CATEGORY_IMAGE[categoryKey]) {
+    return VENUE_CATEGORY_IMAGE[categoryKey];
   }
 
   return DEFAULT_VENUE_IMAGE;

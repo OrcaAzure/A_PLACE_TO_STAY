@@ -1,289 +1,125 @@
-# How to Run APTSpace (Server Guide)
+# How to Run APTSpace
 
-Hi! This guide is for **running the APTSpace server on your computer**. You do not need to write code — just follow the steps below.
-
-APTSpace is the APTS housing and room booking web app. Once the server is running, open it in Chrome or Edge.
+Step-by-step guide for **running the server** on your computer.
 
 ---
 
-## What you need installed first
-
-Install these **once** before starting:
+## Prerequisites (install once)
 
 | Software | Version | Download |
 |----------|---------|----------|
-| **Node.js** | 18 or newer | https://nodejs.org/ (choose LTS) |
-| **MySQL** | 8.x | https://dev.mysql.com/downloads/installer/ (Windows) or use XAMPP MySQL |
-| **Git** | any recent | https://git-scm.com/downloads |
+| **Node.js** | 18+ | https://nodejs.org/ (LTS) |
+| **MySQL** | 8.x | https://dev.mysql.com/downloads/ or XAMPP |
 
-After installing Node, open a terminal and check:
-
-```bash
-node -v
-npm -v
-```
-
-You should see version numbers (e.g. `v20.x.x`).
-
-**MySQL must be running** before you start the app.  
-- If you use **XAMPP**: open XAMPP Control Panel → start **MySQL**.  
-- If you use **MySQL Installer**: the MySQL service should run automatically.
+Check: `node -v` and `npm -v` should print versions. **Start MySQL** before running the app (XAMPP → Start MySQL).
 
 ---
 
-## First-time setup (do this once)
-
-### 1. Get the project
+## First-time setup (once per machine)
 
 ```bash
-git clone https://github.com/OrcaAzure/APSTPACE.git
-cd APSTPACE
+npm run setup -- --install
 ```
 
-(If you already have the folder, just `cd` into it and run `git pull` to get the latest code.)
+This copies `client/server/.env`, installs dependencies, and creates log folders.
 
-### 2. Run setup
+1. **MySQL password** — if needed, edit `client/server/.env`:
+   ```env
+   DB_PASSWORD=your_password
+   ```
+   (Leave empty for XAMPP with no password.)
 
-```bash
-npm run setup
-npm run install:server
-```
+2. **Create database:**
+   ```bash
+   mysql -u root -p < client/database/schema.sql
+   ```
+   No password: `mysql -u root < client/database/schema.sql`  
+   XAMPP path: `C:\xampp\mysql\bin\mysql -u root < client\database\schema.sql`
 
-This creates config files and installs dependencies. It may take a few minutes.
-
-### 3. Configure database password (if needed)
-
-Open the file:
-
-```
-client/server/.env
-```
-
-If your MySQL `root` user has a password, set:
-
-```env
-DB_PASSWORD=your_mysql_password_here
-```
-
-If MySQL has **no** password (common on XAMPP), leave `DB_PASSWORD=` empty.
-
-### 4. Create the database
-
-**Windows (Command Prompt or PowerShell)** — from the project folder:
-
-```bash
-mysql -u root -p < client/database/schema.sql
-```
-
-(If no password, try: `mysql -u root < client/database/schema.sql`)
-
-**If `mysql` is not found:** use the full path, e.g.  
-`C:\xampp\mysql\bin\mysql -u root < client\database\schema.sql`
-
-### 5. Check everything is OK
-
-```bash
-npm run verify
-```
-
-You want all lines to show **✓**. If MySQL fails, fix step 3–4 before continuing.
+3. **Verify:**
+   ```bash
+   npm run verify
+   ```
+   All lines should show **✓**.
 
 ---
 
-## Start the server (every time)
-
-From the project folder:
+## Start the server
 
 ```bash
 npm run dev
 ```
 
-Wait until you see something like:
+Wait for `[server] Listening on http://0.0.0.0:3000`, then open **http://localhost:3000**.
 
-```
-[server] Listening on http://0.0.0.0:3000
-```
-
-Then open in your browser:
-
-**http://localhost:3000**
-
-### Stop the server
-
-Press **Ctrl + C** in the terminal where `npm run dev` is running.
+**Stop:** `Ctrl + C` in the terminal.
 
 ---
 
 ## Login accounts (development)
 
-On first start, the server creates demo users automatically.
+Password for all: **`password`**
 
-| Role | Email | Password |
-|------|-------|----------|
-| **Admin** | `admin@aptspace.com` | `password` |
-| **Guest (Faculty)** | `maria.santos@apts.edu.ph` | `password` |
+| Role | Email |
+|------|-------|
+| **Admin** | `admin@aptspace.com` |
+| **Guest** | `maria.santos@apts.edu.ph` |
 
-**Admin** → goes to the admin dashboard (bookings, rooms, payments).  
-**Guest** → goes to the guest portal (make reservations).
-
----
-
-## Quick test checklist
-
-After the server starts, try these:
-
-- [ ] Landing page loads at http://localhost:3000  
-- [ ] Health check: http://localhost:3000/api/health → should say `"status": "ok"`  
-- [ ] Login as admin → dashboard shows numbers (not stuck on "LOADING")  
-- [ ] Login as guest → reservations page loads  
+The server seeds additional guest users on first boot.
 
 ---
 
-## Easier option: Docker (no MySQL install)
+## Quick checklist
 
-If you have **Docker Desktop** installed, you can skip MySQL setup:
+- [ ] http://localhost:3000 loads  
+- [ ] http://localhost:3000/api/health → `"status": "ok"`  
+- [ ] Admin login → dashboard loads  
+- [ ] Guest login → reservations / facilities work  
+
+---
+
+## LAN access (optional)
+
+With the server running, the terminal prints LAN URLs for other devices on the same network.
+
+Allow port **3000** in Windows Firewall if needed. Network profile should be **Private**.
+
+---
+
+## Docker (optional — skip local MySQL)
 
 ```bash
-npm run docker:up
+npm run docker:up    # start
+npm run docker:down  # stop
 ```
 
-Open http://localhost:3000 — same logins as above.
-
-Stop:
-
-```bash
-npm run docker:down
-```
-
----
-
-## Connect from another computer (same Wi‑Fi)
-
-If someone else on your network wants to test **your** running server:
-
-1. Start the server (`npm run dev`). The terminal prints **Wi‑Fi demo URLs**, including:
-   - **By name:** `http://YOUR-PC-NAME:3000` (e.g. `http://DESKTOP-ABC:3000`)
-   - **mDNS:** `http://YOUR-PC-NAME.local:3000` (often works on iPhone/Mac)
-   - **By IP:** `http://192.168.x.x:3000`
-2. Or run anytime: `npm run demo:urls`
-3. On your PC, set the network profile to **Private** and allow port **3000** in Windows Firewall if prompted.
-4. Guests on the same Wi‑Fi open the **name** or **IP** URL in their phone browser.
-
-**Tip — easier name than IP:** Use your Windows computer name (Settings → System → About → **Device name**). Many phones accept `http://DeviceName:3000` or `http://DeviceName.local:3000` without typing the IP.
-
-5. Optional — edit `client/server/.env` for links and CORS if you use a custom hostname:
-   ```env
-   ALLOWED_ORIGIN=http://localhost:3000,http://192.168.1.45:3000,http://YOUR-PC-NAME:3000
-   APP_URL=http://YOUR-PC-NAME:3000
-   ```
-6. Restart the server (`Ctrl+C`, then `npm run dev` again).
-
-**Note:** A custom domain like `aptspace.demo` only works if you add it to each device’s hosts file or run a local DNS server — for presentations, the PC name or `.local` URL is simplest.
+Open http://localhost:3000 — same logins.
 
 ---
 
 ## Common problems
 
-### `Cannot connect to MySQL`
-
-- Start MySQL in XAMPP (or check Windows Services for MySQL).
-- Check `DB_PASSWORD` in `client/server/.env`.
-- Re-run: `mysql -u root -p < client/database/schema.sql`
-
-### `Port 3000 already in use`
-
-Something else is using port 3000. Either close that program, or change in `.env`:
-
-```env
-PORT=3001
-```
-
-Then open http://localhost:3001
-
-### `npm run verify` fails on JWT_SECRET
-
-Edit `client/server/.env` — `JWT_SECRET` can be any long random string for local dev, e.g.:
-
-```env
-JWT_SECRET=local_dev_secret_at_least_32_characters_long
-```
-
-### Page loads but login fails
-
-- Make sure the server terminal shows no red errors.
-- Try http://localhost:3000/api/health — if DB is disconnected, fix MySQL first.
-- Stop server, run `npm run dev` again (seeds users on first boot if missing).
-
-### `mysql` command not found
-
-Use the full path to MySQL from XAMPP or MySQL Installer (see step 4 above).
+| Problem | Fix |
+|---------|-----|
+| Cannot connect to MySQL | Start MySQL; check `DB_PASSWORD` in `.env`; re-import `schema.sql` |
+| Port 3000 in use | Set `PORT=3001` in `.env`, restart |
+| `npm run verify` fails JWT | Set `JWT_SECRET=local_dev_secret_at_least_32_characters_long` in `.env` |
+| Login fails | Check `/api/health`; restart with `npm run dev` |
+| `mysql` not found | Use full XAMPP path (see setup step 2) |
 
 ---
 
-## Preview UIs without MySQL (design / layout only)
+## Commands
 
-If you only want to **see pages and animations** and do not need login or real data:
+| Command | Purpose |
+|---------|---------|
+| `npm run dev` | Start server |
+| `npm run verify` | Pre-flight check |
+| `npm run setup -- --install` | First-time env + dependencies |
+| `npm run docker:up` | Start with Docker |
 
-```bash
-npm run dev:ui
-```
-
-Then open:
-
-| URL | What you see |
-|-----|----------------|
-| http://localhost:3000/?skipIntro=1 | Landing page (skips preloader + welcome) |
-| http://localhost:3000/ | Full landing (with intro animations) |
-| http://localhost:3000/login.html | Login screen |
-| http://localhost:3000/guest/dashboard.html | Guest portal layout |
-| http://localhost:3000/guest/facilities.html | Browse facilities UI |
-| http://localhost:3000/admin/dashboard.html | Admin portal layout |
-
-**Limits in UI-only mode:** MySQL is not used. Login, bookings, and API data will not work — pages may show empty lists or errors in the browser console. Use `npm run dev` with MySQL for full functionality.
-
-**Landing-only (no server):** from the project folder:
-
-```bash
-npx --yes serve client/public -l 3456
-```
-
-Open http://localhost:3456/?skipIntro=1 — landing and legal pages only (no guest/admin app pages).
+**Developer docs:** `README.md`
 
 ---
 
-## Useful commands (cheat sheet)
-
-| Command | What it does |
-|---------|----------------|
-| `npm run dev` | Start server (normal development — needs MySQL) |
-| `npm run dev:ui` | Start server **without MySQL** — UI/layout preview only |
-| `npm run verify` | Check if setup is correct |
-| `npm run docker:up` | Start with Docker (no local MySQL needed) |
-| `npm run docker:down` | Stop Docker stack |
-| `Ctrl + C` | Stop the running server |
-
----
-
-## Project folders (if you're curious)
-
-```
-APSTPACE/
-├── client/server/.env     ← your config (passwords — do not share publicly)
-├── client/database/       ← database schema
-├── client/server/views/   ← app pages (admin, guest, login)
-└── client/public/assets/  ← CSS, JavaScript, images
-```
-
----
-
-## Need help?
-
-1. Run `npm run verify` and note which lines show **✗**  
-2. Copy any **red error text** from the terminal  
-3. Ask the team (or the person who sent you this file) with that info  
-
-**Full developer docs:** see `README.md` in the same folder.
-
----
-
-*APTSpace — Asia Pacific Theological Seminary · housing & accommodation management*
+*APTSpace — Asia Pacific Theological Seminary*
