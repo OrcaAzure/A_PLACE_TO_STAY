@@ -55,5 +55,5 @@ for (const c of checks) {
 }
 
 const failed = checks.filter((c) => !c.ok).length;
-console.log(failed ? `\n${failed} issue(s) — fix before demo/deploy prep.` : '\nAll checks passed. Run: npm run dev');
+console.log(failed ? `\n${failed} issue(s) — fix before running the server.` : '\nAll checks passed. Run: npm run dev');
 process.exit(failed ? 1 : 0);

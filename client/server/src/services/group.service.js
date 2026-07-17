@@ -15,6 +15,8 @@ import {
   getRoomById,
   mealsPayloadFromRows,
   resolveMealUnitPricesForUpdate,
+  lockRoomRow,
+  releaseRoomBookingLock,
 } from './booking.service.js';
 import { validateReservationDates } from './fiscalYear.service.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from './reservationLifecycle.service.js';
@@ -264,6 +266,8 @@ export async function saveGroupBookings({
 
     for (let i = 0; i < rooms.length; i++) {
       const { room_id, guest_count } = rooms[i];
+      await lockRoomRow(conn, room_id);
+      try {
       const prepared = await prepareBookingInsert({
         roomId: room_id,
         checkIn,
@@ -271,6 +275,8 @@ export async function saveGroupBookings({
         guestCount: guest_count,
         bypassAdvanceLimit,
         excludeGroupId: groupId,
+        conn,
+        skipRoomLock: true,
       });
 
       let lineTotal = prepared.total_amount;
@@ -307,6 +313,9 @@ export async function saveGroupBookings({
           checkOut,
         });
         await saveBookingFees(firstBookingId, feesToSave);
+      }
+      } finally {
+        await releaseRoomBookingLock(conn, room_id);
       }
     }
 

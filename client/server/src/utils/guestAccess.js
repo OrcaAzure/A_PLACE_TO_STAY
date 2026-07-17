@@ -6,7 +6,6 @@ export {
   isInternalGuestEmail,
   canGuestAccessBuilding,
   canGuestAccessRoom,
-  roomAllowedForGuest,
   filterRoomsForGuestUser,
 } from '../../../public/assets/js/config/guest-access.js';
 

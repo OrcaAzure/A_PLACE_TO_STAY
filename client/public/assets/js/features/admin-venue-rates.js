@@ -13,6 +13,7 @@
 
 import { getAdminVenues, saveAdminVenue } from '/assets/js/services/api.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 const GUEST_AUDIENCE = 'Guest';
 const GUEST_VARIANT = {
@@ -81,14 +82,6 @@ function decorateFn(fn) {
     peak_rate: rateFor(fn, 'Peak'),
     ...GUEST_VARIANT,
   };
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 /* ---------- drafts ---------- */

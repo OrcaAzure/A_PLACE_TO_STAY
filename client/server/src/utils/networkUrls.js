@@ -26,12 +26,12 @@ export function getNetworkAccessUrls(port) {
   return { hostname, urls: [...urls] };
 }
 
-/** Log friendly demo URLs when the server starts (live presentation / LAN testing). */
+/** Log LAN URLs when the server starts (local network access). */
 export function printNetworkAccessUrls(port) {
   const { hostname, urls } = getNetworkAccessUrls(port);
   const ips = urls.filter((u) => !u.includes(hostname) && !u.includes('localhost') && !u.includes('127.0.0.1'));
 
-  console.log('[server] ── Wi‑Fi demo URLs (same network) ──');
+  console.log('[server] ── LAN URLs (same network) ──');
   console.log(`[server]   By name:  http://${hostname}:${port}`);
   console.log(`[server]   mDNS:     http://${hostname}.local:${port}  (iPhone/Mac)`);
   ips.forEach((u) => console.log(`[server]   By IP:    ${u}`));

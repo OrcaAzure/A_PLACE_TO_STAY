@@ -6,7 +6,10 @@ client/server/.env.staging.local
 client/server/.env.cloud
 dist
 .DS_Store
+Thumbs.db
+desktop.ini
 *.log
+client/server/logs/
 
 # Local Python deps used only for one-off spreadsheet inspection (e.g. openpyxl)
 client/.tmp_py/

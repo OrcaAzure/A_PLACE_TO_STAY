@@ -7,32 +7,15 @@ APTSpace is a web-based housing and accommodation management system for Asia Pac
 ## Quick start
 
 ```bash
-# 1. First-time setup (copies .env if missing)
-npm run setup
-
-# 2. Install server dependencies
-npm run install:server
-
-# 3. Copy env template and edit credentials (skip if setup already ran)
-# Windows:
-copy .env.example client\server\.env
-# macOS/Linux:
-cp .env.example client/server/.env
-
-# 4. Import database schema (MySQL must be running)
+npm run setup -- --install          # .env + dependencies
 mysql -u root -p < client/database/schema.sql
-
-# 5. Start the server (seeds users + demo data on first boot)
+npm run verify
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open [http://localhost:3000](http://localhost:3000) · **Run guide:** [RUN-SERVER.md](RUN-SERVER.md)
 
-**UI preview only (no MySQL):** `npm run dev:ui` then open [http://localhost:3000/?skipIntro=1](http://localhost:3000/?skipIntro=1) — see [RUN-SERVER.md](RUN-SERVER.md#preview-uis-without-mysql-design--layout-only).
-
-**Verify local setup:** `npm run verify`
-
-**Admin login:** `admin@aptspace.com` / `password` (or your `DEFAULT_PASSWORD`)
+**Admin:** `admin@aptspace.com` / `password` · **Verify:** `npm run verify`
 
 ## Local dev vs staging prep (both at once)
 

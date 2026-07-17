@@ -8,14 +8,7 @@ import {
   readBrowseQuery,
 } from '/assets/js/features/guest-booking-flow.js';
 import { isInternalGuest } from '/assets/js/services/auth.js';
-
-function escapeHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 const LAYOUT_CLASS = {
   hero: 'browse-category-card--hero',

@@ -1,429 +1,3 @@
-<!DOCTYPE html>
-<html class="scroll-smooth" lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>Browse | APTS Guest</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script src="/assets/js/config/tailwind-theme-base.js"></script>
-<script src="/assets/js/config/tailwind-guest.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/assets/css/global/landing.css"/>
-<link rel="stylesheet" href="/assets/css/global/guest-portal.css"/>
-<link rel="stylesheet" href="/assets/css/global/main.css" />
-<link rel="stylesheet" href="/assets/css/components/components.css" />
-<link rel="stylesheet" href="/assets/css/global/responsive.css" />
-<script type="module" src="https://cdn.jsdelivr.net/npm/@dotlottie/player-component@2.7.12/dist/dotlottie-player.mjs" data-apt-dotlottie></script>
-<style>
-    .material-symbols-outlined {
-        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        vertical-align: middle;
-    }
-    @keyframes fadeInUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
-    .reveal { opacity: 0; animation: fadeInUp .45s cubic-bezier(.22,.61,.36,1) forwards; }
-    .skeleton { background: #eef2f7; border-radius: 16px; animation: pulse 1.3s ease-in-out infinite; }
-    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .55; } }
-    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-</style>
-</head>
-<body>
-
-<div id="page-content">
-<div class="max-w-container-max mx-auto flex flex-col gap-6 sm:gap-8">
-
-  <header class="browse-hero reveal">
-    <p class="browse-kicker">Browse</p>
-    <h2 class="font-headline-xl text-headline-xl text-on-surface" id="rooms">Find your space</h2>
-    <p id="browse-subtitle" class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Choose a category below, then set your dates and reserve what is open for your account.</p>
-  </header>
-
-  <div id="guest-access-notice" class="reveal"></div>
-
-  <section class="browse-categories reveal" style="animation-delay:.03s" aria-labelledby="browse-categories-heading">
-    <div class="browse-categories__head">
-      <div>
-        <p class="browse-categories__eyebrow">What&rsquo;s available</p>
-        <h3 id="browse-categories-heading" class="browse-categories__title">Pick a category</h3>
-      </div>
-      <p id="active-category-label" class="browse-categories__active" aria-live="polite"></p>
-    </div>
-    <div id="browse-category-cards" class="browse-category-mosaic" role="list"></div>
-  </section>
-
-  <div id="browse-flow-anchor" class="browse-flow-anchor" tabindex="-1"></div>
-
-  <div id="browse-price-notice" class="reveal" style="animation-delay:.05s"></div>
-
-  <div id="browse-room-tools" class="space-y-5 reveal" style="animation-delay:.08s">
-    <section class="browse-stay-planner browse-panel" id="browse-stay-planner">
-      <div class="browse-stay-planner-top">
-        <div>
-          <h3 class="browse-stay-planner-title">Plan your stay</h3>
-          <p class="browse-stay-planner-desc">Please select your dates and guests below first.</p>
-        </div>
-        <span id="browse-stay-status" class="browse-stay-status hidden" aria-live="polite"></span>
-      </div>
-
-      <div class="browse-stay-bar">
-        <div class="browse-stay-segment">
-          <label class="browse-stay-label" for="filter-check-in">Check-in</label>
-          <input id="filter-check-in" class="browse-stay-input" type="date" autocomplete="off">
-        </div>
-        <div class="browse-stay-segment">
-          <label class="browse-stay-label" for="filter-check-out">Check-out</label>
-          <input id="filter-check-out" class="browse-stay-input" type="date" autocomplete="off">
-        </div>
-        <div class="browse-stay-segment browse-stay-segment--guests">
-          <label class="browse-stay-label" for="filter-guests">Guests</label>
-          <input id="filter-guests" type="number" min="1" max="500" value="1" class="browse-stay-input" inputmode="numeric">
-        </div>
-        <div class="browse-stay-segment browse-stay-segment--action">
-          <button id="find-rooms" type="button" class="browse-stay-submit" disabled>
-            <span class="material-symbols-outlined">search</span>
-            <span class="browse-stay-submit-text">See available rooms</span>
-          </button>
-        </div>
-      </div>
-
-      <div id="availability-note" class="browse-stay-feedback hidden" role="status">
-        <span id="availability-text"></span>
-        <button type="button" id="clear-stay-btn" class="browse-stay-clear hidden">Reset stay</button>
-      </div>
-
-      <label class="browse-stay-multi-room" for="filter-multi-room">
-        <input id="filter-multi-room" type="checkbox" class="browse-stay-multi-room__input" />
-        <span class="browse-stay-multi-room__box" aria-hidden="true"></span>
-        <span class="browse-stay-multi-room__text">
-          <strong>We need multiple rooms</strong>
-          <span id="browse-multi-room-hint" class="browse-stay-multi-room__hint">Show rooms that fit part of your group — add each room to your booking request until everyone is covered.</span>
-        </span>
-      </label>
-    </section>
-
-    <div id="browse-room-results" class="browse-room-results space-y-4">
-      <section id="browse-refine-panel" class="browse-panel browse-refine-panel hidden">
-        <div class="browse-refine-bar">
-          <div class="browse-refine-search-wrap">
-            <label class="browse-refine-search" for="room-search">
-              <span class="material-symbols-outlined browse-refine-search-icon" aria-hidden="true">search</span>
-              <input id="room-search" type="search" placeholder="Search by room number or type…" autocomplete="off" />
-            </label>
-          </div>
-          <div class="browse-refine-divider" aria-hidden="true"></div>
-          <div class="browse-refine-types">
-            <span class="browse-refine-types-label" id="type-filter-label">Room type</span>
-            <div id="type-filters" class="browse-type-segment" role="group" aria-labelledby="type-filter-label"></div>
-          </div>
-        </div>
-        <div id="building-filter-wrap" class="browse-building-row hidden">
-          <label class="browse-refine-types-label" for="building-select">Building</label>
-          <select id="building-select" class="browse-building-select"></select>
-        </div>
-      </section>
-
-      <div id="rooms-mount" class="space-y-8"></div>
-    </div>
-  </div>
-
-  <div class="reveal pt-2" style="animation-delay:.12s" id="venues">
-    <p class="browse-kicker">Venues</p>
-    <h2 class="font-headline-xl text-headline-xl text-on-surface">Event spaces</h2>
-    <p class="font-body-md text-body-md text-on-surface-variant max-w-2xl">Hourly bookings with live slot checks before you submit.</p>
-  </div>
-
-  <div id="venues-mount" class="space-y-8 reveal" style="animation-delay:.15s">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-      <div class="skeleton h-48"></div>
-      <div class="skeleton h-48"></div>
-    </div>
-  </div>
-
-</div>
-</div>
-
-<!-- Browse space preview (photos + details) — preserved outside page-content -->
-<div id="browse-preview-modal" data-layout-preserve class="browse-preview" hidden aria-hidden="true">
-  <button type="button" class="browse-preview__backdrop" data-preview-close aria-label="Close preview"></button>
-  <div class="browse-preview__panel" role="dialog" aria-modal="true" aria-labelledby="browse-preview-title">
-    <div class="browse-preview__layout">
-      <div class="browse-preview__gallery">
-        <div class="browse-preview__stage">
-          <div class="browse-preview__frame">
-            <img id="browse-preview-image" src="" alt="" />
-          </div>
-          <button type="button" class="browse-preview__nav browse-preview__nav--prev" data-preview-prev aria-label="Previous photo">
-            <span class="material-symbols-outlined">chevron_left</span>
-          </button>
-          <button type="button" class="browse-preview__nav browse-preview__nav--next" data-preview-next aria-label="Next photo">
-            <span class="material-symbols-outlined">chevron_right</span>
-          </button>
-          <p class="browse-preview__counter" id="browse-preview-counter"></p>
-        </div>
-        <div class="browse-preview__thumbs" id="browse-preview-thumbs" role="tablist" aria-label="Photos"></div>
-      </div>
-      <div class="browse-preview__details">
-        <div class="browse-preview__details-head">
-          <div>
-            <p class="browse-preview__eyebrow" id="browse-preview-eyebrow"></p>
-            <h3 class="browse-preview__title" id="browse-preview-title"></h3>
-          </div>
-          <button type="button" class="browse-preview__close" data-preview-close aria-label="Close">
-            <span class="material-symbols-outlined">close</span>
-          </button>
-        </div>
-        <div class="browse-preview__details-scroll">
-          <div class="browse-preview__meta" id="browse-preview-meta"></div>
-          <div class="browse-preview__body" id="browse-preview-body"></div>
-        </div>
-        <div class="browse-preview__actions" id="browse-preview-actions"></div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Venue Booking Modal -->
-<div id="venue-booking-modal" data-layout-preserve class="guest-flow-modal hidden fixed inset-0 flex items-end sm:items-center justify-center bg-black/40">
-  <div class="guest-flow-modal__panel bg-white w-full sm:max-w-lg p-6 space-y-4">
-    <div class="flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2 min-w-0">
-        <button type="button" id="vbm-back" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-full p-1 transition-colors shrink-0" aria-label="Back to details">
-          <span class="material-symbols-outlined">arrow_back</span>
-        </button>
-        <div class="min-w-0">
-          <h3 class="font-headline-sm text-on-surface truncate" id="vbm-title">Book Venue</h3>
-          <p id="vbm-subtitle" class="text-body-sm text-on-surface-variant mt-0.5">Set the date and time, then submit your request.</p>
-        </div>
-      </div>
-      <button id="vbm-close" type="button" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low rounded-full p-1 transition-colors shrink-0" aria-label="Close">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-
-    <div id="vbm-form-fields" class="space-y-4">
-      <input type="hidden" id="vbm-category" />
-      <input type="hidden" id="vbm-item" />
-      <input type="hidden" id="vbm-facility-id" />
-
-      <div class="space-y-3">
-        <div id="vbm-use-wrap" class="hidden">
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-use">Choose use / function</label>
-          <select id="vbm-use" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm bg-white"></select>
-          <p class="text-label-sm text-on-surface-variant mt-1">This venue has more than one booking type. Pick the one you need.</p>
-        </div>
-        <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-date">Event Date</label>
-          <input type="date" id="vbm-date" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
-          <p id="vbm-rate-hint" class="text-body-sm text-on-surface-variant mt-1">Rate depends on the event date (Regular or Peak).</p>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-start">Start Time</label>
-            <input type="time" id="vbm-start" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
-          </div>
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-end">End Time</label>
-            <input type="time" id="vbm-end" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" />
-          </div>
-        </div>
-        <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-guests">Number of guests</label>
-          <input type="number" id="vbm-guests" min="1" max="500" value="1" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" inputmode="numeric" />
-          <p id="vbm-capacity-hint" class="text-body-sm text-on-surface-variant mt-1 hidden"></p>
-        </div>
-        <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-phone">Contact number <span class="text-on-surface-variant/80">(optional)</span></label>
-          <input type="tel" id="vbm-phone" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="09XX XXX XXXX" autocomplete="tel" />
-        </div>
-        <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-notes">Notes (optional)</label>
-          <textarea id="vbm-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Purpose, special requirements…"></textarea>
-        </div>
-        <div id="vbm-info" class="hidden space-y-2 rounded-lg bg-surface-container-low/60 border border-outline-variant/60 p-3"></div>
-      </div>
-
-      <div id="vbm-feedback" class="hidden text-body-sm rounded-lg px-3 py-2"></div>
-      <div id="vbm-slot-status" class="hidden text-body-sm rounded-lg px-3 py-2"></div>
-      <div id="vbm-price-notice"></div>
-
-      <div class="flex flex-col sm:flex-row gap-3 pt-1">
-        <button type="button" id="vbm-cancel-btn"
-          class="flex-1 border border-outline-variant rounded-lg py-2.5 text-body-sm text-on-surface hover:bg-surface-container-low">
-          Cancel
-        </button>
-        <button type="button" id="vbm-add-request-btn"
-          class="js-requires-write flex-1 border border-primary text-primary rounded-lg py-2.5 text-body-sm font-medium hover:bg-primary/5">
-          Add to booking request
-        </button>
-        <button type="button" id="vbm-submit-btn"
-          class="flex-1 bg-primary text-white rounded-lg py-2.5 text-body-sm font-medium hover:opacity-90 disabled:opacity-50">
-          Submit Request
-        </button>
-      </div>
-    </div>
-
-    <div id="vbm-success-panel" class="guest-booking-success hidden" role="status">
-      <span class="material-symbols-outlined guest-booking-success__icon" aria-hidden="true">check_circle</span>
-      <div class="guest-booking-success__copy">
-        <h4 class="guest-booking-success__title">Request submitted</h4>
-        <p id="vbm-success-msg" class="guest-booking-success__msg"></p>
-        <p class="guest-booking-success__hint">Staff will review your venue request and email you when it is confirmed.</p>
-      </div>
-      <div class="guest-booking-success__actions">
-        <a href="/guest/reservations.html" class="guest-booking-success__primary">View Reservation History</a>
-        <button type="button" id="vbm-success-done" class="guest-booking-success__secondary">Done</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Room booking modal (stays on browse page) -->
-<div id="booking-modal-overlay" data-layout-preserve class="modal-overlay guest-flow-modal is-hidden fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4">
-  <div class="modal-panel guest-flow-modal__panel bg-white w-full sm:max-w-2xl nice-scroll">
-    <div class="p-6 border-b border-outline-variant flex items-center justify-between sticky top-0 bg-white z-10">
-      <div>
-        <h3 id="booking-modal-title" class="font-headline-md text-headline-md">Confirm your reservation</h3>
-        <p id="booking-modal-subtitle" class="text-body-sm text-on-surface-variant">Review your room and dates, then submit your request.</p>
-      </div>
-      <button type="button" id="booking-modal-close" class="text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-full p-1 transition-colors">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-    </div>
-    <form id="booking-form" class="p-6 space-y-5">
-      <div id="booking-form-fields" class="space-y-5">
-        <div id="booking-price-notice"></div>
-
-        <div id="booking-confirm-panel" class="hidden space-y-4">
-          <dl class="grid grid-cols-3 gap-3 rounded-xl bg-surface-container-low border border-outline-variant/60 p-4 text-center">
-            <div>
-              <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Check-in</dt>
-              <dd id="confirm-check-in" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
-            </div>
-            <div>
-              <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Check-out</dt>
-              <dd id="confirm-check-out" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
-            </div>
-            <div>
-              <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Guests</dt>
-              <dd id="confirm-guests" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
-            </div>
-          </dl>
-          <button type="button" id="booking-change-selection" class="text-primary text-body-sm font-medium hover:underline">
-            Change room or dates
-          </button>
-        </div>
-
-        <div id="booking-search-panel" class="space-y-5">
-          <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-in">Check-in</label>
-              <input type="date" id="booking-check-in" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
-            </div>
-            <div>
-              <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-check-out">Check-out</label>
-              <input type="date" id="booking-check-out" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
-            </div>
-          </div>
-          <p id="booking-window-hint" class="text-[12px] text-on-surface-variant hidden"></p>
-          <div>
-            <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-guests">Guests</label>
-            <input type="number" id="booking-guests" min="1" max="500" value="1" required class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" inputmode="numeric" />
-            <p class="text-[12px] text-on-surface-variant mt-1">Dorm bookings require at least 5 guests and are priced per person per night.</p>
-          </div>
-
-          <button type="button" id="find-rooms-btn" class="w-full py-3 bg-surface-container-high text-on-surface rounded-lg font-label-md font-bold border border-outline-variant hover:bg-surface-container transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-[20px]">search</span>
-            Find available rooms
-          </button>
-
-          <div id="room-results-wrap" class="hidden">
-            <div class="flex items-center justify-between mb-2">
-              <label class="text-label-sm text-on-surface-variant block">Available rooms</label>
-              <span id="room-results-count" class="text-[11px] font-bold text-on-surface-variant uppercase"></span>
-            </div>
-            <div id="room-results" class="space-y-2 max-h-64 overflow-y-auto nice-scroll pr-1"></div>
-          </div>
-        </div>
-
-        <div id="booking-selected-room-wrap" class="hidden">
-          <div id="booking-selected-room" class="rounded-2xl border border-outline-variant p-4 bg-surface-container-low/40"></div>
-        </div>
-
-        <input type="hidden" id="booking-room" />
-
-        <section id="booking-extras-panel" class="guest-booking-extras hidden">
-          <div class="guest-booking-extras__head">
-            <div>
-              <h4 class="guest-booking-extras__title">Meals & extras</h4>
-              <p class="guest-booking-extras__sub">Optional add-ons for your stay.</p>
-            </div>
-          </div>
-          <div class="guest-extras-block">
-            <p class="guest-extras-block__label">Meals</p>
-            <div id="booking-meals-grid" class="guest-meals-grid"></div>
-            <label class="guest-extras-block__label mt-3" for="booking-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
-            <textarea id="booking-meal-allergens" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="e.g. nut allergy, gluten-free, vegetarian…"></textarea>
-          </div>
-          <div class="guest-extras-block" data-guest-extras-services>
-            <p class="guest-extras-block__label">Extra services</p>
-            <div id="booking-selected-fees" class="guest-added-extras hidden"></div>
-            <div id="booking-fee-chips" class="guest-service-grid"></div>
-            <div id="booking-fee-submenu" class="guest-service-drawer hidden" aria-live="polite"></div>
-          </div>
-        </section>
-
-        <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-notes">Notes (optional)</label>
-          <textarea id="booking-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Special requests, arrival time, etc."></textarea>
-        </div>
-
-        <div id="booking-summary" class="hidden bg-surface-container-low rounded-xl p-4 border border-outline-variant">
-          <div class="guest-total-breakdown">
-            <div class="guest-total-line">
-              <span>Room</span>
-              <span id="booking-line-room">—</span>
-            </div>
-            <div class="guest-total-line hidden" id="booking-line-meals-wrap">
-              <span>Meals</span>
-              <span id="booking-line-meals">—</span>
-            </div>
-            <div class="guest-total-line hidden" id="booking-line-fees-wrap">
-              <span>Extras</span>
-              <span id="booking-line-fees">—</span>
-            </div>
-            <div class="guest-total-line guest-total-line--grand">
-              <span>Estimated total</span>
-              <span id="booking-summary-total">—</span>
-            </div>
-          </div>
-          <p class="text-[11px] text-on-surface-variant mt-2" id="booking-summary-meta"></p>
-        </div>
-
-        <div id="booking-form-error" class="hidden text-body-sm text-error bg-error-container rounded-lg px-3 py-2"></div>
-        <div class="flex gap-3 pt-1">
-          <button type="button" id="booking-cancel-btn" class="flex-1 py-3 border border-outline-variant rounded-lg font-label-md hover:bg-surface-container transition-colors">Cancel</button>
-          <button type="submit" id="booking-submit-btn" disabled class="flex-1 py-3 bg-primary text-white rounded-lg font-label-md hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed">Submit Request</button>
-        </div>
-      </div>
-
-      <div id="booking-success-panel" class="guest-booking-success hidden" role="status">
-        <span class="material-symbols-outlined guest-booking-success__icon" aria-hidden="true">check_circle</span>
-        <div class="guest-booking-success__copy">
-          <h4 class="guest-booking-success__title">Request submitted</h4>
-          <p id="booking-success-msg" class="guest-booking-success__msg"></p>
-          <p class="guest-booking-success__hint">Housing will review your request and email you when it is confirmed.</p>
-        </div>
-        <div class="guest-booking-success__actions">
-          <a href="/guest/reservations.html" class="guest-booking-success__primary">View Reservation History</a>
-          <button type="button" id="booking-success-done" class="guest-booking-success__secondary">Done</button>
-        </div>
-      </div>
-    </form>
-  </div>
-</div>
-
-<<<<<<< HEAD
-<script type="module">
   import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
   import { initAppLayout } from '/assets/js/layout/ui.js';
   import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
@@ -439,7 +13,7 @@
     resolveBrowseCategory,
     getBrowseCategoryMeta,
     categoryShowsRooms,
-    roomAllowedForGuest,
+    canGuestAccessRoom,
     venueMatchesBrowseCategory,
     guestAccessNoticeHtml,
     parsePackageHours,
@@ -468,7 +42,7 @@
     showBookingRequestToast,
   } from '/assets/js/features/guest-booking-request-ui.js';
   import { openRoomGuestPicker } from '/assets/js/features/guest-room-guest-picker.js';
-  import { DORM_MIN_GUEST_COUNT } from '/assets/js/features/reservation-shared.js';
+  import { DORM_MIN_GUEST_COUNT, escapeHtml } from '/assets/js/features/reservation-shared.js';
   import {
     paintBrowseCategoryCards,
     buildBrowseCategoryCardsHtml,
@@ -851,7 +425,7 @@
     return [...availability.values()]
       .filter((a) => isAvailabilityVisible(a.availability_status))
       .map(roomFromAvailability)
-      .filter((r) => roomAllowedForGuest(r, isInternal) && !isBlocked(r.building));
+      .filter((r) => canGuestAccessRoom(r, isInternal) && !isBlocked(r.building));
   }
 
   function applyFiltersToList(rooms) {
@@ -872,7 +446,7 @@
       .filter((a) => isAvailabilityVisible(a.availability_status))
       .filter((a) => !isBlocked(a.building_name))
       .map(roomFromAvailability)
-      .filter((r) => roomAllowedForGuest(r, isInternal));
+      .filter((r) => canGuestAccessRoom(r, isInternal));
 
     return applyFiltersToList(visible);
   }
@@ -1103,6 +677,9 @@
       <article
         class="browse-room-card browse-space-card${silent ? '' : ' reveal'}"
         data-preview-room="${escapeHtml(String(room.id))}"
+        tabindex="0"
+        role="button"
+        aria-label="View photos and details for Room ${escapeHtml(String(room.roomNumber))}"
       >
         <div class="browse-room-card__media">
           <img src="${img}" alt="${room.roomType} room ${room.roomNumber}" loading="lazy" />
@@ -1181,7 +758,7 @@
       allRooms = rooms
         .map((r) => ({ ...normalizeRoom(r), capacityMin: r.capacity_min, capacityMax: r.capacity_max }))
         .filter((r) => !isBlocked(r.building))
-        .filter((r) => roomAllowedForGuest(r, isInternal));
+        .filter((r) => canGuestAccessRoom(r, isInternal));
       renderCategoryCards();
       renderFilters();
       if (isRoomBrowseUnlocked()) render();
@@ -1226,12 +803,12 @@
       const availCount = (data.rooms || []).filter(
         (r) => isAvailabilityVisible(r.availability_status)
           && !isBlocked(r.building_name)
-          && roomAllowedForGuest({ building: r.building_name }, isInternal),
+          && canGuestAccessRoom({ building: r.building_name }, isInternal),
       ).length;
       const bookCount = (data.rooms || []).filter(
         (r) => isAvailabilityBookable(r.availability_status)
           && !isBlocked(r.building_name)
-          && roomAllowedForGuest({ building: r.building_name }, isInternal),
+          && canGuestAccessRoom({ building: r.building_name }, isInternal),
       ).length;
       updateRoomBrowseVisibility();
       if (!background) renderFilters();
@@ -1302,20 +879,14 @@
     onStayCriteriaChange();
   });
   checkOutEl?.addEventListener('change', onStayCriteriaChange);
-  guestsEl?.addEventListener('change', () => {
+  guestsEl?.addEventListener('input', () => {
     persistStayCriteria();
     updateStayFormState();
-    if (isMultiRoomBrowse()) {
-      setGroupTotalGuests(totalGroupGuests());
-    }
     onStayCriteriaChange();
   });
-  // Don't bind guests on every keystroke — multi-digit values like 25 must finish typing first.
+  guestsEl?.addEventListener('change', onStayCriteriaChange);
   multiRoomEl?.addEventListener('change', () => {
     updateMultiRoomCopy();
-    if (isMultiRoomBrowse()) {
-      setGroupTotalGuests(totalGroupGuests());
-    }
     onStayCriteriaChange();
     if (isRoomBrowseUnlocked() && hasValidStayDates()) {
       checkAvailability();
@@ -1348,23 +919,31 @@
       checkAvailability();
       return;
     }
-
-    const previewBtn = e.target.closest('[data-preview-open]');
-    if (previewBtn) {
-      e.preventDefault();
-      e.stopPropagation();
-      const card = previewBtn.closest('[data-preview-room]');
-      if (card) openRoomPreview(card.dataset.previewRoom);
-    }
+    if (e.target.closest('a[href], [data-preview-stop]')) return;
+    const card = e.target.closest('[data-preview-room]');
+    if (card) openRoomPreview(card.dataset.previewRoom);
+  });
+  document.getElementById('rooms-mount')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest('a, button')) return;
+    const card = e.target.closest('[data-preview-room]');
+    if (!card) return;
+    e.preventDefault();
+    openRoomPreview(card.dataset.previewRoom);
   });
 
   document.getElementById('venues-mount')?.addEventListener('click', (e) => {
-    const previewBtn = e.target.closest('[data-preview-open]');
-    if (!previewBtn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const card = previewBtn.closest('[data-preview-venue]');
+    if (e.target.closest('[data-preview-stop]')) return;
+    const card = e.target.closest('[data-preview-venue]');
     if (card) openVenuePreview(card.dataset.previewVenue);
+  });
+  document.getElementById('venues-mount')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    if (e.target.closest('a, button')) return;
+    const card = e.target.closest('[data-preview-venue]');
+    if (!card) return;
+    e.preventDefault();
+    openVenuePreview(card.dataset.previewVenue);
   });
 
   let searchTimer;
@@ -1374,9 +953,6 @@
   });
 
   // ---- Venue section ----
-  function escapeHtml(str) {
-    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  }
 
   // Collapse rows that share a physical space (same category + name + code)
   // into one venue with multiple "uses" so guests see a single card with a
@@ -1474,6 +1050,9 @@
       <article
         class="browse-venue-card browse-space-card flex flex-col bg-white rounded-2xl overflow-hidden border border-outline-variant hover:border-primary/40 hover:shadow-xl transition-all duration-300 reveal"
         data-preview-venue="${escapeHtml(venue.key)}"
+        tabindex="0"
+        role="button"
+        aria-label="View photos and details for ${escapeHtml(venue.name)}"
       >
         <div class="browse-venue-card__media">
           <img src="${escapeHtml(img)}" alt="" loading="lazy" class="w-full h-full object-cover" />
@@ -1491,8 +1070,7 @@
           ${blurbNote}
           <button type="button"
             class="mt-auto w-full border border-primary text-primary rounded-lg py-2 text-label-sm hover:bg-primary hover:text-white transition-colors"
-            data-preview-open
-            aria-label="View photos and details for ${escapeHtml(venue.name)}">
+            data-preview-open>
             <span class="inline-flex items-center justify-center gap-1.5">
               <span class="material-symbols-outlined text-[16px]" aria-hidden="true">photo_library</span>
               View details
@@ -1845,7 +1423,10 @@
     }
     if (previewActions) {
       previewActions.className = 'browse-preview__actions browse-preview__actions--stacked';
-      previewActions.innerHTML = roomReserveControl(room, { compact: true });
+      previewActions.innerHTML = `
+        <button type="button" class="browse-preview__ghost" data-preview-close>Keep browsing</button>
+        ${roomReserveControl(room, { compact: true })}
+      `;
     }
 
     renderPreviewThumbs();
@@ -1920,8 +1501,10 @@
     if (previewActions) {
       previewActions.className = 'browse-preview__actions browse-preview__actions--stacked';
       previewActions.innerHTML = readOnly
-        ? `<div class="browse-preview__cta text-center bg-surface-container-low text-outline border border-outline-variant/50">View only</div>`
-        : `<button type="button" class="browse-preview__cta browse-preview__cta--secondary" data-venue-add-request data-venue-key="${escapeHtml(venue.key)}" data-preview-stop>Add to booking request</button>
+        ? `<button type="button" class="browse-preview__ghost" data-preview-close>Close</button>
+           <div class="browse-preview__cta text-center bg-surface-container-low text-outline border border-outline-variant/50">View only</div>`
+        : `<button type="button" class="browse-preview__ghost" data-preview-close>Keep browsing</button>
+           <button type="button" class="browse-preview__cta browse-preview__cta--secondary" data-venue-add-request data-venue-key="${escapeHtml(venue.key)}" data-preview-stop>Add to booking request</button>
            <button type="button" class="browse-preview__cta browse-preview__cta--primary" data-venue-key="${escapeHtml(venue.key)}" data-preview-book>Request this venue</button>`;
     }
 
@@ -2029,16 +1612,12 @@
   const modal    = document.getElementById('venue-booking-modal');
   if (modal && modal.parentElement !== document.body) {document.body.appendChild(modal);}
   const titleEl  = document.getElementById('vbm-title');
-  const subtitleEl = document.getElementById('vbm-subtitle');
   const catEl    = document.getElementById('vbm-category');
   const itemEl   = document.getElementById('vbm-item');
   const feedback = document.getElementById('vbm-feedback');
   const submitBtn= document.getElementById('vbm-submit-btn');
   const addRequestBtn = document.getElementById('vbm-add-request-btn');
   const rateHint = document.getElementById('vbm-rate-hint');
-  const formFields = document.getElementById('vbm-form-fields');
-  const successPanel = document.getElementById('vbm-success-panel');
-  const backBtn = document.getElementById('vbm-back');
 
   const useEl = document.getElementById('vbm-use');
   const useWrap = document.getElementById('vbm-use-wrap');
@@ -2046,37 +1625,6 @@
   const infoEl = document.getElementById('vbm-info');
   const capacityHint = document.getElementById('vbm-capacity-hint');
   let currentVenue = null;
-
-  function fmtVenueTime(t) {
-    if (!t) return '';
-    const [h, m] = String(t).slice(0, 5).split(':').map(Number);
-    if (Number.isNaN(h)) return t;
-    const d = new Date(2000, 0, 1, h, m || 0);
-    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-  }
-
-  function resetVenueSuccessState() {
-    formFields?.classList.remove('hidden');
-    successPanel?.classList.add('hidden');
-    backBtn?.classList.remove('hidden');
-    if (titleEl && currentVenue) {
-      titleEl.textContent = `Book — ${currentVenue.name}${currentVenue.room_code ? ` (${currentVenue.room_code})` : ''}`;
-    }
-    if (subtitleEl) subtitleEl.textContent = 'Set the date and time, then submit your request.';
-  }
-
-  function showVenueBookingSuccess({ venueName, useLabel, eventDate, startTime, endTime }) {
-    const msg = document.getElementById('vbm-success-msg');
-    const when = `${fmtStayDate(eventDate)} · ${fmtVenueTime(startTime)} – ${fmtVenueTime(endTime)}`;
-    const place = [venueName, useLabel].filter(Boolean).join(' — ');
-    if (msg) msg.textContent = `${place} for ${when} is pending approval.`;
-    formFields?.classList.add('hidden');
-    successPanel?.classList.remove('hidden');
-    backBtn?.classList.add('hidden');
-    if (titleEl) titleEl.textContent = 'Request submitted';
-    if (subtitleEl) subtitleEl.textContent = 'Staff will review your venue request and notify you by email.';
-    feedback?.classList.add('hidden');
-  }
 
   function selectedFacilityId() {
     return facilityIdEl?.value || useEl?.value || '';
@@ -2153,7 +1701,6 @@
     useWrap?.classList.toggle('hidden', venue.uses.length <= 1);
 
     if (titleEl) titleEl.textContent = `Book — ${venue.name}${venue.room_code ? ` (${venue.room_code})` : ''}`;
-    if (subtitleEl) subtitleEl.textContent = 'Set the date and time, then submit your request.';
 
     const dateEl = document.getElementById('vbm-date');
     if (dateEl) {
@@ -2172,37 +1719,27 @@
     if (vbmGuests) vbmGuests.value = '1';
     feedback?.classList.add('hidden');
     document.getElementById('vbm-slot-status')?.classList.add('hidden');
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit Request';
-    }
+    if (submitBtn) submitBtn.disabled = false;
     if (rateHint) {
       rateHint.textContent = 'Pick a date and time — we check slot availability before you submit.';
     }
     renderVenueInfo(venue);
     applySelectedUse();
-    resetVenueSuccessState();
     modal?.classList.remove('hidden');
   }
 
   function closeVenueModal() {
     modal?.classList.add('hidden');
-    ['vbm-date','vbm-start','vbm-end','vbm-notes','vbm-phone'].forEach(id => {
+    ['vbm-date','vbm-start','vbm-end','vbm-notes'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
     const guests = document.getElementById('vbm-guests');
     if (guests) guests.value = '1';
-    if (submitBtn) {
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit Request';
-    }
-    resetVenueSuccessState();
   }
 
   document.getElementById('vbm-close')?.addEventListener('click', closeVenueModal);
   document.getElementById('vbm-cancel-btn')?.addEventListener('click', closeVenueModal);
-  document.getElementById('vbm-success-done')?.addEventListener('click', closeVenueModal);
   document.getElementById('vbm-back')?.addEventListener('click', () => {
     const key = currentVenue?.key;
     closeVenueModal();
@@ -2430,16 +1967,9 @@
         notes,
         contact_phone: document.getElementById('vbm-phone')?.value?.trim() || undefined,
       });
-      const use = currentVenue?.uses?.find((u) => String(u.facilityId) === String(facilityId));
-      showVenueBookingSuccess({
-        venueName: currentVenue?.name || 'Venue',
-        useLabel: use?.functionName || '',
-        eventDate,
-        startTime,
-        endTime,
-      });
-      submitBtn.disabled = false;
-      submitBtn.textContent = 'Submit Request';
+      showMsg('Venue request submitted! You will be notified once it is approved.', false);
+      submitBtn.textContent = 'Submitted';
+      setTimeout(closeVenueModal, 2000);
     } catch (err) {
       showMsg(err.message || 'Submission failed. Please try again.', true);
       submitBtn.disabled    = false;
@@ -2485,8 +2015,3 @@
   roomBookingReady.catch((err) => {
     console.error('[browse] Room booking modal failed to initialize', err);
   });
-</script>
-=======
-<script type="module" src="/assets/js/features/guest-facilities-browse.js"></script>
->>>>>>> 4b3aa67456624dcab9a56bea8de2ff9e4181c02a
-</body></html>

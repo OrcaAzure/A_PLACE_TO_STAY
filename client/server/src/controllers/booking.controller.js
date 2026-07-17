@@ -22,6 +22,8 @@ import {
   resolveSeason,
   getRoomStayEstimate,
   getStayQuote,
+  lockRoomRow,
+  releaseRoomBookingLock,
 } from '../services/booking.service.js';
 import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestAccess.js';
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
@@ -201,7 +203,10 @@ export const getMealRateList = async (req, res) => {
 };
 
 export const createBooking = async (req, res) => {
+  const conn = await pool.getConnection();
+  const roomIdForLock = req.body?.room_id;
   try {
+    await conn.beginTransaction();
     const { role, id: requesterId } = req.user;
     const {
       user_id, room_id, check_in, check_out, guest_count,
@@ -224,6 +229,8 @@ export const createBooking = async (req, res) => {
       }
     }
 
+    await lockRoomRow(conn, room_id);
+
     const prepared = await prepareBookingInsert({
       roomId: room_id,
       checkIn: check_in,
@@ -232,6 +239,8 @@ export const createBooking = async (req, res) => {
       season,
       occupancyItem: occupancy_item,
       bypassAdvanceLimit: isAdmin,
+      conn,
+      skipRoomLock: true,
     });
 
     const mealRates = await getMealRates();
@@ -254,7 +263,7 @@ export const createBooking = async (req, res) => {
 
     const bookingStatus = isAdminRole(role) ? (status || 'Approved') : 'Pending';
 
-    const [result] = await pool.query(
+    const [result] = await conn.query(
       `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes, pricing_category)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -263,6 +272,9 @@ export const createBooking = async (req, res) => {
         notes || null, contact_phone || null, meal_allergen_notes || null, 'Guest',
       ]
     );
+
+    await conn.commit();
+    await releaseRoomBookingLock(conn, room_id);
 
     await saveBookingMeals(result.insertId, meals, mealRates, { checkIn: check_in, checkOut: check_out });
     await saveBookingFees(result.insertId, feesToSave);
@@ -276,9 +288,15 @@ export const createBooking = async (req, res) => {
     notifyBookingCreated(rows[0]);
     res.status(201).json({ message: 'Booking created', booking });
   } catch (error) {
-    const status = error.message.includes('already reserved') || error.message.includes('Maximum') || error.message.includes('Minimum') || error.message.includes('maintenance') || error.message.includes('advance') || error.message.includes('past')
+    if (conn) {
+      try { await conn.rollback(); } catch { /* ignore */ }
+    }
+    const status = error.message.includes('already reserved') || error.message.includes('being booked by another request') || error.message.includes('Maximum') || error.message.includes('Minimum') || error.message.includes('maintenance') || error.message.includes('advance') || error.message.includes('past')
       ? 409 : 400;
     res.status(status).json({ message: error.message });
+  } finally {
+    await releaseRoomBookingLock(conn, roomIdForLock);
+    conn.release();
   }
 };
 

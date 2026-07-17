@@ -15,6 +15,7 @@ import {
   deleteExtraServiceRate,
 } from '/assets/js/services/api.js';
 import { confirmModal, loadComponent, showAlertModal } from '/assets/js/layout/ui.js';
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 const DEFAULT_MEAL_NAMES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const DEFAULT_EXTRA_CATEGORIES = [
@@ -206,14 +207,6 @@ function handleCatalogOptionClick(e) {
 
 function peso(n) {
   return `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 function variantFields(row = {}, defaults = {}) {
