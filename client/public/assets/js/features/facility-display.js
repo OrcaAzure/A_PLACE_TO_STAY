@@ -282,6 +282,7 @@ export const ROOM_NUMBER_GALLERY = {
     '/images/501Preview3.webp',
     '/images/501Preview4.webp',
     '/images/501Preview5.webp',
+    '/images/501Preview6.webp',
   ],
 };
 
@@ -360,6 +361,13 @@ const VENUE_CATEGORY_GALLERY = {
     '/images/RecreationPreview2.webp',
     '/images/RecreationPreview3.webp',
     '/images/RecreationPreview4.webp',
+    '/images/RecreationPreview5.webp',
+    '/images/RecreationPreview6.webp',
+    '/images/RecreationPreview8.webp',
+    '/images/RecreationPreview9.webp',
+    '/images/RecreationPreview10.webp',
+    '/images/RecreationPreview11.webp',
+    '/images/RecreationPreview12.webp',
   ],
 };
 
