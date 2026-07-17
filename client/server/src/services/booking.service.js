@@ -414,7 +414,7 @@ export function mealDatesForStay(checkIn, checkOut) {
 /**
  * Normalize guest/admin meal payload to per-day rows.
  * Supports: array [{ meal_type, meal_date, quantity }], { byDate: { 'YYYY-MM-DD': { Breakfast: 1 } } },
- * or legacy flat { Breakfast: 2 } (same qty each stay night).
+ * or flat { Breakfast: 2 } meaning stay-total quantity (stored on the first stay night).
  */
 export function normalizeMealsPayload(meals, checkIn, checkOut) {
   if (!meals) return [];
@@ -443,15 +443,16 @@ export function normalizeMealsPayload(meals, checkIn, checkOut) {
     }
     return rows;
   }
+  // Flat totals: apply once for the stay (first night), not copied onto every night.
   const dates = mealDatesForStay(checkIn, checkOut);
+  const stayDate = dates[0] || String(checkIn || '').slice(0, 10);
+  if (!stayDate) return [];
   const rows = [];
-  for (const date of dates) {
-    for (const [type, qtyRaw] of Object.entries(meals)) {
-      if (type === 'byDate') continue;
-      const qty = Number(qtyRaw || 0);
-      if (qty > 0) {
-        rows.push({ meal_type: type, meal_date: date, quantity: qty });
-      }
+  for (const [type, qtyRaw] of Object.entries(meals)) {
+    if (type === 'byDate') continue;
+    const qty = Number(qtyRaw || 0);
+    if (qty > 0) {
+      rows.push({ meal_type: type, meal_date: stayDate, quantity: qty });
     }
   }
   return rows;

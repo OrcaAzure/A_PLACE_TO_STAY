@@ -351,7 +351,7 @@
   margin: 0;
   font-size: 0.9375rem;
   line-height: 1.45;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .settings-form-group__value {
@@ -430,6 +430,69 @@
   outline: none;
   border-color: var(--color-primary, #1a365d);
   box-shadow: 0 0 0 3px rgba(26, 54, 93, 0.1);
+}
+
+.settings-password-field {
+  position: relative;
+  width: 100%;
+  max-width: 28rem;
+}
+
+.settings-password-field .settings-input--password {
+  max-width: none;
+  padding-right: 2.75rem;
+}
+
+/* Hide browser native reveal so only our toggle shows (Edge/Chrome). */
+.settings-password-field .settings-input--password::-ms-reveal,
+.settings-password-field .settings-input--password::-ms-clear {
+  display: none;
+}
+
+.settings-password-field .settings-input--password::-webkit-credentials-auto-fill-button,
+.settings-password-field .settings-input--password::-webkit-strong-password-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.settings-password-toggle {
+  position: absolute;
+  inset-block: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.settings-password-toggle:hover {
+  color: var(--color-primary, #1a365d);
+}
+
+.settings-password-toggle:focus-visible {
+  outline: 2px solid rgba(26, 54, 93, 0.35);
+  outline-offset: -2px;
+  border-radius: 0.375rem;
+}
+
+.settings-password-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.settings-password-icon.hidden {
+  display: none !important;
 }
 
 .settings-form-group--wide {

@@ -7,7 +7,7 @@ import {
 } from '/assets/js/services/api.js';
 import {
   WIZARD_STEPS, escapeHtml, formatDateLong, formatMoney,
-  emptyWizardState, mealsFromBooking, calcGrandTotal, sanitizeGuestModifyFees, debounce,
+  emptyWizardState, mealsFromBooking, calcGrandTotal, sanitizeGuestModifyFees,
   loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
   recommendRooms, servicesToQuickFees, applyLoggedInGuestContact, filterRoomsList,
   collectWizardRoomTypes,
@@ -154,7 +154,7 @@ function renderStep2() {
       <div><label class="res-label">Check-out</label><input id="wiz-check-out" class="res-input" type="date" value="${escapeHtml(state.checkOut)}" /></div>
     </div>
     <label class="res-label">Guests</label>
-    <input id="wiz-guests" class="res-input res-input--short" type="number" min="1" max="20" value="${state.guestCount}" />`;
+    <input id="wiz-guests" class="res-input res-input--short" type="number" min="1" max="500" value="${state.guestCount}" inputmode="numeric" />`;
   if (state.guestModify) {
     return `<div class="guest-modify-panel">${fields}${banner}</div>`;
   }
@@ -307,15 +307,17 @@ function bindMealDelegation() {
     syncWizardMealCards(root, state.meals, state.mealRates);
   });
   root.addEventListener('input', (e) => {
-    const input = e.target.closest('.guest-meal-qty-input[data-meal-qty]');
+    const input = e.target.closest('[data-meal-qty]');
     if (!input) return;
     const type = input.getAttribute('data-meal-qty');
     if (!type) return;
-    state.meals[type] = clampMealQty(input.value);
-    syncWizardMealCards(root, state.meals, state.mealRates);
+    // Keep raw typing in the field; only update state/subtotals (do not rewrite value here).
+    const raw = String(input.value ?? '').trim();
+    state.meals[type] = raw === '' ? 0 : clampMealQty(raw);
+    syncWizardMealCards(root, state.meals, state.mealRates, { skipFocusedInput: true });
   });
   root.addEventListener('blur', (e) => {
-    const input = e.target.closest('.guest-meal-qty-input[data-meal-qty]');
+    const input = e.target.closest('[data-meal-qty]');
     if (!input) return;
     const type = input.getAttribute('data-meal-qty');
     if (!type) return;
@@ -424,7 +426,10 @@ function renderStep5() {
     ];
     mealTypesOrdered(state.mealRates).forEach((t) => {
       if (state.meals[t] > 0) {
-        reviewRows.push({ label: t, value: state.meals[t] * (Number(state.mealRates[t]) || 0) });
+        reviewRows.push({
+          label: `${t} × ${state.meals[t]}`,
+          value: state.meals[t] * (Number(state.mealRates[t]) || 0),
+        });
       }
     });
     state.fees.forEach((f) => {
@@ -605,11 +610,10 @@ function bindEvents() {
     state.error = null;
     fetchRooms();
   };
-  const debouncedStayChange = debounce(onStayChange, 400);
   $('wiz-check-in')?.addEventListener('change', onStayChange);
   $('wiz-check-out')?.addEventListener('change', onStayChange);
+  // Use change (not input) so multi-digit guest counts like 25 are not remounted mid-typing.
   $('wiz-guests')?.addEventListener('change', onStayChange);
-  $('wiz-guests')?.addEventListener('input', debouncedStayChange);
 
   $('wiz-room-search')?.addEventListener('input', (e) => {
     state.roomSearch = e.target.value;
@@ -861,7 +865,7 @@ export async function openReservationWizard(options = {}) {
       guestModify ? getUsers().catch(() => []) : getUsers(),
       getMealRates(),
       loadFiscalYearBounds(),
-      getFacilitiesOverview().catch(() => ({ services: [] })),
+      getFacilitiesOverview({ fresh: guestModify }).catch(() => ({ services: [] })),
     ];
     const [usersResult, mealRatesResult, fiscalResult, catalogResult] = await Promise.all(loaders);
     users = usersResult;

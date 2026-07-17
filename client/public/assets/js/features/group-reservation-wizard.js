@@ -178,7 +178,7 @@ function renderStep2() {
           <div><label class="res-label">Check-out</label><input id="gw-check-out" class="res-input" type="date" value="${escapeHtml(state.checkOut)}" /></div>
         </div>
         <label class="res-label">Total guests</label>
-        <input id="gw-total-guests" class="res-input res-input--short" type="number" min="1" max="100" value="${state.totalGuests}" />
+        <input id="gw-total-guests" class="res-input res-input--short" type="number" min="1" max="500" value="${state.totalGuests}" inputmode="numeric" />
         ${banner}
       </div>`;
   }
@@ -193,7 +193,7 @@ function renderStep2() {
       <div><label class="res-label">Check-out</label><input id="gw-check-out" class="res-input" type="date" value="${escapeHtml(state.checkOut)}" /></div>
     </div>
     <div class="res-row">
-      <div><label class="res-label">Total guests</label><input id="gw-total-guests" class="res-input" type="number" min="1" max="100" value="${state.totalGuests}" /></div>
+      <div><label class="res-label">Total guests</label><input id="gw-total-guests" class="res-input" type="number" min="1" max="500" value="${state.totalGuests}" inputmode="numeric" /></div>
       <div><label class="res-label">Rooms needed (estimate)</label><input id="gw-rooms-req" class="res-input" type="number" min="1" max="30" value="${state.roomsRequested || ''}" placeholder="Optional" /></div>
     </div>
     ${banner}`;
@@ -320,15 +320,16 @@ function bindMealDelegation() {
     syncWizardMealCards(root, state.meals, state.mealRates);
   });
   root.addEventListener('input', (e) => {
-    const input = e.target.closest('.guest-meal-qty-input[data-meal-qty]');
+    const input = e.target.closest('[data-meal-qty]');
     if (!input) return;
     const type = input.getAttribute('data-meal-qty');
     if (!type) return;
-    state.meals[type] = clampMealQty(input.value);
-    syncWizardMealCards(root, state.meals, state.mealRates);
+    const raw = String(input.value ?? '').trim();
+    state.meals[type] = raw === '' ? 0 : clampMealQty(raw);
+    syncWizardMealCards(root, state.meals, state.mealRates, { skipFocusedInput: true });
   });
   root.addEventListener('blur', (e) => {
-    const input = e.target.closest('.guest-meal-qty-input[data-meal-qty]');
+    const input = e.target.closest('[data-meal-qty]');
     if (!input) return;
     const type = input.getAttribute('data-meal-qty');
     if (!type) return;
@@ -649,11 +650,10 @@ function bindEvents() {
     if (!state.guestModify) state.selectedRooms = [];
     fetchRooms();
   };
-  const debouncedStay = debounce(onStayChange, 400);
   $('gw-check-in')?.addEventListener('change', onStayChange);
   $('gw-check-out')?.addEventListener('change', onStayChange);
+  // Use change (not input) so multi-digit guest counts like 25 are not remounted mid-typing.
   $('gw-total-guests')?.addEventListener('change', onStayChange);
-  $('gw-total-guests')?.addEventListener('input', debouncedStay);
 
   $('gw-use-suggested')?.addEventListener('click', applySuggestion);
 
@@ -922,7 +922,7 @@ export async function openGroupWizard(options = {}) {
       guestModify ? getUsers().catch(() => []) : getUsers(),
       getMealRates(),
       loadFiscalYearBounds(),
-      getFacilitiesOverview().catch(() => ({ services: [] })),
+      getFacilitiesOverview({ fresh: guestModify }).catch(() => ({ services: [] })),
     ];
     const [usersResult, mealRatesResult, fiscalResult, catalogResult] = await Promise.all(loaders);
     users = usersResult;

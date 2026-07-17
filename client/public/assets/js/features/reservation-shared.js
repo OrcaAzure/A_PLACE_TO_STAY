@@ -652,7 +652,7 @@ export function mealsFromBooking(mealsArr = []) {
   mealsArr.forEach((m) => {
     const type = m?.meal_type;
     if (!type) return;
-    out[type] = Number(m.quantity) || 0;
+    out[type] = (Number(out[type]) || 0) + (Number(m.quantity) || 0);
   });
   return out;
 }

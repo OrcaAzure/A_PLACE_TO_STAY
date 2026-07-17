@@ -525,11 +525,12 @@ export async function initGuestRoomBookingModal({
   }
 
   document.getElementById('find-rooms-btn')?.addEventListener('click', () => findRooms());
-  ['booking-check-in', 'booking-check-out', 'booking-guests'].forEach((id) => {
+  ['booking-check-in', 'booking-check-out'].forEach((id) => {
     const el = document.getElementById(id);
     el?.addEventListener('change', onBookingCriteriaChange);
-    el?.addEventListener('input', onBookingCriteriaChange);
   });
+  // Guests: change only — avoids mid-typing remounts when entering multi-digit counts (e.g. 25).
+  document.getElementById('booking-guests')?.addEventListener('change', onBookingCriteriaChange);
   document.getElementById('booking-change-selection')?.addEventListener('click', () => {
     setBookingMode('search');
     findRooms(selectedRoom?.id || roomInput.value);

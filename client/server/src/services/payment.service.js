@@ -1,6 +1,7 @@
 import { pool } from '../config/db.js';
 import {
   sendVenueInvoiceEmail,
+  sendRoomInvoiceEmail,
   sendPaymentReceiptEmail,
   getLastEmailError,
   isVenuePayment,
@@ -86,10 +87,28 @@ export async function listAllPaymentRows({ userId } = {}) {
     ? `${paymentVenueDetailSelect} WHERE fb.status = 'Approved' AND fb.user_id = ?`
     : `${paymentVenueDetailSelect} WHERE fb.status = 'Approved'`;
 
-  const [[roomRows], [venueRows]] = await Promise.all([
+  let [[roomRows], [venueRows]] = await Promise.all([
     pool.query(roomSql, userId ? [userId] : []),
     pool.query(venueSql, userId ? [userId] : []),
   ]);
+
+  // Consolidate open group stays onto one invoice (whole-group total).
+  if (!userId) {
+    const groupIds = [...new Set(
+      roomRows.map((row) => row.group_id).filter((id) => id != null && id !== '')
+    )];
+    if (groupIds.length) {
+      for (const groupId of groupIds) {
+        try {
+          await ensureInvoicesForGroup(groupId);
+        } catch (err) {
+          console.warn(`[billing] Could not consolidate group #${groupId}:`, err.message);
+        }
+      }
+      const [refreshedRooms] = await pool.query(roomSql);
+      roomRows = refreshedRooms;
+    }
+  }
 
   return sortPaymentRows([...roomRows, ...venueRows]);
 }
@@ -570,11 +589,36 @@ export async function getInvoiceSnapshot(bookingId) {
 }
 
 async function dispatchInvoiceEmail(payment) {
-  if (!isVenuePayment(payment)) {
-    return false;
-  }
   const user = { full_name: payment.guest_name, email: payment.guest_email };
-  return sendVenueInvoiceEmail(user, payment);
+  if (isVenuePayment(payment)) {
+    return sendVenueInvoiceEmail(user, payment);
+  }
+  return sendRoomInvoiceEmail(user, payment);
+}
+
+export async function sendInvoiceEmail(paymentId) {
+  const payment = await loadPaymentDetail(paymentId);
+  if (!payment) throw new Error('Invoice not found');
+  if (payment.status === 'Paid') throw new Error('This invoice is already paid');
+  if (!payment.guest_email) {
+    throw new Error('Guest has no email address on file');
+  }
+
+  const sent = await dispatchInvoiceEmail(payment);
+  if (!sent) {
+    const detail = getLastEmailError();
+    throw new Error(
+      detail
+        ? `Could not send email: ${detail}`
+        : 'Could not send email. Check SMTP settings in client/server/.env.'
+    );
+  }
+
+  await pool.query(
+    'UPDATE payments SET invoice_sent_at = NOW(), billing_invoice_sent_at = NOW() WHERE id = ?',
+    [paymentId]
+  );
+  return loadPaymentDetail(paymentId);
 }
 
 export async function ensureInvoiceForBooking(bookingId, { autoEmail = false } = {}) {
@@ -655,15 +699,57 @@ export async function ensureInvoiceForFacilityBooking(facilityBookingId, { autoE
 
 export async function ensureInvoicesForGroup(groupId, { autoEmail = false } = {}) {
   const [rows] = await pool.query(
-    `SELECT id FROM bookings_rooms WHERE group_id = ? AND status = 'Approved'`,
+    `SELECT id, total_amount FROM bookings_rooms
+     WHERE group_id = ? AND status = 'Approved'
+     ORDER BY id ASC`,
     [groupId]
   );
-  const ids = [];
-  for (const row of rows) {
-    const id = await ensureInvoiceForBooking(row.id, { autoEmail });
-    if (id) ids.push(id);
+  if (!rows.length) return [];
+
+  const groupSubtotal = roundMoney(rows.reduce((sum, row) => sum + Number(row.total_amount || 0), 0));
+  if (groupSubtotal <= 0) return [];
+
+  const primaryBookingId = rows[0].id;
+
+  // One invoice for the whole group stay — drop unused sibling room invoices.
+  for (const row of rows.slice(1)) {
+    const sibling = await getInvoiceByBookingId(row.id);
+    if (!sibling || sibling.status !== 'Pending') continue;
+    const [txs] = await pool.query(
+      'SELECT COUNT(*) AS c FROM payment_transactions WHERE payment_id = ?',
+      [sibling.id]
+    );
+    if (Number(txs[0]?.c || 0) === 0) {
+      await pool.query('DELETE FROM payments WHERE id = ?', [sibling.id]);
+    }
   }
-  return ids;
+
+  const existing = await getInvoiceByBookingId(primaryBookingId);
+  if (existing) {
+    if (existing.status !== 'Paid') {
+      const amount = computeDueAmount(groupSubtotal, existing.discount_amount);
+      await pool.query(
+        'UPDATE payments SET subtotal = ?, amount = ? WHERE id = ? AND status != ?',
+        [groupSubtotal, amount, existing.id, 'Paid']
+      );
+    }
+    if (autoEmail && existing.status === 'Pending' && !existing.invoice_sent_at) {
+      void tryAutoSendInvoiceEmail(existing.id);
+    }
+    return [existing.id];
+  }
+
+  const amount = computeDueAmount(groupSubtotal, 0);
+  const [result] = await pool.query(
+    `INSERT INTO payments (bookings_room_id, subtotal, discount_amount, discount_note, amount, status)
+     VALUES (?, ?, 0, NULL, ?, 'Pending')`,
+    [primaryBookingId, groupSubtotal, amount]
+  );
+  const paymentId = result.insertId;
+  if (autoEmail) {
+    void tryAutoSendInvoiceEmail(paymentId);
+  }
+  return [paymentId];
 }
 
 export async function loadPaymentDetail(paymentId) {
@@ -734,33 +820,6 @@ export async function tryAutoSendInvoiceEmail(paymentId) {
   return { sent: true, to: payment.guest_email };
 }
 
-export async function sendInvoiceEmail(paymentId) {
-  const payment = await loadPaymentDetail(paymentId);
-  if (!payment) throw new Error('Invoice not found');
-  if (payment.status === 'Paid') throw new Error('This invoice is already paid');
-  if (!isVenuePayment(payment)) {
-    throw new Error(
-      'Room stay billing is included in the reservation confirmation email sent when housing approved the stay. Use that email for the guest, or resend approval from the reservation if needed.'
-    );
-  }
-
-  const sent = await dispatchInvoiceEmail(payment);
-  if (!sent) {
-    const detail = getLastEmailError();
-    throw new Error(
-      detail
-        ? `Could not send email: ${detail}`
-        : 'Could not send email. Check SMTP settings in client/server/.env.'
-    );
-  }
-
-  await pool.query(
-    'UPDATE payments SET invoice_sent_at = NOW(), billing_invoice_sent_at = NOW() WHERE id = ?',
-    [paymentId]
-  );
-  return loadPaymentDetail(paymentId);
-}
-
 export async function updateInvoiceBilling(paymentId, { discount_amount, discount_note, subtotal: nextSubtotal } = {}) {
   const payment = await loadPaymentDetail(paymentId);
   if (!payment) throw new Error('Invoice not found');
@@ -784,7 +843,7 @@ export async function updateInvoiceBilling(paymentId, { discount_amount, discoun
     [subtotal, discount, note, amount, paymentId]
   );
 
-  if (payment.booking_id) {
+  if (payment.booking_id && !payment.group_id) {
     await pool.query(
       'UPDATE bookings_rooms SET total_amount = ? WHERE id = ?',
       [subtotal, payment.booking_id]

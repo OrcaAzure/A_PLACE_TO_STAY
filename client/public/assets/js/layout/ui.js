@@ -223,12 +223,10 @@ async function loadGuestTemplates() {
   if (!guestTemplatesPromise) {
     guestTemplatesPromise = Promise.all([
       loadComponent('/components/guest-nav.html'),
-      loadComponent('/components/guest-footer.html'),
       loadComponent('/components/notifications.html'),
       loadComponent('/components/modal.html'),
-    ]).then(([guestNav, guestFooter, notifications, modal]) => ({
+    ]).then(([guestNav, notifications, modal]) => ({
       guestNav,
-      guestFooter,
       notifications,
       modal,
     }));
@@ -487,15 +485,12 @@ function buildGuestShell({
     .replace(/\{\{USER_ROLE\}\}/g, userRole)
     .replace(/\{\{USER_INITIAL\}\}/g, userInitial);
 
-  const footer = templates.guestFooter.replace(/\{\{HOME_HREF\}\}/g, homeHref);
-
   return `
     ${nav}
     ${landingHome ? GUEST_SECTION_SCROLLER : ''}
     <main class="guest-main lp-main">
       <div id="page-content" class="${pageClass}">${content}</div>
     </main>
-    ${footer}
     ${templates.notifications || ''}
     ${templates.modal || ''}
   `;

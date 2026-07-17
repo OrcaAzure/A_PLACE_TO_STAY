@@ -675,7 +675,7 @@ function bindStep2() {
     readForm();
     clearStepError();
   };
-  $('vbw-guests')?.addEventListener('input', onGuestsChange);
+  // Prefer change so multi-digit counts are not interrupted mid-typing.
   $('vbw-guests')?.addEventListener('change', onGuestsChange);
   $('vbw-notes')?.addEventListener('input', clearStepError);
 

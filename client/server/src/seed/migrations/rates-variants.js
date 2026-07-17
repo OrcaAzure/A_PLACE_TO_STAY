@@ -44,7 +44,7 @@ export async function runRatesVariantsMigration() {
   try {
     await pool.execute(`
       ALTER TABLE rates_meals
-      ADD UNIQUE KEY uq_meal_type (meal_type, audience, age_band, currency, billing_unit)
+      ADD UNIQUE KEY uq_meal_type (meal_type(64), audience(32), age_band(16), currency(8), billing_unit(32))
     `);
   } catch (err) {
     console.warn('[schema] rates_meals variant index migration skipped:', err.message);

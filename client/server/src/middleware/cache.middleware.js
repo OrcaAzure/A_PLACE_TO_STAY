@@ -19,7 +19,8 @@ export function cacheResponse(key, ttlSeconds = CACHE_TTL_SECONDS) {
     const originalJson = res.json.bind(res);
     res.json = (body) => {
       if (res.statusCode >= 200 && res.statusCode < 300) {
-        const cacheControl = `private, max-age=${ttlSeconds}`;
+        const preserveNoStore = String(res.getHeader('Cache-Control') || '').includes('no-store');
+        const cacheControl = preserveNoStore ? 'no-store' : `private, max-age=${ttlSeconds}`;
         res.setHeader('Cache-Control', cacheControl);
         cache.set(cacheKey, {
           status: res.statusCode,

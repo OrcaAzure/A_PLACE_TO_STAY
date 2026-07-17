@@ -52,6 +52,7 @@ function bindSettingsUi() {
   settingsUiBound = true;
 
   bindNavigation();
+  bindPasswordToggles();
   document.getElementById('settings-save-btn')?.addEventListener('click', saveProfile);
   document.getElementById('settings-password-btn')?.addEventListener('click', savePassword);
   document.getElementById('system-settings-save-btn')?.addEventListener('click', saveSystemSettings);
@@ -108,6 +109,25 @@ async function saveProfile() {
   } finally {
     btn.disabled = false;
   }
+}
+
+function bindPasswordToggles() {
+  document.querySelectorAll('[data-password-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const inputId = btn.getAttribute('data-password-toggle');
+      const input = inputId ? document.getElementById(inputId) : null;
+      const iconShow = btn.querySelector('.settings-password-icon--show');
+      const iconHide = btn.querySelector('.settings-password-icon--hide');
+      if (!input || !iconShow || !iconHide) return;
+
+      const willShow = input.type === 'password';
+      input.type = willShow ? 'text' : 'password';
+      iconShow.classList.toggle('hidden', willShow);
+      iconHide.classList.toggle('hidden', !willShow);
+      btn.setAttribute('aria-label', willShow ? 'Hide password' : 'Show password');
+      btn.setAttribute('aria-pressed', String(willShow));
+    });
+  });
 }
 
 async function savePassword() {

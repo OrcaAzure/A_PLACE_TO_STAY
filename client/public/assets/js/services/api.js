@@ -257,8 +257,9 @@ export async function getVenueFacilities() {
   return data.venues || [];
 }
 
-export async function getFacilitiesOverview() {
-  return apiRequest('/facilities/overview');
+export async function getFacilitiesOverview({ fresh = false } = {}) {
+  const query = fresh ? `?_=${Date.now()}` : '';
+  return apiRequest(`/facilities/overview${query}`, fresh ? { cache: 'no-store' } : {});
 }
 
 export async function getAdminVenues() {

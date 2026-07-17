@@ -268,7 +268,7 @@ export function bindWizardRoomTypeFilter(container, { idPrefix, onChange }) {
   }
 }
 
-export function syncWizardMealCards(root, meals, mealRates) {
+export function syncWizardMealCards(root, meals, mealRates, { skipFocusedInput = false } = {}) {
   if (!root) return;
   mealTypesOrdered(mealRates).forEach((type) => {
     const qty = clampMealQty(meals[type]);
@@ -276,7 +276,9 @@ export function syncWizardMealCards(root, meals, mealRates) {
     const card = [...root.querySelectorAll('[data-meal-type]')].find((el) => el.getAttribute('data-meal-type') === type);
     card?.classList.toggle('is-active', qty > 0);
     const input = root.querySelector(`[data-meal-qty="${type}"]`);
-    if (input) input.value = qty;
+    if (input && !(skipFocusedInput && document.activeElement === input)) {
+      input.value = qty;
+    }
     const sub = root.querySelector(`[data-meal-sub="${type}"]`);
     if (sub) {
       sub.textContent = qty > 0 ? formatMoney(price * qty) : '';

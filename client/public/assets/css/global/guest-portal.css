@@ -793,7 +793,7 @@ body.guest-shell {
 
 .browse-stay-multi-room__hint {
   font-size: 0.8rem;
-  color: #64748b;
+  color: #94a3b8;
   line-height: 1.45;
 }
 
@@ -1882,6 +1882,108 @@ body.browse-preview-open {
   border-radius: 10px;
 }
 
+.guest-booking-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  padding: 0.5rem 0.25rem 0.25rem;
+}
+
+.guest-booking-success.hidden {
+  display: none;
+}
+
+.guest-booking-success__icon {
+  font-size: 3rem;
+  line-height: 1;
+  color: #059669;
+}
+
+.guest-booking-success__copy {
+  max-width: 22rem;
+}
+
+.guest-booking-success__title {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.guest-booking-success__msg {
+  margin: 0.5rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.45;
+  color: #475569;
+}
+
+.guest-booking-success__hint {
+  margin: 0.65rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #94a3b8;
+}
+
+.guest-booking-success__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  max-width: 22rem;
+  padding-top: 0.35rem;
+}
+
+.guest-booking-success__primary,
+.guest-booking-success__secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.75rem;
+  padding: 0.7rem 1rem;
+  border-radius: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.guest-booking-success__primary {
+  background: #1a365d;
+  color: #fff;
+  border: 1px solid #1a365d;
+}
+
+.guest-booking-success__primary:hover {
+  background: #163056;
+  border-color: #163056;
+}
+
+.guest-booking-success__secondary {
+  background: #fff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  cursor: pointer;
+}
+
+.guest-booking-success__secondary:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+@media (min-width: 640px) {
+  .guest-booking-success__actions {
+    flex-direction: row;
+  }
+
+  .guest-booking-success__primary,
+  .guest-booking-success__secondary {
+    flex: 1;
+  }
+}
+
 .room-option {
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -1933,7 +2035,7 @@ body.browse-preview-open {
 .guest-booking-extras__sub {
   margin: 0.2rem 0 0;
   font-size: 0.8125rem;
-  color: #718096;
+  color: #94a3b8;
 }
 
 .guest-extras-block {
@@ -2130,7 +2232,7 @@ body.browse-preview-open {
 .guest-service-card__price,
 .guest-service-card__hint {
   font-size: 0.6875rem;
-  color: #718096;
+  color: #94a3b8;
 }
 
 .guest-service-card__price {
@@ -2789,7 +2891,7 @@ body.browse-preview-open {
 .br-room-guests__hint {
   margin: 0.35rem 0 0;
   font-size: 0.8125rem;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .br-review-card__meta--muted {
@@ -2934,7 +3036,7 @@ body.room-guest-picker-open {
 .room-guest-picker__error {
   margin: 0.35rem 0 0;
   font-size: 0.875rem;
-  color: #64748b;
+  color: #94a3b8;
 }
 
 .room-guest-picker__error {
@@ -3300,11 +3402,10 @@ body.br-drawer-open {
 }
 
 .br-review-modal__success {
-  padding: 1rem;
-  border-radius: 0.75rem;
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  margin-bottom: 1rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  margin-bottom: 0.5rem;
 }
 
 .br-review-modal__error {

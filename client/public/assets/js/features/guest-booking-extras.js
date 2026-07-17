@@ -105,7 +105,7 @@ export function createGuestBookingExtras({
             <span class="material-symbols-outlined">${meta.icon}</span>
           </div>
           <div class="guest-meal-card__info">
-            <strong>${type}</strong>
+            <strong>${escapeHtml(type)}</strong>
             <span>${formatMoney(price)} each</span>
           </div>
           <div class="guest-meal-card__qty">
@@ -258,7 +258,9 @@ export function createGuestBookingExtras({
       const input = e.target.closest('[data-meal-qty]');
       if (!input) return;
       const type = input.dataset.mealQty;
-      meals[type] = readMealQtyInput(input);
+      const raw = String(input.value ?? '').trim();
+      // Keep typed digits intact; clamp only after blur.
+      meals[type] = raw === '' ? 0 : readMealQtyInput(input);
       syncMealSubtotals();
       onChange();
     });
@@ -270,6 +272,7 @@ export function createGuestBookingExtras({
       meals[type] = readMealQtyInput(input);
       input.value = meals[type];
       syncMealSubtotals();
+      onChange();
     }, true);
 
     feeChipsMount?.addEventListener('click', (e) => {
@@ -338,7 +341,7 @@ export function createGuestBookingExtras({
     try {
       const [rates, catalog] = await Promise.all([
         getMealRates(),
-        getFacilitiesOverview().catch(() => ({ services: [] })),
+        getFacilitiesOverview({ fresh: true }).catch(() => ({ services: [] })),
       ]);
       mealRates = { ...mealRates, ...rates };
       meals = ensureMealsShape(meals, mealRates);

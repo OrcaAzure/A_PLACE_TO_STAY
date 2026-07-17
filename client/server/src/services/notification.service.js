@@ -77,7 +77,7 @@ async function getAdminNotifications() {
       icon: 'pending_actions',
       title: `${pendingTotal} pending reservation${pendingTotal === 1 ? '' : 's'}`,
       subtitle: `${parts.join(' · ')} — review in Reservations`,
-      href: '/admin/reservations.html',
+      href: '/admin/reservations.html?tab=pending',
       level: 'warn',
     }));
   } else {
@@ -85,7 +85,7 @@ async function getAdminNotifications() {
       icon: 'check_circle',
       title: 'No pending reservations',
       subtitle: 'All booking requests are reviewed',
-      href: '/admin/reservations.html',
+      href: '/admin/reservations.html?tab=pending',
       level: 'info',
     }));
   }
@@ -95,7 +95,7 @@ async function getAdminNotifications() {
       icon: 'login',
       title: `${upcoming} upcoming check-in${upcoming === 1 ? '' : 's'}`,
       subtitle: 'Approved room stays starting today or later',
-      href: '/admin/reservations.html',
+      href: '/admin/reservations.html?tab=rooms',
       level: 'info',
     }));
   }
@@ -129,11 +129,16 @@ async function getAdminNotifications() {
 
   for (const row of recent) {
     const status = String(row.status || '').toLowerCase();
+    const href = status === 'pending'
+      ? '/admin/reservations.html?tab=pending'
+      : row.kind === 'venue'
+        ? '/admin/reservations.html?tab=venues'
+        : '/admin/reservations.html?tab=rooms';
     feed.push(item(`admin:recent:${row.kind}:${row.id}`, {
       icon: row.kind === 'venue' ? 'meeting_room' : 'hotel',
       title: `${row.guest_name || 'Guest'} — ${row.label}`,
       subtitle: `${status.charAt(0).toUpperCase()}${status.slice(1)}${row.kind === 'venue' && row.event_date ? ` · ${String(row.event_date).slice(0, 10)}` : ''}`,
-      href: row.kind === 'venue' ? '/admin/reservations.html' : '/admin/reservations.html',
+      href,
       level: status === 'pending' ? 'warn' : 'info',
       at: row.updated_at,
     }));

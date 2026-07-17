@@ -134,17 +134,17 @@ function pendingCounts() {
 }
 
 function renderTabBadges() {
-  const { rooms, venues } = pendingCounts();
+  const { total } = pendingCounts();
   const pendingBadge = document.querySelector('[data-res-tab-badge="pending"]');
   if (pendingBadge) {
-    const n = rooms + venues;
-    pendingBadge.textContent = String(n);
-    pendingBadge.classList.toggle('hidden', n === 0);
+    pendingBadge.textContent = String(total);
+    pendingBadge.classList.toggle('hidden', total === 0);
   }
+  // Pending venues/chapels live on the Pending tab — do not badge Venues with pending count.
   const venueBadge = document.querySelector('[data-res-tab-badge="venues"]');
   if (venueBadge) {
-    venueBadge.textContent = String(venues);
-    venueBadge.classList.toggle('hidden', venues === 0);
+    venueBadge.textContent = '';
+    venueBadge.classList.add('hidden');
   }
 }
 
@@ -655,7 +655,7 @@ function filterVenues(items) {
   return items.filter((item) => {
     if (!matchesGuestUser(item)) return false;
     const cat = item._category;
-    if (state.filter === 'pending' && cat !== 'pending') return false;
+    // Pending venues are listed on the Pending tab only.
     if (state.filter === 'active' && !['today', 'upcoming'].includes(cat)) return false;
     if (state.filter === 'past' && cat !== 'past') return false;
     if (state.filter === 'cancelled' && cat !== 'cancelled') return false;
@@ -977,11 +977,10 @@ function updateFilterUi() {
     filterEl.classList.remove('hidden');
   } else if (state.tab === 'venues') {
     filterEl.innerHTML = `
-      <option value="active">Active & pending</option>
-      <option value="pending">Pending only</option>
+      <option value="active">Upcoming & today</option>
       <option value="past">Past</option>
       <option value="cancelled">Cancelled</option>
-      <option value="all">All</option>`;
+      <option value="all">All approved</option>`;
     filterEl.value = state.filter;
     filterEl.classList.remove('hidden');
   } else {

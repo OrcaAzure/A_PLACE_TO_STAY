@@ -9,30 +9,7 @@
     </div>
     <div class="px-5 py-4">
       <form id="guest-access-form" novalidate>
-        <fieldset class="ga-modal-mode" role="radiogroup" aria-label="How to add this guest">
-          <label class="ga-modal-mode__option">
-            <span class="ga-modal-mode__control">
-              <input type="radio" name="ga-add-mode" value="grant" checked />
-              <span class="ga-modal-mode__dot" aria-hidden="true"></span>
-            </span>
-            <span class="ga-modal-mode__text">
-              <strong>Grant access now</strong>
-              <small>Create login and send a temporary password</small>
-            </span>
-          </label>
-          <label class="ga-modal-mode__option">
-            <span class="ga-modal-mode__control">
-              <input type="radio" name="ga-add-mode" value="queue" />
-              <span class="ga-modal-mode__dot" aria-hidden="true"></span>
-            </span>
-            <span class="ga-modal-mode__text">
-              <strong>Save for later</strong>
-              <small>Record the request — approve when ready</small>
-            </span>
-          </label>
-        </fieldset>
-
-        <p id="ga-mode-hint" class="ga-mode-hint">Use this when you are ready to send login details to the guest.</p>
+        <p id="ga-mode-hint" class="ga-mode-hint">Creates a login and sends a temporary password to the guest.</p>
 
         <label class="catalog-label" for="guest-name">Full name</label>
         <input id="guest-name" class="catalog-input" type="text" placeholder="e.g. Rev. Samuel Park" autocomplete="name" />
@@ -41,18 +18,13 @@
         <label class="catalog-label" for="guest-org">Organization <span class="text-slate-400 font-normal">(optional)</span></label>
         <input id="guest-org" class="catalog-input" type="text" placeholder="e.g. Grace Community Church" />
 
-        <div id="ga-queue-notes" class="hidden">
-          <label class="catalog-label" for="guest-notes">Notes <span class="text-slate-400 font-normal">(optional)</span></label>
-          <textarea id="guest-notes" class="catalog-input min-h-[4.5rem]" placeholder="How they contacted you, intended dates, etc."></textarea>
-        </div>
-
         <p id="ga-grant-hint" class="text-xs text-slate-500 mt-2">A temporary password is emailed to the guest. You can copy it from the next screen.</p>
 
         <div class="ga-form-footer">
           <p id="guest-access-feedback" class="ga-form-feedback hidden" role="alert" aria-live="polite"></p>
           <div class="ga-form-actions">
             <button type="button" id="guest-access-modal-cancel" class="admin-crud-btn-ghost">Cancel</button>
-            <button type="submit" id="guest-access-submit" class="admin-crud-btn-primary">Create account</button>
+            <button type="submit" id="guest-access-submit" class="admin-crud-btn-primary">Grant access</button>
           </div>
         </div>
       </form>
