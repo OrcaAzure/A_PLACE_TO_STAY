@@ -422,6 +422,9 @@ export function roomGalleryImages(room = {}) {
   ];
   return uniqueUrls([primary, ...extras]).slice(0, GALLERY_MAX_ROOM);
 }
+
+/**
+ * Gallery list for a venue card/detail modal.
  * Uses venue-specific photos first, then category gallery placeholders.
  */
 export function venueGalleryImages(venue = {}) {

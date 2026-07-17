@@ -3,7 +3,8 @@
  */
 
 const FAILSAFE_MS = 12000;
-const LANDING_ASSET_V = 'explore-carousel2';
+const LANDING_ASSET_V = 'explore-carousel4';
+const REVEAL_FAILSAFE_MS = 3000;
 
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -29,8 +30,22 @@ async function bootLandingPage({ skipHeroEntrance = true } = {}) {
   const { initLandingPage } = await import(`/assets/js/layout/landing.js?v=${LANDING_ASSET_V}`);
   const { redirectIfLoggedIn } = await import('/assets/js/services/auth.js');
   redirectIfLoggedIn().catch(() => {});
-  const startHeroHandoff = await initLandingPage({ skipHeroEntrance });
-  await revealLandingPage(startHeroHandoff);
+
+  const revealFailsafe = window.setTimeout(() => {
+    if (!document.body.classList.contains('lp-page-hidden')) return;
+    console.warn('[landing] reveal failsafe — showing page without waiting for animations');
+    clearLandingBlockers();
+  }, REVEAL_FAILSAFE_MS);
+
+  try {
+    const startReveal = await initLandingPage({ skipHeroEntrance });
+    await revealLandingPage(startReveal);
+  } catch (err) {
+    console.error('[landing] page init failed:', err);
+    clearLandingBlockers();
+  } finally {
+    window.clearTimeout(revealFailsafe);
+  }
 }
 
 async function boot() {
@@ -42,6 +57,10 @@ async function boot() {
     await mountPublicLandingContent();
   } catch (err) {
     console.error('[landing] content mount failed:', err);
+    const mount = document.getElementById('lp-main-mount');
+    if (mount && !mount.dataset.landingMounted) {
+      mount.innerHTML = '<p class="p-8 text-center text-on-surface-variant">Unable to load page content. Please refresh.</p>';
+    }
   }
 
   if (skipIntro) {
