@@ -146,7 +146,7 @@ export function applyRoleUI() {
     document.querySelectorAll('.js-readonly-banner').forEach((el) => {
       el.classList.remove('hidden');
     });
-    refreshAdminReadOnlyUI();
+    applyAdminReadOnlyGuards();
   }
 
   return { role, readOnly };

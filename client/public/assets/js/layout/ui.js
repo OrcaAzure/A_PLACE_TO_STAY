@@ -12,7 +12,7 @@ import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/asset
 import { initGuestPortalChrome } from '/assets/js/layout/guest-portal.js';
 import { initSplashIdle, dismissAptSplash } from '/assets/js/layout/splash-idle.js';
 import { bindNotificationBell } from '/assets/js/layout/notifications.js';
-import { formatRoleLabel, getCurrentUser, applyRoleUI } from '/assets/js/services/auth.js';
+import { formatRoleLabel, getCurrentUser, applyRoleUI, refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 import {
   isDesktopSidebar,
@@ -992,6 +992,7 @@ export function openModal(title, bodyHtml, options = {}) {
   document.getElementById('app-modal')?.classList.remove('hidden');
   document.getElementById('modal-overlay')?.classList.remove('hidden');
   updateBodyScrollLock();
+  refreshAdminReadOnlyUI();
   if (!hideHeader) document.getElementById('modal-close')?.focus();
   else bodyEl.querySelector('[data-detail-close]')?.focus();
   animateModalOpen(shell).catch(() => {});
