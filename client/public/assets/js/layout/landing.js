@@ -118,41 +118,87 @@ function preloadHeroSlideImage(url) {
 }
 
 function initHeroBackgroundCarousel() {
+  const hero = document.querySelector('#hero');
   const carousel = document.querySelector('[data-hero-carousel]');
-  if (!carousel) return () => {};
+  if (!hero || !carousel || hero.querySelector('[data-hero-carousel-ui]')) return () => {};
 
   const slides = [...carousel.querySelectorAll('.lp-hero-bg-slide')];
   if (slides.length <= 1) return () => {};
 
-  slides.forEach((slide, index) => {
-    if (index > 0) {
+  slides.forEach((slide, slideIndex) => {
+    if (slideIndex > 0) {
       const url = slide.style.backgroundImage?.match(/url\(["']?([^"')]+)["']?\)/)?.[1];
       preloadHeroSlideImage(url);
     }
   });
-
-  if (prefersReducedMotion()) {
-    slides.forEach((slide, index) => {
-      slide.classList.toggle('is-active', index === 0);
-    });
-    return () => {};
-  }
 
   let index = slides.findIndex((slide) => slide.classList.contains('is-active'));
   if (index < 0) index = 0;
 
   let timerId = 0;
   let paused = document.visibilityState === 'hidden';
+  const reduceMotion = prefersReducedMotion();
+
+  const ui = document.createElement('div');
+  ui.className = 'lp-hero-carousel-ui';
+  ui.dataset.heroCarouselUi = '1';
+
+  const prevBtn = document.createElement('button');
+  prevBtn.type = 'button';
+  prevBtn.className = 'lp-hero-carousel-hit lp-hero-carousel-hit--prev';
+  prevBtn.setAttribute('aria-label', 'Previous campus photo');
+  prevBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">chevron_left</span>';
+
+  const nextBtn = document.createElement('button');
+  nextBtn.type = 'button';
+  nextBtn.className = 'lp-hero-carousel-hit lp-hero-carousel-hit--next';
+  nextBtn.setAttribute('aria-label', 'Next campus photo');
+  nextBtn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">chevron_right</span>';
+
+  const dotsWrap = document.createElement('div');
+  dotsWrap.className = 'lp-hero-carousel-dots';
+  dotsWrap.setAttribute('role', 'tablist');
+  dotsWrap.setAttribute('aria-label', 'Campus photos');
+
+  const dots = slides.map((_, slideIndex) => {
+    const dot = document.createElement('button');
+    dot.type = 'button';
+    dot.className = 'lp-hero-carousel-dot';
+    dot.setAttribute('role', 'tab');
+    dot.dataset.index = String(slideIndex);
+    dot.setAttribute('aria-label', `Campus photo ${slideIndex + 1} of ${slides.length}`);
+    dotsWrap.appendChild(dot);
+    return dot;
+  });
+
+  ui.append(prevBtn, nextBtn, dotsWrap);
+  hero.appendChild(ui);
+
+  const syncDots = () => {
+    dots.forEach((dot, slideIndex) => {
+      const active = slideIndex === index;
+      dot.classList.toggle('is-active', active);
+      dot.setAttribute('aria-selected', active ? 'true' : 'false');
+      dot.tabIndex = active ? 0 : -1;
+    });
+  };
 
   const show = (nextIndex) => {
     const safe = ((nextIndex % slides.length) + slides.length) % slides.length;
-    if (safe === index) return;
+    if (safe === index) return false;
     slides[index]?.classList.remove('is-active');
     index = safe;
     slides[index]?.classList.add('is-active');
+    syncDots();
     const upcoming = slides[(index + 1) % slides.length];
     const upcomingUrl = upcoming?.style.backgroundImage?.match(/url\(["']?([^"')]+)["']?\)/)?.[1];
     preloadHeroSlideImage(upcomingUrl);
+    return true;
+  };
+
+  const go = (nextIndex) => {
+    if (!show(nextIndex)) return;
+    if (!reduceMotion && !paused) restart();
   };
 
   const tick = () => {
@@ -165,9 +211,29 @@ function initHeroBackgroundCarousel() {
     timerId = window.setInterval(tick, HERO_CAROUSEL_INTERVAL_MS);
   };
 
+  const onPrev = () => go(index - 1);
+  const onNext = () => go(index + 1);
+
+  prevBtn.addEventListener('click', onPrev);
+  nextBtn.addEventListener('click', onNext);
+  dots.forEach((dot) => {
+    dot.addEventListener('click', () => go(Number(dot.dataset.index)));
+  });
+
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowLeft') {
+      e.preventDefault();
+      onPrev();
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault();
+      onNext();
+    }
+  };
+  ui.addEventListener('keydown', onKeyDown);
+
   const onVisibility = () => {
     paused = document.visibilityState === 'hidden';
-    if (paused) {
+    if (paused || reduceMotion) {
       window.clearInterval(timerId);
       timerId = 0;
       return;
@@ -175,12 +241,16 @@ function initHeroBackgroundCarousel() {
     restart();
   };
 
-  restart();
-  document.addEventListener('visibilitychange', onVisibility);
+  syncDots();
+  if (!reduceMotion) {
+    restart();
+    document.addEventListener('visibilitychange', onVisibility);
+  }
 
   return () => {
     window.clearInterval(timerId);
     document.removeEventListener('visibilitychange', onVisibility);
+    ui.remove();
   };
 }
 
