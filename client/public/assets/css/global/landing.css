@@ -901,6 +901,107 @@ body.lp-scroll-snap-active .lp-section-scroller {
   }
 }
 
+.lp-hero-carousel-ui {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.lp-hero-carousel-hit {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: min(20%, 5.5rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.lp-hero-carousel-hit .material-symbols-outlined {
+  font-size: 2rem;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.35));
+}
+
+.lp-hero-carousel-hit--prev {
+  left: 0;
+  padding-left: 0.35rem;
+}
+
+.lp-hero-carousel-hit--next {
+  right: 0;
+  padding-right: 0.35rem;
+}
+
+.lp-hero:hover .lp-hero-carousel-hit,
+.lp-hero-carousel-hit:focus-visible {
+  opacity: 1;
+}
+
+.lp-hero-carousel-hit:hover,
+.lp-hero-carousel-hit:focus-visible {
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(26, 54, 93, 0.18);
+}
+
+@media (hover: none), (pointer: coarse) {
+  .lp-hero-carousel-hit {
+    opacity: 0.45;
+  }
+}
+
+.lp-hero-carousel-dots {
+  position: absolute;
+  left: max(1.25rem, env(safe-area-inset-left, 0px));
+  bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  pointer-events: auto;
+}
+
+.lp-hero-carousel-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border: 0;
+  border-radius: 9999px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.38);
+  cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease, width 0.2s ease;
+}
+
+.lp-hero-carousel-dot:hover,
+.lp-hero-carousel-dot:focus-visible {
+  background: rgba(255, 255, 255, 0.72);
+  transform: scale(1.12);
+}
+
+.lp-hero-carousel-dot.is-active {
+  width: 1.35rem;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.lp-hero--comfort .lp-hero-carousel-dots {
+  left: max(1.5rem, env(safe-area-inset-left, 0px));
+}
+
+@media (min-width: 640px) {
+  .lp-hero-carousel-dots {
+    left: max(1.5rem, env(safe-area-inset-left, 0px));
+    bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .lp-hero.is-parallax-active .lp-hero-badge,
 .lp-hero.is-parallax-active .lp-hero-tag,
 .lp-hero.is-parallax-active .lp-stat {
