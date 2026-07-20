@@ -22,6 +22,19 @@ function run(cmd, args) {
 
 console.log('APTSpace setup\n');
 
+const hooksPath = path.join(root, '.githooks');
+if (fs.existsSync(path.join(hooksPath, 'prepare-commit-msg'))) {
+  const hookConfig = spawnSync('git', ['config', 'core.hooksPath', '.githooks'], {
+    cwd: root,
+    encoding: 'utf8',
+  });
+  if (hookConfig.status === 0) {
+    console.log('Git hooks enabled (.githooks) — Cursor co-author trailers will be stripped from commits');
+  } else if (hookConfig.stderr?.trim()) {
+    console.warn(`Could not set core.hooksPath: ${hookConfig.stderr.trim()}`);
+  }
+}
+
 if (!fs.existsSync(target)) {
   fs.copyFileSync(example, target);
   console.log('Created client/server/.env from .env.example');
