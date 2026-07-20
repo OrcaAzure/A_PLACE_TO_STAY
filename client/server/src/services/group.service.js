@@ -126,7 +126,10 @@ export function suggestRoomAssignment(availableRooms, totalGuests) {
 }
 
 async function enrichGroupBookings(groupId) {
-  const [rows] = await pool.query(`${bookingSelect} WHERE bk.group_id = ? ORDER BY bk.id`, [groupId]);
+  const [rows] = await pool.query(
+    `${bookingSelect} WHERE bk.group_id = ? AND bk.deleted_at IS NULL ORDER BY bk.id`,
+    [groupId]
+  );
   const bookings = await Promise.all(rows.map(async (row) => ({
     ...row,
     meals: await getBookingMeals(row.id),
@@ -137,7 +140,10 @@ async function enrichGroupBookings(groupId) {
 }
 
 export async function getGroupById(groupId) {
-  const [rows] = await pool.query(`${groupSelect} WHERE rg.id = ? LIMIT 1`, [groupId]);
+  const [rows] = await pool.query(
+    `${groupSelect} WHERE rg.id = ? AND rg.deleted_at IS NULL LIMIT 1`,
+    [groupId]
+  );
   if (!rows.length) return null;
   const group = rows[0];
   group.bookings = await enrichGroupBookings(groupId);
@@ -148,6 +154,9 @@ export async function getGroupById(groupId) {
     group.meals = group.bookings[0].meals || [];
     group.fees = group.bookings[0].fees || [];
     group.meal_allergen_notes = group.bookings[0].meal_allergen_notes || null;
+    group.expected_arrival_time = group.expected_arrival_time
+      || group.bookings[0].expected_arrival_time
+      || null;
   } else {
     group.meals = [];
     group.fees = [];
@@ -157,10 +166,10 @@ export async function getGroupById(groupId) {
 }
 
 export async function listGroups({ userId = null, admin = false } = {}) {
-  let sql = `${groupSelect}`;
+  let sql = `${groupSelect} WHERE rg.deleted_at IS NULL`;
   const params = [];
   if (!admin && userId) {
-    sql += ' WHERE rg.user_id = ?';
+    sql += ' AND rg.user_id = ?';
     params.push(userId);
   }
   sql += ' ORDER BY rg.check_in ASC';
@@ -224,6 +233,7 @@ export async function saveGroupBookings({
   rooms,
   status,
   notes,
+  expected_arrival_time,
   contactPhone,
   meals,
   fees,
@@ -295,12 +305,15 @@ export async function saveGroupBookings({
       groupGrandTotal += lineTotal;
 
       const [result] = await conn.query(
-        `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes, pricing_category)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes, expected_arrival_time, pricing_category)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userId, room_id, groupId, checkIn, checkOut, guest_count,
           prepared.season, prepared.occupancy_item, lineTotal, status,
-          notes || null, contactPhone || null, i === 0 ? (meal_allergen_notes || null) : null, 'Guest',
+          notes || null, contactPhone || null,
+          i === 0 ? (meal_allergen_notes || null) : null,
+          i === 0 ? (expected_arrival_time || null) : null,
+          'Guest',
         ]
       );
 
@@ -320,8 +333,8 @@ export async function saveGroupBookings({
     }
 
     await conn.query(
-      'UPDATE reservation_groups SET status = ?, notes = COALESCE(?, notes), contact_phone = COALESCE(?, contact_phone) WHERE id = ?',
-      [status, notes, contactPhone, groupId]
+      'UPDATE reservation_groups SET status = ?, notes = COALESCE(?, notes), contact_phone = COALESCE(?, contact_phone), expected_arrival_time = COALESCE(?, expected_arrival_time) WHERE id = ?',
+      [status, notes, contactPhone, expected_arrival_time || null, groupId]
     );
 
     await conn.commit();
@@ -349,6 +362,7 @@ export async function createReservationGroup(raw = {}) {
   const totalGuests = raw.totalGuests ?? raw.total_guests;
   const roomsRequested = raw.roomsRequested ?? raw.rooms_requested;
   const notes = raw.notes;
+  const expectedArrivalTime = raw.expected_arrival_time || raw.expectedArrivalTime || null;
   const status = raw.status;
   const rooms = raw.rooms;
   const meals = raw.meals;
@@ -374,8 +388,8 @@ export async function createReservationGroup(raw = {}) {
 
   const [result] = await pool.query(
     `INSERT INTO reservation_groups
-      (user_id, group_name, contact_name, contact_phone, contact_email, check_in, check_out, total_guests, rooms_requested, is_group_stay, status, notes, booking_ref, pricing_category)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (user_id, group_name, contact_name, contact_phone, contact_email, check_in, check_out, total_guests, rooms_requested, is_group_stay, status, notes, expected_arrival_time, booking_ref, pricing_category)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       effectiveUserId,
       groupName.trim(),
@@ -389,6 +403,7 @@ export async function createReservationGroup(raw = {}) {
       isGroupStay === false ? 0 : 1,
       groupStatus,
       notes || null,
+      expectedArrivalTime || null,
       bookingRef,
       'Guest',
     ]
@@ -412,6 +427,7 @@ export async function createReservationGroup(raw = {}) {
       rooms,
       status: groupStatus,
       notes,
+      expected_arrival_time: expectedArrivalTime,
       contactPhone,
       meals,
       fees,
@@ -710,9 +726,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
   return result;
 }
 
-export async function deleteReservationGroup(groupId) {
-  const group = await getGroupById(groupId);
-  if (!group) throw new Error('Group reservation not found');
-  await deletePaymentsForGroup(groupId);
-  await pool.query('DELETE FROM reservation_groups WHERE id = ?', [groupId]);
+export async function deleteReservationGroup(groupId, actorUserId = null) {
+  const { softDeleteGroup } = await import('./recycle.service.js');
+  await softDeleteGroup(groupId, actorUserId);
 }

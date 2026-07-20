@@ -65,9 +65,9 @@
             Paid &amp; closed <span class="invoice-tab__count" data-invoice-count="paid">0</span>
           </button>
         </div>
-        <button type="button" id="billing-clear-paid" class="billing-clear-paid hidden" aria-label="Clear all paid invoices">
+        <button type="button" id="billing-clear-paid" class="billing-clear-paid hidden js-requires-write" aria-label="Delete all paid records">
           <span class="material-symbols-outlined" aria-hidden="true">delete_sweep</span>
-          Clear all paid
+          Delete all paid records
         </button>
       </div>
 
@@ -79,6 +79,26 @@
           <p class="invoice-empty__text">Loading…</p>
         </div>
       </div>
+
+      <section class="billing-recycle" aria-labelledby="billing-recycle-title">
+        <div class="billing-recycle__head">
+          <div>
+            <h2 id="billing-recycle-title" class="billing-recycle__title">Recycle bin</h2>
+            <p class="billing-recycle__lead">Deleted paid invoices and reservations stay here until restored or permanently removed.</p>
+          </div>
+          <button type="button" id="billing-recycle-refresh" class="billing-recycle__refresh">
+            <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+            Refresh
+          </button>
+        </div>
+        <div class="invoice-tabs billing-recycle__tabs" role="tablist" aria-label="Recycle bin">
+          <button type="button" class="invoice-tab is-active" data-recycle-tab="invoices" role="tab" aria-selected="true">Invoices</button>
+          <button type="button" class="invoice-tab" data-recycle-tab="reservations" role="tab" aria-selected="false">Reservations</button>
+        </div>
+        <div id="billing-recycle-list" class="billing-recycle__list" aria-live="polite">
+          <p class="invoice-empty__text">Loading recycle bin…</p>
+        </div>
+      </section>
     </section>
     </div>
 

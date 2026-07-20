@@ -3258,6 +3258,49 @@ body.br-drawer-open {
   font-weight: 700;
 }
 
+.br-review-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.br-review-breakdown {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+}
+
+.br-review-breakdown__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #334155;
+}
+
+.br-review-breakdown__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.br-review-breakdown__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-size: 0.875rem;
+  color: #0f172a;
+  padding: 0.2rem 0;
+}
+
+.br-review-breakdown__row--detail {
+  color: #64748b;
+  font-size: 0.8125rem;
+  padding-left: 0.5rem;
+}
+
 /* Review & submit modal (on top of drawer) */
 .br-review-modal {
   position: fixed;

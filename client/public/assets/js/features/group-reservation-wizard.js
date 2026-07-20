@@ -13,6 +13,7 @@ import {
   loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
   readMealsFromInputs, clampMealQty, mealTypesOrdered, ensureMealsShape, isValidEmail,
   guestModifyMinStep, renderGuestModifyProgress, renderGuestModifyReviewSummary, renderGuestModifyReviewCallout,
+  aggregateFeeLines, formatFeeLineLabel,
 } from '/assets/js/features/reservation-shared.js';
 import {
   renderWizardMealGrid,
@@ -128,8 +129,13 @@ function applyGroupRecordToState(group) {
   state.notes = group.notes || '';
   state.meals = mealsFromBooking(group.meals || []);
   state.mealAllergenNotes = group.meal_allergen_notes || '';
-  state.fees = (group.fees || []).map((f) => ({ fee_name: f.fee_name, amount: f.amount }));
+  state.fees = aggregateFeeLines(group.fees || []).map((f) => ({
+    fee_name: f.fee_name,
+    amount: f.amount,
+    quantity: f.quantity,
+  }));
   state.originalFees = state.fees.map((f) => ({ ...f }));
+  state.expectedArrivalTime = String(group.expected_arrival_time || '').slice(0, 5);
   state.selectedRooms = (group.bookings || []).map((b) => ({
     room_id: b.room_id,
     guest_count: b.guest_count,
@@ -379,16 +385,17 @@ function renderStep4() {
       </div>`;
   }
   return `
-    <p class="res-lead">Meals and fees apply to the whole group.</p>
+    <p class="res-lead">Meals and extras apply to the <strong>whole group</strong> for the <strong>entire stay</strong> — not per room. Enter quantities that cover all guests across stay nights.</p>
     <div class="wiz-extras-block">
       <p class="guest-extras-block__label">Meals</p>
+      <p class="res-hint">Organizer tip: book meals for everyone for the full stay (for example, breakfast × guests × mornings).</p>
       ${renderWizardMealGrid(state.meals, state.mealRates, { idPrefix: 'gw' })}
     </div>
     <label class="res-label" for="gw-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
     <textarea id="gw-meal-allergens" class="res-input" rows="2" placeholder="e.g. nut allergy, gluten-free, vegetarian…">${escapeHtml(state.mealAllergenNotes || '')}</textarea>
     <div class="wiz-extras-block">
       <p class="guest-extras-block__label">Additional fees (optional)</p>
-      <p class="res-hint">Choose a category to browse options, or add a custom fee below.</p>
+      <p class="res-hint">Same extras combine as quantities (for example, 2× Extra bed). Fees apply once for the whole group.</p>
       ${feePickerBlock}
     </div>`;
 }
@@ -457,6 +464,9 @@ function renderStep5() {
       message: state.guestMessage,
     })}
       ${renderGuestModifyReviewSummary(reviewRows, { grandLabel: 'Estimated total', grandTotal: grand })}
+      <label class="res-label" for="gw-arrival-time">Earliest arrival <span class="text-error">*</span></label>
+      <input id="gw-arrival-time" type="time" class="res-input" required value="${escapeHtml(state.expectedArrivalTime || '')}" />
+      <p class="res-hint">If members arrive separately, use the earliest arrival on check-in day.</p>
       <label class="res-label" for="gw-notes">Notes <span class="guest-modify-optional">optional</span></label>
       <textarea id="gw-notes" class="res-input" rows="2" placeholder="Anything else for housing…">${escapeHtml(state.notes)}</textarea>`;
   }
@@ -476,7 +486,10 @@ function renderStep5() {
     grandLabel: state.guestModify || state.fromRequestId ? 'Estimated grand total' : 'Grand total',
     grandTotal: grand,
   })}
-    <label class="res-label">Notes (optional)</label>
+    <label class="res-label" for="gw-arrival-time">Earliest arrival <span class="text-error">*</span></label>
+    <input id="gw-arrival-time" type="time" class="res-input" required value="${escapeHtml(state.expectedArrivalTime || '')}" />
+    <p class="res-hint">If members arrive separately, use the earliest arrival on check-in day.</p>
+    <label class="res-label" for="gw-notes">Notes for housing staff</label>
     <textarea id="gw-notes" class="res-input" rows="2">${escapeHtml(state.notes)}</textarea>`;
 }
 
@@ -539,6 +552,7 @@ function readAllFields() {
   const rr = $('gw-rooms-req')?.value;
   if ($('gw-rooms-req')) state.roomsRequested = rr ? Math.max(1, Number(rr)) : null;
   state.notes = $('gw-notes')?.value?.trim() ?? state.notes;
+  state.expectedArrivalTime = $('gw-arrival-time')?.value?.trim() ?? state.expectedArrivalTime;
   state.guestMessage = $('gw-guest-message')?.value?.trim() ?? state.guestMessage;
   if ($('gw-meal-allergens')) state.mealAllergenNotes = $('gw-meal-allergens').value?.trim() || '';
   if ($('gw-room-search')) state.roomSearch = $('gw-room-search').value;
@@ -690,11 +704,27 @@ function bindEvents() {
         getExpandedGroupId: () => state.expandedFeeGroupId,
         setExpandedGroupId: (id) => { state.expandedFeeGroupId = id; renderBody(); },
         onAddFee: (fee) => {
-          state.fees.push(fee);
+          const amount = Number(fee.amount);
+          const name = fee.fee_name || fee.name;
+          const existing = state.fees.find((f) => f.fee_name === name && Number(f.amount) === amount);
+          if (existing) {
+            existing.quantity = Math.max(1, Number(existing.quantity) || 1) + 1;
+          } else {
+            state.fees.push({ fee_name: name, amount, quantity: 1 });
+          }
           renderBody();
         },
         onRemoveFee: (index) => {
-          state.fees.splice(index, 1);
+          const rows = aggregateFeeLines(state.fees);
+          const target = rows[index];
+          if (!target) return;
+          const idx = state.fees.findIndex(
+            (f) => f.fee_name === target.fee_name && Number(f.amount) === Number(target.amount),
+          );
+          if (idx < 0) return;
+          const row = state.fees[idx];
+          if (Math.max(1, Number(row.quantity) || 1) > 1) row.quantity -= 1;
+          else state.fees.splice(idx, 1);
           renderBody();
         },
       });
@@ -823,6 +853,11 @@ async function confirmSave() {
     renderBody();
     return;
   }
+  if (!state.expectedArrivalTime) {
+    state.error = 'Enter the earliest arrival time for the group.';
+    renderBody();
+    return;
+  }
   state.saving = true;
   renderBody();
 
@@ -845,6 +880,7 @@ async function confirmSave() {
     total_guests: state.totalGuests,
     rooms_requested: state.roomsRequested || undefined,
     notes: combinedNotes,
+    expected_arrival_time: state.expectedArrivalTime || undefined,
     status: state.guestModify ? 'Pending' : 'Approved',
     rooms: state.selectedRooms,
     meals: state.meals,

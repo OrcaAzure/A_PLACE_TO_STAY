@@ -86,12 +86,12 @@ export const updateGroup = async (req, res) => {
 
 export const deleteGroup = async (req, res) => {
   try {
-    const existing = await getGroupById(req.params.id);
-    if (!existing) return res.status(404).json({ message: 'Group reservation not found' });
-    await deleteReservationGroup(req.params.id);
-    res.status(200).json({ message: 'Group reservation deleted' });
+    await deleteReservationGroup(req.params.id, req.user?.id);
+    res.status(200).json({ message: 'Group reservation moved to recycle bin' });
   } catch (error) {
-    const status = error.message.includes('paid invoice') ? 409 : 500;
+    const status = error.message.includes('paid invoice') ? 409
+      : error.message.includes('not found') ? 404
+        : 400;
     res.status(status).json({ message: error.message });
   }
 };

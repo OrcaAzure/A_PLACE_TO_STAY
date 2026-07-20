@@ -9,6 +9,9 @@ const viewsDir = path.join(__dirname, '../../views');
 const router = Router();
 
 function sendView(res, relativePath) {
+  // Portal HTML changes often during development; never let browsers keep a stale shell.
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
   res.sendFile(path.join(viewsDir, relativePath));
 }
 

@@ -14,6 +14,8 @@ import {
   MEAL_MAX_QTY,
   mealTypesOrdered,
   ensureMealsShape,
+  aggregateFeeLines,
+  formatFeeLineLabel,
 } from '/assets/js/features/reservation-shared.js';
 import { getGuestSelfBookFeeCatalog, LAUNDRY_GROUP_ID } from '/assets/js/features/booking-fee-picker.js';
 
@@ -35,6 +37,7 @@ export function createGuestBookingExtras({
   feeSubmenuMount,
   selectedFeesMount,
   allergenInputId = 'booking-meal-allergens',
+  groupMode = false,
   onChange = () => {},
 } = {}) {
   const feeServicesBlock = panelEl?.querySelector('[data-guest-extras-services]');
@@ -42,6 +45,7 @@ export function createGuestBookingExtras({
   let feeGroups = [];
   let expandedGroupId = null;
   let meals = emptyMeals();
+  /** @type {{ name: string, amount: number, category: string, quantity: number }[]} */
   let fees = [];
   let roomSelected = false;
 
@@ -65,7 +69,11 @@ export function createGuestBookingExtras({
     const allergenEl = document.getElementById(allergenInputId);
     return {
       meals: { ...meals },
-      fees: fees.map((f) => ({ fee_name: f.name, amount: f.amount })),
+      fees: fees.map((f) => ({
+        fee_name: f.name,
+        amount: f.amount,
+        quantity: Math.max(1, Number(f.quantity) || 1),
+      })),
       meal_allergen_notes: allergenEl?.value?.trim() || undefined,
     };
   }
@@ -73,6 +81,26 @@ export function createGuestBookingExtras({
   function setRoomSelected(selected) {
     roomSelected = Boolean(selected);
     panelEl?.classList.toggle('hidden', !roomSelected);
+  }
+
+  function setGroupMode(next) {
+    groupMode = Boolean(next);
+    updateCopy();
+  }
+
+  function updateCopy() {
+    const sub = panelEl?.querySelector('[data-guest-extras-sub]');
+    if (sub) {
+      sub.textContent = groupMode
+        ? 'These meals and extras cover your whole group for the entire stay — not each room separately. Enter quantities for all guests across stay nights.'
+        : 'Optional meals and extras for your stay. Meal quantities cover all guests for the nights you need them.';
+    }
+    const mealHint = panelEl?.querySelector('[data-guest-meals-hint]');
+    if (mealHint) {
+      mealHint.textContent = groupMode
+        ? 'Organizer tip: book meals for everyone in the group for the full stay (for example, breakfast × guests × mornings).'
+        : 'Set how many of each meal you need for the stay (not just one night).';
+    }
   }
 
   function reset() {
@@ -88,7 +116,18 @@ export function createGuestBookingExtras({
 
   function addFee(item) {
     if (!item?.name || Number.isNaN(Number(item.amount))) return;
-    fees.push({ name: item.name, amount: Number(item.amount), category: item.category || '' });
+    const amount = Number(item.amount);
+    const existing = fees.find((f) => f.name === item.name && Number(f.amount) === amount);
+    if (existing) {
+      existing.quantity = Math.max(1, Number(existing.quantity) || 1) + 1;
+    } else {
+      fees.push({
+        name: item.name,
+        amount,
+        category: item.category || '',
+        quantity: 1,
+      });
+    }
     renderSelectedFees();
     onChange();
   }
@@ -213,18 +252,23 @@ export function createGuestBookingExtras({
       selectedFeesMount.classList.add('hidden');
       return;
     }
+    const totalCount = fees.reduce((s, f) => s + Math.max(1, Number(f.quantity) || 1), 0);
     selectedFeesMount.classList.remove('hidden');
     selectedFeesMount.innerHTML = `
-      <p class="guest-added-extras__label">Added extras <span class="guest-added-extras__count">${fees.length}</span></p>
+      <p class="guest-added-extras__label">Added extras <span class="guest-added-extras__count">${totalCount}</span></p>
       <ul class="guest-added-extras__list">
-        ${fees.map((f, i) => `
+        ${fees.map((f, i) => {
+          const qty = Math.max(1, Number(f.quantity) || 1);
+          const lineTotal = Number(f.amount) * qty;
+          return `
           <li class="guest-added-extras__item">
-            <span class="guest-added-extras__name">${escapeHtml(f.name)}</span>
-            <span class="guest-added-extras__amt">${formatMoney(f.amount)}</span>
+            <span class="guest-added-extras__name">${escapeHtml(formatFeeLineLabel(f))}</span>
+            <span class="guest-added-extras__amt">${formatMoney(lineTotal)}</span>
             <button type="button" class="guest-added-extras__remove" data-fee-rm="${i}" aria-label="Remove ${escapeHtml(f.name)}">
               <span class="material-symbols-outlined">close</span>
             </button>
-          </li>`).join('')}
+          </li>`;
+        }).join('')}
       </ul>`;
   }
 
@@ -247,6 +291,7 @@ export function createGuestBookingExtras({
   }
 
   function render() {
+    updateCopy();
     renderMeals();
     renderFeeChips();
     renderFeeSubmenu();
@@ -259,7 +304,6 @@ export function createGuestBookingExtras({
       if (!input) return;
       const type = input.dataset.mealQty;
       const raw = String(input.value ?? '').trim();
-      // Keep typed digits intact; clamp only after blur.
       meals[type] = raw === '' ? 0 : readMealQtyInput(input);
       syncMealSubtotals();
       onChange();
@@ -291,8 +335,6 @@ export function createGuestBookingExtras({
         amount: Number(chip.dataset.quickAmt),
         category: chip.dataset.quickCategory || '',
       });
-      renderSelectedFees();
-      onChange();
     });
 
     feeSubmenuMount?.addEventListener('click', (e) => {
@@ -309,14 +351,19 @@ export function createGuestBookingExtras({
         amount: Number(itemBtn.dataset.quickAmt),
         category: itemBtn.dataset.quickCategory || '',
       });
-      renderSelectedFees();
-      onChange();
     });
 
     selectedFeesMount?.addEventListener('click', (e) => {
       const btn = e.target.closest('[data-fee-rm]');
       if (!btn) return;
-      fees.splice(Number(btn.dataset.feeRm), 1);
+      const idx = Number(btn.dataset.feeRm);
+      const row = fees[idx];
+      if (!row) return;
+      if (Math.max(1, Number(row.quantity) || 1) > 1) {
+        row.quantity -= 1;
+      } else {
+        fees.splice(idx, 1);
+      }
       renderSelectedFees();
       onChange();
     });
@@ -325,11 +372,12 @@ export function createGuestBookingExtras({
   function applyState({ meals: nextMeals, fees: nextFees, meal_allergen_notes } = {}) {
     if (nextMeals) meals = ensureMealsShape(nextMeals, mealRates);
     if (Array.isArray(nextFees)) {
-      fees = nextFees.map((f) => ({
+      fees = aggregateFeeLines(nextFees).map((f) => ({
         name: f.fee_name || f.name,
         amount: Number(f.amount),
         category: f.category || '',
-      })).filter((f) => f.name && !Number.isNaN(f.amount));
+        quantity: Math.max(1, Number(f.quantity) || 1),
+      }));
     }
     const allergenEl = document.getElementById(allergenInputId);
     if (allergenEl) allergenEl.value = meal_allergen_notes || '';
@@ -358,6 +406,7 @@ export function createGuestBookingExtras({
     init,
     reset,
     setRoomSelected,
+    setGroupMode,
     applyState,
     getPayload,
     grandTotal,

@@ -56,10 +56,10 @@ export const getAllFacilityBookings = async (req, res) => {
     const { role, id: userId } = req.user;
     let rows;
     if (isAdminPortalRole(role)) {
-      [rows] = await pool.query(`${bookingSelect} ORDER BY fb.event_date ASC`);
+      [rows] = await pool.query(`${bookingSelect} WHERE fb.deleted_at IS NULL ORDER BY fb.event_date ASC`);
     } else {
       [rows] = await pool.query(
-        `${bookingSelect} WHERE fb.user_id = ? ORDER BY fb.event_date ASC`,
+        `${bookingSelect} WHERE fb.user_id = ? AND fb.deleted_at IS NULL ORDER BY fb.event_date ASC`,
         [userId]
       );
     }
@@ -471,13 +471,13 @@ export const updateFacilityBooking = async (req, res) => {
 
 export const deleteFacilityBooking = async (req, res) => {
   try {
-    const [existing] = await pool.query('SELECT id FROM bookings_facilities WHERE id = ? LIMIT 1', [req.params.id]);
-    if (!existing.length) return res.status(404).json({ message: 'Venue booking not found' });
-    await deletePaymentsForFacilityBooking(req.params.id);
-    await pool.query('DELETE FROM bookings_facilities WHERE id = ?', [req.params.id]);
-    res.status(200).json({ message: 'Venue booking deleted' });
+    const { softDeleteFacilityBooking } = await import('../services/recycle.service.js');
+    await softDeleteFacilityBooking(req.params.id, req.user?.id);
+    res.status(200).json({ message: 'Venue booking moved to recycle bin' });
   } catch (error) {
-    const status = error.message.includes('paid invoice') ? 409 : 500;
+    const status = error.message.includes('paid invoice') ? 409
+      : error.message.includes('not found') ? 404
+        : 400;
     res.status(status).json({ message: error.message });
   }
 };

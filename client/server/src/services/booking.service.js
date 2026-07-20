@@ -173,6 +173,7 @@ export async function hasOverlappingBooking(roomId, checkIn, checkOut, excludeBo
     SELECT id FROM bookings_rooms
     WHERE room_id = ?
       AND status IN ('Pending', 'Approved')
+      AND deleted_at IS NULL
       AND check_in < ?
       AND check_out > ?
   `;
@@ -634,26 +635,57 @@ export async function getBookingMeals(bookingId) {
 export async function getBookingFees(bookingId) {
   try {
     const [rows] = await pool.query(
-      'SELECT id, service_name, amount FROM bookings_extra_services WHERE bookings_room_id = ? ORDER BY id',
+      'SELECT id, service_name, amount, quantity FROM bookings_extra_services WHERE bookings_room_id = ? ORDER BY id',
       [bookingId]
     );
-    return rows.map((r) => ({ ...r, fee_name: r.service_name }));
+    return rows.map((r) => ({
+      ...r,
+      fee_name: r.service_name,
+      quantity: Math.max(1, Number(r.quantity) || 1),
+    }));
   } catch {
-    return [];
+    // Older schema without quantity column
+    try {
+      const [rows] = await pool.query(
+        'SELECT id, service_name, amount FROM bookings_extra_services WHERE bookings_room_id = ? ORDER BY id',
+        [bookingId]
+      );
+      return rows.map((r) => ({ ...r, fee_name: r.service_name, quantity: 1 }));
+    } catch {
+      return [];
+    }
   }
 }
 
 export async function saveBookingFees(bookingId, fees = []) {
   try {
     await pool.query('DELETE FROM bookings_extra_services WHERE bookings_room_id = ?', [bookingId]);
+    const merged = new Map();
     for (const fee of fees || []) {
       const name = String(fee.service_name || fee.fee_name || fee.name || '').trim();
       const amount = Number(fee.amount || 0);
+      const qty = Math.max(1, Number(fee.quantity ?? fee.qty ?? 1) || 1);
       if (!name || amount <= 0) continue;
-      await pool.query(
-        'INSERT INTO bookings_extra_services (bookings_room_id, service_name, amount) VALUES (?, ?, ?)',
-        [bookingId, name, amount]
-      );
+      const key = `${name}|${amount}`;
+      const prev = merged.get(key);
+      if (prev) prev.quantity += qty;
+      else merged.set(key, { name, amount, quantity: qty });
+    }
+    for (const fee of merged.values()) {
+      try {
+        await pool.query(
+          'INSERT INTO bookings_extra_services (bookings_room_id, service_name, amount, quantity) VALUES (?, ?, ?, ?)',
+          [bookingId, fee.name, fee.amount, fee.quantity]
+        );
+      } catch {
+        // Fallback when quantity column is missing: expand rows
+        for (let i = 0; i < fee.quantity; i += 1) {
+          await pool.query(
+            'INSERT INTO bookings_extra_services (bookings_room_id, service_name, amount) VALUES (?, ?, ?)',
+            [bookingId, fee.name, fee.amount]
+          );
+        }
+      }
     }
   } catch { /* tables may not exist yet */ }
 }
