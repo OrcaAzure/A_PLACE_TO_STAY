@@ -108,6 +108,82 @@ function initHeroTypewriter() {
   return () => window.clearTimeout(timerId);
 }
 
+const HERO_CAROUSEL_INTERVAL_MS = 7000;
+
+function preloadHeroSlideImage(url) {
+  if (!url) return;
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = url;
+}
+
+function initHeroBackgroundCarousel() {
+  const carousel = document.querySelector('[data-hero-carousel]');
+  if (!carousel) return () => {};
+
+  const slides = [...carousel.querySelectorAll('.lp-hero-bg-slide')];
+  if (slides.length <= 1) return () => {};
+
+  slides.forEach((slide, index) => {
+    if (index > 0) {
+      const url = slide.style.backgroundImage?.match(/url\(["']?([^"')]+)["']?\)/)?.[1];
+      preloadHeroSlideImage(url);
+    }
+  });
+
+  if (prefersReducedMotion()) {
+    slides.forEach((slide, index) => {
+      slide.classList.toggle('is-active', index === 0);
+    });
+    return () => {};
+  }
+
+  let index = slides.findIndex((slide) => slide.classList.contains('is-active'));
+  if (index < 0) index = 0;
+
+  let timerId = 0;
+  let paused = document.visibilityState === 'hidden';
+
+  const show = (nextIndex) => {
+    const safe = ((nextIndex % slides.length) + slides.length) % slides.length;
+    if (safe === index) return;
+    slides[index]?.classList.remove('is-active');
+    index = safe;
+    slides[index]?.classList.add('is-active');
+    const upcoming = slides[(index + 1) % slides.length];
+    const upcomingUrl = upcoming?.style.backgroundImage?.match(/url\(["']?([^"')]+)["']?\)/)?.[1];
+    preloadHeroSlideImage(upcomingUrl);
+  };
+
+  const tick = () => {
+    if (paused) return;
+    show(index + 1);
+  };
+
+  const restart = () => {
+    window.clearInterval(timerId);
+    timerId = window.setInterval(tick, HERO_CAROUSEL_INTERVAL_MS);
+  };
+
+  const onVisibility = () => {
+    paused = document.visibilityState === 'hidden';
+    if (paused) {
+      window.clearInterval(timerId);
+      timerId = 0;
+      return;
+    }
+    restart();
+  };
+
+  restart();
+  document.addEventListener('visibilitychange', onVisibility);
+
+  return () => {
+    window.clearInterval(timerId);
+    document.removeEventListener('visibilitychange', onVisibility);
+  };
+}
+
 function loadScript(src, timeoutMs = 12000) {
   return new Promise((resolve, reject) => {
     if (document.querySelector(`script[src="${src}"]`)) {
@@ -1390,6 +1466,7 @@ export async function initLandingPage(options = {}) {
   initNavSpy();
   initMobileMenu();
   initHeroTypewriter();
+  initHeroBackgroundCarousel();
 
   document.querySelectorAll('.lp-facility-card img').forEach((img) => {
     img.addEventListener('error', () => {

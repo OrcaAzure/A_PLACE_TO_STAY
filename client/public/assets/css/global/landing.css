@@ -863,19 +863,42 @@ body.lp-scroll-snap-active .lp-section-scroller {
   );
 }
 
-.lp-hero-bg {
+.lp-hero-bg,
+.lp-hero-bg-carousel {
   position: absolute;
   inset: 0;
   background-color: #1a365d;
-  background-image:
-    radial-gradient(circle at 18% 18%, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 42%),
-    linear-gradient(145deg, #2c5282 0%, #1a365d 100%);
-  background-size: cover;
-  background-position: center 45%;
 }
 
-.lp-hero.is-parallax-active .lp-hero-bg {
+.lp-hero-bg-carousel {
+  overflow: hidden;
+}
+
+.lp-hero-bg-slide {
+  position: absolute;
+  inset: 0;
+  background-color: #1a365d;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center 45%;
+  opacity: 0;
+  transition: opacity 1.4s ease-in-out;
+  will-change: opacity;
+}
+
+.lp-hero-bg-slide.is-active {
+  opacity: 1;
+}
+
+.lp-hero.is-parallax-active .lp-hero-bg,
+.lp-hero.is-parallax-active .lp-hero-bg-carousel {
   will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-hero-bg-slide {
+    transition: none;
+  }
 }
 
 .lp-hero.is-parallax-active .lp-hero-badge,

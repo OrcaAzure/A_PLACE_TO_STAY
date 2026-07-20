@@ -1,10 +1,13 @@
 <!-- HERO (public landing) -->
 <section id="hero" class="lp-hero lp-hero--comfort relative flex items-center overflow-hidden">
   <div class="lp-hero-bg-wrap absolute inset-0" aria-hidden="true">
-    <div
-      class="lp-hero-bg"
-      style="background-image: url('{{GARDEN_IMG}}');"
-    ></div>
+    <div class="lp-hero-bg lp-hero-bg-carousel" data-hero-carousel>
+      <div class="lp-hero-bg-slide is-active" style="background-image: url('{{HERO_CAROUSEL_1}}');"></div>
+      <div class="lp-hero-bg-slide" style="background-image: url('{{HERO_CAROUSEL_2}}');"></div>
+      <div class="lp-hero-bg-slide" style="background-image: url('{{HERO_CAROUSEL_3}}');"></div>
+      <div class="lp-hero-bg-slide" style="background-image: url('{{HERO_CAROUSEL_4}}');"></div>
+      <div class="lp-hero-bg-slide" style="background-image: url('{{HERO_CAROUSEL_5}}');"></div>
+    </div>
   </div>
   <div class="lp-hero-overlay" aria-hidden="true"></div>
   <div class="lp-hero-glow w-[420px] h-[420px] bg-primary/40 top-[-120px] right-[-80px]" aria-hidden="true"></div>
