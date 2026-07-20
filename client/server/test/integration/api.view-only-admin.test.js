@@ -21,6 +21,29 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
     assert.ok(Array.isArray(res.body.users));
   });
 
+  it('GET /api/payments allows View-Only Admin', async () => {
+    const agent = api();
+    await loginAs(agent, VIEWER_EMAIL);
+    const res = await agent.get('/api/payments');
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray(res.body.payments));
+  });
+
+  it('GET /api/bookings allows View-Only Admin', async () => {
+    const agent = api();
+    await loginAs(agent, VIEWER_EMAIL);
+    const res = await agent.get('/api/bookings');
+    assert.equal(res.status, 200);
+    assert.ok(Array.isArray(res.body.bookings));
+  });
+
+  it('GET /api/settings/fiscal-year allows View-Only Admin', async () => {
+    const agent = api();
+    await loginAs(agent, VIEWER_EMAIL);
+    const res = await agent.get('/api/settings/fiscal-year');
+    assert.equal(res.status, 200);
+  });
+
   it('GET /api/users/guest-access/activity denies View-Only Admin', async () => {
     const agent = api();
     await loginAs(agent, VIEWER_EMAIL);
@@ -34,6 +57,14 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
     await loginAs(agent, VIEWER_EMAIL);
     const res = await agent.get('/api/users/guest-access');
     assert.equal(res.status, 403);
+  });
+
+  it('GET /api/recycle denies View-Only Admin', async () => {
+    const agent = api();
+    await loginAs(agent, VIEWER_EMAIL);
+    const res = await agent.get('/api/recycle');
+    assert.equal(res.status, 403);
+    assert.match(res.body.message, /Forbidden/i);
   });
 
   it('GET /api/catalog/room-rates allows View-Only Admin', async () => {
@@ -55,6 +86,7 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
       ['delete', '/api/bookings/1', null],
       ['patch', '/api/auth/me', { full_name: 'Blocked Name' }],
       ['post', '/api/users/guest-access/requests', { full_name: 'X', email: 'x@example.org' }],
+      ['post', '/api/recycle/restore', { type: 'invoice', id: 1 }],
     ];
 
     for (const [method, path, body] of cases) {
@@ -76,6 +108,13 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
     const agent = api();
     await loginAs(agent, 'admin@aptspace.com');
     const res = await agent.get('/api/users/guest-access');
+    assert.equal(res.status, 200);
+  });
+
+  it('Super Admin can access recycle bin', async () => {
+    const agent = api();
+    await loginAs(agent, 'admin@aptspace.com');
+    const res = await agent.get('/api/recycle');
     assert.equal(res.status, 200);
   });
 });

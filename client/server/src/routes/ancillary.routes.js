@@ -12,12 +12,10 @@ import {
   saveRoomRates,
 } from '../controllers/ancillary.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
-import { requireAdmin, requireAdminPortal } from '../middleware/role.middleware.js';
+import { adminRead, adminWrite } from '../middleware/routeGuards.js';
 import { cacheResponse } from '../middleware/cache.middleware.js';
 
 const router = Router();
-const adminRead = [requireAuth, requireAdminPortal];
-const adminWrite = [requireAuth, requireAdmin];
 
 router.get('/meal-rates', ...adminRead, cacheResponse('catalog:meal-rates'), getMealRatesCatalog);
 router.post('/meal-rates', ...adminWrite, createMealRate);

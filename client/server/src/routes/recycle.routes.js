@@ -5,14 +5,13 @@ import {
   purgeRecycleItem,
   softDeleteReservation,
 } from '../controllers/recycle.controller.js';
-import { requireAuth } from '../middleware/auth.middleware.js';
-import { requireAdmin } from '../middleware/role.middleware.js';
+import { adminWrite } from '../middleware/routeGuards.js';
 
 const router = Router();
 
-router.get('/', requireAuth, requireAdmin, getRecycleBin);
-router.post('/restore', requireAuth, requireAdmin, restoreRecycleItem);
-router.post('/purge', requireAuth, requireAdmin, purgeRecycleItem);
-router.post('/reservations', requireAuth, requireAdmin, softDeleteReservation);
+router.get('/', ...adminWrite, getRecycleBin);
+router.post('/restore', ...adminWrite, restoreRecycleItem);
+router.post('/purge', ...adminWrite, purgeRecycleItem);
+router.post('/reservations', ...adminWrite, softDeleteReservation);
 
 export default router;

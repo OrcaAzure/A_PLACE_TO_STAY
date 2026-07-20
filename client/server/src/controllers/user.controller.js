@@ -1,6 +1,6 @@
 import { pool } from '../config/db.js';
 import { safeUser } from '../utils/helpers.js';
-import { ROLES, USER_ROLES, STATUS, isAdminRole, isAdminPortalRole } from '../utils/constants.js';
+import { ROLES, USER_ROLES, STATUS, isAdminPortalRole } from '../utils/constants.js';
 import { createGuestUser, isManagedExternalGuest } from '../services/user.service.js';
 import { logAudit, AUDIT_ACTIONS } from '../services/audit.service.js';
 import { invalidateSession } from '../services/session.service.js';

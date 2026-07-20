@@ -2,7 +2,7 @@
  * Portal page navigation — admin soft nav keeps sidebar/header static.
  */
 
-import { formatRoleLabel, getCurrentUser } from '/assets/js/services/auth.js';
+import { formatRoleLabel, getCurrentUser, getAdminNavItems } from '/assets/js/services/auth.js';
 import { lockStaticChrome } from '/assets/js/layout/animations.js';
 import { bootAdminPage, cleanupAdminPage } from '/assets/js/layout/admin-page-loaders.js';
 
@@ -102,6 +102,14 @@ async function navigateAdminSoft(href) {
     return;
   }
 
+  if (pageName === 'residents.html') {
+    const { canAccessGuestAccess } = await import('/assets/js/services/auth.js');
+    if (!canAccessGuestAccess()) {
+      window.location.replace('/admin/dashboard.html');
+      return;
+    }
+  }
+
   if (adminNavPromise) return adminNavPromise;
 
   const pageEl = document.getElementById('page-content');
@@ -128,7 +136,7 @@ async function navigateAdminSoft(href) {
       pageEl.className = meta.contentClass;
       pageEl.innerHTML = meta.contentHtml;
 
-      const { ADMIN_NAV, updateActiveNav, updateAdminHeader } = await import('/assets/js/layout/ui.js');
+      const { updateActiveNav, updateAdminHeader } = await import('/assets/js/layout/ui.js');
       const user = getCurrentUser() || {};
       const userName = user.full_name || user.name || 'Admin User';
       updateAdminHeader({
@@ -138,7 +146,7 @@ async function navigateAdminSoft(href) {
         userRole: formatRoleLabel(user.role) || 'Housing Admin',
         userInitial: userName.charAt(0).toUpperCase(),
       });
-      updateActiveNav(meta.activePage, ADMIN_NAV);
+      updateActiveNav(meta.activePage, getAdminNavItems());
       document.title = meta.docTitle;
       window.history.pushState({ adminPage: pageName }, '', href);
 
@@ -174,11 +182,12 @@ function bindPortalNav({ navSelector, contentSelector, headerSelector, allowedPa
       }
       if (softNav) {
         e.preventDefault();
-        import('/assets/js/layout/ui.js').then(({ ADMIN_NAV, updateActiveNav }) => {
+        import('/assets/js/layout/ui.js').then(({ updateActiveNav }) => {
           const page = pageNameFromHref(link.href);
-          const activePage = ADMIN_NAV.find((item) => item.href.endsWith(page))?.id
+          const navItems = getAdminNavItems();
+          const activePage = navItems.find((item) => item.href.endsWith(page))?.id
             || page.replace('.html', '');
-          updateActiveNav(activePage, ADMIN_NAV);
+          updateActiveNav(activePage, navItems);
         });
         navigateAdminSoft(link.href);
       }

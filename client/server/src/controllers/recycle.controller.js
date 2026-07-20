@@ -9,21 +9,9 @@ import {
   softDeleteFacilityBooking,
   softDeleteGroup,
 } from '../services/recycle.service.js';
-import { isAdminPortalRole, ROLES } from '../utils/constants.js';
-
-function requireSuperAdmin(req, res) {
-  if (req.user?.role !== ROLES.SUPER_ADMIN) {
-    res.status(403).json({ message: 'Only a Super Admin can permanently delete recycle bin items.' });
-    return false;
-  }
-  return true;
-}
 
 export async function getRecycleBin(req, res) {
   try {
-    if (!isAdminPortalRole(req.user.role)) {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
     const [invoices, reservations] = await Promise.all([
       listRecycleInvoices(),
       listRecycleReservations(),
@@ -36,9 +24,6 @@ export async function getRecycleBin(req, res) {
 
 export async function restoreRecycleItem(req, res) {
   try {
-    if (!isAdminPortalRole(req.user.role)) {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
     const { type, kind, id } = req.body || {};
     if (!id) return res.status(400).json({ message: 'id is required' });
 
@@ -58,7 +43,6 @@ export async function restoreRecycleItem(req, res) {
 
 export async function purgeRecycleItem(req, res) {
   try {
-    if (!requireSuperAdmin(req, res)) return;
     const { type, kind, id } = req.body || {};
     if (!id) return res.status(400).json({ message: 'id is required' });
 
@@ -78,9 +62,6 @@ export async function purgeRecycleItem(req, res) {
 
 export async function softDeleteReservation(req, res) {
   try {
-    if (!isAdminPortalRole(req.user.role)) {
-      return res.status(403).json({ message: 'Admin access required' });
-    }
     const { kind, id } = req.body || {};
     if (!kind || !id) return res.status(400).json({ message: 'kind and id are required' });
     const actor = req.user.id;

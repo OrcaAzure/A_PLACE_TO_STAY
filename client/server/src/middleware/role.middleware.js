@@ -2,7 +2,6 @@ import {
   READ_ONLY_ROLES,
   ADMIN_ROLES,
   ADMIN_PORTAL_ROLES,
-  GUEST_ACCESS_ROLES,
 } from '../utils/constants.js';
 import { logUnauthorizedAccess } from '../services/audit.service.js';
 
@@ -46,7 +45,7 @@ export const denyRole = (...deniedRoles) => {
 export const requireAdmin = requireRole(...ADMIN_ROLES);
 
 // Guest Access (external visitor accounts) — Super Admin only.
-export const requireGuestAccessAdmin = requireRole(...GUEST_ACCESS_ROLES);
+export const requireGuestAccessAdmin = requireAdmin;
 
 // Admin portal read access (Super Admin + view-only admin roles).
 export const requireAdminPortal = requireRole(...ADMIN_PORTAL_ROLES);

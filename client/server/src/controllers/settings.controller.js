@@ -1,6 +1,5 @@
 import {
   getPublicFiscalYearInfo,
-  getFiscalYearSettings,
   updateFiscalYearSettings,
   normalizeSeasonPeriodList,
   normalizeWeekendRule,
@@ -36,18 +35,6 @@ export const updateFiscalYear = async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ message: error.message });
-  }
-};
-
-export const getFiscalYearSettingsOnly = async (req, res) => {
-  try {
-    if (!isAdminRole(req.user.role)) {
-      return res.status(403).json({ message: 'Forbidden' });
-    }
-    const settings = await getFiscalYearSettings();
-    res.status(200).json({ settings });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
   }
 };
 

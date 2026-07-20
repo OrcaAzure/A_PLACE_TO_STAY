@@ -2,7 +2,7 @@ import { extractToken, resolveAuthUser } from '../utils/authToken.js';
 import { clearAuthCookie } from '../utils/cookies.js';
 import { UI_ONLY } from '../config/env.js';
 
-import { isAdminPortalRole } from '../utils/constants.js';
+import { isAdminPortalRole, canAccessGuestAccess } from '../utils/constants.js';
 
 function redirectToLogin(res, reason) {
   clearAuthCookie(res);
@@ -29,9 +29,21 @@ export function requirePortalPage(portal) {
         return res.redirect('/admin/dashboard.html');
       }
 
+      req.portalUser = user;
       return next();
     } catch {
       return redirectToLogin(res, 'auth');
     }
   };
+}
+
+/** Block View-Only Admin from Super Admin-only admin pages (e.g. Guest Access). */
+export function requireSuperAdminPage(req, res, next) {
+  if (UI_ONLY) return next();
+
+  const role = req.portalUser?.role;
+  if (!canAccessGuestAccess(role)) {
+    return res.redirect('/admin/dashboard.html');
+  }
+  return next();
 }
