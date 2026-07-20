@@ -1,4 +1,4 @@
-  import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
+import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
   import { initAppLayout } from '/assets/js/layout/ui.js';
   import { initSplashIdle } from '/assets/js/layout/splash-idle.js';
   import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
@@ -42,26 +42,39 @@
     showBookingRequestToast,
   } from '/assets/js/features/guest-booking-request-ui.js';
   import { openRoomGuestPicker } from '/assets/js/features/guest-room-guest-picker.js';
-  import { DORM_MIN_GUEST_COUNT, escapeHtml } from '/assets/js/features/reservation-shared.js';
+  import { DORM_MIN_GUEST_COUNT } from '/assets/js/features/reservation-shared.js';
   import {
     paintBrowseCategoryCards,
     buildBrowseCategoryCardsHtml,
   } from '/assets/js/features/guest-browse-categories.js';
 
-  function setMountHtml(id, html) {
+async function bootGuestFacilitiesBrowse() {
+function setMountHtml(id, html) {
     const el = document.getElementById(id);
     if (el) el.innerHTML = html;
   }
 
   await initSplashIdle({ portal: 'guest' });
-  if (!(await requireAuth())) throw new Error('Not authenticated');
+  if (!(await requireAuth())) return;
   await initAppLayout({
     portal: 'guest',
     activePage: 'facilities',
   });
 
   const isInternal = isInternalGuest();
-  let selectedCategory = paintBrowseCategoryCards({ isInternal });
+  // Paint categories immediately so a later boot error never leaves an empty mosaic.
+  let selectedCategory = paintBrowseCategoryCards({
+    selectedCategory: resolveBrowseCategory(readBrowseQuery().category),
+    isInternal,
+  });
+  // Hide venue section for room categories right away (don't wait for full boot).
+  document.getElementById('venues')?.classList.toggle('hidden', categoryShowsRooms(selectedCategory));
+  document.getElementById('venues-mount')?.classList.toggle('hidden', categoryShowsRooms(selectedCategory));
+  document.getElementById('browse-room-tools')?.classList.toggle('hidden', !categoryShowsRooms(selectedCategory));
+  const activeCategoryLabel = document.getElementById('active-category-label');
+  if (activeCategoryLabel) {
+    activeCategoryLabel.textContent = `Selected · ${getBrowseCategoryMeta(selectedCategory, isInternal).label}`;
+  }
 
   setMountHtml('browse-price-notice', priceNoticeHtml());
   setMountHtml('vbm-price-notice', priceNoticeHtml('mt-1'));
@@ -73,9 +86,12 @@
 
   const { readOnly } = applyRoleUI();
 
-  const bookingRequestUi = readOnly
-    ? { notifyAdded() {} }
-    : initBookingRequestChrome({ openOnAdd: true });
+  let bookingRequestUi = { notifyAdded() {} };
+  try {
+    if (!readOnly) bookingRequestUi = initBookingRequestChrome({ openOnAdd: true });
+  } catch (err) {
+    console.error('[browse] Booking request chrome failed', err);
+  }
 
   const roomBookingReady = initGuestRoomBookingModal({
     readOnly,
@@ -83,6 +99,13 @@
     onBrowseReturn: ({ roomId }) => {
       if (roomId) openRoomPreview(roomId);
     },
+  }).catch((err) => {
+    console.error('[browse] Room booking modal failed to initialize', err);
+    return {
+      openSearchBooking() {},
+      openConfirmBooking() {},
+      closeBookingModal() {},
+    };
   });
 
   const todayStr = new Date().toISOString().slice(0, 10);
@@ -203,6 +226,7 @@
       const stay = JSON.parse(raw);
       restoringStayCriteria = true;
       writeStayFields(stay);
+      ensureValidStayRange({ announce: false });
       return hasValidStayDates();
     } catch {
       return false;
@@ -241,7 +265,33 @@
   function hasValidStayDates() {
     const checkIn = checkInEl?.value;
     const checkOut = checkOutEl?.value;
-    return Boolean(checkIn && checkOut && new Date(checkOut) > new Date(checkIn));
+    return Boolean(checkIn && checkOut && checkOut > checkIn);
+  }
+
+  /** Keep check-out after check-in. Returns true when dates were adjusted. */
+  function ensureValidStayRange({ announce = false } = {}) {
+    const checkIn = checkInEl?.value;
+    const checkOut = checkOutEl?.value;
+    if (!checkIn) {
+      if (checkOutEl) checkOutEl.min = todayStr;
+      return false;
+    }
+    if (checkOutEl) {
+      const minOut = (() => {
+        const next = new Date(`${checkIn}T00:00:00`);
+        next.setDate(next.getDate() + 1);
+        return next.toISOString().slice(0, 10);
+      })();
+      checkOutEl.min = minOut;
+      if (!checkOut || checkOut <= checkIn) {
+        checkOutEl.value = minOut;
+        if (announce) {
+          setAvailabilityFeedback('Check-out must be after check-in — updated to the next day.', true);
+        }
+        return true;
+      }
+    }
+    return false;
   }
 
   function isRoomBrowseUnlocked() {
@@ -270,6 +320,9 @@
     if (findRoomsBtn) {
       findRoomsBtn.disabled = !hasValidStayDates();
       findRoomsBtn.classList.toggle('browse-stay-submit--stale', isRoomBrowseUnlocked() && !stayMatchesLastSearch());
+      findRoomsBtn.title = hasValidStayDates()
+        ? ''
+        : 'Choose a check-out date after check-in to see available rooms';
     }
     syncSearchButtonLabel();
     document.getElementById('clear-stay-btn')?.classList.toggle(
@@ -282,7 +335,16 @@
     persistStayCriteria();
     updateStayFormState();
     if (restoringStayCriteria) return;
-    if (!isRoomBrowseUnlocked()) return;
+
+    if (checkInEl?.value && checkOutEl?.value && checkOutEl.value <= checkInEl.value) {
+      setAvailabilityFeedback('Check-out must be after check-in.', true);
+      return;
+    }
+
+    if (!isRoomBrowseUnlocked()) {
+      if (hasValidStayDates()) setAvailabilityFeedback('');
+      return;
+    }
 
     if (stayMatchesLastSearch()) {
       setAvailabilityFeedback('');
@@ -677,9 +739,6 @@
       <article
         class="browse-room-card browse-space-card${silent ? '' : ' reveal'}"
         data-preview-room="${escapeHtml(String(room.id))}"
-        tabindex="0"
-        role="button"
-        aria-label="View photos and details for Room ${escapeHtml(String(room.roomNumber))}"
       >
         <div class="browse-room-card__media">
           <img src="${img}" alt="${room.roomType} room ${room.roomNumber}" loading="lazy" />
@@ -871,22 +930,27 @@
   findRoomsBtn?.addEventListener('click', checkAvailability);
   document.getElementById('clear-stay-btn')?.addEventListener('click', clearDates);
   checkInEl?.addEventListener('change', () => {
-    if (checkOutEl?.value && checkInEl?.value && checkOutEl.value <= checkInEl.value) {
-      const next = new Date(`${checkInEl.value}T00:00:00`);
-      next.setDate(next.getDate() + 1);
-      checkOutEl.value = next.toISOString().slice(0, 10);
+    ensureValidStayRange({ announce: true });
+    onStayCriteriaChange();
+  });
+  checkOutEl?.addEventListener('change', () => {
+    ensureValidStayRange({ announce: true });
+    onStayCriteriaChange();
+  });
+  guestsEl?.addEventListener('change', () => {
+    persistStayCriteria();
+    updateStayFormState();
+    if (isMultiRoomBrowse()) {
+      setGroupTotalGuests(totalGroupGuests());
     }
     onStayCriteriaChange();
   });
-  checkOutEl?.addEventListener('change', onStayCriteriaChange);
-  guestsEl?.addEventListener('input', () => {
-    persistStayCriteria();
-    updateStayFormState();
-    onStayCriteriaChange();
-  });
-  guestsEl?.addEventListener('change', onStayCriteriaChange);
+  // Don't bind guests on every keystroke — multi-digit values like 25 must finish typing first.
   multiRoomEl?.addEventListener('change', () => {
     updateMultiRoomCopy();
+    if (isMultiRoomBrowse()) {
+      setGroupTotalGuests(totalGroupGuests());
+    }
     onStayCriteriaChange();
     if (isRoomBrowseUnlocked() && hasValidStayDates()) {
       checkAvailability();
@@ -894,6 +958,7 @@
   });
   if (checkInEl) checkInEl.min = todayStr;
   if (checkOutEl) checkOutEl.min = todayStr;
+  ensureValidStayRange({ announce: false });
   updateStayFormState();
   updateMultiRoomCopy();
 
@@ -919,31 +984,51 @@
       checkAvailability();
       return;
     }
-    if (e.target.closest('a[href], [data-preview-stop]')) return;
-    const card = e.target.closest('[data-preview-room]');
-    if (card) openRoomPreview(card.dataset.previewRoom);
-  });
-  document.getElementById('rooms-mount')?.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    if (e.target.closest('a, button')) return;
-    const card = e.target.closest('[data-preview-room]');
-    if (!card) return;
-    e.preventDefault();
-    openRoomPreview(card.dataset.previewRoom);
+
+    const roomAddBtn = e.target.closest('[data-room-add-request]');
+    if (roomAddBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      void addRoomToBookingRequest(roomAddBtn.dataset.roomAddRequest);
+      return;
+    }
+
+    const roomBookBtn = e.target.closest('[data-room-book]');
+    if (roomBookBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const roomId = roomBookBtn.dataset.roomBook;
+      if (!roomId) return;
+      void roomBookingReady.then((roomBooking) => {
+        const room = visibleRooms().find((r) => String(r.id) === String(roomId))
+          || roomsForFilters().find((r) => String(r.id) === String(roomId));
+        const guestsForRoom = room ? guestCountForRoom(room) : (guestsEl?.value || '1');
+        roomBooking.openConfirmBooking({
+          roomId,
+          checkIn: checkInEl?.value,
+          checkOut: checkOutEl?.value,
+          guests: guestsForRoom || guestsEl?.value || '1',
+        });
+      });
+      return;
+    }
+
+    const previewBtn = e.target.closest('[data-preview-open]');
+    if (previewBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const card = previewBtn.closest('[data-preview-room]');
+      if (card) openRoomPreview(card.dataset.previewRoom);
+    }
   });
 
   document.getElementById('venues-mount')?.addEventListener('click', (e) => {
-    if (e.target.closest('[data-preview-stop]')) return;
-    const card = e.target.closest('[data-preview-venue]');
-    if (card) openVenuePreview(card.dataset.previewVenue);
-  });
-  document.getElementById('venues-mount')?.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' && e.key !== ' ') return;
-    if (e.target.closest('a, button')) return;
-    const card = e.target.closest('[data-preview-venue]');
-    if (!card) return;
+    const previewBtn = e.target.closest('[data-preview-open]');
+    if (!previewBtn) return;
     e.preventDefault();
-    openVenuePreview(card.dataset.previewVenue);
+    e.stopPropagation();
+    const card = previewBtn.closest('[data-preview-venue]');
+    if (card) openVenuePreview(card.dataset.previewVenue);
   });
 
   let searchTimer;
@@ -953,6 +1038,9 @@
   });
 
   // ---- Venue section ----
+  function escapeHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
 
   // Collapse rows that share a physical space (same category + name + code)
   // into one venue with multiple "uses" so guests see a single card with a
@@ -1050,9 +1138,6 @@
       <article
         class="browse-venue-card browse-space-card flex flex-col bg-white rounded-2xl overflow-hidden border border-outline-variant hover:border-primary/40 hover:shadow-xl transition-all duration-300 reveal"
         data-preview-venue="${escapeHtml(venue.key)}"
-        tabindex="0"
-        role="button"
-        aria-label="View photos and details for ${escapeHtml(venue.name)}"
       >
         <div class="browse-venue-card__media">
           <img src="${escapeHtml(img)}" alt="" loading="lazy" class="w-full h-full object-cover" />
@@ -1070,7 +1155,8 @@
           ${blurbNote}
           <button type="button"
             class="mt-auto w-full border border-primary text-primary rounded-lg py-2 text-label-sm hover:bg-primary hover:text-white transition-colors"
-            data-preview-open>
+            data-preview-open
+            aria-label="View photos and details for ${escapeHtml(venue.name)}">
             <span class="inline-flex items-center justify-center gap-1.5">
               <span class="material-symbols-outlined text-[16px]" aria-hidden="true">photo_library</span>
               View details
@@ -1423,10 +1509,7 @@
     }
     if (previewActions) {
       previewActions.className = 'browse-preview__actions browse-preview__actions--stacked';
-      previewActions.innerHTML = `
-        <button type="button" class="browse-preview__ghost" data-preview-close>Keep browsing</button>
-        ${roomReserveControl(room, { compact: true })}
-      `;
+      previewActions.innerHTML = roomReserveControl(room, { compact: true });
     }
 
     renderPreviewThumbs();
@@ -1501,10 +1584,8 @@
     if (previewActions) {
       previewActions.className = 'browse-preview__actions browse-preview__actions--stacked';
       previewActions.innerHTML = readOnly
-        ? `<button type="button" class="browse-preview__ghost" data-preview-close>Close</button>
-           <div class="browse-preview__cta text-center bg-surface-container-low text-outline border border-outline-variant/50">View only</div>`
-        : `<button type="button" class="browse-preview__ghost" data-preview-close>Keep browsing</button>
-           <button type="button" class="browse-preview__cta browse-preview__cta--secondary" data-venue-add-request data-venue-key="${escapeHtml(venue.key)}" data-preview-stop>Add to booking request</button>
+        ? `<div class="browse-preview__cta text-center bg-surface-container-low text-outline border border-outline-variant/50">View only</div>`
+        : `<button type="button" class="browse-preview__cta browse-preview__cta--secondary" data-venue-add-request data-venue-key="${escapeHtml(venue.key)}" data-preview-stop>Add to booking request</button>
            <button type="button" class="browse-preview__cta browse-preview__cta--primary" data-venue-key="${escapeHtml(venue.key)}" data-preview-book>Request this venue</button>`;
     }
 
@@ -1612,12 +1693,16 @@
   const modal    = document.getElementById('venue-booking-modal');
   if (modal && modal.parentElement !== document.body) {document.body.appendChild(modal);}
   const titleEl  = document.getElementById('vbm-title');
+  const subtitleEl = document.getElementById('vbm-subtitle');
   const catEl    = document.getElementById('vbm-category');
   const itemEl   = document.getElementById('vbm-item');
   const feedback = document.getElementById('vbm-feedback');
   const submitBtn= document.getElementById('vbm-submit-btn');
   const addRequestBtn = document.getElementById('vbm-add-request-btn');
   const rateHint = document.getElementById('vbm-rate-hint');
+  const formFields = document.getElementById('vbm-form-fields');
+  const successPanel = document.getElementById('vbm-success-panel');
+  const backBtn = document.getElementById('vbm-back');
 
   const useEl = document.getElementById('vbm-use');
   const useWrap = document.getElementById('vbm-use-wrap');
@@ -1625,6 +1710,37 @@
   const infoEl = document.getElementById('vbm-info');
   const capacityHint = document.getElementById('vbm-capacity-hint');
   let currentVenue = null;
+
+  function fmtVenueTime(t) {
+    if (!t) return '';
+    const [h, m] = String(t).slice(0, 5).split(':').map(Number);
+    if (Number.isNaN(h)) return t;
+    const d = new Date(2000, 0, 1, h, m || 0);
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  }
+
+  function resetVenueSuccessState() {
+    formFields?.classList.remove('hidden');
+    successPanel?.classList.add('hidden');
+    backBtn?.classList.remove('hidden');
+    if (titleEl && currentVenue) {
+      titleEl.textContent = `Book — ${currentVenue.name}${currentVenue.room_code ? ` (${currentVenue.room_code})` : ''}`;
+    }
+    if (subtitleEl) subtitleEl.textContent = 'Set the date and time, then submit your request.';
+  }
+
+  function showVenueBookingSuccess({ venueName, useLabel, eventDate, startTime, endTime }) {
+    const msg = document.getElementById('vbm-success-msg');
+    const when = `${fmtStayDate(eventDate)} · ${fmtVenueTime(startTime)} – ${fmtVenueTime(endTime)}`;
+    const place = [venueName, useLabel].filter(Boolean).join(' — ');
+    if (msg) msg.textContent = `${place} for ${when} is pending approval.`;
+    formFields?.classList.add('hidden');
+    successPanel?.classList.remove('hidden');
+    backBtn?.classList.add('hidden');
+    if (titleEl) titleEl.textContent = 'Request submitted';
+    if (subtitleEl) subtitleEl.textContent = 'Staff will review your venue request and notify you by email.';
+    feedback?.classList.add('hidden');
+  }
 
   function selectedFacilityId() {
     return facilityIdEl?.value || useEl?.value || '';
@@ -1701,6 +1817,7 @@
     useWrap?.classList.toggle('hidden', venue.uses.length <= 1);
 
     if (titleEl) titleEl.textContent = `Book — ${venue.name}${venue.room_code ? ` (${venue.room_code})` : ''}`;
+    if (subtitleEl) subtitleEl.textContent = 'Set the date and time, then submit your request.';
 
     const dateEl = document.getElementById('vbm-date');
     if (dateEl) {
@@ -1719,27 +1836,37 @@
     if (vbmGuests) vbmGuests.value = '1';
     feedback?.classList.add('hidden');
     document.getElementById('vbm-slot-status')?.classList.add('hidden');
-    if (submitBtn) submitBtn.disabled = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Request';
+    }
     if (rateHint) {
       rateHint.textContent = 'Pick a date and time — we check slot availability before you submit.';
     }
     renderVenueInfo(venue);
     applySelectedUse();
+    resetVenueSuccessState();
     modal?.classList.remove('hidden');
   }
 
   function closeVenueModal() {
     modal?.classList.add('hidden');
-    ['vbm-date','vbm-start','vbm-end','vbm-notes'].forEach(id => {
+    ['vbm-date','vbm-start','vbm-end','vbm-notes','vbm-phone'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
     const guests = document.getElementById('vbm-guests');
     if (guests) guests.value = '1';
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Request';
+    }
+    resetVenueSuccessState();
   }
 
   document.getElementById('vbm-close')?.addEventListener('click', closeVenueModal);
   document.getElementById('vbm-cancel-btn')?.addEventListener('click', closeVenueModal);
+  document.getElementById('vbm-success-done')?.addEventListener('click', closeVenueModal);
   document.getElementById('vbm-back')?.addEventListener('click', () => {
     const key = currentVenue?.key;
     closeVenueModal();
@@ -1967,9 +2094,16 @@
         notes,
         contact_phone: document.getElementById('vbm-phone')?.value?.trim() || undefined,
       });
-      showMsg('Venue request submitted! You will be notified once it is approved.', false);
-      submitBtn.textContent = 'Submitted';
-      setTimeout(closeVenueModal, 2000);
+      const use = currentVenue?.uses?.find((u) => String(u.facilityId) === String(facilityId));
+      showVenueBookingSuccess({
+        venueName: currentVenue?.name || 'Venue',
+        useLabel: use?.functionName || '',
+        eventDate,
+        startTime,
+        endTime,
+      });
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Request';
     } catch (err) {
       showMsg(err.message || 'Submission failed. Please try again.', true);
       submitBtn.disabled    = false;
@@ -1988,6 +2122,7 @@
       checkOut: browseQ.checkOut,
       guests: browseQ.guests || '1',
     });
+    ensureValidStayRange({ announce: Boolean(browseQ.checkIn && browseQ.checkOut) });
   } else {
     restoreStayCriteria();
   }
@@ -2011,7 +2146,8 @@
     () => checkAvailability({ background: true }),
     { shouldPoll: () => isRoomBrowseUnlocked() && availability !== null },
   );
+}
 
-  roomBookingReady.catch((err) => {
-    console.error('[browse] Room booking modal failed to initialize', err);
-  });
+bootGuestFacilitiesBrowse().catch((err) => {
+  console.error('[browse] Failed to initialize', err);
+});

@@ -10,8 +10,8 @@ export { seedDemoData, seedGuestStayExamples, seedGuestAccessRequests } from './
 export async function runSeed() {
   await runSchemaPatches();
 
-  const bootstrapUsers = process.env.ENABLE_SEED === 'true'
-    || (!isProduction && process.env.ENABLE_SEED !== 'false');
+  const bootstrapUsers = process.env.ENABLE_SEED === 'true' || !isProduction;
+  // Demo bookings/guests are opt-in only — never auto-load (avoids re-polluting a cleaned DB).
   const loadDemoData = process.env.ENABLE_DEMO_DATA === 'true';
 
   if (bootstrapUsers) {
@@ -26,6 +26,6 @@ export async function runSeed() {
     await seedGuestStayExamples();
     await seedGuestAccessRequests();
   } else {
-    console.log('[seed] Demo data skipped (set ENABLE_DEMO_DATA=true to load sample accounts and bookings)');
+    console.log('[seed] Demo data skipped (set ENABLE_DEMO_DATA=true to load)');
   }
 }

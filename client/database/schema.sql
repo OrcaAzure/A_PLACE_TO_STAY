@@ -271,8 +271,11 @@ CREATE TABLE IF NOT EXISTS reservation_groups (
                       'Cancelled'
                     ) NOT NULL DEFAULT 'Pending',
     notes           TEXT DEFAULT NULL,
+    expected_arrival_time TIME NULL DEFAULT NULL,
     booking_ref     VARCHAR(40) DEFAULT NULL,
     pricing_category VARCHAR(80) NOT NULL DEFAULT 'Guest',
+    deleted_at      TIMESTAMP NULL DEFAULT NULL,
+    deleted_by      INT NULL DEFAULT NULL,
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 
@@ -287,6 +290,7 @@ CREATE TABLE IF NOT EXISTS reservation_groups (
 
 CREATE INDEX idx_groups_status ON reservation_groups (status);
 CREATE INDEX idx_groups_dates ON reservation_groups (check_in, check_out);
+CREATE INDEX idx_reservation_groups_deleted_at ON reservation_groups (deleted_at);
 
 -- ============================================
 -- BOOKINGS: ROOMS
@@ -317,7 +321,10 @@ CREATE TABLE IF NOT EXISTS bookings_rooms (
     booking_ref         VARCHAR(40) DEFAULT NULL,
     contact_phone       VARCHAR(30) DEFAULT NULL,
     meal_allergen_notes TEXT DEFAULT NULL,
+    expected_arrival_time TIME NULL DEFAULT NULL,
     pricing_category    VARCHAR(80) NOT NULL DEFAULT 'Guest',
+    deleted_at          TIMESTAMP NULL DEFAULT NULL,
+    deleted_by          INT NULL DEFAULT NULL,
 
     created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -344,6 +351,7 @@ CREATE TABLE IF NOT EXISTS bookings_rooms (
 
 CREATE INDEX idx_bookings_rooms_room_dates ON bookings_rooms (room_id, check_in, check_out, status);
 CREATE INDEX idx_bookings_rooms_group ON bookings_rooms (group_id);
+CREATE INDEX idx_bookings_rooms_deleted_at ON bookings_rooms (deleted_at);
 
 CREATE TABLE IF NOT EXISTS bookings_meals (
     id               INT AUTO_INCREMENT PRIMARY KEY,
@@ -363,6 +371,7 @@ CREATE TABLE IF NOT EXISTS bookings_extra_services (
     bookings_room_id INT NOT NULL,
     service_name     VARCHAR(100) NOT NULL,
     amount           DECIMAL(10,2) NOT NULL,
+    quantity         INT NOT NULL DEFAULT 1,
     created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_bookings_extra_services_room FOREIGN KEY (bookings_room_id) REFERENCES bookings_rooms(id) ON DELETE CASCADE
 );
@@ -467,6 +476,8 @@ CREATE TABLE IF NOT EXISTS bookings_facilities (
     notes        TEXT DEFAULT NULL,
     booking_ref  VARCHAR(40) DEFAULT NULL,
     contact_phone VARCHAR(30) DEFAULT NULL,
+    deleted_at   TIMESTAMP NULL DEFAULT NULL,
+    deleted_by   INT NULL DEFAULT NULL,
 
     created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -513,6 +524,8 @@ CREATE TABLE IF NOT EXISTS payments (
     paid_at          TIMESTAMP NULL DEFAULT NULL,
     invoice_sent_at       TIMESTAMP NULL DEFAULT NULL,
     billing_invoice_sent_at TIMESTAMP NULL DEFAULT NULL,
+    deleted_at       TIMESTAMP NULL DEFAULT NULL,
+    deleted_by       INT NULL DEFAULT NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

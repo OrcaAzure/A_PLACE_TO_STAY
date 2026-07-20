@@ -707,7 +707,42 @@ export function formatMealsBreakdownDisplay(mealsOrRows) {
 }
 
 export function calcFeesSubtotal(fees = []) {
-  return (fees || []).reduce((s, f) => s + Number(f.amount || 0), 0);
+  return (fees || []).reduce((s, f) => {
+    const qty = Math.max(1, Number(f.quantity ?? f.qty ?? 1) || 1);
+    return s + Number(f.amount || 0) * qty;
+  }, 0);
+}
+
+/** Collapse fee lines with the same name + unit amount into qty rows. */
+export function aggregateFeeLines(fees = []) {
+  const map = new Map();
+  for (const f of fees || []) {
+    const name = String(f.fee_name || f.service_name || f.name || '').trim();
+    const amount = Number(f.amount || 0);
+    if (!name || !(amount > 0)) continue;
+    const qty = Math.max(1, Number(f.quantity ?? f.qty ?? 1) || 1);
+    const key = `${name}|${amount}`;
+    const prev = map.get(key);
+    if (prev) {
+      prev.quantity += qty;
+    } else {
+      map.set(key, {
+        fee_name: name,
+        name,
+        service_name: name,
+        amount,
+        quantity: qty,
+        category: f.category || '',
+      });
+    }
+  }
+  return [...map.values()];
+}
+
+export function formatFeeLineLabel(fee) {
+  const name = String(fee?.fee_name || fee?.service_name || fee?.name || 'Extra').trim();
+  const qty = Math.max(1, Number(fee?.quantity ?? fee?.qty ?? 1) || 1);
+  return qty > 1 ? `${qty}× ${name}` : name;
 }
 
 /** Guests may only keep existing fees or add catalog-listed extras (not custom lines). */
@@ -716,9 +751,9 @@ export function sanitizeGuestModifyFees(submitted = [], catalog = [], originalFe
     (catalog || []).map((f) => `${String(f.name || '').trim()}|${Number(f.amount)}`)
   );
   const originalKeys = new Set(
-    (originalFees || []).map((f) => `${String(f.fee_name || '').trim()}|${Number(f.amount)}`)
+    (originalFees || []).map((f) => `${String(f.fee_name || f.name || '').trim()}|${Number(f.amount)}`)
   );
-  return (submitted || []).filter((f) => {
+  return aggregateFeeLines(submitted || []).filter((f) => {
     const key = `${String(f.fee_name || '').trim()}|${Number(f.amount)}`;
     return catalogKeys.has(key) || originalKeys.has(key);
   });
@@ -747,7 +782,7 @@ export function emptyGroupWizardState() {
     roomSearch: '', roomTypeFilter: '',
     meals: { Breakfast: 0, Lunch: 0, Dinner: 0, Snack: 0 },
     mealAllergenNotes: '',
-    fees: [], originalFees: [], notes: '',
+    fees: [], originalFees: [], notes: '', expectedArrivalTime: '',
     expandedFeeGroupId: null,
     mealRates: { Breakfast: 175, Lunch: 225, Dinner: 225, Snack: 85 },
     loadingRooms: false, saving: false, error: null,

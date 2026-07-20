@@ -64,11 +64,11 @@ export const getAllBookings = async (req, res) => {
     let rows;
     if (isAdminPortalRole(role)) {
       [rows] = await pool.query(
-        `${bookingSelect} WHERE 1=1${groupFilter} ORDER BY bk.check_in ASC`
+        `${bookingSelect} WHERE bk.deleted_at IS NULL${groupFilter} ORDER BY bk.check_in ASC`
       );
     } else {
       [rows] = await pool.query(
-        `${bookingSelect} WHERE bk.user_id = ?${groupFilter} ORDER BY bk.check_in ASC`,
+        `${bookingSelect} WHERE bk.user_id = ? AND bk.deleted_at IS NULL${groupFilter} ORDER BY bk.check_in ASC`,
         [userId]
       );
     }
@@ -211,7 +211,7 @@ export const createBooking = async (req, res) => {
     const {
       user_id, room_id, check_in, check_out, guest_count,
       season, occupancy_item, notes, contact_phone, status, meals, fees,
-      guest_name, email, meal_allergen_notes,
+      guest_name, email, meal_allergen_notes, expected_arrival_time,
     } = req.body;
 
     const effectiveUserId = isAdminRole(role)
@@ -264,12 +264,13 @@ export const createBooking = async (req, res) => {
     const bookingStatus = isAdminRole(role) ? (status || 'Approved') : 'Pending';
 
     const [result] = await conn.query(
-      `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes, pricing_category)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO bookings_rooms (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item, total_amount, status, notes, contact_phone, meal_allergen_notes, expected_arrival_time, pricing_category)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         effectiveUserId, room_id, req.body.group_id || null, check_in, check_out, guest_count || 1,
         prepared.season, prepared.occupancy_item, grandTotal, bookingStatus,
-        notes || null, contact_phone || null, meal_allergen_notes || null, 'Guest',
+        notes || null, contact_phone || null, meal_allergen_notes || null,
+        expected_arrival_time || null, 'Guest',
       ]
     );
 
@@ -508,13 +509,13 @@ export const updateBooking = async (req, res) => {
 
 export const deleteBooking = async (req, res) => {
   try {
-    const [existing] = await pool.query('SELECT id FROM bookings_rooms WHERE id = ?', [req.params.id]);
-    if (!existing.length) return res.status(404).json({ message: 'Booking not found' });
-    await deletePaymentsForRoomBooking(req.params.id);
-    await pool.query('DELETE FROM bookings_rooms WHERE id = ?', [req.params.id]);
-    res.status(200).json({ message: 'Booking deleted' });
+    const { softDeleteRoomBooking } = await import('../services/recycle.service.js');
+    await softDeleteRoomBooking(req.params.id, req.user?.id);
+    res.status(200).json({ message: 'Booking moved to recycle bin' });
   } catch (error) {
-    const status = error.message.includes('paid invoice') ? 409 : 500;
+    const status = error.message.includes('paid invoice') ? 409
+      : error.message.includes('not found') ? 404
+        : 400;
     res.status(status).json({ message: error.message });
   }
 };

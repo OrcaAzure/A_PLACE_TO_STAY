@@ -19,7 +19,13 @@ import {
   groupGuestAssignmentStatus,
   roomGuestLimits,
 } from '/assets/js/features/guest-booking-request-store.js';
-import { escapeHtml } from '/assets/js/features/reservation-shared.js';
+import {
+  escapeHtml,
+  formatMoney,
+  mealTypesOrdered,
+  formatFeeLineLabel,
+  aggregateFeeLines,
+} from '/assets/js/features/reservation-shared.js';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
@@ -240,6 +246,7 @@ function ensureChrome() {
             <div id="br-group-name-wrap" class="br-review-field hidden">
               <label class="br-review-label" for="br-group-name">Group / organization name</label>
               <input id="br-group-name" type="text" class="br-review-input" placeholder="e.g. Mission Team Alpha" />
+              <p class="br-review-hint">As organizer, you are booking rooms, meals, and extras for the whole group and the full stay.</p>
             </div>
             <div class="br-review-field">
               <label class="br-review-label" for="br-contact-name">Contact name <span class="text-error">*</span></label>
@@ -253,26 +260,34 @@ function ensureChrome() {
               <div class="guest-booking-extras__head">
                 <div>
                   <h4 class="guest-booking-extras__title">Meals &amp; extras</h4>
-                  <p class="guest-booking-extras__sub">Optional add-ons for your room stay (applied to the group).</p>
+                  <p class="guest-booking-extras__sub" data-guest-extras-sub>Optional meals and extras for your stay. Meal quantities cover all guests for the nights you need them.</p>
                 </div>
               </div>
               <div class="guest-extras-block">
                 <p class="guest-extras-block__label">Meals</p>
+                <p class="br-review-hint" data-guest-meals-hint>Set how many of each meal you need for the stay (not just one night).</p>
                 <div id="br-meals-grid" class="guest-meals-grid"></div>
                 <label class="guest-extras-block__label mt-3" for="br-meal-allergens">Meal allergens &amp; dietary notes</label>
                 <textarea id="br-meal-allergens" rows="2" class="br-review-input" placeholder="e.g. nut allergy, gluten-free…"></textarea>
               </div>
               <div class="guest-extras-block" data-guest-extras-services>
                 <p class="guest-extras-block__label">Extra services</p>
+                <p class="br-review-hint">Tap to add. Same extras combine as quantities (for example, 2× Extra bed).</p>
                 <div id="br-selected-fees" class="guest-added-extras hidden"></div>
                 <div id="br-fee-chips" class="guest-service-grid"></div>
                 <div id="br-fee-submenu" class="guest-service-drawer hidden" aria-live="polite"></div>
               </div>
             </section>
+            <div id="br-arrival-wrap" class="br-review-field hidden">
+              <label class="br-review-label" for="br-arrival-time" id="br-arrival-label">Expected arrival <span class="text-error">*</span></label>
+              <input id="br-arrival-time" type="time" class="br-review-input" />
+              <p class="br-review-hint" id="br-arrival-hint">Tell housing when you expect to arrive on check-in day.</p>
+            </div>
             <div class="br-review-field">
               <label class="br-review-label" for="br-notes">Notes for housing staff</label>
-              <textarea id="br-notes" rows="2" class="br-review-input" placeholder="Special requests, arrival details…"></textarea>
+              <textarea id="br-notes" rows="2" class="br-review-input" placeholder="Special requests for housing (optional)…"></textarea>
             </div>
+            <div id="br-review-breakdown" class="br-review-breakdown" aria-live="polite"></div>
             <div class="br-review-total-row">
               <span>Estimated total</span>
               <span id="br-review-total">—</span>
@@ -392,13 +407,60 @@ async function ensureProfile() {
 
 function paintReviewTotals() {
   const totalEl = document.getElementById('br-review-total');
+  const breakdownEl = document.getElementById('br-review-breakdown');
   if (!totalEl) return;
-  let total = estimatedRequestTotal();
-  if (bookingExtras && roomItems().length) {
-    const lodging = roomItems().reduce((s, r) => s + Number(r.estimatedTotal || 0), 0);
-    total = lodging + bookingExtras.mealsSubtotal() + bookingExtras.feesSubtotal();
-  }
+
+  const rooms = roomItems();
+  const venues = venueItems();
+  const lodging = rooms.reduce((s, r) => s + Number(r.estimatedTotal || 0), 0);
+  const venueTotal = venues.reduce((s, v) => s + Number(v.estimatedTotal || 0), 0);
+  const mealsSub = rooms.length && bookingExtras ? bookingExtras.mealsSubtotal() : 0;
+  const feesSub = rooms.length && bookingExtras ? bookingExtras.feesSubtotal() : 0;
+  const total = lodging + venueTotal + mealsSub + feesSub;
   totalEl.textContent = total > 0 ? peso(total) : '—';
+
+  if (!breakdownEl) return;
+  const lines = [];
+  if (lodging > 0) {
+    lines.push({
+      label: rooms.length > 1 ? `Room stays (${rooms.length})` : 'Room stay',
+      amount: lodging,
+    });
+  }
+  if (venueTotal > 0) {
+    lines.push({
+      label: venues.length > 1 ? `Venue bookings (${venues.length})` : 'Venue booking',
+      amount: venueTotal,
+    });
+  }
+  if (rooms.length && bookingExtras) {
+    const payload = bookingExtras.getPayload();
+    mealTypesOrdered(payload.meals || {}).forEach((type) => {
+      const qty = Number(payload.meals?.[type] || 0);
+      if (qty > 0) lines.push({ label: `${type} × ${qty}`, amount: null, detail: true });
+    });
+    if (mealsSub > 0) lines.push({ label: 'Meals subtotal', amount: mealsSub });
+    aggregateFeeLines(payload.fees || []).forEach((f) => {
+      const qty = Math.max(1, Number(f.quantity) || 1);
+      lines.push({
+        label: formatFeeLineLabel(f),
+        amount: Number(f.amount) * qty,
+      });
+    });
+  }
+  if (!lines.length) {
+    breakdownEl.innerHTML = '';
+    return;
+  }
+  breakdownEl.innerHTML = `
+    <p class="br-review-breakdown__title">Summary breakdown</p>
+    <ul class="br-review-breakdown__list">
+      ${lines.map((line) => `
+        <li class="br-review-breakdown__row${line.detail ? ' br-review-breakdown__row--detail' : ''}">
+          <span>${escapeHtml(line.label)}</span>
+          <span>${line.amount == null ? '' : formatMoney(line.amount)}</span>
+        </li>`).join('')}
+    </ul>`;
 }
 
 function paintReviewModal() {
@@ -407,15 +469,35 @@ function paintReviewModal() {
   const listEl = document.getElementById('br-review-list');
   const groupWrap = document.getElementById('br-group-name-wrap');
   const extrasPanel = document.getElementById('br-extras-panel');
+  const arrivalWrap = document.getElementById('br-arrival-wrap');
+  const arrivalInput = document.getElementById('br-arrival-time');
+  const arrivalLabel = document.getElementById('br-arrival-label');
+  const arrivalHint = document.getElementById('br-arrival-hint');
   const submitBtn = document.getElementById('br-submit-btn');
+  const isGroup = rooms.length > 1;
 
   if (listEl) listEl.innerHTML = state.items.map(renderReviewItem).join('');
-  if (groupWrap) groupWrap.classList.toggle('hidden', rooms.length < 2);
+  if (groupWrap) groupWrap.classList.toggle('hidden', !isGroup);
   if (extrasPanel) extrasPanel.classList.toggle('hidden', rooms.length < 1);
+  if (arrivalWrap) {
+    arrivalWrap.classList.toggle('hidden', rooms.length < 1);
+    if (arrivalInput) arrivalInput.required = rooms.length > 0;
+  }
+  if (arrivalLabel) {
+    arrivalLabel.innerHTML = isGroup
+      ? 'Earliest arrival <span class="text-error">*</span>'
+      : 'Expected arrival <span class="text-error">*</span>';
+  }
+  if (arrivalHint) {
+    arrivalHint.textContent = isGroup
+      ? 'If members arrive at different times, enter the earliest arrival on check-in day.'
+      : 'Tell housing when you expect to arrive on check-in day.';
+  }
   if (submitBtn) submitBtn.disabled = state.items.length < 1;
 
   if (bookingExtras) {
     bookingExtras.setRoomSelected(rooms.length > 0);
+    bookingExtras.setGroupMode?.(isGroup);
     if (rooms.length > 0) {
       bookingExtras.applyState(getBookingRequestExtras(state));
     }
@@ -486,6 +568,16 @@ async function submitBookingRequestForm() {
   }
   const stay = sharedStayDates(state);
   const extrasPayload = rooms.length && bookingExtras ? bookingExtras.getPayload() : { meals: {}, fees: [], meal_allergen_notes: undefined };
+  const arrivalTime = document.getElementById('br-arrival-time')?.value?.trim() || '';
+
+  if (rooms.length && !arrivalTime) {
+    errorEl.textContent = rooms.length > 1
+      ? 'Enter the earliest arrival time for your group.'
+      : 'Enter your expected arrival time.';
+    errorEl?.classList.remove('hidden');
+    document.getElementById('br-arrival-time')?.focus();
+    return;
+  }
 
   submitBtn.disabled = true;
   submitBtn.textContent = 'Submitting…';
@@ -498,6 +590,7 @@ async function submitBookingRequestForm() {
       check_in: stay?.checkIn,
       check_out: stay?.checkOut,
       notes: document.getElementById('br-notes')?.value?.trim() || undefined,
+      expected_arrival_time: rooms.length ? arrivalTime : undefined,
       meals: extrasPayload.meals,
       fees: extrasPayload.fees,
       meal_allergen_notes: extrasPayload.meal_allergen_notes,
