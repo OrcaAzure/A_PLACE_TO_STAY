@@ -72,7 +72,10 @@ export const getAllFacilityBookings = async (req, res) => {
 export const getFacilityBookingById = async (req, res) => {
   try {
     const { role, id: userId } = req.user;
-    const [rows] = await pool.query(`${bookingSelect} WHERE fb.id = ? LIMIT 1`, [req.params.id]);
+    const [rows] = await pool.query(
+      `${bookingSelect} WHERE fb.id = ? AND fb.deleted_at IS NULL LIMIT 1`,
+      [req.params.id]
+    );
     if (!rows.length) return res.status(404).json({ message: 'Booking not found' });
     if (!isAdminPortalRole(role) && rows[0].user_id !== userId) {
       return res.status(403).json({ message: 'Forbidden' });
