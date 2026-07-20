@@ -91,18 +91,17 @@ export function isInternalGuest(userOrEmail = getCurrentUser()) {
 export const ADMIN_ROLES = ['Super Admin'];
 
 /* Roles that may open the admin portal (view-only roles included). */
-export const ADMIN_PORTAL_ROLES = ['Super Admin', 'Supervisory User', 'View-Only Admin'];
+export const ADMIN_PORTAL_ROLES = ['Super Admin', 'View-Only Admin'];
 
 /** Display label for roles in the UI (DB role unchanged). */
 export function formatRoleLabel(role) {
   if (role === 'Super Admin') return 'Housing Administrator';
-  if (role === 'Supervisory User') return 'Supervisory';
   if (role === 'View-Only Admin') return 'View-Only Admin';
   return role || '';
 }
 
 /* Admin portal roles that may only view — no creating/editing/approving. */
-export const READ_ONLY_ROLES = ['Supervisory User', 'View-Only Admin'];
+export const READ_ONLY_ROLES = ['View-Only Admin'];
 
 export function getUserRole() {
   const user = getCurrentUser();
@@ -119,6 +118,28 @@ export function isReadOnlyRole() {
 
 export function canWriteAdmin() {
   return ADMIN_ROLES.includes(getUserRole());
+}
+
+/** Guest Access page and APIs — Super Admin only (not view-only admin roles). */
+export function canAccessGuestAccess() {
+  return canWriteAdmin();
+}
+
+/** Redirect view-only roles away from Guest Access if they open the URL directly. */
+export function guardGuestAccessPage() {
+  if (canAccessGuestAccess()) return true;
+  window.location.replace('/admin/dashboard.html');
+  return false;
+}
+
+export function getAdminNavItems() {
+  if (canAccessGuestAccess()) return ADMIN_NAV;
+  return ADMIN_NAV.filter((item) => item.id !== 'residents');
+}
+
+export function getAdminMobileNavItems() {
+  if (canAccessGuestAccess()) return ADMIN_MOBILE_NAV;
+  return ADMIN_MOBILE_NAV.filter((item) => item.id !== 'residents');
 }
 
 /**
@@ -147,9 +168,19 @@ export function applyRoleUI() {
       el.classList.remove('hidden');
     });
     applyAdminReadOnlyGuards();
+    hideGuestAccessNavForReadOnly();
   }
 
   return { role, readOnly };
+}
+
+function hideGuestAccessNavForReadOnly() {
+  if (canAccessGuestAccess()) return;
+  document.querySelectorAll('a[href*="/admin/residents.html"]').forEach((link) => {
+    link.classList.add('hidden', 'readonly-nav-suppressed');
+    link.setAttribute('aria-hidden', 'true');
+    link.tabIndex = -1;
+  });
 }
 
 /** Admin-shell write controls to hide for view-only roles (positive list). */

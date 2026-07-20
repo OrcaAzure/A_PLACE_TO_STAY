@@ -88,7 +88,7 @@ export const updateUser = async (req, res) => {
     }
     if (
       role
-      && [ROLES.SUPERVISORY_USER, ROLES.VIEW_ONLY_ADMIN].includes(role)
+      && role === ROLES.VIEW_ONLY_ADMIN
       && req.user.role !== ROLES.SUPER_ADMIN
     ) {
       return res.status(403).json({ message: 'Only a Super Admin can assign admin portal roles' });

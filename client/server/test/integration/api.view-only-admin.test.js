@@ -21,12 +21,19 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
     assert.ok(Array.isArray(res.body.users));
   });
 
-  it('GET /api/users/guest-access/activity allows View-Only Admin', async () => {
+  it('GET /api/users/guest-access/activity denies View-Only Admin', async () => {
     const agent = api();
     await loginAs(agent, VIEWER_EMAIL);
     const res = await agent.get('/api/users/guest-access/activity');
-    assert.equal(res.status, 200);
-    assert.ok(Array.isArray(res.body.entries));
+    assert.equal(res.status, 403);
+    assert.match(res.body.message, /Forbidden/i);
+  });
+
+  it('GET /api/users/guest-access denies View-Only Admin', async () => {
+    const agent = api();
+    await loginAs(agent, VIEWER_EMAIL);
+    const res = await agent.get('/api/users/guest-access');
+    assert.equal(res.status, 403);
   });
 
   it('GET /api/catalog/room-rates allows View-Only Admin', async () => {
@@ -63,5 +70,12 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
     await loginAs(agent, 'admin@aptspace.com');
     const res = await agent.patch('/api/settings/fiscal-year').send({ booking_advance_months: 12 });
     assert.notEqual(res.status, 403, 'Super Admin should not be blocked by view-only guards');
+  });
+
+  it('Super Admin retains Guest Access API access', async () => {
+    const agent = api();
+    await loginAs(agent, 'admin@aptspace.com');
+    const res = await agent.get('/api/users/guest-access');
+    assert.equal(res.status, 200);
   });
 });

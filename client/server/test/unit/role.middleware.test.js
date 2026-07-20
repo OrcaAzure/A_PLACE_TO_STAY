@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import '../helpers/env-setup.mjs';
-import { requireRole, denyRole, blockReadOnly, requireAdminPortal } from '../../src/middleware/role.middleware.js';
+import { requireRole, denyRole, blockReadOnly, requireAdminPortal, requireGuestAccessAdmin } from '../../src/middleware/role.middleware.js';
 
 function mockRes() {
   const res = { statusCode: 200, body: null };
@@ -54,9 +54,9 @@ describe('requireRole', () => {
 });
 
 describe('denyRole / blockReadOnly', () => {
-  it('blocks Supervisory User via blockReadOnly', () => {
+  it('blocks View-Only Admin via blockReadOnly', () => {
     const { res, nextCalled } = runMiddleware(blockReadOnly, {
-      user: { role: 'Supervisory User' },
+      user: { role: 'View-Only Admin' },
     });
     assert.equal(res.statusCode, 403);
     assert.match(res.body.message, /view-only/);
@@ -69,15 +69,6 @@ describe('denyRole / blockReadOnly', () => {
     });
     assert.equal(nextCalled, true);
     assert.equal(res.statusCode, 200);
-  });
-
-  it('blocks View-Only Admin via blockReadOnly', () => {
-    const { res, nextCalled } = runMiddleware(blockReadOnly, {
-      user: { role: 'View-Only Admin' },
-    });
-    assert.equal(res.statusCode, 403);
-    assert.match(res.body.message, /view-only/);
-    assert.equal(nextCalled, false);
   });
 
   it('allows Super Admin through blockReadOnly', () => {
@@ -97,12 +88,25 @@ describe('denyRole / blockReadOnly', () => {
   });
 
   it('denyRole blocks only listed roles', () => {
-    const guard = denyRole('Supervisory User');
-    const blocked = runMiddleware(guard, { user: { role: 'Supervisory User' } });
+    const guard = denyRole('View-Only Admin');
+    const blocked = runMiddleware(guard, { user: { role: 'View-Only Admin' } });
     assert.equal(blocked.res.statusCode, 403);
     assert.equal(blocked.nextCalled, false);
 
     const allowed = runMiddleware(guard, { user: { role: 'Guest' } });
     assert.equal(allowed.nextCalled, true);
+  });
+});
+
+describe('requireGuestAccessAdmin', () => {
+  it('allows Super Admin', () => {
+    const { nextCalled } = runMiddleware(requireGuestAccessAdmin, { user: { role: 'Super Admin' } });
+    assert.equal(nextCalled, true);
+  });
+
+  it('blocks View-Only Admin', () => {
+    const { res, nextCalled } = runMiddleware(requireGuestAccessAdmin, { user: { role: 'View-Only Admin' } });
+    assert.equal(res.statusCode, 403);
+    assert.equal(nextCalled, false);
   });
 });

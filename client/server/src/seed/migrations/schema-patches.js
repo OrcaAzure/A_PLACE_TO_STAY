@@ -33,6 +33,7 @@ import {
   runUsersSessionColumns,
   runUsersRoleSimplify,
   runUsersViewOnlyAdminRole,
+  runUsersRemoveSupervisoryRole,
   runUsersEmptyRoleRepair,
   runUsersProfileCleanup,
 } from './users.js';
@@ -112,6 +113,7 @@ export async function runSchemaPatches() {
   // 18. Users role simplify → facilities contact_phone → empty role → profile
   await safeRun('users role simplification', runUsersRoleSimplify);
   await safeRun('users view-only admin role', runUsersViewOnlyAdminRole);
+  await safeRun('users remove supervisory role', runUsersRemoveSupervisoryRole);
   await safeRun('bookings_facilities.contact_phone', runBookingsFacilitiesContactPhone);
   await safeRun('users empty role repair', runUsersEmptyRoleRepair);
   await safeRun('users profile fields', runUsersProfileCleanup);

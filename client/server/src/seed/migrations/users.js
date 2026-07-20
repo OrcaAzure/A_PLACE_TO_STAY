@@ -131,7 +131,7 @@ export async function runUsersRoleSimplify() {
   console.log('[schema] Simplified users.role to Super Admin / Supervisory User / Guest');
 }
 
-/** Add View-Only Admin role for supervisors and auditors with admin portal read access. */
+/** Add View-Only Admin role for auditors with admin portal read access. */
 export async function runUsersViewOnlyAdminRole() {
   if (!(await tableExists('users'))) return;
   const type = (await getColumnType('users', 'role')).toLowerCase();
@@ -147,6 +147,26 @@ export async function runUsersViewOnlyAdminRole() {
      ) NOT NULL DEFAULT 'Guest'`
   );
   console.log('[schema] Added users.role value: View-Only Admin');
+}
+
+/** Migrate legacy Supervisory User accounts to View-Only Admin and drop the old enum value. */
+export async function runUsersRemoveSupervisoryRole() {
+  if (!(await tableExists('users'))) return;
+  const type = (await getColumnType('users', 'role')).toLowerCase();
+  if (!type.includes("'supervisory user'")) return;
+
+  await pool.execute(
+    `UPDATE users SET role = 'View-Only Admin' WHERE role = 'Supervisory User'`
+  );
+  await pool.execute(
+    `ALTER TABLE users
+     MODIFY role ENUM(
+       'Super Admin',
+       'View-Only Admin',
+       'Guest'
+     ) NOT NULL DEFAULT 'Guest'`
+  );
+  console.log('[schema] Migrated Supervisory User → View-Only Admin and removed legacy role');
 }
 
 /** Repair empty/null roles to Guest. */

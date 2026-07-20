@@ -115,11 +115,12 @@
   </div>
 
   <script type="module">
-    import { requireAuth } from '/assets/js/services/auth.js';
+    import { requireAuth, guardGuestAccessPage } from '/assets/js/services/auth.js';
     import { initAppLayout } from '/assets/js/layout/ui.js';
     import { initGuestAccessPage, loadGuestAccessPage } from '/assets/js/features/admin-guest-access.js';
 
     if (!(await requireAuth())) throw new Error('Not authenticated');
+    if (!guardGuestAccessPage()) throw new Error('Guest Access not permitted');
 
     await initAppLayout({
       portal:     'admin',
