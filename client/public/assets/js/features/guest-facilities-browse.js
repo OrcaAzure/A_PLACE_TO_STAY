@@ -226,6 +226,7 @@ function setMountHtml(id, html) {
       const stay = JSON.parse(raw);
       restoringStayCriteria = true;
       writeStayFields(stay);
+      ensureValidStayRange({ announce: false });
       return hasValidStayDates();
     } catch {
       return false;
@@ -264,7 +265,33 @@ function setMountHtml(id, html) {
   function hasValidStayDates() {
     const checkIn = checkInEl?.value;
     const checkOut = checkOutEl?.value;
-    return Boolean(checkIn && checkOut && new Date(checkOut) > new Date(checkIn));
+    return Boolean(checkIn && checkOut && checkOut > checkIn);
+  }
+
+  /** Keep check-out after check-in. Returns true when dates were adjusted. */
+  function ensureValidStayRange({ announce = false } = {}) {
+    const checkIn = checkInEl?.value;
+    const checkOut = checkOutEl?.value;
+    if (!checkIn) {
+      if (checkOutEl) checkOutEl.min = todayStr;
+      return false;
+    }
+    if (checkOutEl) {
+      const minOut = (() => {
+        const next = new Date(`${checkIn}T00:00:00`);
+        next.setDate(next.getDate() + 1);
+        return next.toISOString().slice(0, 10);
+      })();
+      checkOutEl.min = minOut;
+      if (!checkOut || checkOut <= checkIn) {
+        checkOutEl.value = minOut;
+        if (announce) {
+          setAvailabilityFeedback('Check-out must be after check-in — updated to the next day.', true);
+        }
+        return true;
+      }
+    }
+    return false;
   }
 
   function isRoomBrowseUnlocked() {
@@ -293,6 +320,9 @@ function setMountHtml(id, html) {
     if (findRoomsBtn) {
       findRoomsBtn.disabled = !hasValidStayDates();
       findRoomsBtn.classList.toggle('browse-stay-submit--stale', isRoomBrowseUnlocked() && !stayMatchesLastSearch());
+      findRoomsBtn.title = hasValidStayDates()
+        ? ''
+        : 'Choose a check-out date after check-in to see available rooms';
     }
     syncSearchButtonLabel();
     document.getElementById('clear-stay-btn')?.classList.toggle(
@@ -305,7 +335,16 @@ function setMountHtml(id, html) {
     persistStayCriteria();
     updateStayFormState();
     if (restoringStayCriteria) return;
-    if (!isRoomBrowseUnlocked()) return;
+
+    if (checkInEl?.value && checkOutEl?.value && checkOutEl.value <= checkInEl.value) {
+      setAvailabilityFeedback('Check-out must be after check-in.', true);
+      return;
+    }
+
+    if (!isRoomBrowseUnlocked()) {
+      if (hasValidStayDates()) setAvailabilityFeedback('');
+      return;
+    }
 
     if (stayMatchesLastSearch()) {
       setAvailabilityFeedback('');
@@ -891,14 +930,13 @@ function setMountHtml(id, html) {
   findRoomsBtn?.addEventListener('click', checkAvailability);
   document.getElementById('clear-stay-btn')?.addEventListener('click', clearDates);
   checkInEl?.addEventListener('change', () => {
-    if (checkOutEl?.value && checkInEl?.value && checkOutEl.value <= checkInEl.value) {
-      const next = new Date(`${checkInEl.value}T00:00:00`);
-      next.setDate(next.getDate() + 1);
-      checkOutEl.value = next.toISOString().slice(0, 10);
-    }
+    ensureValidStayRange({ announce: true });
     onStayCriteriaChange();
   });
-  checkOutEl?.addEventListener('change', onStayCriteriaChange);
+  checkOutEl?.addEventListener('change', () => {
+    ensureValidStayRange({ announce: true });
+    onStayCriteriaChange();
+  });
   guestsEl?.addEventListener('change', () => {
     persistStayCriteria();
     updateStayFormState();
@@ -920,6 +958,7 @@ function setMountHtml(id, html) {
   });
   if (checkInEl) checkInEl.min = todayStr;
   if (checkOutEl) checkOutEl.min = todayStr;
+  ensureValidStayRange({ announce: false });
   updateStayFormState();
   updateMultiRoomCopy();
 
@@ -2083,6 +2122,7 @@ function setMountHtml(id, html) {
       checkOut: browseQ.checkOut,
       guests: browseQ.guests || '1',
     });
+    ensureValidStayRange({ announce: Boolean(browseQ.checkIn && browseQ.checkOut) });
   } else {
     restoreStayCriteria();
   }
