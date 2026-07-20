@@ -1,5 +1,13 @@
 import { getProfile, logout as logoutApi } from '/assets/js/services/api.js';
 import { isInternalGuestEmail } from '/assets/js/config/guest-access.js';
+import { ADMIN_NAV, ADMIN_MOBILE_NAV } from '/assets/js/config/admin-nav.js';
+import {
+  ADMIN_ROLES,
+  ADMIN_PORTAL_ROLES,
+  READ_ONLY_ROLES,
+} from '/assets/js/config/roles.js';
+
+export { ADMIN_ROLES, ADMIN_PORTAL_ROLES, READ_ONLY_ROLES } from '/assets/js/config/roles.js';
 
 export const LOGGED_IN_KEY = 'aptspace_logged_in';
 const USER_KEY = 'user';
@@ -87,21 +95,12 @@ export function isInternalGuest(userOrEmail = getCurrentUser()) {
   return isInternalGuestEmail(email);
 }
 
-/* Roles that may perform housing admin write actions. */
-export const ADMIN_ROLES = ['Super Admin'];
-
-/* Roles that may open the admin portal (view-only roles included). */
-export const ADMIN_PORTAL_ROLES = ['Super Admin', 'View-Only Admin'];
-
 /** Display label for roles in the UI (DB role unchanged). */
 export function formatRoleLabel(role) {
   if (role === 'Super Admin') return 'Housing Administrator';
   if (role === 'View-Only Admin') return 'View-Only Admin';
   return role || '';
 }
-
-/* Admin portal roles that may only view — no creating/editing/approving. */
-export const READ_ONLY_ROLES = ['View-Only Admin'];
 
 export function getUserRole() {
   const user = getCurrentUser();
@@ -183,9 +182,8 @@ function hideGuestAccessNavForReadOnly() {
   });
 }
 
-/** Admin-shell write controls to hide for view-only roles (positive list). */
-const ADMIN_SHELL_WRITE_HIDE_SELECTORS = [
-  '.js-requires-write',
+/** Dynamically rendered write controls (no .js-requires-write in template HTML). */
+const DYNAMIC_WRITE_SELECTORS = [
   '[data-approve]',
   '[data-reject]',
   '[data-modify]',
@@ -206,7 +204,6 @@ const ADMIN_SHELL_WRITE_HIDE_SELECTORS = [
   '[data-ga-activate]',
   '[data-ga-delete]',
   '[data-ga-menu-toggle]',
-  '[data-ga-bulk-deactivate]',
   '[data-open-manage-facilities]',
   '[data-open-manage-venues]',
   '[data-open-manage-reservations]',
@@ -219,13 +216,8 @@ const ADMIN_SHELL_WRITE_HIDE_SELECTORS = [
   '[data-catalog-add]',
   '[data-catalog-edit]',
   '[data-catalog-delete]',
-  '[data-catalog-add-option]',
-  '[data-catalog-confirm-option]',
   '[data-save-room-rate]',
   '[data-save-venue-rate]',
-  '[data-add-use]',
-  '[data-remove-use]',
-  '[data-save-booking-fees]',
   '[data-res-edit-open]',
   '[data-res-confirm-apply]',
   '[data-confirm-paid]',
@@ -234,33 +226,20 @@ const ADMIN_SHELL_WRITE_HIDE_SELECTORS = [
   '#manage-facilities-new',
   '#manage-facilities-save',
   '#manage-facilities-delete',
-  '#manage-facilities-edit',
   '#manage-venues-new',
   '#mv-save',
   '#mv-delete',
-  '#guest-access-submit',
-  '#catalog-modal-save',
   '#reservation-wizard-next',
   '#reservation-wizard-confirm',
   '#group-wizard-next',
   '#group-wizard-confirm',
   '#venue-wizard-next',
   '#venue-wizard-confirm',
-  '.admin-crud-btn-primary',
-  '.admin-crud-btn-danger',
-  '.res-btn--primary',
-  '.res-btn--approve',
-  '.res-btn--reject',
-  '.res-btn--danger',
-  '.res-btn--modify',
-  '.fac-rate-save',
-  '.catalog-edit-btn',
-  '.catalog-delete-btn',
-  '.invoice-btn-confirm',
-  '.billing-edit-footer__save',
-  '.billing-res-edit-btn',
-  '.billing-fee-panel__save',
-  '.ga-row-menu__item--danger',
+];
+
+const ADMIN_SHELL_WRITE_HIDE_SELECTORS = [
+  '.js-requires-write',
+  ...DYNAMIC_WRITE_SELECTORS,
 ].join(',');
 
 const ADMIN_WRITE_CLICK_SELECTORS = [

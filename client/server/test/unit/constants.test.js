@@ -4,6 +4,7 @@ import {
   canAccessGuestAccess,
   isReadOnlyAdminRole,
   isAdminPortalRole,
+  isAdminRole,
   ROLES,
   USER_ROLES,
 } from '../../src/utils/constants.js';
@@ -21,6 +22,7 @@ describe('RBAC constants', () => {
     assert.equal(canAccessGuestAccess('Super Admin'), true);
     assert.equal(canAccessGuestAccess('View-Only Admin'), false);
     assert.equal(canAccessGuestAccess('Guest'), false);
+    assert.equal(canAccessGuestAccess('Super Admin'), isAdminRole('Super Admin'));
   });
 
   it('View-Only Admin can use the portal but not write or Guest Access', () => {

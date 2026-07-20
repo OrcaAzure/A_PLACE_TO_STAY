@@ -29,10 +29,8 @@ export function isReadOnlyAdminRole(role) {
 }
 
 /** Roles that may manage external guest accounts (Guest Access page and APIs). */
-export const GUEST_ACCESS_ROLES = [ROLES.SUPER_ADMIN];
-
 export function canAccessGuestAccess(role) {
-  return GUEST_ACCESS_ROLES.includes(role);
+  return isAdminRole(role);
 }
 
 /** Default role when admin creates a booking for someone not yet in the system. */
