@@ -15,10 +15,7 @@ import { animateModalOpen } from '/assets/js/layout/animations.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
 import { roomStatusLabel, roomStatusOptions, roomStatusMeta } from '/assets/js/features/room-status.js';
 import { debounce, escapeHtml } from '/assets/js/features/reservation-shared.js';
-<<<<<<< HEAD
-=======
 import { isReadOnlyRole, refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 
 /** Sentinel value used by the room-type <select> to reveal the "new type" field. */
 const ADD_TYPE_VALUE = '__add_type__';

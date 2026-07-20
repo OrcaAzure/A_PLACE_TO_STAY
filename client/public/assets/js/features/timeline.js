@@ -712,11 +712,7 @@ function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', 
       ${!canCancel && !approved ? `
         <p class="tl-detail-done">This reservation is ${escapeHtml(statusLabel(booking.status).toLowerCase())}${booking.updatedAt ? ` · updated ${formatDate(booking.updatedAt)}` : ''}.</p>
       ` : ''}
-<<<<<<< HEAD
     </div>`;
-=======
-    </div>`);
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 
   return `
     <div class="tl-detail">
@@ -894,16 +890,11 @@ function renderVenueDetailBody(raw, { busy = false, error = '' } = {}) {
     b.notes ? renderDetailRow('Notes', b.notes) : '',
   ].join('');
 
-<<<<<<< HEAD
-  let actions;
-  if (pending) {
-=======
   const readOnly = isReadOnlyRole();
   let actions;
   if (readOnly) {
     actions = `<p class="tl-detail-done">This venue booking is ${escapeHtml(statusLabel(b.status).toLowerCase())}.</p>`;
   } else if (pending) {
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
     actions = `
     <div class="tl-detail-actions">
       <button type="button" class="res-btn res-btn--approve res-btn--wide" data-vd-approve ${busy ? 'disabled' : ''}>Approve</button>

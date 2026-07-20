@@ -32,10 +32,7 @@ import {
   runUsersRoleExpansion,
   runUsersSessionColumns,
   runUsersRoleSimplify,
-<<<<<<< HEAD
-=======
   runUsersViewOnlyAdminRole,
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
   runUsersEmptyRoleRepair,
   runUsersProfileCleanup,
 } from './users.js';
@@ -113,10 +110,7 @@ export async function runSchemaPatches() {
   await safeRun('pricing_category migration', runBookingsPricingCategory);
   // 18. Users role simplify → facilities contact_phone → empty role → profile
   await safeRun('users role simplification', runUsersRoleSimplify);
-<<<<<<< HEAD
-=======
   await safeRun('users view-only admin role', runUsersViewOnlyAdminRole);
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
   await safeRun('bookings_facilities.contact_phone', runBookingsFacilitiesContactPhone);
   await safeRun('users empty role repair', runUsersEmptyRoleRepair);
   await safeRun('users profile fields', runUsersProfileCleanup);

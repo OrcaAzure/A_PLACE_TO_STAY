@@ -16,10 +16,7 @@ import {
 } from '/assets/js/services/api.js';
 import { confirmModal, loadComponent, showAlertModal } from '/assets/js/layout/ui.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
-<<<<<<< HEAD
-=======
 import { refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 
 const DEFAULT_MEAL_NAMES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const DEFAULT_EXTRA_CATEGORIES = [
@@ -1016,10 +1013,7 @@ export function renderExtrasCatalog(services) {
 
   mount.innerHTML = cards.join('');
   bindExtrasGridActions();
-<<<<<<< HEAD
-=======
   refreshAdminReadOnlyUI();
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 }
 
 function handleCatalogPageClick(e) {

@@ -987,10 +987,7 @@ export function openModal(title, bodyHtml, options = {}) {
   document.getElementById('app-modal')?.classList.remove('hidden');
   document.getElementById('modal-overlay')?.classList.remove('hidden');
   updateBodyScrollLock();
-<<<<<<< HEAD
-=======
   refreshAdminReadOnlyUI();
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
   if (!hideHeader) document.getElementById('modal-close')?.focus();
   else bodyEl.querySelector('[data-detail-close]')?.focus();
   animateModalOpen(shell).catch(() => {});
