@@ -3,7 +3,7 @@
  * Used by guest booking extras and admin reservation wizards.
  */
 
-import { escapeHtml, formatMoney, PER_PERSON_NIGHT_EXTRA_ITEM, servicesToQuickFees } from '/assets/js/features/reservation-shared.js';
+import { escapeHtml, formatMoney, PER_PERSON_NIGHT_EXTRA_ITEM, servicesToQuickFees, formatFeeLineLabel, aggregateFeeLines } from '/assets/js/features/reservation-shared.js';
 
 const LAUNDRY_CATEGORIES = new Set(['Laundry', 'Laundry-Iron']);
 export const LAUNDRY_GROUP_ID = 'laundry';
@@ -226,19 +226,24 @@ function renderFeeChips(feeGroups, expandedGroupId) {
 }
 
 function renderSelectedFees(fees) {
-  if (!fees.length) return '';
+  const rows = aggregateFeeLines(fees);
+  if (!rows.length) return '';
+  const totalCount = rows.reduce((s, f) => s + Math.max(1, Number(f.quantity) || 1), 0);
   return `
     <div class="guest-added-extras">
-      <p class="guest-added-extras__label">Added extras <span class="guest-added-extras__count">${fees.length}</span></p>
+      <p class="guest-added-extras__label">Added extras <span class="guest-added-extras__count">${totalCount}</span></p>
       <ul class="guest-added-extras__list">
-        ${fees.map((f, i) => `
+        ${rows.map((f, i) => {
+          const qty = Math.max(1, Number(f.quantity) || 1);
+          return `
           <li class="guest-added-extras__item">
-            <span class="guest-added-extras__name">${escapeHtml(f.fee_name || f.name)}</span>
-            <span class="guest-added-extras__amt">${formatMoney(f.amount)}</span>
+            <span class="guest-added-extras__name">${escapeHtml(formatFeeLineLabel(f))}</span>
+            <span class="guest-added-extras__amt">${formatMoney(Number(f.amount) * qty)}</span>
             <button type="button" class="guest-added-extras__remove" data-fee-rm="${i}" aria-label="Remove ${escapeHtml(f.fee_name || f.name)}">
               <span class="material-symbols-outlined">close</span>
             </button>
-          </li>`).join('')}
+          </li>`;
+        }).join('')}
       </ul>
     </div>`;
 }

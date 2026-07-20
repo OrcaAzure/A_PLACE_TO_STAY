@@ -29,7 +29,7 @@ export const paymentRoomDetailSelect = `
          p.amount, p.method, p.status, p.paid_at, p.invoice_sent_at, p.billing_invoice_sent_at, p.created_at, p.updated_at,
          b.user_id, b.check_in, b.check_out, b.status AS booking_status, b.guest_count,
          b.total_amount AS booking_total, b.group_id, b.season, b.occupancy_item,
-         b.notes, b.contact_phone, b.meal_allergen_notes, b.pricing_category,
+         b.notes, b.contact_phone, b.meal_allergen_notes, b.expected_arrival_time, b.pricing_category,
          u.full_name AS guest_name, u.email AS guest_email,
          r.id AS room_id, r.room_number, r.room_type, r.status AS room_status,
          bl.name AS building_name,
@@ -81,11 +81,11 @@ function sortPaymentRows(rows) {
 
 export async function listAllPaymentRows({ userId } = {}) {
   const roomSql = userId
-    ? `${paymentRoomDetailSelect} WHERE b.status = 'Approved' AND b.user_id = ?`
-    : `${paymentRoomDetailSelect} WHERE b.status = 'Approved'`;
+    ? `${paymentRoomDetailSelect} WHERE b.status = 'Approved' AND b.user_id = ? AND p.deleted_at IS NULL AND b.deleted_at IS NULL`
+    : `${paymentRoomDetailSelect} WHERE b.status = 'Approved' AND p.deleted_at IS NULL AND b.deleted_at IS NULL`;
   const venueSql = userId
-    ? `${paymentVenueDetailSelect} WHERE fb.status = 'Approved' AND fb.user_id = ?`
-    : `${paymentVenueDetailSelect} WHERE fb.status = 'Approved'`;
+    ? `${paymentVenueDetailSelect} WHERE fb.status = 'Approved' AND fb.user_id = ? AND p.deleted_at IS NULL AND fb.deleted_at IS NULL`
+    : `${paymentVenueDetailSelect} WHERE fb.status = 'Approved' AND p.deleted_at IS NULL AND fb.deleted_at IS NULL`;
 
   let [[roomRows], [venueRows]] = await Promise.all([
     pool.query(roomSql, userId ? [userId] : []),
@@ -558,7 +558,7 @@ export async function attachSummariesToPayments(rows) {
 
 export async function getInvoiceByBookingId(bookingId) {
   const [rows] = await pool.query(
-    'SELECT * FROM payments WHERE bookings_room_id = ? LIMIT 1',
+    'SELECT * FROM payments WHERE bookings_room_id = ? AND deleted_at IS NULL LIMIT 1',
     [bookingId]
   );
   return rows[0] || null;
@@ -566,7 +566,7 @@ export async function getInvoiceByBookingId(bookingId) {
 
 export async function getInvoiceByFacilityBookingId(facilityBookingId) {
   const [rows] = await pool.query(
-    'SELECT * FROM payments WHERE bookings_facility_id = ? LIMIT 1',
+    'SELECT * FROM payments WHERE bookings_facility_id = ? AND deleted_at IS NULL LIMIT 1',
     [facilityBookingId]
   );
   return rows[0] || null;
@@ -761,10 +761,10 @@ export async function loadPaymentDetail(paymentId) {
 
   let row;
   if (meta[0].bookings_facility_id) {
-    const [rows] = await pool.query(`${paymentVenueDetailSelect} WHERE p.id = ? LIMIT 1`, [paymentId]);
+    const [rows] = await pool.query(`${paymentVenueDetailSelect} WHERE p.id = ? AND p.deleted_at IS NULL LIMIT 1`, [paymentId]);
     row = rows[0];
   } else {
-    const [rows] = await pool.query(`${paymentRoomDetailSelect} WHERE p.id = ? LIMIT 1`, [paymentId]);
+    const [rows] = await pool.query(`${paymentRoomDetailSelect} WHERE p.id = ? AND p.deleted_at IS NULL LIMIT 1`, [paymentId]);
     row = rows[0];
   }
 
@@ -1010,19 +1010,12 @@ export async function deletePaymentsForFacilityBooking(facilityBookingId, conn =
 }
 
 export async function deletePaidInvoice(paymentId, actorUserId = null) {
+  const { softDeletePaidInvoice } = await import('./recycle.service.js');
   const payment = await loadPaymentDetail(paymentId);
   if (!payment) throw new Error('Invoice not found');
-  if (payment.status !== 'Paid') {
-    throw new Error('Only fully paid invoices can be cleared. Open or partial invoices cannot be deleted.');
-  }
 
   try {
-    await runPaymentQuery('DELETE FROM payment_transactions WHERE payment_id = ?', [paymentId]);
-    const [result] = await runPaymentQuery(
-      'DELETE FROM payments WHERE id = ? AND status = ?',
-      [paymentId, 'Paid']
-    );
-    if (!result.affectedRows) throw new Error('Invoice could not be cleared');
+    await softDeletePaidInvoice(paymentId, actorUserId);
   } catch (err) {
     throw mapPaymentDbError(err);
   }
@@ -1031,7 +1024,7 @@ export async function deletePaidInvoice(paymentId, actorUserId = null) {
     const { logAudit } = await import('./audit.service.js');
     await logAudit({
       actorUserId,
-      action: 'payment_invoice_cleared',
+      action: 'payment_invoice_deleted',
       entityType: 'payment',
       entityId: Number(paymentId),
       details: {
@@ -1039,6 +1032,7 @@ export async function deletePaidInvoice(paymentId, actorUserId = null) {
         amount: payment.summary?.amount_paid ?? payment.amount,
         booking_id: payment.booking_id,
         facility_booking_id: payment.facility_booking_id,
+        soft_delete: true,
       },
     });
   } catch {
@@ -1052,17 +1046,10 @@ export async function deletePaidInvoice(paymentId, actorUserId = null) {
 }
 
 export async function clearAllPaidInvoices(actorUserId = null) {
-  const [rows] = await pool.query(
-    `SELECT id FROM payments WHERE status = 'Paid'`
-  );
-  if (!rows.length) return { deleted: 0 };
-
-  const ids = rows.map((r) => r.id);
-  let deleted = 0;
+  const { softDeleteAllPaidInvoices } = await import('./recycle.service.js');
+  let result;
   try {
-    await runPaymentQuery('DELETE FROM payment_transactions WHERE payment_id IN (?)', [ids]);
-    const [result] = await runPaymentQuery('DELETE FROM payments WHERE status = ?', ['Paid']);
-    deleted = result.affectedRows;
+    result = await softDeleteAllPaidInvoices(actorUserId);
   } catch (err) {
     throw mapPaymentDbError(err);
   }
@@ -1071,16 +1058,16 @@ export async function clearAllPaidInvoices(actorUserId = null) {
     const { logAudit } = await import('./audit.service.js');
     await logAudit({
       actorUserId,
-      action: 'payment_invoices_bulk_cleared',
+      action: 'payment_invoices_bulk_deleted',
       entityType: 'payment',
       entityId: null,
-      details: { count: deleted, payment_ids: ids },
+      details: { count: result.deleted, payment_ids: result.payment_ids || [], soft_delete: true },
     });
   } catch {
     /* audit is best-effort */
   }
 
-  return { deleted };
+  return { deleted: result.deleted };
 }
 
 function appendAdminModificationNote(existingNotes, modificationMessage, fallback) {

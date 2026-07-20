@@ -6,12 +6,13 @@ import {
   getPayments, getPaymentById, updatePayment, sendPaymentInvoice, recordPaymentTransaction,
   deletePayment, clearPaidPayments, getExtraServicesCatalog, updateBooking,
   updateFacilityBooking, convertPaymentReservation, revertPaymentOvernight, getFacilitiesOverview,
+  getRecycleBin, restoreRecycleItem, purgeRecycleItem,
 } from '/assets/js/services/api.js';
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
-import { refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
+import { refreshAdminReadOnlyUI, canWriteAdmin } from '/assets/js/services/auth.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
-import { escapeHtml } from '/assets/js/features/reservation-shared.js';
+import { escapeHtml, aggregateFeeLines, formatFeeLineLabel } from '/assets/js/features/reservation-shared.js';
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer', 'Waived'];
@@ -21,6 +22,9 @@ const state = {
   payments: [],
   activeFilter: 'pending',
   selectedId: null,
+  recycleTab: 'invoices',
+  recycleInvoices: [],
+  recycleReservations: [],
 };
 
 /** @type {(() => void) | null} */
@@ -338,7 +342,7 @@ function syncClearPaidButton() {
 async function handleClearInvoice(id, { closeModal = false, feedbackEl } = {}) {
   const payment = state.payments.find((p) => String(p.id) === String(id));
   const guest = payment?.guest_name || 'this guest';
-  if (!window.confirm(`Clear invoice #${id} for ${guest}?\n\nThis removes the billing record only. The reservation stays on file.`)) {
+  if (!window.confirm(`Delete paid record #${id} for ${guest}?\n\nThis moves the billing record to the recycle bin. The reservation stays on file.`)) {
     return;
   }
 
@@ -349,7 +353,8 @@ async function handleClearInvoice(id, { closeModal = false, feedbackEl } = {}) {
       const result = await deletePayment(id);
       if (closeModal) closeInvoiceModal();
       await reload();
-      showFeedback(targetFeedback, result.message || 'Invoice cleared.', 'ok');
+      await reloadRecycleBin();
+      showFeedback(targetFeedback, result.message || 'Paid record moved to recycle bin.', 'ok');
     },
   });
 }
@@ -357,7 +362,7 @@ async function handleClearInvoice(id, { closeModal = false, feedbackEl } = {}) {
 async function handleClearAllPaid() {
   const paid = state.payments.filter((p) => p.status === 'Paid');
   if (!paid.length) return;
-  if (!window.confirm(`Clear all ${paid.length} paid invoice${paid.length === 1 ? '' : 's'} from billing?\n\nReservations are not deleted. This cannot be undone.`)) {
+  if (!window.confirm(`Delete all ${paid.length} paid record${paid.length === 1 ? '' : 's'} from billing?\n\nThey move to the recycle bin. Reservations are not deleted.`)) {
     return;
   }
 
@@ -372,7 +377,8 @@ async function handleClearAllPaid() {
         const result = await clearPaidPayments();
         closeInvoiceModal();
         await reload();
-        showFeedback(feedback, result.message || 'Paid invoices cleared.', 'ok');
+        await reloadRecycleBin();
+        showFeedback(feedback, result.message || 'Paid records moved to recycle bin.', 'ok');
       },
     });
   } finally {
@@ -847,7 +853,7 @@ function renderListRow(p) {
 
   const rowModifier = isPartial ? ' billing-row--partial' : (isPaidTab ? ' billing-row-wrap--paid' : '');
   const deleteBtn = isPaidTab
-    ? `<button type="button" class="billing-row__delete" data-delete-invoice="${p.id}" aria-label="Clear invoice #${p.id}" title="Clear from billing records">
+    ? `<button type="button" class="billing-row__delete" data-delete-invoice="${p.id}" aria-label="Delete paid record #${p.id}" title="Delete paid record (moves to recycle bin)">
         <span class="material-symbols-outlined" aria-hidden="true">delete</span>
       </button>`
     : '';
@@ -965,9 +971,12 @@ function chargeLines(p) {
   }
 
   const meals = (p.meals || []).filter((m) => Number(m.quantity) > 0);
-  const fees = p.fees || [];
+  const fees = aggregateFeeLines(p.fees || []);
   const mealTotal = meals.reduce((s, m) => s + Number(m.subtotal || 0), 0);
-  const feeTotal = fees.reduce((s, f) => s + Number(f.amount || 0), 0);
+  const feeTotal = fees.reduce((s, f) => {
+    const qty = Math.max(1, Number(f.quantity) || 1);
+    return s + Number(f.amount || 0) * qty;
+  }, 0);
   const roomTotal = Math.max(0, Math.round((bookingTotal - mealTotal - feeTotal) * 100) / 100);
   const nights = stayNights(p);
   const lines = [];
@@ -989,11 +998,13 @@ function chargeLines(p) {
     });
   });
   fees.forEach((f) => {
+    const qty = Math.max(1, Number(f.quantity) || 1);
+    const unit = Number(f.amount || 0);
     lines.push({
       icon: 'room_service',
-      label: f.fee_name || f.service_name || 'Extra service',
-      detail: 'Add-on',
-      amount: Number(f.amount || 0),
+      label: formatFeeLineLabel(f),
+      detail: qty > 1 ? `${qty} × ${fmt(unit)}` : 'Add-on',
+      amount: unit * qty,
     });
   });
   if (!lines.length && bookingTotal > 0) {
@@ -1192,6 +1203,7 @@ function renderRoomDetailsCard(p, parsedNotes) {
         ${renderDetailItem('Group', p.group_name)}
         ${renderDetailItem('Phone', p.contact_phone)}
         ${renderDetailItem('Email', p.guest_email, { wide: true })}
+        ${p.expected_arrival_time ? renderDetailItem(p.group_name ? 'Earliest arrival' : 'Expected arrival', String(p.expected_arrival_time).slice(0, 5)) : ''}
         ${mealsSummary ? renderDetailItem('Meals ordered', mealsSummary, { wide: true }) : ''}
         ${p.meal_allergen_notes ? renderDetailItem('Allergen notes', p.meal_allergen_notes, { wide: true, alert: true }) : ''}
         ${notes.guestNotes ? renderDetailItem('Booking notes', notes.guestNotes, { wide: true, multiline: true }) : ''}
@@ -2461,15 +2473,15 @@ function renderBillingColumn(p, { isPending }) {
           </dl>
         </div>
       </section>
-      <section class="billing-panel billing-panel--clear" aria-label="Clear invoice">
+      <section class="billing-panel billing-panel--clear" aria-label="Delete paid record">
         <h4 class="billing-section-title">
           <span class="material-symbols-outlined" aria-hidden="true">delete</span>
-          Clear record
+          Delete paid record
         </h4>
-        <p class="billing-clear-lead">Remove this paid invoice from billing. The reservation is not deleted — only the payment record is cleared.</p>
+        <p class="billing-clear-lead">Move this paid invoice to the recycle bin. The reservation is not deleted — only the billing record is removed from active billing.</p>
         <button type="button" class="invoice-btn-secondary billing-panel__btn billing-panel__btn--danger" data-delete-invoice="${p.id}">
           <span class="material-symbols-outlined" aria-hidden="true">delete</span>
-          Clear invoice #${p.id}
+          Delete paid record #${p.id}
         </button>
       </section>`;
   }
@@ -3096,6 +3108,85 @@ function updateSummary() {
   syncClearPaidButton();
 }
 
+function formatRecycleWhen(value) {
+  if (!value) return '—';
+  try {
+    return new Date(value).toLocaleString('en-PH', {
+      month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  } catch {
+    return String(value);
+  }
+}
+
+function paintRecycleBin() {
+  const mount = document.getElementById('billing-recycle-list');
+  if (!mount) return;
+  const canPurge = canWriteAdmin();
+  const rows = state.recycleTab === 'invoices' ? state.recycleInvoices : state.recycleReservations;
+
+  if (!rows.length) {
+    mount.innerHTML = `<p class="invoice-empty__text">No ${state.recycleTab === 'invoices' ? 'invoices' : 'reservations'} in the recycle bin.</p>`;
+    return;
+  }
+
+  if (state.recycleTab === 'invoices') {
+    mount.innerHTML = `
+      <ul class="billing-recycle__items">
+        ${rows.map((row) => `
+          <li class="billing-recycle__item">
+            <div class="billing-recycle__meta">
+              <strong>Invoice #${row.id}</strong>
+              <span>${escapeHtml(row.guest_name || 'Guest')} · ${escapeHtml(row.invoice_kind || 'room')} · ${fmt(row.amount)}</span>
+              <span class="billing-recycle__when">Deleted ${escapeHtml(formatRecycleWhen(row.deleted_at))}</span>
+            </div>
+            <div class="billing-recycle__actions">
+              <button type="button" class="invoice-btn-secondary js-requires-write" data-recycle-restore="invoice" data-id="${row.id}">Restore</button>
+              ${canPurge ? `<button type="button" class="invoice-btn-secondary billing-panel__btn--danger js-requires-write" data-recycle-purge="invoice" data-id="${row.id}">Delete permanently</button>` : ''}
+            </div>
+          </li>`).join('')}
+      </ul>`;
+    return;
+  }
+
+  mount.innerHTML = `
+    <ul class="billing-recycle__items">
+      ${rows.map((row) => {
+        const title = row.kind === 'group'
+          ? (row.group_name || `Group #${row.id}`)
+          : row.kind === 'venue'
+            ? (row.facility_name || `Venue #${row.id}`)
+            : `${row.building_name || 'Room'} ${row.room_number || `#${row.id}`}`;
+        return `
+          <li class="billing-recycle__item">
+            <div class="billing-recycle__meta">
+              <strong>${escapeHtml(title)}</strong>
+              <span>${escapeHtml(row.kind)} · ${escapeHtml(row.guest_name || '—')} · ${escapeHtml(row.status || '')}</span>
+              <span class="billing-recycle__when">Deleted ${escapeHtml(formatRecycleWhen(row.deleted_at))}</span>
+            </div>
+            <div class="billing-recycle__actions">
+              <button type="button" class="invoice-btn-secondary js-requires-write" data-recycle-restore="reservation" data-kind="${escapeHtml(row.kind)}" data-id="${row.id}">Restore</button>
+              ${canPurge ? `<button type="button" class="invoice-btn-secondary billing-panel__btn--danger js-requires-write" data-recycle-purge="reservation" data-kind="${escapeHtml(row.kind)}" data-id="${row.id}">Delete permanently</button>` : ''}
+            </div>
+          </li>`;
+      }).join('')}
+    </ul>`;
+}
+
+async function reloadRecycleBin() {
+  const mount = document.getElementById('billing-recycle-list');
+  try {
+    const data = await getRecycleBin();
+    state.recycleInvoices = data.invoices || [];
+    state.recycleReservations = data.reservations || [];
+    paintRecycleBin();
+  } catch (err) {
+    if (mount) {
+      mount.innerHTML = `<p class="invoice-empty__text">${escapeHtml(err.message || 'Could not load recycle bin.')}</p>`;
+    }
+  }
+}
+
 async function reload({ keepSelection = false, keepModalOpen = false, background = false } = {}) {
   const prevId = state.selectedId;
   const modalOpen = isBillingInvoiceModalOpen();
@@ -3149,8 +3240,49 @@ function bindPaymentsPageEvents() {
     hideFeedback(feedback);
     try {
       await handleClearAllPaid();
+      await reloadRecycleBin();
     } catch {
       /* feedback shown by handler */
+    }
+  });
+
+  document.querySelectorAll('[data-recycle-tab]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      state.recycleTab = btn.getAttribute('data-recycle-tab') || 'invoices';
+      document.querySelectorAll('[data-recycle-tab]').forEach((tab) => {
+        const isActive = tab === btn;
+        tab.classList.toggle('is-active', isActive);
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+      paintRecycleBin();
+    });
+  });
+
+  document.getElementById('billing-recycle-refresh')?.addEventListener('click', () => {
+    void reloadRecycleBin();
+  });
+
+  document.getElementById('billing-recycle-list')?.addEventListener('click', async (e) => {
+    const restoreBtn = e.target.closest('[data-recycle-restore]');
+    const purgeBtn = e.target.closest('[data-recycle-purge]');
+    if (!restoreBtn && !purgeBtn) return;
+    const type = (restoreBtn || purgeBtn).getAttribute(restoreBtn ? 'data-recycle-restore' : 'data-recycle-purge');
+    const id = Number((restoreBtn || purgeBtn).getAttribute('data-id'));
+    const kind = (restoreBtn || purgeBtn).getAttribute('data-kind') || undefined;
+    try {
+      if (restoreBtn) {
+        await restoreRecycleItem({ type, kind, id });
+        showFeedback(feedback, 'Restored from recycle bin.', 'success');
+      } else {
+        if (!window.confirm('Permanently delete this item? This cannot be undone.')) return;
+        await purgeRecycleItem({ type, kind, id });
+        showFeedback(feedback, 'Permanently deleted.', 'success');
+      }
+      await reloadRecycleBin();
+      await reload({ background: true });
+      refreshAdminReadOnlyUI();
+    } catch (err) {
+      showFeedback(feedback, err.message || 'Recycle bin action failed.', 'error');
     }
   });
 
@@ -3180,6 +3312,7 @@ export async function loadPaymentsPage() {
 
   try {
     await reload();
+    await reloadRecycleBin();
   } catch (err) {
     const listEl = document.getElementById('invoice-list');
     if (listEl) {

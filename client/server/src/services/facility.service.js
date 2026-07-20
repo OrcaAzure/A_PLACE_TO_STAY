@@ -114,6 +114,7 @@ export async function findVenueBookingOverlap({
     WHERE facility_id = ?
       AND event_date = ?
       AND status IN ('Pending', 'Approved')
+      AND deleted_at IS NULL
       AND start_time < ? AND end_time > ?
   `;
   if (excludeBookingId) {
