@@ -14,6 +14,10 @@
 import { getAdminVenues, saveAdminVenue } from '/assets/js/services/api.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
+<<<<<<< HEAD
+=======
+import { refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
+>>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 
 const GUEST_AUDIENCE = 'Guest';
 const GUEST_VARIANT = {
@@ -251,6 +255,7 @@ function paint() {
     mount.innerHTML = [...drafts.values()].map(renderCard).join('');
   }
   updateToggle();
+  refreshAdminReadOnlyUI();
 }
 
 function updateToggle() {
