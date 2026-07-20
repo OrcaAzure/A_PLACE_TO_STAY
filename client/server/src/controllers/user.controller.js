@@ -1,7 +1,6 @@
 import { pool } from '../config/db.js';
 import { safeUser } from '../utils/helpers.js';
-import { ROLES, USER_ROLES, STATUS } from '../utils/constants.js';
-import { isAdminRole } from '../utils/constants.js';
+import { ROLES, USER_ROLES, STATUS, isAdminRole, isAdminPortalRole } from '../utils/constants.js';
 import { createGuestUser, isManagedExternalGuest } from '../services/user.service.js';
 import { logAudit, AUDIT_ACTIONS } from '../services/audit.service.js';
 import { invalidateSession } from '../services/session.service.js';
@@ -35,7 +34,7 @@ export const getAllUsers = async (req, res) => {
 export const getUserById = async (req, res) => {
   try {
     const targetId = Number(req.params.id);
-    const isAdmin = isAdminRole(req.user.role);
+    const isAdmin = isAdminPortalRole(req.user.role);
     if (!isAdmin && targetId !== req.user.id) {
       return res.status(403).json({ message: 'Forbidden' });
     }
@@ -86,6 +85,13 @@ export const updateUser = async (req, res) => {
 
     if (role === ROLES.SUPER_ADMIN && req.user.role !== ROLES.SUPER_ADMIN) {
       return res.status(403).json({ message: 'Only a Super Admin can assign the Super Admin role' });
+    }
+    if (
+      role
+      && [ROLES.SUPERVISORY_USER, ROLES.VIEW_ONLY_ADMIN].includes(role)
+      && req.user.role !== ROLES.SUPER_ADMIN
+    ) {
+      return res.status(403).json({ message: 'Only a Super Admin can assign admin portal roles' });
     }
     if (target.role === ROLES.SUPER_ADMIN && req.user.role !== ROLES.SUPER_ADMIN && (role || status)) {
       return res.status(403).json({ message: 'Only a Super Admin can modify Super Admin accounts' });

@@ -25,7 +25,7 @@
             <span class="material-symbols-outlined" aria-hidden="true">person</span>
             My account
           </button>
-          <button type="button" role="tab" data-settings-tab="booking" class="settings-nav__item" aria-selected="false">
+          <button type="button" role="tab" data-settings-tab="booking" class="settings-nav__item js-requires-write" aria-selected="false">
             <span class="material-symbols-outlined" aria-hidden="true">tune</span>
             Booking rules
           </button>
@@ -77,7 +77,7 @@
               </div>
 
               <div class="settings-panel-footer">
-                <button type="button" id="settings-save-btn" class="btn-primary">Save</button>
+                <button type="button" id="settings-save-btn" class="btn-primary js-requires-write">Save</button>
                 <div id="settings-feedback" class="settings-feedback hidden"></div>
               </div>
 
@@ -129,7 +129,7 @@
                   </div>
                 </div>
                 <div class="settings-panel-footer">
-                  <button type="button" id="settings-password-btn" class="btn-primary">Update password</button>
+                  <button type="button" id="settings-password-btn" class="btn-primary js-requires-write">Update password</button>
                   <div id="settings-password-feedback" class="settings-feedback hidden"></div>
                 </div>
               </div>
@@ -192,7 +192,7 @@
                 </div>
 
                 <div class="settings-form-actions settings-form-actions--save-row">
-                  <button type="button" id="system-settings-save-btn" class="btn-primary">Save Changes</button>
+                  <button type="button" id="system-settings-save-btn" class="btn-primary js-requires-write">Save Changes</button>
                   <div class="settings-save-status" aria-live="polite">
                     <div id="system-settings-feedback" class="settings-feedback hidden"></div>
                   </div>

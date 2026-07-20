@@ -16,6 +16,10 @@ import {
 } from '/assets/js/services/api.js';
 import { confirmModal, loadComponent, showAlertModal } from '/assets/js/layout/ui.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
+<<<<<<< HEAD
+=======
+import { refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
+>>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 
 const DEFAULT_MEAL_NAMES = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
 const DEFAULT_EXTRA_CATEGORIES = [
@@ -941,6 +945,7 @@ export function renderMealsCatalog(meals) {
 
   if (!visible.length) {
     mount.innerHTML = '<p class="fac-catalog-grid__empty">No meal prices yet. Use <strong>Add meal</strong> to get started.</p>';
+    refreshAdminReadOnlyUI();
     return;
   }
 
@@ -957,6 +962,7 @@ export function renderMealsCatalog(meals) {
         ${deleteBtn('meal', meal.id)}
       </div>
     </article>`).join('');
+  refreshAdminReadOnlyUI();
 }
 
 export function renderExtrasCatalog(services) {
@@ -1004,11 +1010,16 @@ export function renderExtrasCatalog(services) {
 
   if (!cards.length) {
     mount.innerHTML = '<p class="fac-catalog-grid__empty">No extra services yet. Use <strong>Add extra</strong> for laundry, mattress, corkage, and other fees.</p>';
+    refreshAdminReadOnlyUI();
     return;
   }
 
   mount.innerHTML = cards.join('');
   bindExtrasGridActions();
+<<<<<<< HEAD
+=======
+  refreshAdminReadOnlyUI();
+>>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 }
 
 function handleCatalogPageClick(e) {

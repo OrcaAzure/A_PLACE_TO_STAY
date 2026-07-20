@@ -162,6 +162,7 @@ CREATE TABLE IF NOT EXISTS users (
     role       ENUM(
                  'Super Admin',
                  'Supervisory User',
+                 'View-Only Admin',
                  'Guest'
                ) NOT NULL DEFAULT 'Guest',
     status              ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
