@@ -1,6 +1,5 @@
 export const ROLES = {
   SUPER_ADMIN: 'Super Admin',
-  SUPERVISORY_USER: 'Supervisory User',
   VIEW_ONLY_ADMIN: 'View-Only Admin',
   GUEST: 'Guest',
 };
@@ -11,12 +10,11 @@ export const ADMIN_ROLES = [ROLES.SUPER_ADMIN];
 /** Roles that may open the admin portal and view housing operations. */
 export const ADMIN_PORTAL_ROLES = [
   ROLES.SUPER_ADMIN,
-  ROLES.SUPERVISORY_USER,
   ROLES.VIEW_ONLY_ADMIN,
 ];
 
 /** Admin portal roles that may view data but cannot mutate records or settings. */
-export const READ_ONLY_ROLES = [ROLES.SUPERVISORY_USER, ROLES.VIEW_ONLY_ADMIN];
+export const READ_ONLY_ROLES = [ROLES.VIEW_ONLY_ADMIN];
 
 export function isAdminRole(role) {
   return ADMIN_ROLES.includes(role);
@@ -30,8 +28,11 @@ export function isReadOnlyAdminRole(role) {
   return READ_ONLY_ROLES.includes(role);
 }
 
-export function canPerformAdminWrites(role) {
-  return isAdminRole(role);
+/** Roles that may manage external guest accounts (Guest Access page and APIs). */
+export const GUEST_ACCESS_ROLES = [ROLES.SUPER_ADMIN];
+
+export function canAccessGuestAccess(role) {
+  return GUEST_ACCESS_ROLES.includes(role);
 }
 
 /** Default role when admin creates a booking for someone not yet in the system. */

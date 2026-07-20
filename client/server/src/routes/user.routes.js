@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.middleware.js';
-import { requireRole, requireAdmin, requireAdminPortal } from '../middleware/role.middleware.js';
+import { requireRole, requireAdmin, requireAdminPortal, requireGuestAccessAdmin } from '../middleware/role.middleware.js';
 import {
   getAllUsers,
   getUserById,
@@ -22,15 +22,16 @@ import {
 const router = Router();
 const adminRead = [requireAuth, requireAdminPortal];
 const adminWrite = [requireAuth, requireAdmin];
+const guestAccess = [requireAuth, requireGuestAccessAdmin];
 
-router.get('/guest-access/activity', ...adminRead, getGuestAccessActivity);
-router.get('/guest-access/requests', ...adminRead, getGuestAccessRequests);
-router.get('/guest-access', ...adminRead, getGuestAccessOverview);
-router.post('/guest-access/requests', ...adminWrite, postGuestAccessRequest);
-router.post('/guest-access/requests/:id/approve', ...adminWrite, approveGuestAccessRequestHandler);
-router.post('/guest-access/requests/:id/reject', ...adminWrite, rejectGuestAccessRequestHandler);
-router.post('/guest-access/bulk-deactivate', ...adminWrite, bulkDeactivateGuestAccounts);
-router.delete('/guest-access/:id', ...adminWrite, deleteGuestAccountHandler);
+router.get('/guest-access/activity', ...guestAccess, getGuestAccessActivity);
+router.get('/guest-access/requests', ...guestAccess, getGuestAccessRequests);
+router.get('/guest-access', ...guestAccess, getGuestAccessOverview);
+router.post('/guest-access/requests', ...guestAccess, postGuestAccessRequest);
+router.post('/guest-access/requests/:id/approve', ...guestAccess, approveGuestAccessRequestHandler);
+router.post('/guest-access/requests/:id/reject', ...guestAccess, rejectGuestAccessRequestHandler);
+router.post('/guest-access/bulk-deactivate', ...guestAccess, bulkDeactivateGuestAccounts);
+router.delete('/guest-access/:id', ...guestAccess, deleteGuestAccountHandler);
 
 router.get('/', ...adminRead, getAllUsers);
 router.post('/', ...adminWrite, createUser);

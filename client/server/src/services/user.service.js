@@ -2,18 +2,14 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import { pool } from '../config/db.js';
 import { safeUser, isEmpty } from '../utils/helpers.js';
-import { ROLES } from '../utils/constants.js';
+import { ROLES, isAdminPortalRole } from '../utils/constants.js';
 import { isInternalGuestEmail } from '../utils/guestAccess.js';
 import { sendGuestAccessEmail } from './email.service.js';
 import { logAudit, AUDIT_ACTIONS } from './audit.service.js';
 
 export function isInternalPortalUser(user) {
   if (!user) return false;
-  if (
-    user.role === ROLES.SUPER_ADMIN
-    || user.role === ROLES.SUPERVISORY_USER
-    || user.role === ROLES.VIEW_ONLY_ADMIN
-  ) return true;
+  if (isAdminPortalRole(user.role)) return true;
   return user.role === ROLES.GUEST && isInternalGuestEmail(user.email);
 }
 

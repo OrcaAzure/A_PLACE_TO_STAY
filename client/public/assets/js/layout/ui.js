@@ -12,7 +12,7 @@ import { initAdminPageNavTransitions, initGuestPageNavTransitions } from '/asset
 import { initGuestPortalChrome } from '/assets/js/layout/guest-portal.js';
 import { initSplashIdle, dismissAptSplash } from '/assets/js/layout/splash-idle.js';
 import { bindNotificationBell } from '/assets/js/layout/notifications.js';
-import { formatRoleLabel, getCurrentUser, applyRoleUI, refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
+import { formatRoleLabel, getCurrentUser, applyRoleUI, refreshAdminReadOnlyUI, getAdminNavItems, getAdminMobileNavItems } from '/assets/js/services/auth.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 import {
   isDesktopSidebar,
@@ -502,8 +502,10 @@ function updateGuestChrome({ userName, userRole, userInitial }) {
   document.querySelectorAll('.guest-user-initial').forEach((el) => { el.textContent = userInitial; });
 }
 
-export function updateActiveNav(activePage, navItems = ADMIN_NAV) {
-  const mobileNavItems = navItems === ADMIN_NAV ? ADMIN_MOBILE_NAV : navItems;
+export function updateActiveNav(activePage, navItems = getAdminNavItems()) {
+  const mobileNavItems = navItems.length === ADMIN_NAV.length
+    ? getAdminMobileNavItems()
+    : ADMIN_MOBILE_NAV.filter((item) => navItems.some((nav) => nav.id === item.id));
   document.querySelectorAll('#app-sidebar nav a, .guest-bottom-nav a, .admin-bottom-nav a, .guest-top-nav-links a, #lp-mobile-menu nav a[href]').forEach((link) => {
     const href = link.getAttribute('href') || '';
     if (!href || href.startsWith('#') || href.startsWith('mailto:')) return;
@@ -607,7 +609,7 @@ export async function initAppLayout(config = {}) {
   } = config;
 
   const isGuest = portal === 'guest';
-  const navItems = isGuest ? GUEST_NAV : ADMIN_NAV;
+  const navItems = isGuest ? GUEST_NAV : getAdminNavItems();
 
   let splashRef = null;
   try {
@@ -700,9 +702,9 @@ export async function initAppLayout(config = {}) {
           userRole,
           userInitial,
           collapsed,
-          navItems: ADMIN_NAV,
+          navItems: getAdminNavItems(),
           brandHref: '/admin/dashboard.html',
-        }) + renderAdminBottomNav(ADMIN_MOBILE_NAV, activePage);
+        }) + renderAdminBottomNav(getAdminMobileNavItems(), activePage);
 
     document.body.innerHTML = shellHtml + extraGuestModals;
     if (preservedNodes.childNodes.length) {

@@ -161,7 +161,6 @@ CREATE TABLE IF NOT EXISTS users (
     password   VARCHAR(255) NOT NULL,
     role       ENUM(
                  'Super Admin',
-                 'Supervisory User',
                  'View-Only Admin',
                  'Guest'
                ) NOT NULL DEFAULT 'Guest',
