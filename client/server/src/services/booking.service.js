@@ -989,7 +989,8 @@ export async function notifyBookingUpdated({ previous, current, modificationMess
     });
     return;
   }
-  if (String(current.status).toLowerCase() === 'approved') {
+  if (String(current.status).toLowerCase() === 'approved'
+    && String(previous?.status || '').toLowerCase() !== 'approved') {
     notifyBookingCreated(current);
   }
 }

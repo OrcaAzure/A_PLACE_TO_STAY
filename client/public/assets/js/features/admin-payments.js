@@ -3119,6 +3119,31 @@ function formatRecycleWhen(value) {
   }
 }
 
+function getRecycleModal() {
+  return document.getElementById('billing-recycle-modal');
+}
+
+function openRecycleModal() {
+  const modal = getRecycleModal();
+  if (!modal) return;
+  modal.hidden = false;
+  modal.classList.remove('is-hidden');
+  document.body.style.overflow = 'hidden';
+  void reloadRecycleBin();
+  document.getElementById('billing-recycle-refresh')?.focus();
+}
+
+function closeRecycleModal() {
+  const modal = getRecycleModal();
+  if (!modal) return;
+  modal.hidden = true;
+  modal.classList.add('is-hidden');
+  if (!isBillingInvoiceModalOpen()) {
+    document.body.style.overflow = '';
+  }
+  document.getElementById('billing-recycle-open')?.focus();
+}
+
 function paintRecycleBin() {
   const mount = document.getElementById('billing-recycle-list');
   if (!mount) return;
@@ -3258,8 +3283,18 @@ function bindPaymentsPageEvents() {
     });
   });
 
+  document.getElementById('billing-recycle-open')?.addEventListener('click', () => {
+    openRecycleModal();
+  });
+
   document.getElementById('billing-recycle-refresh')?.addEventListener('click', () => {
     void reloadRecycleBin();
+  });
+
+  getRecycleModal()?.addEventListener('click', (e) => {
+    if (e.target.closest('[data-recycle-close]')) {
+      closeRecycleModal();
+    }
   });
 
   document.getElementById('billing-recycle-list')?.addEventListener('click', async (e) => {
@@ -3287,7 +3322,13 @@ function bindPaymentsPageEvents() {
   });
 
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || !getModal() || getModal().hidden) return;
+    if (e.key !== 'Escape') return;
+    const recycleModal = getRecycleModal();
+    if (recycleModal && !recycleModal.hidden) {
+      closeRecycleModal();
+      return;
+    }
+    if (!getModal() || getModal().hidden) return;
     closeInvoiceModal();
   });
 
@@ -3312,7 +3353,6 @@ export async function loadPaymentsPage() {
 
   try {
     await reload();
-    await reloadRecycleBin();
   } catch (err) {
     const listEl = document.getElementById('invoice-list');
     if (listEl) {
