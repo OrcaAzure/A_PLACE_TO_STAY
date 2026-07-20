@@ -94,37 +94,49 @@ App HTML lives in `client/server/views/`; CSS/JS live under `client/public/asset
 | GET/POST/PATCH/DELETE | `/api/rooms` | Room inventory |
 | GET | `/api/rooms/overview` | Admin room board |
 | GET/POST/PATCH/DELETE | `/api/facilities` | Meals, extras, venues catalog |
-| GET/POST/PATCH | `/api/payments` | Payment records |
-| GET/POST | `/api/users/guest-access/*` | External guest access workflow |
+| GET/POST/PATCH | `/api/payments` | Payment records (office settlement — Cash / GCash / Bank Transfer) |
+| GET/POST | `/api/recycle/*` | Soft-delete recycle bin (reservations + paid invoices) |
+| GET/POST | `/api/users/guest-access/*` | External guest access workflow (Super Admin) |
 
-Bookings auto-calculate price, season, and check room availability.
+Bookings auto-calculate price, season, and check room availability. Soft-deleted bookings return **404** on GET-by-id (list endpoints already exclude them).
 
-## Project status (~94% complete)
+## Project status (~90% complete)
 
 | Area | Done | Notes |
 |------|------|-------|
-| Admin portal | ~94% | Dashboard, reservations hub, venue wizard (edit/modify/approve), billing, calendar, in-app notifications |
-| Guest portal | ~95% | Browse + detail views, multi-room booking requests, stay summary / View details, prefs, live bell feed |
-| Backend API | ~93% | Core flows done; stay-quote pricing, per-day meals, booking refs, seasonal rates in Settings |
-| Auth & email | ~94% | 13 automated email templates (incl. venue request received); guest email prefs; needs production SMTP |
-| Dev tooling | ~92% | Setup, Docker, GitHub Actions CI, domain seed migrations, health check, `npm test` (69/69 passing) |
-| Deployment / ops | ~65% | Docs and configs ready; staging/prod not validated with IT yet |
+| Room bookings | ~93% | Single + group flows, availability, stay-quote, per-day meals, booking refs |
+| Guest portal | ~93% | Browse + detail views, multi-room requests, billing, prefs, live bell feed |
+| Auth & email | ~92% | Login lockout, single session, page httpOnly cookie, forgot/reset; needs production SMTP |
+| Admin UX | ~92% | Dashboard, reservations hub, venues, billing, calendar, View-Only Admin, recycle bin |
+| Docs | ~90% | README, RUN-SERVER, staging/cloud/security deploy guides |
+| Facilities / venues | ~90% | Catalog + venue bookings + wizards; stock photos still used in places |
+| Payments / billing | ~88% | Invoices, receipts, convert/revert overnight; no online payment gateway (by design) |
+| Security | ~82% | Helmet, rate limits, role guards, env validation; see Security notes for go-live gaps |
+| Testing / CI | ~75% | Unit + MySQL integration on GitHub Actions; deeper E2E still thin |
+| Deployment / ops | ~65% | Docker, PM2, staging scripts ready; live IT staging not validated yet |
 
-**Product overall ~94% · production-ready ~80%** (blocked mainly on IT: DB, SSL, SMTP, staging smoke test).
+**Product overall ~90% · production-ready ~80%** (blocked mainly on IT: DB, SSL, SMTP, staging smoke test).
 
-**Still in progress:** IT staging deploy and production SMTP validation.
+Core product modules are in place. Remaining work is **go-live validation and hardening**, not missing major feature areas.
 
-**Recently shipped:** Jul 2026 bug-fix pass (duplicate reservations, per-day meals, stay-quote fee breakdown, Prayer Mountain 4-hr package, guest stay summary sheet, billing/dashboard polish); domain seed migrations under `client/server/src/seed/migrations/`; guest browse redesign and detail views; in-app notification feed; admin venue modify/edit via booking wizard.
+**Still in progress:** IT staging deploy, production SMTP validation, API JWT fully on httpOnly cookies, tighter CSP (local Tailwind), deeper automated tests.
+
+**Recently shipped:** View-Only Admin role + read-only UI/API guards; soft-delete recycle bin for reservations and invoices; booking GET-by-id excludes recycled rows (CI fix); Jul 2026 bug-fix pass (duplicate reservations, per-day meals, stay-quote, Prayer Mountain package, guest stay summary); domain seed migrations under `client/server/src/seed/migrations/`; guest browse redesign; in-app notifications; admin venue modify via wizard.
 
 ## Automated tests
 
 ```bash
 npm run install:server   # once — installs supertest
 npm test                 # unit + integration (integration needs MySQL + .env)
-npm run test:unit        # middleware permission guards only (no database)
+npm run test:unit        # no database
+npm run test:integration # needs MySQL + seeded .env
 ```
 
-Integration tests use `client/server/.env` and seeded users (`admin@aptspace.com`, `maria.santos@apts.edu.ph` / `password`). They are skipped automatically when MySQL is unavailable.
+GitHub Actions (`.github/workflows/ci.yml`) runs unit tests, then integration tests against MySQL 8 on every push/PR to `main`.
+
+Integration tests use `client/server/.env` and seeded users (`admin@aptspace.com`, `maria.santos@apts.edu.ph`, `viewer@aptspace.com` / `password`). They are skipped automatically when MySQL is unavailable.
+
+**Covered:** auth, booking overlap, booking/user permissions, reservation flows (incl. soft-delete → 404), View-Only Admin, page smoke.
 
 **Not covered yet:** full booking create/update CRUD assertions, guest-access end-to-end workflow, guest self-modify email delivery.
 
