@@ -2750,25 +2750,6 @@ function handleInvoiceListClick(e) {
   });
 }
 
-function handleInvoiceListClick(e) {
-  const rowBtn = e.target.closest('[data-invoice-row]');
-  if (rowBtn) {
-    hideFeedback(document.getElementById('payments-feedback'));
-    void openInvoiceModal(rowBtn.getAttribute('data-invoice-row'));
-    return;
-  }
-  const deleteBtn = e.target.closest('[data-delete-invoice]');
-  if (!deleteBtn) return;
-  e.stopPropagation();
-  hideFeedback(document.getElementById('payments-feedback'));
-  deleteBtn.disabled = true;
-  void handleClearInvoice(deleteBtn.getAttribute('data-delete-invoice'), {
-    feedbackEl: document.getElementById('payments-feedback'),
-  }).catch(() => {}).finally(() => {
-    deleteBtn.disabled = false;
-  });
-}
-
 function getModal() {
   return document.getElementById('billing-invoice-modal');
 }
