@@ -10,16 +10,8 @@ import {
 import { createBookingPoll } from '/assets/js/layout/booking-poll.js';
 import { refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
 import { buildFeeGroups, renderWizardFeePicker, handleWizardFeePickerClick } from '/assets/js/features/booking-fee-picker.js';
-<<<<<<< HEAD
-<<<<<<< HEAD
-import { confirmModal } from '/assets/js/layout/ui.js';
-=======
-import { escapeHtml } from '/assets/js/features/reservation-shared.js';
->>>>>>> 4b3aa67456624dcab9a56bea8de2ff9e4181c02a
-=======
 import { confirmModal } from '/assets/js/layout/ui.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 
 const fmt = (n) => `₱${parseFloat(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 const PAYMENT_METHODS = ['Cash', 'GCash', 'Bank Transfer', 'Waived'];

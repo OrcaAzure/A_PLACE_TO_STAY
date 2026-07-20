@@ -7,10 +7,7 @@
 import { getRoomRatesCatalog, saveRoomRates } from '/assets/js/services/api.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
-<<<<<<< HEAD
-=======
 import { refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 
 const SEASONS = ['Regular', 'Peak', 'Super Peak'];
 

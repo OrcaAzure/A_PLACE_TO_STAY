@@ -1,10 +1,4 @@
-import { pool } from '../../config/db.js';
-<<<<<<< HEAD
-import { tableExists, columnExists } from '../helpers.js';
-
-/** Expand users.role enum through historical stages (legacy DBs). */
-export async function runUsersRoleExpansion() {
-=======
+﻿import { pool } from '../../config/db.js';
 import { tableExists, columnExists, getColumnType } from '../helpers.js';
 
 /**
@@ -21,7 +15,6 @@ async function hasLegacyRoleEnum() {
 export async function runUsersRoleExpansion() {
   if (!(await tableExists('users')) || !(await hasLegacyRoleEnum())) return;
 
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
   await pool.execute(
     `ALTER TABLE users
      MODIFY role ENUM(
@@ -117,11 +110,7 @@ export async function runUsersSessionColumns() {
 
 /** Collapse historical roles to Super Admin / Supervisory User / Guest. */
 export async function runUsersRoleSimplify() {
-<<<<<<< HEAD
-  if (!(await tableExists('users'))) return;
-=======
   if (!(await tableExists('users')) || !(await hasLegacyRoleEnum())) return;
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 
   await pool.execute(
     `ALTER TABLE users
@@ -142,8 +131,6 @@ export async function runUsersRoleSimplify() {
   console.log('[schema] Simplified users.role to Super Admin / Supervisory User / Guest');
 }
 
-<<<<<<< HEAD
-=======
 /** Add View-Only Admin role for supervisors and auditors with admin portal read access. */
 export async function runUsersViewOnlyAdminRole() {
   if (!(await tableExists('users'))) return;
@@ -162,7 +149,6 @@ export async function runUsersViewOnlyAdminRole() {
   console.log('[schema] Added users.role value: View-Only Admin');
 }
 
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 /** Repair empty/null roles to Guest. */
 export async function runUsersEmptyRoleRepair() {
   if (!(await tableExists('users'))) return;
@@ -172,7 +158,7 @@ export async function runUsersEmptyRoleRepair() {
      WHERE role = '' OR role IS NULL`
   );
   if (result.affectedRows > 0) {
-    console.log(`[schema] Repaired ${result.affectedRows} user(s) with empty role → Guest`);
+    console.log(`[schema] Repaired ${result.affectedRows} user(s) with empty role ΓåÆ Guest`);
   }
 }
 

@@ -10,10 +10,7 @@ const SEED_USERS = [
 
 /** Demo/test guests — only when ENABLE_DEMO_DATA=true or test bootstrap. */
 const DEMO_USERS = [
-<<<<<<< HEAD
-=======
   { full_name: 'Audit Viewer',         email: 'viewer@aptspace.com',     role: 'View-Only Admin', status: 'Active' },
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
   { full_name: 'Maria Santos',         email: 'maria.santos@apts.edu.ph', role: 'Guest', status: 'Active' },
   { full_name: 'James Reyes',          email: 'james.reyes@apts.edu.ph',  role: 'Guest', status: 'Active' },
   { full_name: 'Rev. Samuel Park',     email: 'samuel.park@gracechurch.org', role: 'Guest', status: 'Active' },
@@ -26,10 +23,6 @@ async function upsertUsers(users) {
   const hash = await bcrypt.hash(password, 10);
 
   for (const u of users) {
-<<<<<<< HEAD
-    const [existing] = await pool.execute('SELECT id FROM users WHERE email = ? LIMIT 1', [u.email]);
-    if (existing.length > 0) continue;
-=======
     const [existing] = await pool.execute('SELECT id, role FROM users WHERE email = ? LIMIT 1', [u.email]);
     if (existing.length > 0) {
       if (existing[0].role !== u.role) {
@@ -38,7 +31,6 @@ async function upsertUsers(users) {
       }
       continue;
     }
->>>>>>> f711a325b5356cd8cdb30a3d4725447e4e89ec82
 
     await pool.execute(
       'INSERT INTO users (full_name, email, password, role, status) VALUES (?, ?, ?, ?, ?)',
