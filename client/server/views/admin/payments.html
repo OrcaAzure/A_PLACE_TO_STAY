@@ -65,10 +65,16 @@
             Paid &amp; closed <span class="invoice-tab__count" data-invoice-count="paid">0</span>
           </button>
         </div>
-        <button type="button" id="billing-clear-paid" class="billing-clear-paid hidden" aria-label="Clear all paid invoices">
-          <span class="material-symbols-outlined" aria-hidden="true">delete_sweep</span>
-          Clear all paid
-        </button>
+        <div class="invoice-workspace__actions">
+          <button type="button" id="billing-clear-paid" class="billing-clear-paid hidden js-requires-write" aria-label="Delete all paid records">
+            <span class="material-symbols-outlined" aria-hidden="true">delete_sweep</span>
+            Delete all paid records
+          </button>
+          <button type="button" id="billing-recycle-open" class="billing-recycle-open" aria-haspopup="dialog" aria-controls="billing-recycle-modal">
+            <span class="material-symbols-outlined" aria-hidden="true">delete</span>
+            Recycle bin
+          </button>
+        </div>
       </div>
 
       <div id="payments-feedback" class="hidden invoice-feedback" role="status" aria-live="polite"></div>
@@ -86,6 +92,34 @@
       <button type="button" class="billing-modal__backdrop" data-close-detail aria-label="Close dialog"></button>
       <div class="billing-modal__panel">
         <div id="invoice-detail"></div>
+      </div>
+    </div>
+
+    <div id="billing-recycle-modal" class="billing-modal billing-recycle-modal is-hidden" role="dialog" aria-modal="true" aria-labelledby="billing-recycle-title" hidden>
+      <button type="button" class="billing-modal__backdrop" data-recycle-close aria-label="Close recycle bin"></button>
+      <div class="billing-modal__panel billing-recycle-modal__panel">
+        <header class="billing-recycle-modal__head">
+          <div>
+            <h2 id="billing-recycle-title" class="billing-recycle__title">Recycle bin</h2>
+            <p class="billing-recycle__lead">Deleted paid invoices and reservations stay here until restored or permanently removed.</p>
+          </div>
+          <div class="billing-recycle-modal__tools">
+            <button type="button" id="billing-recycle-refresh" class="billing-recycle__refresh">
+              <span class="material-symbols-outlined" aria-hidden="true">refresh</span>
+              Refresh
+            </button>
+            <button type="button" class="billing-recycle-modal__close" data-recycle-close aria-label="Close">
+              <span class="material-symbols-outlined" aria-hidden="true">close</span>
+            </button>
+          </div>
+        </header>
+        <div class="invoice-tabs billing-recycle__tabs" role="tablist" aria-label="Recycle bin">
+          <button type="button" class="invoice-tab is-active" data-recycle-tab="invoices" role="tab" aria-selected="true">Invoices</button>
+          <button type="button" class="invoice-tab" data-recycle-tab="reservations" role="tab" aria-selected="false">Reservations</button>
+        </div>
+        <div id="billing-recycle-list" class="billing-recycle__list" aria-live="polite">
+          <p class="invoice-empty__text">Loading recycle bin…</p>
+        </div>
       </div>
     </div>
   </div>

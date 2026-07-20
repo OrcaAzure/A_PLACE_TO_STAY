@@ -583,6 +583,22 @@ export async function clearPaidPayments() {
   return apiRequest('/payments/closed', { method: 'DELETE' });
 }
 
+export async function getRecycleBin() {
+  return apiRequest('/recycle');
+}
+
+export async function restoreRecycleItem(body) {
+  return apiRequest('/recycle/restore', { method: 'POST', body });
+}
+
+export async function purgeRecycleItem(body) {
+  return apiRequest('/recycle/purge', { method: 'POST', body });
+}
+
+export async function softDeleteReservation(body) {
+  return apiRequest('/recycle/reservations', { method: 'POST', body });
+}
+
 export function normalizeRoom(room) {
   const bedCount = room.bed_count != null ? Number(room.bed_count) : null;
   const roomTypeLabel = room.room_type_label || room.roomTypeLabel;

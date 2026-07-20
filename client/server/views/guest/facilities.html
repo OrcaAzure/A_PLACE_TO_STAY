@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="scroll-smooth" lang="en">
 <head>
 <meta charset="utf-8">
@@ -96,7 +96,7 @@
         <span class="browse-stay-multi-room__box" aria-hidden="true"></span>
         <span class="browse-stay-multi-room__text">
           <strong>We need multiple rooms</strong>
-          <span id="browse-multi-room-hint" class="browse-stay-multi-room__hint">Show rooms that fit part of your group â€” add each room to your booking request until everyone is covered.</span>
+          <span id="browse-multi-room-hint" class="browse-stay-multi-room__hint">Show rooms that fit part of your group — add each room to your booking request until everyone is covered.</span>
         </span>
       </label>
     </section>
@@ -107,7 +107,7 @@
           <div class="browse-refine-search-wrap">
             <label class="browse-refine-search" for="room-search">
               <span class="material-symbols-outlined browse-refine-search-icon" aria-hidden="true">search</span>
-              <input id="room-search" type="search" placeholder="Search by room number or typeâ€¦" autocomplete="off" />
+              <input id="room-search" type="search" placeholder="Search by room number or type…" autocomplete="off" />
             </label>
           </div>
           <div class="browse-refine-divider" aria-hidden="true"></div>
@@ -142,7 +142,7 @@
 </div>
 </div>
 
-<!-- Browse space preview (photos + details) â€” preserved outside page-content -->
+<!-- Browse space preview (photos + details) — preserved outside page-content -->
 <div id="browse-preview-modal" data-layout-preserve class="browse-preview" hidden aria-hidden="true">
   <button type="button" class="browse-preview__backdrop" data-preview-close aria-label="Close preview"></button>
   <div class="browse-preview__panel" role="dialog" aria-modal="true" aria-labelledby="browse-preview-title">
@@ -237,7 +237,7 @@
         </div>
         <div>
           <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-notes">Notes (optional)</label>
-          <textarea id="vbm-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Purpose, special requirementsâ€¦"></textarea>
+          <textarea id="vbm-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Purpose, special requirements…"></textarea>
         </div>
         <div id="vbm-info" class="hidden space-y-2 rounded-lg bg-surface-container-low/60 border border-outline-variant/60 p-3"></div>
       </div>
@@ -297,15 +297,15 @@
           <dl class="grid grid-cols-3 gap-3 rounded-xl bg-surface-container-low border border-outline-variant/60 p-4 text-center">
             <div>
               <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Check-in</dt>
-              <dd id="confirm-check-in" class="text-body-sm font-semibold text-on-surface mt-1">â€”</dd>
+              <dd id="confirm-check-in" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
             </div>
             <div>
               <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Check-out</dt>
-              <dd id="confirm-check-out" class="text-body-sm font-semibold text-on-surface mt-1">â€”</dd>
+              <dd id="confirm-check-out" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
             </div>
             <div>
               <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Guests</dt>
-              <dd id="confirm-guests" class="text-body-sm font-semibold text-on-surface mt-1">â€”</dd>
+              <dd id="confirm-guests" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
             </div>
           </dl>
           <button type="button" id="booking-change-selection" class="text-primary text-body-sm font-medium hover:underline">
@@ -355,17 +355,19 @@
           <div class="guest-booking-extras__head">
             <div>
               <h4 class="guest-booking-extras__title">Meals & extras</h4>
-              <p class="guest-booking-extras__sub">Optional add-ons for your stay.</p>
+              <p class="guest-booking-extras__sub" data-guest-extras-sub>Optional meals and extras for your stay. Meal quantities cover all guests for the nights you need them.</p>
             </div>
           </div>
           <div class="guest-extras-block">
             <p class="guest-extras-block__label">Meals</p>
+            <p class="text-body-sm text-on-surface-variant mb-2" data-guest-meals-hint>Set how many of each meal you need for the stay (not just one night).</p>
             <div id="booking-meals-grid" class="guest-meals-grid"></div>
             <label class="guest-extras-block__label mt-3" for="booking-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
-            <textarea id="booking-meal-allergens" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="e.g. nut allergy, gluten-free, vegetarianâ€¦"></textarea>
+            <textarea id="booking-meal-allergens" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="e.g. nut allergy, gluten-free, vegetarian…"></textarea>
           </div>
           <div class="guest-extras-block" data-guest-extras-services>
             <p class="guest-extras-block__label">Extra services</p>
+            <p class="text-body-sm text-on-surface-variant mb-2">Tap to add. Same extras combine as quantities (for example, 2× Extra bed).</p>
             <div id="booking-selected-fees" class="guest-added-extras hidden"></div>
             <div id="booking-fee-chips" class="guest-service-grid"></div>
             <div id="booking-fee-submenu" class="guest-service-drawer hidden" aria-live="polite"></div>
@@ -373,27 +375,33 @@
         </section>
 
         <div>
-          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-notes">Notes (optional)</label>
-          <textarea id="booking-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Special requests, arrival time, etc."></textarea>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-arrival-time">Expected arrival <span class="text-error">*</span></label>
+          <input id="booking-arrival-time" type="time" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" />
+          <p class="text-[11px] text-on-surface-variant mt-1">Required — when you expect to arrive on check-in day.</p>
+        </div>
+
+        <div>
+          <label class="text-label-sm text-on-surface-variant block mb-1" for="booking-notes">Notes for housing staff</label>
+          <textarea id="booking-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="Special requests for housing (optional)…"></textarea>
         </div>
 
         <div id="booking-summary" class="hidden bg-surface-container-low rounded-xl p-4 border border-outline-variant">
           <div class="guest-total-breakdown">
             <div class="guest-total-line">
               <span>Room</span>
-              <span id="booking-line-room">â€”</span>
+              <span id="booking-line-room">—</span>
             </div>
             <div class="guest-total-line hidden" id="booking-line-meals-wrap">
               <span>Meals</span>
-              <span id="booking-line-meals">â€”</span>
+              <span id="booking-line-meals">—</span>
             </div>
             <div class="guest-total-line hidden" id="booking-line-fees-wrap">
               <span>Extras</span>
-              <span id="booking-line-fees">â€”</span>
+              <span id="booking-line-fees">—</span>
             </div>
             <div class="guest-total-line guest-total-line--grand">
               <span>Estimated total</span>
-              <span id="booking-summary-total">â€”</span>
+              <span id="booking-summary-total">—</span>
             </div>
           </div>
           <p class="text-[11px] text-on-surface-variant mt-2" id="booking-summary-meta"></p>
@@ -421,7 +429,6 @@
     </form>
   </div>
 </div>
-
 
 <script type="module" src="/assets/js/features/guest-facilities-browse.js"></script>
 </body></html>

@@ -14,6 +14,7 @@ export const submitBookingRequest = async (req, res) => {
       check_in,
       check_out,
       notes,
+      expected_arrival_time,
       rooms,
       venues,
       meals,
@@ -30,10 +31,12 @@ export const submitBookingRequest = async (req, res) => {
       checkIn: check_in,
       checkOut: check_out,
       notes,
+      expectedArrivalTime: expected_arrival_time,
       rooms: Array.isArray(rooms) ? rooms : [],
       venues: Array.isArray(venues) ? venues : [],
       meals,
       fees,
+      mealAllergenNotes: meal_allergen_notes,
       is_group_stay,
     });
 

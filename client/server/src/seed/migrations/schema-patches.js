@@ -56,6 +56,7 @@ import { runBuildingsCleanup } from './buildings-cleanup.js';
 import { runRatesAncillaryExtract } from './rates-ancillary-extract.js';
 import { runRatesVariantsMigration } from './rates-variants.js';
 import { runExtraGuestVisibleMigration } from './extra-guest-visible.js';
+import { runBookingUxRecycleMigration } from './booking-ux-recycle.js';
 
 export async function runSchemaPatches() {
   // 1. Rooms Dirty ENUM
@@ -118,4 +119,6 @@ export async function runSchemaPatches() {
   await safeRun('bookings-meals-per-day migration', runBookingsMealsPerDayMigration);
   await safeRun('booking-ref migration', runBookingRefMigration);
   await safeRun('reservation-groups is_group_stay migration', runReservationGroupsIsGroupStayMigration);
+  // 20. Booking UX: fee qty, arrival time, soft-delete recycle
+  await safeRun('booking UX recycle migration', runBookingUxRecycleMigration);
 }

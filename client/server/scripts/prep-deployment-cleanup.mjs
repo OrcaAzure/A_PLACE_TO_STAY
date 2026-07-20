@@ -95,6 +95,7 @@ async function findDummyUsers() {
 async function wipeTransactionalData() {
   const summary = {};
 
+  // Hard-delete all transactional rows (including soft-deleted recycle-bin items).
   // Child tables first
   summary.payment_transactions = await safeDelete('DELETE FROM payment_transactions');
   summary.payments = await safeDelete('DELETE FROM payments');

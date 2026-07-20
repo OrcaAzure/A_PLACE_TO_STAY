@@ -1,4 +1,4 @@
-import { pool } from '../../config/db.js';
+﻿import { pool } from '../../config/db.js';
 import { tableExists, columnExists, getColumnType } from '../helpers.js';
 
 /**
@@ -158,7 +158,7 @@ export async function runUsersEmptyRoleRepair() {
      WHERE role = '' OR role IS NULL`
   );
   if (result.affectedRows > 0) {
-    console.log(`[schema] Repaired ${result.affectedRows} user(s) with empty role → Guest`);
+    console.log(`[schema] Repaired ${result.affectedRows} user(s) with empty role ΓåÆ Guest`);
   }
 }
 

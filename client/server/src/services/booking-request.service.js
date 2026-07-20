@@ -55,6 +55,16 @@ function normalizeTime(value) {
   return raw;
 }
 
+/** HH:MM or HH:MM:SS → TIME string, or null. */
+function normalizeArrivalTime(value) {
+  if (value == null || value === '') return null;
+  const normalized = normalizeTime(value);
+  if (!/^\d{1,2}:\d{2}(:\d{2})?$/.test(String(normalized))) {
+    throw new Error('Arrival time must be a valid time (HH:MM).');
+  }
+  return normalized;
+}
+
 function makeBatchRef() {
   return `BR-${Date.now().toString(36).toUpperCase()}`;
 }
@@ -70,6 +80,7 @@ async function createStandalonePendingRoomBooking({
   fees,
   meal_allergen_notes,
   notes,
+  expected_arrival_time,
   bookingRef,
 }) {
   const { room_id, guest_count } = room;
@@ -101,12 +112,13 @@ async function createStandalonePendingRoomBooking({
   const [result] = await pool.query(
     `INSERT INTO bookings_rooms
        (user_id, room_id, group_id, check_in, check_out, guest_count, season, occupancy_item,
-        total_amount, status, notes, booking_ref, contact_phone, meal_allergen_notes, pricing_category)
-     VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, ?, 'Guest')`,
+        total_amount, status, notes, booking_ref, contact_phone, meal_allergen_notes, expected_arrival_time, pricing_category)
+     VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, 'Pending', ?, ?, ?, ?, ?, 'Guest')`,
     [
       userId, room_id, checkIn, checkOut, guest_count,
       prepared.season, prepared.occupancy_item, grandTotal,
       notes || null, bookingRef, contactPhone || null, meal_allergen_notes || null,
+      expected_arrival_time || null,
     ]
   );
 
@@ -200,13 +212,16 @@ export async function submitGuestBookingRequest({
   checkIn,
   checkOut,
   notes,
+  expectedArrivalTime,
   rooms = [],
   venues = [],
   meals,
   fees,
+  mealAllergenNotes,
   meal_allergen_notes,
   is_group_stay: isGroupStayFlag,
 }) {
+  const allergenNotes = mealAllergenNotes ?? meal_allergen_notes;
   if (!rooms.length && !venues.length) {
     throw new Error('Add at least one room or venue to your booking request.');
   }
@@ -217,12 +232,19 @@ export async function submitGuestBookingRequest({
   const batchRef = makeBatchRef();
   let group = null;
   let standaloneBooking = null;
+  let arrivalTime = null;
 
   if (rooms.length) {
     if (isEmpty(checkIn) || isEmpty(checkOut)) {
       throw new Error('Check-in and check-out are required for room bookings.');
     }
     await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit: false });
+    arrivalTime = normalizeArrivalTime(expectedArrivalTime);
+    if (!arrivalTime) {
+      throw new Error(rooms.length > 1
+        ? 'Earliest arrival time is required for group stays.'
+        : 'Expected arrival time is required.');
+    }
 
     const isGroupStay = isGroupStayFlag === true || rooms.length > 1;
 
@@ -239,8 +261,9 @@ export async function submitGuestBookingRequest({
         },
         meals,
         fees,
-        meal_allergen_notes,
+        meal_allergen_notes: allergenNotes,
         notes,
+        expected_arrival_time: arrivalTime,
         bookingRef: batchRef,
       });
     } else {
@@ -260,13 +283,14 @@ export async function submitGuestBookingRequest({
         is_group_stay: true,
         booking_ref: batchRef,
         notes,
+        expected_arrival_time: arrivalTime,
         rooms: rooms.map((row) => ({
           room_id: Number(row.room_id),
           guest_count: Math.max(1, Number(row.guest_count) || 1),
         })),
         meals,
         fees,
-        meal_allergen_notes,
+        meal_allergen_notes: allergenNotes,
       });
 
       const [[user]] = await pool.query(
