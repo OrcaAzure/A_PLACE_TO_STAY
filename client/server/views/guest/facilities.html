@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="scroll-smooth" lang="en">
 <head>
 <meta charset="utf-8">
@@ -96,7 +96,7 @@
         <span class="browse-stay-multi-room__box" aria-hidden="true"></span>
         <span class="browse-stay-multi-room__text">
           <strong>We need multiple rooms</strong>
-          <span id="browse-multi-room-hint" class="browse-stay-multi-room__hint">Show rooms that fit part of your group ΓÇö add each room to your booking request until everyone is covered.</span>
+          <span id="browse-multi-room-hint" class="browse-stay-multi-room__hint">Show rooms that fit part of your group — add each room to your booking request until everyone is covered.</span>
         </span>
       </label>
     </section>
@@ -107,7 +107,7 @@
           <div class="browse-refine-search-wrap">
             <label class="browse-refine-search" for="room-search">
               <span class="material-symbols-outlined browse-refine-search-icon" aria-hidden="true">search</span>
-              <input id="room-search" type="search" placeholder="Search by room number or typeΓÇª" autocomplete="off" />
+              <input id="room-search" type="search" placeholder="Search by room number or type…" autocomplete="off" />
             </label>
           </div>
           <div class="browse-refine-divider" aria-hidden="true"></div>
@@ -142,7 +142,7 @@
 </div>
 </div>
 
-<!-- Browse space preview (photos + details) ΓÇö preserved outside page-content -->
+<!-- Browse space preview (photos + details) — preserved outside page-content -->
 <div id="browse-preview-modal" data-layout-preserve class="browse-preview" hidden aria-hidden="true">
   <button type="button" class="browse-preview__backdrop" data-preview-close aria-label="Close preview"></button>
   <div class="browse-preview__panel" role="dialog" aria-modal="true" aria-labelledby="browse-preview-title">
@@ -237,7 +237,7 @@
         </div>
         <div>
           <label class="text-label-sm text-on-surface-variant block mb-1" for="vbm-notes">Notes (optional)</label>
-          <textarea id="vbm-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Purpose, special requirementsΓÇª"></textarea>
+          <textarea id="vbm-notes" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm" placeholder="Purpose, special requirements…"></textarea>
         </div>
         <div id="vbm-info" class="hidden space-y-2 rounded-lg bg-surface-container-low/60 border border-outline-variant/60 p-3"></div>
       </div>
@@ -297,15 +297,15 @@
           <dl class="grid grid-cols-3 gap-3 rounded-xl bg-surface-container-low border border-outline-variant/60 p-4 text-center">
             <div>
               <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Check-in</dt>
-              <dd id="confirm-check-in" class="text-body-sm font-semibold text-on-surface mt-1">ΓÇö</dd>
+              <dd id="confirm-check-in" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
             </div>
             <div>
               <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Check-out</dt>
-              <dd id="confirm-check-out" class="text-body-sm font-semibold text-on-surface mt-1">ΓÇö</dd>
+              <dd id="confirm-check-out" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
             </div>
             <div>
               <dt class="text-[11px] uppercase text-on-surface-variant font-bold tracking-wide">Guests</dt>
-              <dd id="confirm-guests" class="text-body-sm font-semibold text-on-surface mt-1">ΓÇö</dd>
+              <dd id="confirm-guests" class="text-body-sm font-semibold text-on-surface mt-1">—</dd>
             </div>
           </dl>
           <button type="button" id="booking-change-selection" class="text-primary text-body-sm font-medium hover:underline">
@@ -362,7 +362,7 @@
             <p class="guest-extras-block__label">Meals</p>
             <div id="booking-meals-grid" class="guest-meals-grid"></div>
             <label class="guest-extras-block__label mt-3" for="booking-meal-allergens">Meal allergens &amp; dietary notes (optional)</label>
-            <textarea id="booking-meal-allergens" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="e.g. nut allergy, gluten-free, vegetarianΓÇª"></textarea>
+            <textarea id="booking-meal-allergens" rows="2" class="w-full border border-outline-variant rounded-lg px-3 py-2.5 text-body-sm focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all" placeholder="e.g. nut allergy, gluten-free, vegetarian…"></textarea>
           </div>
           <div class="guest-extras-block" data-guest-extras-services>
             <p class="guest-extras-block__label">Extra services</p>
@@ -381,19 +381,19 @@
           <div class="guest-total-breakdown">
             <div class="guest-total-line">
               <span>Room</span>
-              <span id="booking-line-room">ΓÇö</span>
+              <span id="booking-line-room">—</span>
             </div>
             <div class="guest-total-line hidden" id="booking-line-meals-wrap">
               <span>Meals</span>
-              <span id="booking-line-meals">ΓÇö</span>
+              <span id="booking-line-meals">—</span>
             </div>
             <div class="guest-total-line hidden" id="booking-line-fees-wrap">
               <span>Extras</span>
-              <span id="booking-line-fees">ΓÇö</span>
+              <span id="booking-line-fees">—</span>
             </div>
             <div class="guest-total-line guest-total-line--grand">
               <span>Estimated total</span>
-              <span id="booking-summary-total">ΓÇö</span>
+              <span id="booking-summary-total">—</span>
             </div>
           </div>
           <p class="text-[11px] text-on-surface-variant mt-2" id="booking-summary-meta"></p>
@@ -511,9 +511,9 @@
   });
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  const peso = (n) => `Γé▒${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+  const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
   const fmtStayDate = (d) => {
-    if (!d) return 'ΓÇö';
+    if (!d) return '—';
     const dt = new Date(`${d}T00:00:00`);
     return Number.isNaN(dt.getTime())
       ? d
@@ -713,7 +713,7 @@
       setAvailabilityFeedback('');
       return;
     }
-    setAvailabilityFeedback('Stay details changed ΓÇö click ΓÇ£Update available roomsΓÇ¥ to refresh results.');
+    setAvailabilityFeedback('Stay details changed — click “Update available rooms” to refresh results.');
   }
 
   function updateRoomBrowseVisibility() {
@@ -780,7 +780,7 @@
         ? (isInternal
           ? 'Set your stay dates below, then browse open rooms across campus guest houses.'
           : 'Set your stay dates below, then browse open Global Missions Center rooms for your trip.')
-        : `Browse ${meta.label.toLowerCase()} below ΓÇö you'll set your date, time, and guest count when you reserve a space.`;
+        : `Browse ${meta.label.toLowerCase()} below — you'll set your date, time, and guest count when you reserve a space.`;
     }
     if (roomsHeading) {
       roomsHeading.textContent = 'Find your space';
@@ -795,7 +795,7 @@
     mount.innerHTML = buildBrowseCategoryCardsHtml(selectedCategory, isInternal);
 
     if (label) {
-      label.textContent = `Selected ┬╖ ${categoryMeta(selectedCategory).label}`;
+      label.textContent = `Selected · ${categoryMeta(selectedCategory).label}`;
     }
     updateBrowseHeadings();
     applyCategoryVisibility();
@@ -975,7 +975,7 @@
       }
 
       const picked = await openRoomGuestPicker({
-        roomLabel: `${room.building} ┬╖ Room ${room.roomNumber}`,
+        roomLabel: `${room.building} · Room ${room.roomNumber}`,
         roomType: room.roomType,
         roomId: room.id,
         checkIn,
@@ -1035,8 +1035,8 @@
       if (isMultiRoomBrowse()) {
         showBookingRequestToast(
           assigned >= total
-            ? `Room added ΓÇö all ${total} guests are covered.`
-            : `Room added ΓÇö ${assigned} of ${total} guests assigned. Add more rooms to cover everyone.`,
+            ? `Room added — all ${total} guests are covered.`
+            : `Room added — ${assigned} of ${total} guests assigned. Add more rooms to cover everyone.`,
         );
       } else {
         showBookingRequestToast('Room added to booking request');
@@ -1071,7 +1071,7 @@
       return `<button type="button" class="browse-preview__ghost" data-refresh-stay-search data-preview-stop>Update search to reserve</button>`;
     }
     const dormNote = avail?.availability_status === 'dorm_min_guests'
-      ? ` ┬╖ Min ${avail?.dorm_booking_minimum || 5} guests`
+      ? ` · Min ${avail?.dorm_booking_minimum || 5} guests`
       : '';
     return `<button disabled class="browse-preview__ghost">${st.label}${dormNote}</button>`;
   }
@@ -1093,7 +1093,7 @@
     const img = roomPreviewImage({ roomNumber: room.roomNumber, roomType: room.roomType });
     const galleryCount = roomGalleryImages(room).length;
     const priceLine = price && price.perNight != null
-      ? `<p class="text-body-sm text-on-surface-variant mb-4">${peso(price.perNight)} / night ┬╖ ${price.nights} night(s)</p>`
+      ? `<p class="text-body-sm text-on-surface-variant mb-4">${peso(price.perNight)} / night · ${price.nights} night(s)</p>`
       : '<div class="mb-4"></div>';
     const dormNotice = avail?.availability_status === 'dorm_min_guests'
       ? `<p class="text-body-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">Minimum ${avail?.dorm_booking_minimum || 5} guests required to book this dorm.</p>`
@@ -1207,7 +1207,7 @@
     if (!background) {
       findRoomsBtn.disabled = true;
       findRoomsBtn.classList.add('is-loading');
-      if (findRoomsBtnText) findRoomsBtnText.textContent = 'CheckingΓÇª';
+      if (findRoomsBtnText) findRoomsBtnText.textContent = 'Checking…';
       setAvailabilityFeedback('');
     }
     try {
@@ -1243,13 +1243,13 @@
             ? (isMultiRoomBrowse()
               ? (bookCount > 0
                 ? `Showing ${bookCount} room${bookCount === 1 ? '' : 's'} that can host part of your group of ${guests}. Add each room to your booking request.`
-                : `Showing ${availCount} dorm${availCount === 1 ? '' : 's'} ΓÇö some need at least 5 guests per room.`)
+                : `Showing ${availCount} dorm${availCount === 1 ? '' : 's'} — some need at least 5 guests per room.`)
               : (bookCount > 0
-                ? `Showing ${availCount} room${availCount === 1 ? '' : 's'} for ${fmtStayDate(checkIn)} ΓåÆ ${fmtStayDate(checkOut)} (${bookCount} ready to book).`
-                : `Showing ${availCount} dorm${availCount === 1 ? '' : 's'} ΓÇö increase guests to at least 5 to book.`))
+                ? `Showing ${availCount} room${availCount === 1 ? '' : 's'} for ${fmtStayDate(checkIn)} → ${fmtStayDate(checkOut)} (${bookCount} ready to book).`
+                : `Showing ${availCount} dorm${availCount === 1 ? '' : 's'} — increase guests to at least 5 to book.`))
             : (isMultiRoomBrowse()
               ? `No rooms are open for these dates. Try different dates or adjust your group size.`
-              : 'No rooms are open for these dates. Try different dates or guest count. For large groups, turn on ΓÇ£We need multiple roomsΓÇ¥.'),
+              : 'No rooms are open for these dates. Try different dates or guest count. For large groups, turn on “We need multiple rooms”.'),
         );
         document.getElementById('rooms-mount')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
@@ -1309,7 +1309,7 @@
     }
     onStayCriteriaChange();
   });
-  // Don't bind guests on every keystroke ΓÇö multi-digit values like 25 must finish typing first.
+  // Don't bind guests on every keystroke — multi-digit values like 25 must finish typing first.
   multiRoomEl?.addEventListener('change', () => {
     updateMultiRoomCopy();
     if (isMultiRoomBrowse()) {
@@ -1379,7 +1379,7 @@
 
   // Collapse rows that share a physical space (same category + name + code)
   // into one venue with multiple "uses" so guests see a single card with a
-  // use dropdown (e.g. GMC Chapel ΓåÆ Church / Wedding).
+  // use dropdown (e.g. GMC Chapel → Church / Wedding).
   function buildVenueGroups(grouped) {
     const byKey = new Map();
     for (const group of grouped || []) {
@@ -1428,18 +1428,18 @@
 
   function venueRateSummary(venue) {
     const rates = venue.uses.map((u) => u.regularRate).filter((r) => r != null);
-    if (!rates.length) return 'ΓÇö';
+    if (!rates.length) return '—';
     const min = Math.min(...rates);
     const many = venue.uses.length > 1;
-    const base = `Γé▒${Number(min).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-    if (venue.min_hours) return `${many ? 'From ' : ''}${base} ┬╖ ${venue.min_hours}-hr minimum`;
+    const base = `₱${Number(min).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+    if (venue.min_hours) return `${many ? 'From ' : ''}${base} · ${venue.min_hours}-hr minimum`;
     return `${many ? 'From ' : ''}${base} / hr`;
   }
 
   function venueCapacityText(venue) {
     const min = venue.capacity_min;
     const max = venue.capacity_max;
-    if (min != null && max != null) return `${min}ΓÇô${max} guests`;
+    if (min != null && max != null) return `${min}–${max} guests`;
     if (max != null) return `Up to ${max} guests`;
     if (min != null) return `From ${min} guests`;
     return '';
@@ -1809,7 +1809,7 @@
       previewMeta.innerHTML = `
         <span class="browse-preview__pill ${st.bookable ? 'is-ok' : ''}">${escapeHtml(st.label)}</span>
         <span class="browse-preview__pill"><span class="material-symbols-outlined">hotel</span>${escapeHtml(room.roomType)}</span>
-        <span class="browse-preview__pill"><span class="material-symbols-outlined">group</span>${room.capacityMin}ΓÇô${room.capacityMax} guests</span>
+        <span class="browse-preview__pill"><span class="material-symbols-outlined">group</span>${room.capacityMin}–${room.capacityMax} guests</span>
         ${price?.perNight != null ? `<span class="browse-preview__pill is-price">${peso(price.perNight)} / night</span>` : ''}
       `;
     }
@@ -1836,8 +1836,8 @@
           <h4>Good to know</h4>
           <ul class="browse-preview__list">
             <li>Located in ${escapeHtml(room.building)}</li>
-            <li>Sleeps ${room.capacityMin}ΓÇô${room.capacityMax} guests</li>
-            <li>Photos are representative ΓÇö layout may vary by room</li>
+            <li>Sleeps ${room.capacityMin}–${room.capacityMax} guests</li>
+            <li>Photos are representative — layout may vary by room</li>
           </ul>
         </section>
       `;
@@ -1894,7 +1894,7 @@
             <h4>Available uses</h4>
             <ul class="browse-preview__list">${venue.uses.map((u) => {
               const rate = u.regularRate != null
-                ? ` ┬╖ from Γé▒${Number(u.regularRate).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
+                ? ` · from ₱${Number(u.regularRate).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
                 : '';
               const useNote = usesDiffer && (u.inclusions || u.policies)
                 ? `<div class="browse-preview__use-notes">${u.inclusions ? `<p><strong>Includes:</strong> ${escapeHtml(u.inclusions)}</p>` : ''}${u.policies ? `<p><strong>Policies:</strong> ${escapeHtml(u.policies)}</p>` : ''}</div>`
@@ -1909,7 +1909,7 @@
       const sharedInclusions = !usesDiffer ? detailBlockHtml("What's included", venue.inclusions, { list: true }) : '';
       const sharedPolicies = !usesDiffer ? detailBlockHtml('Policies', venue.policies, { list: true }) : '';
       previewBody.innerHTML = `
-        <p class="browse-preview__lead">Review the description, what's included, and policies ΓÇö then continue to request your preferred date and time.</p>
+        <p class="browse-preview__lead">Review the description, what's included, and policies — then continue to request your preferred date and time.</p>
         ${about}
         ${sharedInclusions}
         ${sharedPolicies}
@@ -2059,15 +2059,15 @@
     successPanel?.classList.add('hidden');
     backBtn?.classList.remove('hidden');
     if (titleEl && currentVenue) {
-      titleEl.textContent = `Book ΓÇö ${currentVenue.name}${currentVenue.room_code ? ` (${currentVenue.room_code})` : ''}`;
+      titleEl.textContent = `Book — ${currentVenue.name}${currentVenue.room_code ? ` (${currentVenue.room_code})` : ''}`;
     }
     if (subtitleEl) subtitleEl.textContent = 'Set the date and time, then submit your request.';
   }
 
   function showVenueBookingSuccess({ venueName, useLabel, eventDate, startTime, endTime }) {
     const msg = document.getElementById('vbm-success-msg');
-    const when = `${fmtStayDate(eventDate)} ┬╖ ${fmtVenueTime(startTime)} ΓÇô ${fmtVenueTime(endTime)}`;
-    const place = [venueName, useLabel].filter(Boolean).join(' ΓÇö ');
+    const when = `${fmtStayDate(eventDate)} · ${fmtVenueTime(startTime)} – ${fmtVenueTime(endTime)}`;
+    const place = [venueName, useLabel].filter(Boolean).join(' — ');
     if (msg) msg.textContent = `${place} for ${when} is pending approval.`;
     formFields?.classList.add('hidden');
     successPanel?.classList.remove('hidden');
@@ -2132,7 +2132,7 @@
       const season = quote.calendar_season || quote.season;
       rateHint.textContent = quote.rate_label
         ? `${season} rate: ${quote.rate_label}`
-        : `${season} rate: Γé▒${Number(quote.rate).toLocaleString('en-PH')} / hr`;
+        : `${season} rate: ₱${Number(quote.rate).toLocaleString('en-PH')} / hr`;
     } catch {
       rateHint.textContent = '';
     }
@@ -2151,7 +2151,7 @@
     }
     useWrap?.classList.toggle('hidden', venue.uses.length <= 1);
 
-    if (titleEl) titleEl.textContent = `Book ΓÇö ${venue.name}${venue.room_code ? ` (${venue.room_code})` : ''}`;
+    if (titleEl) titleEl.textContent = `Book — ${venue.name}${venue.room_code ? ` (${venue.room_code})` : ''}`;
     if (subtitleEl) subtitleEl.textContent = 'Set the date and time, then submit your request.';
 
     const dateEl = document.getElementById('vbm-date');
@@ -2176,7 +2176,7 @@
       submitBtn.textContent = 'Submit Request';
     }
     if (rateHint) {
-      rateHint.textContent = 'Pick a date and time ΓÇö we check slot availability before you submit.';
+      rateHint.textContent = 'Pick a date and time — we check slot availability before you submit.';
     }
     renderVenueInfo(venue);
     applySelectedUse();
@@ -2261,7 +2261,7 @@
       try {
         const result = await checkVenueSlotAvailability({ facility_id: facilityId, event_date: eventDate, start_time: startTime, end_time: endTime });
         slotEl.textContent = result.available
-          ? `${result.message}${result.estimated_total != null ? ` Estimated: Γé▒${Number(result.estimated_total).toLocaleString('en-PH', { minimumFractionDigits: 2 })}.` : ''}`
+          ? `${result.message}${result.estimated_total != null ? ` Estimated: ₱${Number(result.estimated_total).toLocaleString('en-PH', { minimumFractionDigits: 2 })}.` : ''}`
           : result.message;
         slotEl.className = result.available
           ? 'text-body-sm rounded-lg px-3 py-2 bg-emerald-50 text-emerald-800'
@@ -2330,7 +2330,7 @@
 
     if (addRequestBtn) {
       addRequestBtn.disabled = true;
-      addRequestBtn.textContent = 'CheckingΓÇª';
+      addRequestBtn.textContent = 'Checking…';
     }
     try {
       const slot = await checkVenueSlotAvailability({
@@ -2401,7 +2401,7 @@
     const { facilityId, eventDate, startTime, endTime, guestCount, notes } = values;
 
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Checking availabilityΓÇª';
+    submitBtn.textContent = 'Checking availability…';
     try {
       const slot = await checkVenueSlotAvailability({ facility_id: facilityId, event_date: eventDate, start_time: startTime, end_time: endTime });
       if (!slot.available) {
@@ -2417,7 +2417,7 @@
       return;
     }
 
-    submitBtn.textContent = 'SubmittingΓÇª';
+    submitBtn.textContent = 'Submitting…';
 
     try {
       await createFacilityBooking({

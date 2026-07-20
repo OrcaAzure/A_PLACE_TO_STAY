@@ -712,7 +712,7 @@ function renderBookingDetailBody(rawBooking, { mode = 'view', actionError = '', 
       ${!canCancel && !approved ? `
         <p class="tl-detail-done">This reservation is ${escapeHtml(statusLabel(booking.status).toLowerCase())}${booking.updatedAt ? ` · updated ${formatDate(booking.updatedAt)}` : ''}.</p>
       ` : ''}
-    </div>`;
+    </div>`);
 
   return `
     <div class="tl-detail">
