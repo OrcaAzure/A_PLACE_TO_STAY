@@ -63,7 +63,7 @@ app.use(helmet(helmetOptions));
 
 app.use(cors({
   origin: getAllowedOrigins(),
-  methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
@@ -76,9 +76,14 @@ app.use('/api', (req, res, next) => {
   const len = Number(req.headers['content-length'] || 0);
   if (len === 0) return next();
   const ct = req.headers['content-type'] || '';
-  const isRoomImageUpload = req.method === 'POST'
-    && /^\/rooms\/[^/]+\/images\/?$/.test(req.path);
-  if (isRoomImageUpload && ct.includes('multipart/form-data')) return next();
+  // Allow multipart for room + facility photo upload (POST) and replace (PUT).
+  const isImageMultipart = (
+    (req.method === 'POST' && /^\/rooms\/[^/]+\/images\/?$/.test(req.path))
+    || (req.method === 'PUT' && /^\/rooms\/[^/]+\/images\/[^/]+\/?$/.test(req.path))
+    || (req.method === 'POST' && /^\/facilities\/[^/]+\/images\/?$/.test(req.path))
+    || (req.method === 'PUT' && /^\/facilities\/[^/]+\/images\/[^/]+\/?$/.test(req.path))
+  );
+  if (isImageMultipart && ct.includes('multipart/form-data')) return next();
   if (!ct.includes('application/json')) {
     return res.status(415).json({ message: 'Content-Type must be application/json' });
   }

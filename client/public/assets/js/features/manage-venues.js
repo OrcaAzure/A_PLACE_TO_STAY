@@ -15,12 +15,19 @@ import {
   getAdminVenues,
   saveAdminVenue,
   deleteAdminVenue,
+  uploadFacilityImages,
+  replaceFacilityImage,
+  deleteFacilityImage,
 } from '/assets/js/services/api.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
+import { isReadOnlyRole } from '/assets/js/services/auth.js';
+import { registerVenueUploadedImages } from '/assets/js/features/facility-display.js';
 
 /** Sentinel value used by the category <select> to reveal the "new category" field. */
 const ADD_CATEGORY_VALUE = '__add_category__';
+const MAX_VENUE_PHOTOS = 6;
+const ALLOWED_PHOTO_TYPES = new Set(['image/jpeg', 'image/png', 'image/jpg']);
 
 let initialized = false;
 let venues = [];
@@ -28,6 +35,7 @@ let selectedKey = null;
 let draft = null;
 let search = '';
 let saving = false;
+let uploadingImages = false;
 let cid = 0;
 
 function $(id) {
@@ -134,6 +142,7 @@ function draftFromVenue(v) {
     capacity_max: v.capacity_max ?? '',
     min_hours: v.min_hours ?? '',
     hourly_rate: v.hourly_rate ?? '',
+    preview_images: Array.isArray(v.preview_images) ? v.preview_images.filter(Boolean) : [],
     functions,
     activeUseCid: functions[0]?._cid || null,
     original_function_ids: (v.functions || []).map((f) => f.facility_id).filter(Boolean),
@@ -155,6 +164,7 @@ function blankDraft() {
     capacity_max: '',
     min_hours: '',
     hourly_rate: '',
+    preview_images: [],
     functions: [fn],
     activeUseCid: fn._cid,
     original_function_ids: [],
@@ -321,6 +331,80 @@ function pricingNoteHtml() {
     </div>`;
 }
 
+/** Prefer the facility id that already owns uploaded files, else the first use id. */
+function photoFacilityId() {
+  const imgs = draft?.preview_images || [];
+  const owned = String(imgs[0] || '').match(/\/images\/facilities\/(\d+)\//);
+  if (owned) return Number(owned[1]);
+  const ids = (draft?.functions || []).map((f) => f.facility_id).filter(Boolean);
+  return ids[0] ? Number(ids[0]) : null;
+}
+
+function photoFilename(src) {
+  return String(src || '').split('/').pop();
+}
+
+function venuePhotosSectionHtml() {
+  const images = Array.isArray(draft?.preview_images) ? draft.preview_images.filter(Boolean) : [];
+  const facilityId = photoFacilityId();
+  const canManage = Boolean(facilityId) && !draft?.isNew && !isReadOnlyRole();
+  const atLimit = images.length >= MAX_VENUE_PHOTOS;
+
+  const thumbs = images.length
+    ? `<div class="mf-photo-grid" role="list">${images.map((src) => {
+        const name = photoFilename(src);
+        return `
+        <figure class="mf-photo-thumb" role="listitem">
+          <img src="${escapeHtml(src)}" alt="Venue photo" loading="lazy" decoding="async" />
+          ${canManage ? `
+            <div class="mf-photo-actions">
+              <label class="mf-photo-replace" title="Replace photo">
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                  class="sr-only"
+                  data-venue-photo-replace="${escapeHtml(name)}"
+                  ${uploadingImages ? 'disabled' : ''}
+                />
+                <span class="material-symbols-outlined" aria-hidden="true">sync</span>
+                <span class="sr-only">Replace photo</span>
+              </label>
+              <button type="button" class="mf-photo-remove" data-venue-photo-delete="${escapeHtml(name)}" aria-label="Remove photo">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>` : ''}
+        </figure>`;
+      }).join('')}</div>`
+    : `<p class="mf-photo-empty">No photos yet. Guests will see a placeholder until you add one.</p>`;
+
+  const uploadBlock = canManage ? `
+    <div class="mf-photo-upload">
+      <label class="mf-photo-upload-btn${uploadingImages || atLimit ? ' is-disabled' : ''}">
+        <input
+          id="mv-venue-photos-input"
+          type="file"
+          accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+          multiple
+          class="sr-only"
+          ${uploadingImages || atLimit ? 'disabled' : ''}
+        />
+        <span class="material-symbols-outlined">upload</span>
+        ${uploadingImages ? 'Uploading…' : 'Upload JPG or PNG'}
+      </label>
+      <p class="mf-field-hint">Converted to WebP automatically. Up to ${MAX_VENUE_PHOTOS} photos. Use sync to replace one.</p>
+    </div>` : (draft?.isNew ? `
+    <p class="mf-field-hint">Save the venue first, then you can upload photos.</p>` : '');
+
+  return `
+    <section class="mv-section">
+      <p class="mv-section-title">Venue photos</p>
+      <div class="admin-crud-field span-full mf-photo-section">
+        ${thumbs}
+        ${uploadBlock}
+      </div>
+    </section>`;
+}
+
 function renderDetail() {
   const mount = $('manage-venues-detail');
   if (!mount || !draft) return;
@@ -342,6 +426,8 @@ function renderDetail() {
     </div>
 
     ${pricingNoteHtml()}
+
+    ${venuePhotosSectionHtml()}
 
     <section class="mv-section">
       <p class="mv-section-title">Venue identity</p>
@@ -482,6 +568,134 @@ function buildPayload() {
   };
 }
 
+async function applyVenuePhotoResult(result) {
+  if (result?.venue) {
+    const venue = {
+      ...result.venue,
+      preview_images: result.preview_images || result.venue.preview_images || [],
+    };
+    registerVenueUploadedImages(venue);
+    console.log('[manage-venues] upload assigned', {
+      facilityId: result.facility_id,
+      name: venue.name,
+      preview_images: venue.preview_images,
+    });
+    const idx = venues.findIndex((v) => v.key === venue.key);
+    if (idx >= 0) venues[idx] = venue;
+    else venues.push(venue);
+    selectedKey = venue.key;
+    draft = draftFromVenue(venue);
+  } else if (Array.isArray(result?.preview_images) && draft) {
+    draft.preview_images = result.preview_images;
+    registerVenueUploadedImages({
+      ...draft,
+      facility_id: photoFacilityId(),
+      preview_images: result.preview_images,
+    });
+  }
+  renderDetail();
+  renderList();
+  window.dispatchEvent(new CustomEvent('venues:changed', {
+    detail: {
+      facilityId: result?.facility_id,
+      preview_images: result?.preview_images,
+    },
+  }));
+}
+
+function filterValidPhotoFiles(fileList) {
+  return [...fileList].filter((f) => f && ALLOWED_PHOTO_TYPES.has(f.type));
+}
+
+async function handleVenuePhotoUpload(fileList) {
+  const facilityId = photoFacilityId();
+  if (!facilityId || isReadOnlyRole() || uploadingImages) return;
+
+  const files = filterValidPhotoFiles(fileList);
+  if (!files.length) {
+    setFeedback('Only JPG and PNG images are allowed.');
+    return;
+  }
+  const remaining = MAX_VENUE_PHOTOS - (draft?.preview_images?.length || 0);
+  if (files.length > remaining) {
+    setFeedback(`This venue can have up to ${MAX_VENUE_PHOTOS} photos. You can add ${Math.max(0, remaining)} more.`);
+    return;
+  }
+
+  uploadingImages = true;
+  setFeedback('Uploading…');
+  renderDetail();
+  try {
+    const result = await uploadFacilityImages(facilityId, files);
+    await applyVenuePhotoResult(result);
+    setFeedback(result?.message || 'Photos uploaded.', true);
+  } catch (err) {
+    console.error('[manage-venues] photo upload failed:', err);
+    setFeedback(err.message || 'Could not upload photos.');
+    renderDetail();
+  } finally {
+    uploadingImages = false;
+    renderDetail();
+  }
+}
+
+async function handleVenuePhotoReplace(filename, fileList) {
+  const facilityId = photoFacilityId();
+  if (!facilityId || !filename || isReadOnlyRole() || uploadingImages) return;
+
+  const files = filterValidPhotoFiles(fileList);
+  if (!files.length) {
+    setFeedback('Only JPG and PNG images are allowed.');
+    return;
+  }
+
+  uploadingImages = true;
+  setFeedback('Updating photo…');
+  renderDetail();
+  try {
+    const result = await replaceFacilityImage(facilityId, filename, files[0]);
+    await applyVenuePhotoResult(result);
+    setFeedback(result?.message || 'Photo updated.', true);
+  } catch (err) {
+    console.error('[manage-venues] photo replace failed:', err);
+    setFeedback(err.message || 'Could not update photo.');
+    renderDetail();
+  } finally {
+    uploadingImages = false;
+    renderDetail();
+  }
+}
+
+async function handleVenuePhotoDelete(filename) {
+  const facilityId = photoFacilityId();
+  if (!facilityId || !filename || isReadOnlyRole() || uploadingImages) return;
+
+  const confirmed = await confirmModal({
+    title: 'Remove photo',
+    message: 'Remove this photo from the venue gallery?',
+    confirmLabel: 'Remove photo',
+    danger: true,
+    elevate: true,
+  });
+  if (!confirmed) return;
+
+  uploadingImages = true;
+  setFeedback('Removing…');
+  renderDetail();
+  try {
+    const result = await deleteFacilityImage(facilityId, filename);
+    await applyVenuePhotoResult(result);
+    setFeedback(result?.message || 'Photo removed.', true);
+  } catch (err) {
+    console.error('[manage-venues] photo delete failed:', err);
+    setFeedback(err.message || 'Could not remove photo.');
+    renderDetail();
+  } finally {
+    uploadingImages = false;
+    renderDetail();
+  }
+}
+
 async function save() {
   if (saving) return;
   syncDraftFromForm();
@@ -598,11 +812,25 @@ export function initManageVenuesModal() {
   detailEl?.addEventListener('click', (e) => {
     if (e.target.closest('#mv-delete')) { removeVenue(); return; }
     if (e.target.closest('#mv-back')) $('manage-venues-body')?.classList.remove('is-mobile-form');
+    const delBtn = e.target.closest('[data-venue-photo-delete]');
+    if (delBtn) {
+      handleVenuePhotoDelete(delBtn.getAttribute('data-venue-photo-delete'));
+    }
   });
 
   detailEl?.addEventListener('change', (e) => {
     if (e.target.id === 'mv-group') { onCategoryChange(e.target.value); return; }
-    if (e.target.id === 'mv-use-select') { onUseChange(e.target.value); }
+    if (e.target.id === 'mv-use-select') { onUseChange(e.target.value); return; }
+    if (e.target.id === 'mv-venue-photos-input') {
+      handleVenuePhotoUpload(e.target.files);
+      e.target.value = '';
+      return;
+    }
+    const replaceInput = e.target.closest('[data-venue-photo-replace]');
+    if (replaceInput) {
+      handleVenuePhotoReplace(replaceInput.getAttribute('data-venue-photo-replace'), e.target.files);
+      e.target.value = '';
+    }
   });
 
   $('manage-venues-footer-actions')?.addEventListener('click', (e) => {

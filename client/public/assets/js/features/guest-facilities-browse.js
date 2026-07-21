@@ -24,11 +24,14 @@ import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
   } from '/assets/js/features/guest-booking-flow.js';
   import { initGuestRoomBookingModal } from '/assets/js/features/guest-room-booking-modal.js';
   import {
+    getImagesByRoom,
     roomPreviewImage,
     venuePreviewImage,
-    roomGalleryImages,
     venueGalleryImages,
     roomTypeHighlights,
+    registerRoomsUploadedImages,
+    registerVenuesUploadedImages,
+    registerVenueUploadedImages,
   } from '/assets/js/features/facility-display.js';
   import {
     addBookingRequestItem,
@@ -727,8 +730,9 @@ function setMountHtml(id, html) {
     const st = statusInfo(room);
     const price = priceFor(room);
     const icon = TYPE_ICON[room.roomType] || 'meeting_room';
-    const img = roomPreviewImage({ roomNumber: room.roomNumber, roomType: room.roomType });
-    const galleryCount = roomGalleryImages(room).length;
+    const images = getImagesByRoom(room);
+    const img = images[0] || roomPreviewImage(room);
+    const galleryCount = images.length;
     const priceLine = price && price.perNight != null
       ? `<p class="text-body-sm text-on-surface-variant mb-4">${peso(price.perNight)} / night · ${price.nights} night(s)</p>`
       : '<div class="mb-4"></div>';
@@ -739,6 +743,9 @@ function setMountHtml(id, html) {
       <article
         class="browse-room-card browse-space-card${silent ? '' : ' reveal'}"
         data-preview-room="${escapeHtml(String(room.id))}"
+        role="button"
+        tabindex="0"
+        aria-label="View details for room ${escapeHtml(String(room.roomNumber))}"
       >
         <div class="browse-room-card__media">
           <img src="${img}" alt="${room.roomType} room ${room.roomNumber}" loading="lazy" />
@@ -818,6 +825,8 @@ function setMountHtml(id, html) {
         .map((r) => ({ ...normalizeRoom(r), capacityMin: r.capacity_min, capacityMax: r.capacity_max }))
         .filter((r) => !isBlocked(r.building))
         .filter((r) => canGuestAccessRoom(r, isInternal));
+      // Bind DB galleries into runtime maps keyed by room number (e.g. '202').
+      registerRoomsUploadedImages(allRooms);
       renderCategoryCards();
       renderFilters();
       if (isRoomBrowseUnlocked()) render();
@@ -979,6 +988,8 @@ function setMountHtml(id, html) {
     setSelectedCategory(btn.dataset.category, { scroll: true });
   });
   document.getElementById('rooms-mount')?.addEventListener('click', (e) => {
+    if (e.target.closest('[data-preview-stop]')) return;
+
     if (e.target.closest('[data-refresh-stay-search]')) {
       e.stopPropagation();
       checkAvailability();
@@ -1013,22 +1024,37 @@ function setMountHtml(id, html) {
       return;
     }
 
-    const previewBtn = e.target.closest('[data-preview-open]');
-    if (previewBtn) {
+    // Whole card is clickable (CSS cursor:pointer) — open the same preview as "View details".
+    const card = e.target.closest('[data-preview-room]');
+    if (card) {
       e.preventDefault();
-      e.stopPropagation();
-      const card = previewBtn.closest('[data-preview-room]');
-      if (card) openRoomPreview(card.dataset.previewRoom);
+      openRoomPreview(card.dataset.previewRoom);
     }
   });
 
   document.getElementById('venues-mount')?.addEventListener('click', (e) => {
-    const previewBtn = e.target.closest('[data-preview-open]');
-    if (!previewBtn) return;
+    if (e.target.closest('[data-preview-stop]')) return;
+    // Facility cards previously only opened via the button; match room UX — click anywhere on the card.
+    const card = e.target.closest('[data-preview-venue]');
+    if (!card) return;
     e.preventDefault();
-    e.stopPropagation();
-    const card = previewBtn.closest('[data-preview-venue]');
-    if (card) openVenuePreview(card.dataset.previewVenue);
+    openVenuePreview(card.dataset.previewVenue);
+  });
+
+  // Keyboard: Enter/Space on focused cards opens the preview modal.
+  document.getElementById('rooms-mount')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest('[data-preview-room]');
+    if (!card || e.target !== card) return;
+    e.preventDefault();
+    openRoomPreview(card.dataset.previewRoom);
+  });
+  document.getElementById('venues-mount')?.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const card = e.target.closest('[data-preview-venue]');
+    if (!card || e.target !== card) return;
+    e.preventDefault();
+    openVenuePreview(card.dataset.previewVenue);
   });
 
   let searchTimer;
@@ -1065,6 +1091,7 @@ function setMountHtml(id, html) {
             hourly_rate: item.hourly_rate ?? null,
             inclusions: item.inclusions || '',
             policies: item.policies || '',
+            preview_images: Array.isArray(item.preview_images) ? item.preview_images.filter(Boolean) : [],
             uses: [],
           });
         } else {
@@ -1072,6 +1099,8 @@ function setMountHtml(id, html) {
           if (!existing.description && item.description) existing.description = item.description;
           if (!existing.inclusions && item.inclusions) existing.inclusions = item.inclusions;
           if (!existing.policies && item.policies) existing.policies = item.policies;
+          const imgs = Array.isArray(item.preview_images) ? item.preview_images.filter(Boolean) : [];
+          if (imgs.length > (existing.preview_images || []).length) existing.preview_images = imgs;
         }
         byKey.get(key).uses.push({
           facilityId: item.facility_id,
@@ -1119,25 +1148,23 @@ function setMountHtml(id, html) {
     const blurbNote = blurb
       ? `<p class="text-body-sm text-on-surface-variant mb-2 line-clamp-2">${escapeHtml(blurb)}</p>`
       : '';
-    const img = venuePreviewImage({
-      name: venue.name,
-      label: venue.name,
-      category: venue.category,
-      facility_group: venue.category,
-      room_code: venue.room_code,
-      item: venue.uses?.[0]?.item,
-    });
-    const galleryCount = venueGalleryImages({
+    const galleryVenue = {
       name: venue.name,
       category: venue.category,
       facility_group: venue.category,
       room_code: venue.room_code,
       item: venue.uses?.[0]?.item,
-    }).length;
+      preview_images: venue.preview_images || [],
+    };
+    const img = venuePreviewImage(galleryVenue);
+    const galleryCount = venueGalleryImages(galleryVenue).length;
     return `
       <article
         class="browse-venue-card browse-space-card flex flex-col bg-white rounded-2xl overflow-hidden border border-outline-variant hover:border-primary/40 hover:shadow-xl transition-all duration-300 reveal"
         data-preview-venue="${escapeHtml(venue.key)}"
+        role="button"
+        tabindex="0"
+        aria-label="View details for ${escapeHtml(venue.name)}"
       >
         <div class="browse-venue-card__media">
           <img src="${escapeHtml(img)}" alt="" loading="lazy" class="w-full h-full object-cover" />
@@ -1197,8 +1224,9 @@ function setMountHtml(id, html) {
   async function loadVenues() {
     const mount = document.getElementById('venues-mount');
     try {
-      const grouped = await getVenueFacilities();
+      const grouped = await getVenueFacilities({ fresh: true });
       allVenues = buildVenueGroups(grouped);
+      registerVenuesUploadedImages(allVenues);
       if (!allVenues.length) {
         mount.innerHTML = '<p class="text-body-sm text-on-surface-variant">No venues available.</p>';
         return;
@@ -1465,7 +1493,7 @@ function setMountHtml(id, html) {
     previewState.kind = 'room';
     previewState.roomId = room.id;
     previewState.venueKey = null;
-    previewState.images = roomGalleryImages(room);
+    previewState.images = getImagesByRoom(room);
     previewState.index = 0;
 
     if (previewEyebrow) previewEyebrow.textContent = room.building || 'Guest lodging';
@@ -1527,6 +1555,7 @@ function setMountHtml(id, html) {
       facility_group: venue.category,
       room_code: venue.room_code,
       item: venue.uses?.[0]?.item,
+      preview_images: venue.preview_images || [],
     };
 
     previewState.kind = 'venue';
@@ -2116,6 +2145,27 @@ function setMountHtml(id, html) {
   renderCategoryCards();
   loadRooms();
   loadVenues();
+  // Live-refresh when admin uploads photos in another tab/modal on the same origin.
+  window.addEventListener('rooms:changed', (e) => {
+    if (e.detail?.preview_images && e.detail?.roomId) {
+      registerRoomsUploadedImages([{
+        id: e.detail.roomId,
+        roomNumber: e.detail.roomNumber,
+        room_number: e.detail.roomNumber,
+        preview_images: e.detail.preview_images,
+      }]);
+    }
+    void loadRooms();
+  });
+  window.addEventListener('venues:changed', (e) => {
+    if (e.detail?.preview_images) {
+      registerVenueUploadedImages({
+        facility_id: e.detail.facilityId,
+        preview_images: e.detail.preview_images,
+      });
+    }
+    void loadVenues();
+  });
   if (browseQ.checkIn || browseQ.checkOut) {
     writeStayFields({
       checkIn: browseQ.checkIn,

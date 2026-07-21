@@ -31,8 +31,46 @@ import {
 import { resolveLodgingSeasonForDate } from '../services/season.service.js';
 import { bustCatalogAndFacilities } from '../utils/cache.js';
 import { isAdminPortalRole } from '../utils/constants.js';
+import {
+  parseFacilityPreviewImages,
+  processFacilityImageUpload,
+  deleteFacilityImageFile,
+  unlinkFacilityImagePath,
+  replaceFacilityImageFile,
+  sanitizeFacilityImageFilename,
+  facilityPreviewImagesForMysql,
+  FACILITY_IMAGE_MAX_COUNT,
+} from '../services/facilityImage.service.js';
 
 const VALID_SEASONS = ['Regular', 'Peak', 'N/A'];
+
+async function fetchFacilityRecord(id) {
+  const [rows] = await pool.query('SELECT * FROM facilities WHERE id = ? LIMIT 1', [id]);
+  return rows[0] || null;
+}
+
+/** Keep gallery JSON identical across uses of the same physical venue. */
+async function syncVenueSiblingPreviewImages(facility, previewImages) {
+  const payload = facilityPreviewImagesForMysql(previewImages);
+  if (payload == null) {
+    await pool.query(
+      `UPDATE facilities SET preview_images = NULL
+       WHERE name <=> ? AND room_code <=> ? AND facility_group <=> ?`,
+      [facility.name, facility.room_code, facility.facility_group],
+    );
+    return;
+  }
+  await pool.query(
+    `UPDATE facilities SET preview_images = CAST(? AS JSON)
+     WHERE name <=> ? AND room_code <=> ? AND facility_group <=> ?`,
+    [payload, facility.name, facility.room_code, facility.facility_group],
+  );
+}
+
+async function venuePayloadForFacility(facilityId) {
+  const venues = await listAdminVenues();
+  return venues.find((v) => (v.functions || []).some((f) => Number(f.facility_id) === Number(facilityId))) || null;
+}
 
 /** Admin facilities page: venues, meals, and add-on services. */
 export const getFacilitiesOverview = async (req, res) => {
@@ -70,6 +108,8 @@ export const getFacilitiesOverview = async (req, res) => {
 export const getVenueFacilities = async (req, res) => {
   try {
     const facilities = await fetchFacilitiesWithRates();
+    // Avoid stale guest cards after admin photo uploads (server cache is also busted).
+    res.setHeader('Cache-Control', 'no-store');
     res.status(200).json({
       venues: groupFacilitiesForOverview(facilities),
       facilities,
@@ -303,5 +343,164 @@ export const deleteFacility = async (req, res) => {
     res.status(200).json({ message: 'Facility rate deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+export const uploadFacilityImagesHandler = async (req, res) => {
+  const added = [];
+  try {
+    const facilityId = Number(req.params.id);
+    if (!Number.isInteger(facilityId) || facilityId <= 0) {
+      return res.status(400).json({ message: 'Invalid facility id.' });
+    }
+
+    const existing = await fetchFacilityRecord(facilityId);
+    if (!existing) return res.status(404).json({ message: 'Facility not found' });
+
+    const files = Array.isArray(req.files) ? req.files : [];
+    if (!files.length) return res.status(400).json({ message: 'Choose at least one JPG or PNG image.' });
+
+    const current = parseFacilityPreviewImages(existing.preview_images);
+    if (current.length + files.length > FACILITY_IMAGE_MAX_COUNT) {
+      return res.status(400).json({
+        message: `This venue can have up to ${FACILITY_IMAGE_MAX_COUNT} photos. Remove some before uploading more.`,
+      });
+    }
+
+    for (const file of files) {
+      added.push(await processFacilityImageUpload(file, facilityId));
+    }
+
+    const previewImages = [...current, ...added];
+    await syncVenueSiblingPreviewImages(existing, previewImages);
+    bustCatalogAndFacilities();
+
+    const verifiedRow = await fetchFacilityRecord(facilityId);
+    const verified = parseFacilityPreviewImages(verifiedRow?.preview_images);
+    console.log(
+      `[facilities] uploaded ${added.length} photo(s) facility_id=${facilityId} name=${existing.name} paths=${added.join(',')}`,
+    );
+    console.log(
+      `[facilities] assigned preview_images facility_id=${facilityId} key=${existing.name} count=${verified.length} verified=${JSON.stringify(verified)}`,
+    );
+
+    const venue = await venuePayloadForFacility(facilityId);
+    const images = verified.length ? verified : previewImages;
+    if (venue) venue.preview_images = images;
+
+    res.status(200).json({
+      message: added.length === 1 ? 'Photo uploaded' : `${added.length} photos uploaded`,
+      preview_images: images,
+      venue,
+      facility_id: facilityId,
+    });
+  } catch (error) {
+    await Promise.all(added.map((p) => unlinkFacilityImagePath(p).catch(() => {})));
+    console.error(`[facilities] upload failed facility=${req.params.id}:`, error.message);
+    res.status(400).json({ message: error.message || 'Could not upload photos.' });
+  }
+};
+
+export const replaceFacilityImageHandler = async (req, res) => {
+  let newPath = null;
+  try {
+    const facilityId = Number(req.params.id);
+    if (!Number.isInteger(facilityId) || facilityId <= 0) {
+      return res.status(400).json({ message: 'Invalid facility id.' });
+    }
+
+    const existing = await fetchFacilityRecord(facilityId);
+    if (!existing) return res.status(404).json({ message: 'Facility not found' });
+
+    const file = req.file || (Array.isArray(req.files) ? req.files[0] : null);
+    if (!file) return res.status(400).json({ message: 'Choose a JPG or PNG image to replace with.' });
+
+    const safeOld = sanitizeFacilityImageFilename(req.params.filename);
+    if (!safeOld) return res.status(400).json({ message: 'Invalid image filename.' });
+
+    const oldPath = `/images/facilities/${facilityId}/${safeOld}`;
+    const current = parseFacilityPreviewImages(existing.preview_images);
+    if (!current.includes(oldPath)) {
+      // Path may live under a sibling primary id — also accept any matching filename in the gallery.
+      const byName = current.find((p) => p.endsWith(`/${safeOld}`));
+      if (!byName) {
+        return res.status(404).json({ message: 'That photo is not on this venue. Refresh and try again.' });
+      }
+    }
+
+    const matchPath = current.includes(oldPath)
+      ? oldPath
+      : current.find((p) => p.endsWith(`/${safeOld}`));
+
+    const written = await replaceFacilityImageFile(file, facilityId, safeOld);
+    newPath = written.newPath;
+
+    const previewImages = current.map((p) => (p === matchPath ? newPath : p));
+    await syncVenueSiblingPreviewImages(existing, previewImages);
+    bustCatalogAndFacilities();
+
+    // Prefer deleting from the folder that actually held the old file.
+    const oldIdMatch = String(matchPath || '').match(/\/images\/facilities\/(\d+)\//);
+    const oldOwnerId = oldIdMatch ? Number(oldIdMatch[1]) : facilityId;
+    await deleteFacilityImageFile(oldOwnerId, safeOld).catch((err) => {
+      console.warn(`[facilities] old photo cleanup failed facility=${oldOwnerId}:`, err.message);
+    });
+
+    console.log(`[facilities] replaced photo facility=${facilityId} ${matchPath} -> ${newPath}`);
+
+    const venue = await venuePayloadForFacility(facilityId);
+    res.status(200).json({
+      message: 'Photo updated',
+      preview_images: previewImages,
+      venue,
+      facility_id: facilityId,
+    });
+  } catch (error) {
+    if (newPath) await unlinkFacilityImagePath(newPath).catch(() => {});
+    console.error(`[facilities] replace failed facility=${req.params.id}:`, error.message);
+    res.status(400).json({ message: error.message || 'Could not update photo.' });
+  }
+};
+
+export const deleteFacilityImageHandler = async (req, res) => {
+  try {
+    const facilityId = Number(req.params.id);
+    if (!Number.isInteger(facilityId) || facilityId <= 0) {
+      return res.status(400).json({ message: 'Invalid facility id.' });
+    }
+
+    const existing = await fetchFacilityRecord(facilityId);
+    if (!existing) return res.status(404).json({ message: 'Facility not found' });
+
+    const safeName = sanitizeFacilityImageFilename(req.params.filename);
+    if (!safeName) return res.status(400).json({ message: 'Invalid image filename.' });
+
+    const current = parseFacilityPreviewImages(existing.preview_images);
+    const matchPath = current.find((p) => p.endsWith(`/${safeName}`));
+    const nextImages = current.filter((p) => p !== matchPath);
+
+    await syncVenueSiblingPreviewImages(existing, nextImages);
+    bustCatalogAndFacilities();
+
+    if (matchPath) {
+      const ownerMatch = matchPath.match(/\/images\/facilities\/(\d+)\//);
+      const ownerId = ownerMatch ? Number(ownerMatch[1]) : facilityId;
+      await deleteFacilityImageFile(ownerId, safeName).catch((err) => {
+        console.warn(`[facilities] file unlink after DB delete facility=${ownerId}:`, err.message);
+      });
+    }
+
+    console.log(`[facilities] deleted photo facility=${facilityId} file=${safeName}`);
+
+    const venue = await venuePayloadForFacility(facilityId);
+    res.status(200).json({
+      message: 'Photo removed',
+      preview_images: nextImages,
+      venue,
+      facility_id: facilityId,
+    });
+  } catch (error) {
+    console.error(`[facilities] delete photo failed facility=${req.params.id}:`, error.message);
+    res.status(400).json({ message: error.message || 'Could not remove photo.' });
   }
 };

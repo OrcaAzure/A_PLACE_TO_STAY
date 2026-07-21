@@ -24,6 +24,11 @@ describe('roomImage.service', () => {
     assert.deepEqual(parsePreviewImages(['/evil/../x.webp']), []);
   });
 
+  it('parsePreviewImages recovers double-encoded MySQL JSON strings', () => {
+    const paths = ['/images/rooms/9/x.webp'];
+    const doubleEncoded = JSON.stringify(JSON.stringify(paths));
+    assert.deepEqual(parsePreviewImages(doubleEncoded), paths);
+  });
   it('sanitizeRoomImageFilename blocks path traversal', () => {
     assert.equal(sanitizeRoomImageFilename('photo.webp'), 'photo.webp');
     assert.equal(sanitizeRoomImageFilename('../secret.webp'), null);

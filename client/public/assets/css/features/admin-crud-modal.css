@@ -1051,6 +1051,31 @@
   cursor: pointer;
 }
 
+.mf-photo-actions {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  display: flex;
+  gap: 0.35rem;
+}
+
+.mf-photo-actions .mf-photo-remove {
+  position: static;
+}
+
+.mf-photo-replace {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 9999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  cursor: pointer;
+}
+
+.mf-photo-replace .material-symbols-outlined,
 .mf-photo-remove .material-symbols-outlined {
   font-size: 1rem;
 }

@@ -100,6 +100,7 @@ function buildVenueSpaces(catalog) {
           name: item.name || group.category || '',
           roomCode: item.room_code || '',
           description: item.description || '',
+          preview_images: Array.isArray(item.preview_images) ? item.preview_images.filter(Boolean) : [],
           label: item.name
             ? (item.room_code ? `${item.name} (${item.room_code})` : item.name)
             : (item.label || group.category),
@@ -108,6 +109,8 @@ function buildVenueSpaces(catalog) {
       }
       const venue = byKey.get(key);
       if (item.description && !venue.description) venue.description = item.description;
+      const imgs = Array.isArray(item.preview_images) ? item.preview_images.filter(Boolean) : [];
+      if (imgs.length > (venue.preview_images || []).length) venue.preview_images = imgs;
       venue.uses.push({
         facilityId: catalogId,
         eventVenueId: catalogId,
@@ -141,6 +144,7 @@ function venueCardImage(v) {
     category: v.category,
     facility_group: v.category,
     room_code: v.roomCode,
+    preview_images: v.preview_images || [],
   });
 }
 

@@ -1,5 +1,15 @@
 /**
  * Shared visuals for room & venue cards (guest browse + admin facilities).
+ *
+ * HYBRID IMAGE SYSTEM (rooms)
+ * ---------------------------
+ * 1. Admin uploads (`preview_images` / runtime registry) = SOURCE OF TRUTH
+ * 2. Hardcoded ROOM_NUMBER_* maps = FALLBACK placeholders during migration
+ * 3. Room-type Unsplash galleries = last-resort so every room still shows something
+ *
+ * Prefer getImagesByRoom() / roomPreviewImage() / roomGalleryImages() — never read
+ * ROOM_NUMBER_IMAGE directly in UI. Once every room has DB uploads, the fallback
+ * maps can be removed.
  */
 
 import { resolveRoomVisualKey } from '/assets/js/features/room-types.js';
@@ -24,31 +34,164 @@ export const ROOM_TYPE_IMAGE = {
   'Deluxe 3 BR': 'https://images.unsplash.com/photo-1595526114035-0d45ed16cfbf?auto=format&fit=crop&w=1200&q=80',
 };
 
-/** Room-specific photos override type placeholders when available. */
+/**
+ * FALLBACK ONLY — primary campus stills keyed by room number.
+ * Values are always string[] so galleries can map over them.
+ * Ignored when admin uploads exist for that room.
+ * TODO(migration): remove once every room has preview_images in the DB.
+ */
 export const ROOM_NUMBER_IMAGE = {
-  '202': '/images/DormPreview.webp',
-  '204': '/images/DormPreview.webp',
-  '206': '/images/DormPreview.webp',
-  '207': '/images/DormPreview.webp',
-  '208': '/images/DormPreview.webp',
-  '209': '/images/DormPreview.webp',
-  '301': '/images/301Preview.webp',
-  '305': '/images/DormPreview.webp',
-  '306': '/images/DormPreview.webp',
-  '308': '/images/DormPreview.webp',
-  '401': '/images/401Preview.webp',
-  '404': '/images/404Preview.webp',
-  '410': '/images/410Preview.webp',
-  '411': '/images/411Preview.webp',
-  '413': '/images/413Preview.webp',
-  '416': '/images/416Preview.webp',
-  'A-501': '/images/501Preview.webp',
+  '202': ['/images/DormPreview.webp'],
+  '204': ['/images/DormPreview.webp'],
+  '206': ['/images/DormPreview.webp'],
+  '207': ['/images/DormPreview.webp'],
+  '208': ['/images/DormPreview.webp'],
+  '209': ['/images/DormPreview.webp'],
+  '301': ['/images/301Preview.webp'],
+  '305': ['/images/DormPreview.webp'],
+  '306': ['/images/DormPreview.webp'],
+  '308': ['/images/DormPreview.webp'],
+  '401': ['/images/401Preview.webp'],
+  '404': ['/images/404Preview.webp'],
+  '410': ['/images/410Preview.webp'],
+  '411': ['/images/411Preview.webp'],
+  '413': ['/images/413Preview.webp'],
+  '416': ['/images/416Preview.webp'],
+  'A-501': ['/images/501Preview.webp'],
 };
+
+/**
+ * Runtime galleries from DB/API uploads — keyed like:
+ *   UPLOADED_ROOM_GALLERY['202'] = ['/images/rooms/12/a.webp', ...]
+ * Populated by registerRoomUploadedImages() after fetch/upload.
+ */
+const UPLOADED_ROOM_GALLERY = Object.create(null);
+const UPLOADED_ROOM_GALLERY_BY_ID = Object.create(null);
+const UPLOADED_VENUE_GALLERY = Object.create(null);
+const UPLOADED_VENUE_GALLERY_BY_ID = Object.create(null);
+
+/** Rooms that already logged a fallback warning this page load (avoid spam). */
+const FALLBACK_WARNED_ROOMS = new Set();
+
+function asImageList(value) {
+  if (typeof value === 'string' && value.trim()) {
+    const clean = value.trim();
+    return clean.startsWith('/images/') || /^https?:\/\//i.test(clean) ? [clean] : [];
+  }
+  if (!Array.isArray(value)) return [];
+  return value.filter((v) => typeof v === 'string' && (v.startsWith('/images/') || /^https?:\/\//i.test(v)));
+}
+
+function normalizeRoomNumber(value) {
+  return String(value ?? '').trim().replace(/^room\s+/i, '');
+}
+
+/** Register admin-uploaded room photos under room number + numeric id keys. */
+export function registerRoomUploadedImages(room = {}) {
+  const imgs = asImageList(room.preview_images || room.previewImages);
+  const num = normalizeRoomNumber(room.roomNumber ?? room.room_number);
+  const id = room.id != null ? String(room.id) : null;
+  if (id) {
+    if (imgs.length) UPLOADED_ROOM_GALLERY_BY_ID[id] = imgs;
+    else delete UPLOADED_ROOM_GALLERY_BY_ID[id];
+  }
+  if (num) {
+    if (imgs.length) UPLOADED_ROOM_GALLERY[num] = imgs;
+    else delete UPLOADED_ROOM_GALLERY[num];
+  }
+  if (imgs.length) {
+    console.log('[facility-display] room images assigned', {
+      id,
+      roomNumber: num,
+      count: imgs.length,
+      paths: imgs,
+    });
+  }
+  return imgs;
+}
+
+export function registerRoomsUploadedImages(rooms = []) {
+  for (const room of rooms) registerRoomUploadedImages(room);
+}
+
+/** Register admin-uploaded venue photos under name/code key + facility id. */
+export function registerVenueUploadedImages(venue = {}) {
+  const imgs = asImageList(venue.preview_images || venue.previewImages);
+  const id = venue.facility_id ?? venue.facilityId ?? venue.id;
+  const key = [
+    venue.facility_group || venue.category || '',
+    venue.name || venue.label || '',
+    venue.room_code || venue.roomCode || '',
+  ].join('\x1f');
+  if (id != null) {
+    const sid = String(id);
+    if (imgs.length) UPLOADED_VENUE_GALLERY_BY_ID[sid] = imgs;
+    else delete UPLOADED_VENUE_GALLERY_BY_ID[sid];
+  }
+  if (key && key !== '\x1f\x1f') {
+    if (imgs.length) UPLOADED_VENUE_GALLERY[key] = imgs;
+    else delete UPLOADED_VENUE_GALLERY[key];
+  }
+  const name = normalizeVenueKey(venue.name || venue.label);
+  const code = normalizeVenueKey(venue.room_code ?? venue.roomCode);
+  if (name) {
+    if (imgs.length) UPLOADED_VENUE_GALLERY[name] = imgs;
+    else delete UPLOADED_VENUE_GALLERY[name];
+  }
+  if (code) {
+    if (imgs.length) UPLOADED_VENUE_GALLERY[code] = imgs;
+    else delete UPLOADED_VENUE_GALLERY[code];
+  }
+  if (imgs.length) {
+    console.log('[facility-display] venue images assigned', {
+      id,
+      name: venue.name,
+      room_code: code,
+      count: imgs.length,
+      paths: imgs,
+    });
+  }
+  return imgs;
+}
+
+export function registerVenuesUploadedImages(venues = []) {
+  for (const venue of venues) registerVenueUploadedImages(venue);
+}
+
+function uploadedRoomImagesFor(room = {}) {
+  const fromEntity = asImageList(room.preview_images || room.previewImages);
+  if (fromEntity.length) return fromEntity;
+  const id = room.id != null ? String(room.id) : null;
+  if (id && UPLOADED_ROOM_GALLERY_BY_ID[id]?.length) return UPLOADED_ROOM_GALLERY_BY_ID[id];
+  const num = normalizeRoomNumber(room.roomNumber ?? room.room_number);
+  if (num && UPLOADED_ROOM_GALLERY[num]?.length) return UPLOADED_ROOM_GALLERY[num];
+  return [];
+}
+
+function uploadedVenueImagesFor(venue = {}) {
+  const fromEntity = asImageList(venue.preview_images || venue.previewImages);
+  if (fromEntity.length) return fromEntity;
+  const id = venue.facility_id ?? venue.facilityId ?? venue.id;
+  if (id != null && UPLOADED_VENUE_GALLERY_BY_ID[String(id)]?.length) {
+    return UPLOADED_VENUE_GALLERY_BY_ID[String(id)];
+  }
+  const key = [
+    venue.facility_group || venue.category || '',
+    venue.name || venue.label || '',
+    venue.room_code || venue.roomCode || '',
+  ].join('\x1f');
+  if (UPLOADED_VENUE_GALLERY[key]?.length) return UPLOADED_VENUE_GALLERY[key];
+  const code = normalizeVenueKey(venue.room_code ?? venue.roomCode);
+  if (code && UPLOADED_VENUE_GALLERY[code]?.length) return UPLOADED_VENUE_GALLERY[code];
+  const name = normalizeVenueKey(venue.name || venue.label);
+  if (name && UPLOADED_VENUE_GALLERY[name]?.length) return UPLOADED_VENUE_GALLERY[name];
+  return [];
+}
 
 const DEFAULT_ROOM_IMAGE =
   'https://images.unsplash.com/photo-1631049552057-403cdb8f0658?auto=format&fit=crop&w=1200&q=80';
 
-/** Local / stock placeholders until real venue photos are uploaded. */
+/** Local / stock placeholders — FALLBACK until real venue photos are uploaded. */
 export const VENUE_CATEGORY_IMAGE = {
   'GMC Chapel': '/images/GMCChapelPreview.webp',
   'Burdine Commons': 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
@@ -76,7 +219,8 @@ export const LANDING_AMENITY_IMAGE = {
 
 /**
  * Exact venue name / room code / package overrides.
- * Add real campus photos here as they become available (same pattern as ROOM_NUMBER_IMAGE).
+ * FALLBACK ONLY — ignored when admin venue uploads exist.
+ * TODO(migration): remove once venues have preview_images coverage.
  */
 export const VENUE_NAME_IMAGE = {
   'GMC Chapel': '/images/GMCChapelPreview.webp',
@@ -141,29 +285,82 @@ export function roomTypeImage(roomType) {
   return ROOM_TYPE_IMAGE[roomType] || DEFAULT_ROOM_IMAGE;
 }
 
-function normalizeRoomNumber(value) {
-  return String(value ?? '').trim().replace(/^room\s+/i, '');
+function warnRoomFallbackOnce(roomNumber, source) {
+  const key = roomNumber || '(unknown)';
+  if (FALLBACK_WARNED_ROOMS.has(key)) return;
+  FALLBACK_WARNED_ROOMS.add(key);
+  console.info(
+    `[facility-display] room ${key} still using fallback images (${source}) — upload real photos to replace`,
+  );
 }
 
-export function roomPreviewImage(room = {}) {
-  const uploaded = Array.isArray(room.preview_images) ? room.preview_images.filter(Boolean) : [];
-  if (uploaded.length) return uploaded[0];
+/**
+ * Hardcoded room stills for migration — multi-shot galleries preferred over single primary.
+ * Always returns a string[] (never null).
+ */
+function getHardcodedRoomFallback(roomNumber) {
+  const num = normalizeRoomNumber(roomNumber);
+  if (!num) return [];
+  if (ROOM_NUMBER_GALLERY[num]?.length) return asImageList(ROOM_NUMBER_GALLERY[num]);
+  if (ROOM_NUMBER_IMAGE[num]?.length) return asImageList(ROOM_NUMBER_IMAGE[num]);
+  return [];
+}
 
-  const {
-    roomNumber, room_number, roomType, room_type, room_type_label, bed_count,
-  } = room;
-  const num = normalizeRoomNumber(roomNumber ?? room_number);
-  if (num && ROOM_NUMBER_IMAGE[num]) return ROOM_NUMBER_IMAGE[num];
+/**
+ * Unified hybrid resolver for room photos.
+ *
+ * @param {string|object} roomOrNumber - Room number ('202') or a room-like object
+ *   with room_number / roomNumber / id / preview_images.
+ * @returns {string[]} Always an array (uploaded → hardcoded → type placeholder).
+ *
+ * Uploaded images are the source of truth. Hardcoded maps are temporary fallbacks.
+ */
+export function getImagesByRoom(roomOrNumber = {}) {
+  const room = (typeof roomOrNumber === 'object' && roomOrNumber !== null)
+    ? roomOrNumber
+    : { room_number: roomOrNumber, roomNumber: roomOrNumber };
+
+  const num = normalizeRoomNumber(room.roomNumber ?? room.room_number ?? (
+    typeof roomOrNumber === 'string' || typeof roomOrNumber === 'number' ? roomOrNumber : ''
+  ));
+
+  // 1) Admin uploads (entity fields or runtime registry keyed by id / room number)
+  const uploaded = uploadedRoomImagesFor({
+    ...room,
+    room_number: room.room_number ?? num,
+    roomNumber: room.roomNumber ?? num,
+  });
+  if (uploaded.length) {
+    return uniqueUrls(uploaded).slice(0, GALLERY_MAX_ROOM);
+  }
+
+  // 2) Hardcoded campus placeholders (migration fallback)
+  const hardcoded = getHardcodedRoomFallback(num);
+  if (hardcoded.length) {
+    warnRoomFallbackOnce(num, 'ROOM_NUMBER_* map');
+    return uniqueUrls(hardcoded).slice(0, GALLERY_MAX_ROOM);
+  }
+
+  // 3) Type-level placeholder so the UI never renders an empty gallery
   const tier = resolveRoomVisualKey({
-    room_type: room_type ?? roomType,
-    room_type_label,
-    bed_count,
+    room_type: room.room_type ?? room.roomType,
+    room_type_label: room.room_type_label ?? room.roomTypeLabel,
+    bed_count: room.bed_count ?? room.bedCount,
     room_number: num,
   });
-  return roomTypeImage(tier);
+  const primary = roomTypeImage(tier);
+  const extras = ROOM_TYPE_GALLERY[tier] || [primary];
+  warnRoomFallbackOnce(num || `type:${tier}`, 'room-type placeholder');
+  return uniqueUrls([primary, ...extras, DEFAULT_ROOM_IMAGE]).slice(0, GALLERY_MAX_ROOM);
 }
 
-/** Extra gallery shots per room type until multi-upload exists. */
+/** Card / hero thumbnail — first image from getImagesByRoom(). */
+export function roomPreviewImage(room = {}) {
+  const images = getImagesByRoom(room);
+  return images[0] || DEFAULT_ROOM_IMAGE;
+}
+
+/** Extra gallery shots per room type when no admin uploads / room-number fallback exist. */
 const ROOM_TYPE_GALLERY = {
   'Dorm': [
     'https://images.unsplash.com/photo-1555854877-bab0e5b6b4f5?auto=format&fit=crop&w=1400&q=80',
@@ -202,7 +399,12 @@ const ROOM_TYPE_GALLERY = {
   ],
 };
 
-/** Optional multi-photo overrides keyed by room number (extend as uploads arrive). */
+/**
+ * FALLBACK ONLY — multi-photo campus galleries keyed by room number.
+ * Preferred over ROOM_NUMBER_IMAGE when both exist for the same room.
+ * Ignored when admin uploads exist.
+ * TODO(migration): remove once every room has preview_images in the DB.
+ */
 export const ROOM_NUMBER_GALLERY = {
   '202': [
     '/images/DormPreview.webp',
@@ -404,32 +606,10 @@ function uniqueUrls(urls = []) {
 
 /**
  * Gallery list for a room card/detail modal.
- * Uses room-specific photos first, then type gallery placeholders.
+ * Delegates to getImagesByRoom() (uploaded → hardcoded fallback → type placeholder).
  */
 export function roomGalleryImages(room = {}) {
-  const uploaded = Array.isArray(room.preview_images) ? room.preview_images.filter(Boolean) : [];
-  if (uploaded.length) {
-    return uniqueUrls(uploaded).slice(0, GALLERY_MAX_ROOM);
-  }
-
-  const num = normalizeRoomNumber(room.roomNumber ?? room.room_number);
-  const roomGallery = ROOM_NUMBER_GALLERY[num];
-  if (roomGallery?.length) {
-    return uniqueUrls(roomGallery).slice(0, GALLERY_MAX_ROOM);
-  }
-
-  const tier = resolveRoomVisualKey({
-    room_type: room.room_type ?? room.roomType,
-    room_type_label: room.room_type_label,
-    bed_count: room.bed_count,
-    room_number: num,
-  });
-  const primary = roomPreviewImage(room);
-  const extras = [
-    ...(ROOM_TYPE_GALLERY[tier] || [roomTypeImage(tier)]),
-    DEFAULT_ROOM_IMAGE,
-  ];
-  return uniqueUrls([primary, ...extras]).slice(0, GALLERY_MAX_ROOM);
+  return getImagesByRoom(room);
 }
 
 /**
@@ -437,6 +617,12 @@ export function roomGalleryImages(room = {}) {
  * Uses venue-specific photos first, then category gallery placeholders.
  */
 export function venueGalleryImages(venue = {}) {
+  // Prefer admin-uploaded paths (DB / runtime registry) over static placeholder maps.
+  const uploaded = uploadedVenueImagesFor(venue);
+  if (uploaded.length) {
+    return uniqueUrls(uploaded).slice(0, GALLERY_MAX_VENUE);
+  }
+
   const code = normalizeVenueKey(venue.room_code ?? venue.roomCode);
   const candidates = [venue.name, venue.label, venue.item, venue.facility_group, venue.category]
     .map(normalizeVenueKey)
@@ -482,12 +668,16 @@ function normalizeVenueKey(value) {
 }
 
 /**
- * Resolve a venue photo placeholder.
- * Priority: room_code → exact name/item/label → facility_group/category → default.
+ * Resolve a venue photo.
+ * Priority: admin uploads → room_code → exact name/item/label → facility_group/category → default.
  */
-export function venuePreviewImage({
-  name, label, item, category, facility_group, room_code, roomCode,
-} = {}) {
+export function venuePreviewImage(venue = {}) {
+  const uploaded = uploadedVenueImagesFor(venue);
+  if (uploaded.length) return uploaded[0];
+
+  const {
+    name, label, item, category, facility_group, room_code, roomCode,
+  } = venue;
   const code = normalizeVenueKey(room_code ?? roomCode);
   if (code && VENUE_NAME_IMAGE[code]) return VENUE_NAME_IMAGE[code];
 

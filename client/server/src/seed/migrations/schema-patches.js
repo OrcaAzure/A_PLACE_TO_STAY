@@ -21,6 +21,7 @@ import {
   runFacilitiesCatalogMigration,
   runGmcAblockMigration,
   runVenueFieldsMigration,
+  runFacilityPreviewImagesColumn,
 } from './facilities.js';
 import { runBookingsMealsPerDayMigration } from './bookings-meals-per-day.js';
 import { runBookingRefMigration } from './booking-ref.js';
@@ -88,6 +89,7 @@ export async function runSchemaPatches() {
   await safeRun('GMC A-block migration', runGmcAblockMigration);
   await safeRun('facilities catalog migration', runFacilitiesCatalogMigration);
   await safeRun('venue fields migration', runVenueFieldsMigration);
+  await safeRun('facility preview images column', runFacilityPreviewImagesColumn);
   // 12. Rooms: deluxe → dorm → superior → season → lodging extras → guest copy
   await safeRun('deluxe room type migration', runDeluxeRoomTypeMigration);
   await safeRun('dorm capacity migration', runDormCapacityMigration);

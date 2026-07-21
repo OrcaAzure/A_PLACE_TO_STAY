@@ -369,6 +369,16 @@ async function runGmcAblockMigration() {
   console.log('[schema] GMC A-block spaces are venue facilities (A-501 remains lodging)');
 }
 
+/** Admin-uploaded venue preview photos (WebP paths in JSON array). */
+async function runFacilityPreviewImagesColumn() {
+  if (!(await tableExists('facilities'))) return;
+  if (await columnExists('facilities', 'preview_images')) return;
+  await pool.execute(
+    `ALTER TABLE facilities ADD COLUMN preview_images JSON DEFAULT NULL AFTER policies`
+  );
+  console.log('[schema] Added facilities.preview_images for admin photo uploads');
+}
+
 export {
   upsertGmcFacilities,
   migrateAirconToExtraServices,
@@ -376,4 +386,5 @@ export {
   runFacilitiesCatalogMigration,
   runGmcAblockMigration,
   runVenueFieldsMigration,
+  runFacilityPreviewImagesColumn,
 };

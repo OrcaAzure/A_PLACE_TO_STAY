@@ -238,10 +238,7 @@ export async function initGuestRoomBookingModal({
       mount.innerHTML = '<p class="text-body-sm text-error">This room is no longer available for the selected dates.</p>';
       return;
     }
-    const img = roomPreviewImage({
-      roomNumber: room.room_number ?? room.roomNumber,
-      roomType: room.room_type_label || room.room_type || room.roomType,
-    });
+    const img = roomPreviewImage(room);
     mount.innerHTML = `
       <div class="flex flex-col sm:flex-row gap-4">
         <div class="shrink-0 w-full sm:w-36 h-28 rounded-xl overflow-hidden bg-surface-container border border-outline-variant/60">
@@ -431,10 +428,7 @@ export async function initGuestRoomBookingModal({
       const capLabel = r.room_type === 'Dorm'
         ? `Min ${r.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} pax to book · up to ${r.capacity_max} guests`
         : `${r.capacity_min}–${r.capacity_max} guests`;
-      const img = roomPreviewImage({
-        roomNumber: r.room_number ?? r.roomNumber,
-        roomType: r.room_type_label || r.room_type,
-      });
+      const img = roomPreviewImage(r);
       return `
         <button type="button" class="room-option w-full text-left p-3 rounded-xl border ${dormMin ? 'border-amber-300 bg-amber-50/40' : 'border-outline-variant hover:border-primary/50 bg-white'} flex items-center gap-3 ${String(r.id) === String(preferredRoomId) ? 'selected' : ''}" data-room-id="${r.id}">
           <div class="shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-surface-container border border-outline-variant/60">

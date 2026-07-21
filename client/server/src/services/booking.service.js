@@ -30,6 +30,7 @@ import {
   resolveStaySeasons,
 } from './season.service.js';
 import { getAccommodationExtraRate, LODGING_EXTRA_ITEM, PER_PERSON_NIGHT_ITEM } from './lodgingExtras.service.js';
+import { parsePreviewImages } from './roomImage.service.js';
 
 const ACTIVE_STATUSES = ['Pending', 'Approved'];
 
@@ -832,6 +833,8 @@ export async function getAvailableRooms({
       description: room.description ?? null,
       inclusions: room.inclusions ?? room.highlights ?? null,
       policies: room.policies ?? null,
+      // Required so booking wizards / guest cards show admin-uploaded photos.
+      preview_images: parsePreviewImages(room.preview_images),
       availability_status: availabilityStatus,
       fits_capacity: (room.room_type === 'Dorm'
         ? count <= room.capacity_max

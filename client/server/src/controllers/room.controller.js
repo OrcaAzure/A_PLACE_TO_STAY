@@ -9,6 +9,10 @@ import {
   processRoomImageUpload,
   deleteRoomImageFile,
   deleteAllRoomImages,
+  unlinkRoomImagePath,
+  replaceRoomImageFile,
+  sanitizeRoomImageFilename,
+  previewImagesForMysql,
   ROOM_IMAGE_MAX_COUNT,
 } from '../services/roomImage.service.js';
 
@@ -379,6 +383,7 @@ async function fetchRoomRecord(id) {
 }
 
 export const uploadRoomImagesHandler = async (req, res) => {
+  const added = [];
   try {
     const roomId = Number(req.params.id);
     if (!Number.isInteger(roomId) || roomId <= 0) {
@@ -398,25 +403,114 @@ export const uploadRoomImagesHandler = async (req, res) => {
       });
     }
 
-    const added = [];
+    // Process to disk first; if any file fails, roll back this batch so DB stays consistent.
     for (const file of files) {
       added.push(await processRoomImageUpload(file, roomId));
     }
 
     const previewImages = [...current, ...added];
-    await pool.query('UPDATE rooms SET preview_images = ? WHERE id = ?', [
-      JSON.stringify(previewImages),
+    // CAST(? AS JSON) stores a real JSON array (JSON.stringify alone can double-encode).
+    await pool.query('UPDATE rooms SET preview_images = CAST(? AS JSON) WHERE id = ?', [
+      previewImagesForMysql(previewImages),
       roomId,
     ]);
 
     const room = await fetchRoomRecord(roomId);
+    const verified = parsePreviewImages(room?.preview_images);
+    console.log(
+      `[rooms] uploaded ${added.length} photo(s) room_id=${roomId} room_number=${existing.room_number} paths=${added.join(',')}`,
+    );
+    console.log(
+      `[rooms] assigned preview_images room_id=${roomId} key=${existing.room_number} count=${verified.length} verified=${JSON.stringify(verified)}`,
+    );
+    if (verified.length !== previewImages.length) {
+      console.error('[rooms] preview_images DB verify mismatch — repairing', {
+        expected: previewImages,
+        raw: room?.preview_images,
+        verified,
+      });
+      await pool.query('UPDATE rooms SET preview_images = CAST(? AS JSON) WHERE id = ?', [
+        previewImagesForMysql(previewImages),
+        roomId,
+      ]);
+    }
+
+    const fresh = await fetchRoomRecord(roomId);
+    const roomModel = new Room(fresh);
+    // Guarantee response carries the assigned gallery even if a driver quirk remains.
+    roomModel.preview_images = parsePreviewImages(fresh?.preview_images).length
+      ? parsePreviewImages(fresh.preview_images)
+      : previewImages;
+
     res.status(200).json({
       message: added.length === 1 ? 'Photo uploaded' : `${added.length} photos uploaded`,
-      preview_images: previewImages,
-      room: new Room(room),
+      preview_images: roomModel.preview_images,
+      room: roomModel,
     });
   } catch (error) {
+    // Clean up files written in this request if the DB update (or a later file) failed.
+    await Promise.all(added.map((p) => unlinkRoomImagePath(p).catch(() => {})));
+    console.error(`[rooms] upload failed room=${req.params.id}:`, error.message);
     res.status(400).json({ message: error.message || 'Could not upload photos.' });
+  }
+};
+
+/** PUT — replace one existing photo (same gallery slot); old WebP is removed after DB commit. */
+export const replaceRoomImageHandler = async (req, res) => {
+  let newPath = null;
+  try {
+    const roomId = Number(req.params.id);
+    if (!Number.isInteger(roomId) || roomId <= 0) {
+      return res.status(400).json({ message: 'Invalid room id.' });
+    }
+
+    const existing = await fetchRoomRecord(roomId);
+    if (!existing) return res.status(404).json({ message: 'Room not found' });
+
+    const file = req.file || (Array.isArray(req.files) ? req.files[0] : null);
+    if (!file) return res.status(400).json({ message: 'Choose a JPG or PNG image to replace with.' });
+
+    const safeOld = sanitizeRoomImageFilename(req.params.filename);
+    if (!safeOld) return res.status(400).json({ message: 'Invalid image filename.' });
+
+    const oldPath = `/images/rooms/${roomId}/${safeOld}`;
+    const current = parsePreviewImages(existing.preview_images);
+    if (!current.includes(oldPath)) {
+      return res.status(404).json({ message: 'That photo is not on this room. Refresh and try again.' });
+    }
+
+    const written = await replaceRoomImageFile(file, roomId, safeOld);
+    newPath = written.newPath;
+
+    const previewImages = current.map((p) => (p === oldPath ? newPath : p));
+    await pool.query('UPDATE rooms SET preview_images = CAST(? AS JSON) WHERE id = ?', [
+      previewImagesForMysql(previewImages),
+      roomId,
+    ]);
+
+    // DB now points at the new file — safe to delete the old one.
+    await deleteRoomImageFile(roomId, safeOld).catch((err) => {
+      console.warn(`[rooms] old photo cleanup failed room=${roomId} file=${safeOld}:`, err.message);
+    });
+
+    console.log(
+      `[rooms] replaced photo room_id=${roomId} room_number=${existing.room_number} ${oldPath} -> ${newPath}`,
+    );
+
+    const room = await fetchRoomRecord(roomId);
+    const roomModel = new Room(room);
+    roomModel.preview_images = parsePreviewImages(room?.preview_images).length
+      ? parsePreviewImages(room.preview_images)
+      : previewImages;
+    res.status(200).json({
+      message: 'Photo updated',
+      preview_images: roomModel.preview_images,
+      room: roomModel,
+    });
+  } catch (error) {
+    if (newPath) await unlinkRoomImagePath(newPath).catch(() => {});
+    console.error(`[rooms] replace failed room=${req.params.id} file=${req.params.filename}:`, error.message);
+    res.status(400).json({ message: error.message || 'Could not update photo.' });
   }
 };
 
@@ -430,22 +524,39 @@ export const deleteRoomImageHandler = async (req, res) => {
     const existing = await fetchRoomRecord(roomId);
     if (!existing) return res.status(404).json({ message: 'Room not found' });
 
-    const publicPath = await deleteRoomImageFile(roomId, req.params.filename);
-    const previewImages = parsePreviewImages(existing.preview_images)
+    const safeName = sanitizeRoomImageFilename(req.params.filename);
+    if (!safeName) return res.status(400).json({ message: 'Invalid image filename.' });
+
+    const publicPath = `/images/rooms/${roomId}/${safeName}`;
+    const nextImages = parsePreviewImages(existing.preview_images)
       .filter((p) => p !== publicPath);
 
-    await pool.query('UPDATE rooms SET preview_images = ? WHERE id = ?', [
-      previewImages.length ? JSON.stringify(previewImages) : null,
-      roomId,
-    ]);
+    // Commit DB first so guests never keep a path that 404s if unlink fails.
+    await pool.query(
+      nextImages.length
+        ? 'UPDATE rooms SET preview_images = CAST(? AS JSON) WHERE id = ?'
+        : 'UPDATE rooms SET preview_images = NULL WHERE id = ?',
+      nextImages.length ? [previewImagesForMysql(nextImages), roomId] : [roomId],
+    );
+
+    await deleteRoomImageFile(roomId, safeName).catch((err) => {
+      console.warn(`[rooms] file unlink after DB delete room=${roomId}:`, err.message);
+    });
+
+    console.log(
+      `[rooms] deleted photo room_id=${roomId} room_number=${existing.room_number} path=${publicPath}`,
+    );
 
     const room = await fetchRoomRecord(roomId);
+    const roomModel = new Room(room);
+    roomModel.preview_images = parsePreviewImages(room?.preview_images);
     res.status(200).json({
       message: 'Photo removed',
-      preview_images: previewImages,
-      room: new Room(room),
+      preview_images: roomModel.preview_images,
+      room: roomModel,
     });
   } catch (error) {
+    console.error(`[rooms] delete photo failed room=${req.params.id} file=${req.params.filename}:`, error.message);
     res.status(400).json({ message: error.message || 'Could not remove photo.' });
   }
 };

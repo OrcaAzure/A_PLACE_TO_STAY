@@ -98,6 +98,31 @@ describe('API room images', { skip: dbReady ? false : 'MySQL not available' }, (
     uploadedPaths.push(res.body.preview_images[1]);
   });
 
+  it('PUT /api/rooms/:id/images/:filename replaces a photo and cleans up the old file', async () => {
+    const oldPath = uploadedPaths[0];
+    const filename = oldPath.split('/').pop();
+    const jpeg = await makeJpegBuffer();
+    const res = await admin
+      .put(`/api/rooms/${roomId}/images/${filename}`)
+      .attach('image', jpeg, { filename: 'replacement.jpg', contentType: 'image/jpeg' });
+
+    assert.equal(res.status, 200, res.body?.message);
+    assert.equal(res.body.preview_images.length, 2);
+    assert.notEqual(res.body.preview_images[0], oldPath);
+    assert.equal(res.body.preview_images[1], uploadedPaths[1]);
+    assert.match(res.body.preview_images[0], /^\/images\/rooms\/\d+\/.+\.webp$/);
+    assert.ok(res.body.room?.preview_images?.length === 2);
+
+    const oldDisk = path.join(PUBLIC_DIR, oldPath.replace(/^\//, ''));
+    await assert.rejects(() => fs.access(oldDisk), /ENOENT/);
+
+    const newDisk = path.join(PUBLIC_DIR, res.body.preview_images[0].replace(/^\//, ''));
+    const meta = await sharp(await fs.readFile(newDisk)).metadata();
+    assert.equal(meta.format, 'webp');
+
+    uploadedPaths = res.body.preview_images.slice();
+  });
+
   it('GET /api/rooms returns preview_images for guests with access', async () => {
     const res = await admin.get('/api/rooms');
     assert.equal(res.status, 200);
@@ -137,6 +162,16 @@ describe('API room images', { skip: dbReady ? false : 'MySQL not available' }, (
       .attach('images', png, { filename: 'blocked.png', contentType: 'image/png' });
     assert.equal(res.status, 403);
     assert.match(res.body.message, /Forbidden/i);
+  });
+
+  it('PUT /api/rooms/:id/images/:filename returns 403 for View-Only Admin', async () => {
+    const filename = uploadedPaths[0]?.split('/').pop();
+    assert.ok(filename);
+    const jpeg = await makeJpegBuffer();
+    const res = await viewer
+      .put(`/api/rooms/${roomId}/images/${filename}`)
+      .attach('image', jpeg, { filename: 'blocked.jpg', contentType: 'image/jpeg' });
+    assert.equal(res.status, 403);
   });
 
   it('DELETE /api/rooms/:id/images/:filename returns 403 for View-Only Admin', async () => {

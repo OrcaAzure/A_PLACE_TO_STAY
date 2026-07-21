@@ -299,12 +299,7 @@ export function renderWizardRoomCard(room, {
 } = {}) {
   const av = availLabel(room.availability_status);
   const dormMin = room.availability_status === 'dorm_min_guests';
-  const img = roomPreviewImage({
-    roomNumber: room.room_number,
-    room_type: room.room_type,
-    room_type_label: room.room_type_label,
-    bed_count: room.bed_count,
-  });
+  const img = roomPreviewImage(room);
   const perPerson = dormPriceLabel(room, guestCount, room.nights);
   const capLabel = room.room_type === 'Dorm'
     ? `Min ${room.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} pax · up to ${room.capacity_max} guests`
@@ -349,12 +344,7 @@ export function renderWizardRoomCard(room, {
 }
 
 export function renderWizardGroupRoomCard(room, { selected = false, guestCount = 1 } = {}) {
-  const img = roomPreviewImage({
-    roomNumber: room.room_number,
-    room_type: room.room_type,
-    room_type_label: room.room_type_label,
-    bed_count: room.bed_count,
-  });
+  const img = roomPreviewImage(room);
   const building = room.building_name ? `${escapeHtml(room.building_name)} ` : '';
 
   return `

@@ -8,6 +8,7 @@ import {
   deleteRoom,
   getRoomsOverview,
   uploadRoomImagesHandler,
+  replaceRoomImageHandler,
   deleteRoomImageHandler,
 } from '../controllers/room.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
@@ -15,6 +16,7 @@ import { requireAdmin } from '../middleware/role.middleware.js';
 import { cacheResponse } from '../middleware/cache.middleware.js';
 import {
   uploadRoomImages,
+  uploadRoomImageReplace,
   handleRoomImageUploadError,
 } from '../middleware/roomImageUpload.middleware.js';
 
@@ -34,6 +36,19 @@ router.post(
     });
   },
   uploadRoomImagesHandler,
+);
+// Replace one photo in-place (admin edit flow).
+router.put(
+  '/:id/images/:filename',
+  requireAuth,
+  requireAdmin,
+  (req, res, next) => {
+    uploadRoomImageReplace(req, res, (err) => {
+      if (err) return handleRoomImageUploadError(err, req, res, next);
+      next();
+    });
+  },
+  replaceRoomImageHandler,
 );
 router.delete('/:id/images/:filename', requireAuth, requireAdmin, deleteRoomImageHandler);
 router.get('/:id', requireAuth, getRoomById);

@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS facilities (
     -- Free-text notes shown to guests (what the price includes, house policies).
     inclusions      TEXT         DEFAULT NULL,
     policies        TEXT         DEFAULT NULL,
+    preview_images  JSON         DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 

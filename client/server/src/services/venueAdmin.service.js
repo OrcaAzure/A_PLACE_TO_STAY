@@ -13,6 +13,7 @@ import { pool } from '../config/db.js';
 import { fetchFacilitiesWithRates } from './facilityCatalog.service.js';
 import { FACILITY_GROUP_ICONS } from '../constants/facilities.js';
 import { bustCatalogAndFacilities } from '../utils/cache.js';
+import { deleteAllFacilityImages } from './facilityImage.service.js';
 import {
   DEFAULT_FACILITY_BILLING_UNIT,
   DEFAULT_RATE_AUDIENCE,
@@ -93,10 +94,15 @@ export async function listAdminVenues() {
         inclusions: f.inclusions,
         policies: f.policies,
         icon: f.icon || FACILITY_GROUP_ICONS[f.facility_group] || 'place',
+        preview_images: Array.isArray(f.preview_images) ? f.preview_images : [],
         functions: [],
       });
     }
     const venue = byVenue.get(key);
+    // Prefer the richest gallery if siblings somehow diverge.
+    if ((f.preview_images || []).length > (venue.preview_images || []).length) {
+      venue.preview_images = f.preview_images;
+    }
     const variant = facilityVariant(f.rates);
     venue.functions.push({
       facility_id: f.id,
@@ -342,6 +348,9 @@ export async function deleteAdminVenueFunction(facilityId) {
   }
 
   bustCatalogAndFacilities();
+  await deleteAllFacilityImages(id).catch((err) => {
+    console.warn(`[facilities] image cleanup after use delete id=${id}:`, err.message);
+  });
   return { message: 'Venue use removed' };
 }
 
@@ -367,5 +376,8 @@ export async function deleteAdminVenue(functionIds = []) {
   }
 
   bustCatalogAndFacilities();
+  await Promise.all(ids.map((id) => deleteAllFacilityImages(id).catch((err) => {
+    console.warn(`[facilities] image cleanup after venue delete id=${id}:`, err.message);
+  })));
   return { message: 'Venue removed' };
 }

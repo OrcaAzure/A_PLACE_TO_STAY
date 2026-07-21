@@ -118,6 +118,7 @@ function renderFacilityCard(f) {
             category: f.category || f.facility_group,
             facility_group: f.facility_group || f.category,
             room_code: f.room_code,
+            preview_images: f.preview_images || [],
           }))}"
           alt=""
           loading="lazy"

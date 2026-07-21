@@ -203,12 +203,7 @@ function roomCardTypeLabel(room) {
 
 function renderRoomCard(room) {
   const roomType = roomCardTypeLabel(room);
-  const img = roomPreviewImage({
-    roomNumber: room.room_number,
-    room_type: room.room_type,
-    room_type_label: room.room_type_label,
-    bed_count: room.bed_count,
-  });
+  const img = roomPreviewImage(room);
   const badge = liveStatusBadge(room.status);
 
   const capMin = room.capacity_min ?? 1;

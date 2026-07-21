@@ -252,8 +252,9 @@ export async function getVenueRateQuote(categoryOrOpts, item, date) {
   return apiRequest(`/facilities/venue-rate?${params}`);
 }
 
-export async function getVenueFacilities() {
-  const data = await apiRequest('/facilities');
+export async function getVenueFacilities({ fresh = false } = {}) {
+  const query = fresh ? `?_=${Date.now()}` : '';
+  const data = await apiRequest(`/facilities${query}`, fresh ? { cache: 'no-store' } : {});
   return data.venues || [];
 }
 
@@ -427,14 +428,12 @@ export async function deleteRoom(id) {
   return apiRequest(`/rooms/${id}`, { method: 'DELETE' });
 }
 
-export async function uploadRoomImages(roomId, files) {
-  const formData = new FormData();
-  for (const file of files) formData.append('images', file);
-
+/** Shared multipart helper — do not set Content-Type so the browser adds the boundary. */
+async function postMultipartForm(url, formData, { method = 'POST' } = {}) {
   let response;
   try {
-    response = await fetch(`${API_URL}/rooms/${roomId}/images`, {
-      method: 'POST',
+    response = await fetch(url, {
+      method,
       body: formData,
       credentials: 'include',
     });
@@ -459,8 +458,47 @@ export async function uploadRoomImages(roomId, files) {
   return data;
 }
 
+export async function uploadRoomImages(roomId, files) {
+  const formData = new FormData();
+  for (const file of files) formData.append('images', file);
+  return postMultipartForm(`${API_URL}/rooms/${roomId}/images`, formData);
+}
+
+/** Replace one existing room photo (PUT multipart field `image`). */
+export async function replaceRoomImage(roomId, filename, file) {
+  const formData = new FormData();
+  formData.append('image', file);
+  return postMultipartForm(
+    `${API_URL}/rooms/${roomId}/images/${encodeURIComponent(filename)}`,
+    formData,
+    { method: 'PUT' },
+  );
+}
+
 export async function deleteRoomImage(roomId, filename) {
   return apiRequest(`/rooms/${roomId}/images/${encodeURIComponent(filename)}`, {
+    method: 'DELETE',
+  });
+}
+
+export async function uploadFacilityImages(facilityId, files) {
+  const formData = new FormData();
+  for (const file of files) formData.append('images', file);
+  return postMultipartForm(`${API_URL}/facilities/${facilityId}/images`, formData);
+}
+
+export async function replaceFacilityImage(facilityId, filename, file) {
+  const formData = new FormData();
+  formData.append('image', file);
+  return postMultipartForm(
+    `${API_URL}/facilities/${facilityId}/images/${encodeURIComponent(filename)}`,
+    formData,
+    { method: 'PUT' },
+  );
+}
+
+export async function deleteFacilityImage(facilityId, filename) {
+  return apiRequest(`/facilities/${facilityId}/images/${encodeURIComponent(filename)}`, {
     method: 'DELETE',
   });
 }
@@ -640,6 +678,12 @@ export async function softDeleteReservation(body) {
 export function normalizeRoom(room) {
   const bedCount = room.bed_count != null ? Number(room.bed_count) : null;
   const roomTypeLabel = room.room_type_label || room.roomTypeLabel;
+  // Keep admin-uploaded paths so gallery/card helpers can prefer them over placeholders.
+  const previewImages = Array.isArray(room.preview_images)
+    ? room.preview_images.filter(Boolean)
+    : Array.isArray(room.previewImages)
+      ? room.previewImages.filter(Boolean)
+      : [];
   return {
     id: room.id,
     building: room.building_name || room.building || 'Unknown',
@@ -653,6 +697,7 @@ export function normalizeRoom(room) {
     description: room.description || '',
     inclusions: room.inclusions || room.highlights || '',
     policies: room.policies || '',
+    preview_images: previewImages,
   };
 }
 

@@ -614,10 +614,15 @@ export const getVenueScheduleOverview = async (req, res) => {
           room_code: space.room_code,
           description: space.description,
           icon: space.icon,
+          preview_images: Array.isArray(space.preview_images) ? space.preview_images : [],
           spaces: [],
         });
       }
-      byVenue.get(key).spaces.push(space);
+      const venueEntry = byVenue.get(key);
+      if ((space.preview_images || []).length > (venueEntry.preview_images || []).length) {
+        venueEntry.preview_images = space.preview_images;
+      }
+      venueEntry.spaces.push(space);
     }
 
     for (const venue of byVenue.values()) {
@@ -676,6 +681,7 @@ export const getVenueScheduleOverview = async (req, res) => {
         name: venue.name,
         room_code: venue.room_code,
         description: venue.description,
+        preview_images: venue.preview_images || [],
         season: primary.season,
         calendar_season: primary.calendar_season,
         rate: minRate,

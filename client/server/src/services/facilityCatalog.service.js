@@ -9,6 +9,7 @@ import {
   matchesDefaultRateVariant,
   normalizeRateVariant,
 } from '../constants/rateVariants.js';
+import { parseFacilityPreviewImages } from './facilityImage.service.js';
 
 export { formatFacilityLabel, FACILITY_GROUP_ICONS };
 
@@ -71,6 +72,7 @@ export async function fetchFacilitiesWithRates() {
        f.hourly_rate,
        f.inclusions,
        f.policies,
+       f.preview_images,
        rf.id AS rate_id,
        rf.season,
       rf.rate,
@@ -104,6 +106,7 @@ export async function fetchFacilitiesWithRates() {
         hourly_rate: row.hourly_rate != null ? Number(row.hourly_rate) : null,
         inclusions: row.inclusions,
         policies: row.policies,
+        preview_images: parseFacilityPreviewImages(row.preview_images),
         rates: [],
         category: row.facility_group || 'Facility',
         item: row.room_code || row.package_name || row.name,
@@ -157,6 +160,7 @@ export function groupFacilitiesForOverview(facilities) {
       hourly_rate: facility.hourly_rate,
       inclusions: facility.inclusions,
       policies: facility.policies,
+      preview_images: facility.preview_images || [],
       rates: defaultRates,
     });
   }

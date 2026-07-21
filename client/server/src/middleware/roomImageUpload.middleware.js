@@ -15,8 +15,12 @@ const upload = multer({
 
 export const uploadRoomImages = upload.array('images', ROOM_IMAGE_MAX_COUNT);
 
+/** Single-file field used by PUT replace. */
+export const uploadRoomImageReplace = upload.single('image');
+
 export function handleRoomImageUploadError(err, req, res, next) {
   if (!err) return next();
+  console.error(`[rooms] multer error ${req.method} ${req.originalUrl}:`, err.message || err.code);
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({ message: 'Each image must be 8 MB or smaller.' });
   }
