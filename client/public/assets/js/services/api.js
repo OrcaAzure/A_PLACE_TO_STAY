@@ -427,6 +427,44 @@ export async function deleteRoom(id) {
   return apiRequest(`/rooms/${id}`, { method: 'DELETE' });
 }
 
+export async function uploadRoomImages(roomId, files) {
+  const formData = new FormData();
+  for (const file of files) formData.append('images', file);
+
+  let response;
+  try {
+    response = await fetch(`${API_URL}/rooms/${roomId}/images`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    });
+  } catch {
+    throw new Error('Network error — could not reach the server. Check your connection and try again.');
+  }
+
+  let data = null;
+  const contentType = response.headers.get('content-type');
+  if (contentType?.includes('application/json')) {
+    try {
+      data = await response.json();
+    } catch {
+      throw new Error('Server returned an invalid response. Please try again.');
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.message || `Request failed (${response.status})`);
+  }
+
+  return data;
+}
+
+export async function deleteRoomImage(roomId, filename) {
+  return apiRequest(`/rooms/${roomId}/images/${encodeURIComponent(filename)}`, {
+    method: 'DELETE',
+  });
+}
+
 export async function getRoomAvailability(params = {}) {
   const qs = new URLSearchParams();
   if (params.check_in) qs.set('check_in', params.check_in);

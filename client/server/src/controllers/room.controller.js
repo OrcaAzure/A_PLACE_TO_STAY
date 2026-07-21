@@ -4,6 +4,13 @@ import { isEmpty } from '../utils/helpers.js';
 import { isAdminRole } from '../utils/constants.js';
 import { assertRoomDeletable } from '../services/booking.service.js';
 import { filterRoomsForGuestUser, canGuestAccessBuilding } from '../utils/guestAccess.js';
+import {
+  parsePreviewImages,
+  processRoomImageUpload,
+  deleteRoomImageFile,
+  deleteAllRoomImages,
+  ROOM_IMAGE_MAX_COUNT,
+} from '../services/roomImage.service.js';
 
 export const getAllBuildings = async (req, res) => {
   try {
@@ -351,10 +358,94 @@ export const deleteRoom = async (req, res) => {
     const [existing] = await pool.query('SELECT * FROM rooms WHERE id = ? LIMIT 1', [req.params.id]);
     if (existing.length === 0) return res.status(404).json({ message: 'Room not found' });
     await assertRoomDeletable(req.params.id);
+    await deleteAllRoomImages(req.params.id);
     await pool.query('DELETE FROM rooms WHERE id = ?', [req.params.id]);
     res.status(200).json({ message: 'Room deleted' });
   } catch (error) {
     const status = error.message.includes('reservation') ? 409 : 500;
     res.status(status).json({ message: error.message });
+  }
+};
+
+async function fetchRoomRecord(id) {
+  const [rows] = await pool.query(
+    `SELECT rooms.*, buildings.name AS building_name
+     FROM rooms
+     LEFT JOIN buildings ON buildings.id = rooms.building_id
+     WHERE rooms.id = ? LIMIT 1`,
+    [id]
+  );
+  return rows[0] || null;
+}
+
+export const uploadRoomImagesHandler = async (req, res) => {
+  try {
+    const roomId = Number(req.params.id);
+    if (!Number.isInteger(roomId) || roomId <= 0) {
+      return res.status(400).json({ message: 'Invalid room id.' });
+    }
+
+    const existing = await fetchRoomRecord(roomId);
+    if (!existing) return res.status(404).json({ message: 'Room not found' });
+
+    const files = Array.isArray(req.files) ? req.files : [];
+    if (!files.length) return res.status(400).json({ message: 'Choose at least one JPG or PNG image.' });
+
+    const current = parsePreviewImages(existing.preview_images);
+    if (current.length + files.length > ROOM_IMAGE_MAX_COUNT) {
+      return res.status(400).json({
+        message: `This room can have up to ${ROOM_IMAGE_MAX_COUNT} photos. Remove some before uploading more.`,
+      });
+    }
+
+    const added = [];
+    for (const file of files) {
+      added.push(await processRoomImageUpload(file, roomId));
+    }
+
+    const previewImages = [...current, ...added];
+    await pool.query('UPDATE rooms SET preview_images = ? WHERE id = ?', [
+      JSON.stringify(previewImages),
+      roomId,
+    ]);
+
+    const room = await fetchRoomRecord(roomId);
+    res.status(200).json({
+      message: added.length === 1 ? 'Photo uploaded' : `${added.length} photos uploaded`,
+      preview_images: previewImages,
+      room: new Room(room),
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message || 'Could not upload photos.' });
+  }
+};
+
+export const deleteRoomImageHandler = async (req, res) => {
+  try {
+    const roomId = Number(req.params.id);
+    if (!Number.isInteger(roomId) || roomId <= 0) {
+      return res.status(400).json({ message: 'Invalid room id.' });
+    }
+
+    const existing = await fetchRoomRecord(roomId);
+    if (!existing) return res.status(404).json({ message: 'Room not found' });
+
+    const publicPath = await deleteRoomImageFile(roomId, req.params.filename);
+    const previewImages = parsePreviewImages(existing.preview_images)
+      .filter((p) => p !== publicPath);
+
+    await pool.query('UPDATE rooms SET preview_images = ? WHERE id = ?', [
+      previewImages.length ? JSON.stringify(previewImages) : null,
+      roomId,
+    ]);
+
+    const room = await fetchRoomRecord(roomId);
+    res.status(200).json({
+      message: 'Photo removed',
+      preview_images: previewImages,
+      room: new Room(room),
+    });
+  } catch (error) {
+    res.status(400).json({ message: error.message || 'Could not remove photo.' });
   }
 };

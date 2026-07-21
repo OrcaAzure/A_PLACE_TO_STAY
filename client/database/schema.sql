@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     inclusions    TEXT         DEFAULT NULL,
     -- House rules shown to guests before they reserve.
     policies      TEXT         DEFAULT NULL,
+    preview_images JSON        DEFAULT NULL,
     created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 

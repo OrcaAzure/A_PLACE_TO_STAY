@@ -40,8 +40,8 @@ Required variables: `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`
 
 On startup the server will:
 1. Test the MySQL connection (exit if it fails)
-2. Seed default users if missing
-3. Seed demo bookings/payments if the bookings table is empty
+2. Seed default users if missing (`ENABLE_SEED=true` on first deploy in production)
+3. Seed demo users/bookings only when `ENABLE_DEMO_DATA=true` (off by default in production)
 
 ## Project structure
 

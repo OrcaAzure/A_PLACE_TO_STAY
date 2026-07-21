@@ -145,9 +145,13 @@ function normalizeRoomNumber(value) {
   return String(value ?? '').trim().replace(/^room\s+/i, '');
 }
 
-export function roomPreviewImage({
-  roomNumber, room_number, roomType, room_type, room_type_label, bed_count,
-} = {}) {
+export function roomPreviewImage(room = {}) {
+  const uploaded = Array.isArray(room.preview_images) ? room.preview_images.filter(Boolean) : [];
+  if (uploaded.length) return uploaded[0];
+
+  const {
+    roomNumber, room_number, roomType, room_type, room_type_label, bed_count,
+  } = room;
   const num = normalizeRoomNumber(roomNumber ?? room_number);
   if (num && ROOM_NUMBER_IMAGE[num]) return ROOM_NUMBER_IMAGE[num];
   const tier = resolveRoomVisualKey({
@@ -403,6 +407,11 @@ function uniqueUrls(urls = []) {
  * Uses room-specific photos first, then type gallery placeholders.
  */
 export function roomGalleryImages(room = {}) {
+  const uploaded = Array.isArray(room.preview_images) ? room.preview_images.filter(Boolean) : [];
+  if (uploaded.length) {
+    return uniqueUrls(uploaded).slice(0, GALLERY_MAX_ROOM);
+  }
+
   const num = normalizeRoomNumber(room.roomNumber ?? room.room_number);
   const roomGallery = ROOM_NUMBER_GALLERY[num];
   if (roomGallery?.length) {
