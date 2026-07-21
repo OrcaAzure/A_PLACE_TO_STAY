@@ -23,11 +23,25 @@
   --color-surface: #FFFFFF;
   --color-background: #F8FAFC;
   --color-outline-variant: #CBD5E0;
+  /* Project breakpoints (documented; media queries use these widths) */
+  --bp-mobile-max: 767px;
+  --bp-tablet-min: 768px;
+  --bp-tablet-max: 1024px;
+  --bp-desktop-min: 1025px;
+}
+
+/* Defensive: padding/borders must not expand past declared widths */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
   font-family: Inter, sans-serif;
   background-color: var(--color-background);
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 .material-symbols-outlined {

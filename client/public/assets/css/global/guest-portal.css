@@ -143,7 +143,138 @@ body.guest-shell {
 
 @media (max-width: 767px) {
   .guest-shell #page-content.guest-app-page {
-    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px) + 1.5rem);
+    /* Room for fixed guest bottom nav (was dead padding before nav was wired) */
+    padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px) + 1rem);
+  }
+
+  .guest-user-dropdown a[role="menuitem"],
+  .guest-user-dropdown button[role="menuitem"] {
+    min-height: 2.75rem; /* 44px tap targets */
+  }
+
+  /* Mobile: type chips scroll horizontally instead of wrapping into a tall stack */
+  .browse-type-segment {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 0.15rem;
+  }
+
+  .browse-type-segment::-webkit-scrollbar {
+    display: none;
+  }
+
+  .browse-type-opt {
+    min-height: 2.75rem;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  /* Full-bleed preview sheet on phones (previously 91vw left awkward side gutters) */
+  .browse-preview__panel {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 1rem 1rem 0 0;
+    max-height: 100dvh;
+    max-height: 100vh;
+  }
+
+  .browse-preview__close {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+
+  .browse-preview__nav {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+
+/* ── Guest mobile bottom nav (styles lived only in admin-accessibility before) ── */
+.portal-bottom-nav.guest-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 1023px) {
+  .portal-bottom-nav.guest-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 35;
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    gap: 0;
+    padding: 0.25rem max(0.25rem, env(safe-area-inset-left)) calc(0.25rem + env(safe-area-inset-bottom)) max(0.25rem, env(safe-area-inset-right));
+    background: #fff;
+    border-top: 1px solid #cbd5e0;
+    box-shadow: 0 -2px 12px rgba(26, 54, 93, 0.08);
+  }
+
+  .guest-bottom-nav .portal-bottom-nav-link,
+  .guest-bottom-nav-link {
+    flex: 1 1 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    min-width: 0;
+    min-height: 3.375rem; /* ≥44px */
+    max-height: 3.625rem;
+    padding: 0.25rem 0.125rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    color: #64748b;
+    background: transparent;
+    border: 0;
+  }
+
+  .guest-bottom-nav-link .material-symbols-outlined {
+    font-size: 1.375rem;
+    line-height: 1;
+  }
+
+  .guest-bottom-nav-label {
+    line-height: 1.1;
+    text-align: center;
+    font-size: 0.625rem;
+    font-weight: 600;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0 0.125rem;
+  }
+
+  @media (min-width: 390px) {
+    .guest-bottom-nav-label {
+      font-size: 0.6875rem;
+    }
+  }
+
+  .guest-bottom-nav-link.is-active {
+    background: rgba(26, 54, 93, 0.1);
+    color: var(--color-primary, #1A365D);
+  }
+
+  .guest-bottom-nav-link.is-active .material-symbols-outlined {
+    font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+  }
+
+  .guest-bottom-nav-link:not(.is-active):hover,
+  .guest-bottom-nav-link:not(.is-active):focus-visible {
+    background: rgba(26, 54, 93, 0.05);
+    color: var(--color-primary, #1A365D);
+  }
+}
+
+@media (min-width: 1024px) {
+  .portal-bottom-nav.guest-bottom-nav {
+    display: none !important;
   }
 }
 
@@ -1036,7 +1167,8 @@ body.guest-shell {
 }
 
 .browse-building-select {
-  min-width: 10rem;
+  min-width: 0;
+  width: 100%;
   max-width: 16rem;
   padding: 0.45rem 2rem 0.45rem 0.75rem;
   border-radius: 0.5rem;
@@ -1046,6 +1178,16 @@ body.guest-shell {
   font-weight: 500;
   color: #2d3748;
   cursor: pointer;
+}
+
+@media (max-width: 767px) {
+  .browse-building-row {
+    flex-wrap: wrap;
+  }
+
+  .browse-building-select {
+    max-width: 100%;
+  }
 }
 
 .browse-building-select:focus {
@@ -1081,11 +1223,19 @@ body.guest-shell {
   background: linear-gradient(145deg, #2c5282 0%, #1a365d 100%);
 }
 
+/* Tablet: clamp media so fixed 18rem no longer crushes the text column */
 @media (min-width: 768px) {
   .browse-room-card__media {
-    width: 18rem;
+    width: min(18rem, 38%);
+    max-width: 18rem;
     min-height: 11.5rem;
     flex-shrink: 0;
+  }
+}
+
+@media (min-width: 1025px) {
+  .browse-room-card__media {
+    width: 18rem;
   }
 }
 
@@ -1261,13 +1411,17 @@ body.browse-preview-open {
   border-radius: 0.85rem;
 }
 
+/* Was object-fit: fill — stretched photos on desktop; cover keeps aspect ratio */
 .browse-preview__frame img {
   display: block;
   margin: 0;
   padding: 0;
   border: 0;
-  object-fit: fill;
-  object-position: center top;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  object-fit: cover;
+  object-position: center;
 }
 
 .browse-preview__nav {
@@ -2475,10 +2629,18 @@ body.browse-preview-open {
   bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   z-index: 80;
   width: min(100vw - 2rem, 28rem);
+  max-width: calc(100vw - 2rem);
   box-shadow: 0 18px 48px rgba(15, 23, 42, 0.28);
   border-radius: 0.75rem 0.75rem 0 0;
   overflow: hidden;
   animation: guestComposeIn 0.22s ease both;
+}
+
+@media (max-width: 1023px) {
+  .guest-compose {
+    /* Clear fixed guest bottom nav */
+    bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .guest-compose.is-minimized .guest-compose__body,
@@ -2671,11 +2833,12 @@ body.browse-preview-open {
 .br-chrome {
   position: fixed;
   right: 1rem;
-  bottom: 5.5rem;
+  /* Sit above guest bottom nav on phones (was overlapping / leaving dead space) */
+  bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px));
   z-index: 1900;
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .br-chrome {
     bottom: 1.5rem;
   }

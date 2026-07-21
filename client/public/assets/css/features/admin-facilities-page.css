@@ -230,6 +230,12 @@
   gap: 0.75rem;
 }
 
+/* Must beat `.fac-panel { display: flex }` and hub flex rules —
+   otherwise Tailwind `.hidden` never hides inactive category panels. */
+.fac-panel.hidden {
+  display: none;
+}
+
 .fac-panel-head {
   display: flex;
   flex-wrap: wrap;

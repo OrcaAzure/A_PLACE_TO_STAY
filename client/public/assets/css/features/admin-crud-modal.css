@@ -1018,6 +1018,26 @@
   margin-bottom: 0.75rem;
 }
 
+/* Denser photo grid + larger hit targets on phones */
+@media (max-width: 767px) {
+  .mf-photo-grid {
+    grid-template-columns: repeat(auto-fill, minmax(5.25rem, 1fr));
+    gap: 0.5rem;
+  }
+
+  .mf-photo-replace,
+  .mf-photo-remove {
+    width: 2.25rem;
+    height: 2.25rem;
+  }
+
+  .mf-photo-upload-btn {
+    width: 100%;
+    justify-content: center;
+    min-height: 2.75rem;
+  }
+}
+
 .mf-photo-thumb {
   position: relative;
   margin: 0;

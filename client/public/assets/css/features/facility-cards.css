@@ -80,10 +80,18 @@
   flex-shrink: 0;
 }
 
+/* Tablet: clamp fixed media width so body text retains space */
 @media (min-width: 768px) {
   .fac-room-card__media {
-    width: 16rem;
+    width: min(16rem, 38%);
+    max-width: 16rem;
     min-height: 10.5rem;
+  }
+}
+
+@media (min-width: 1025px) {
+  .fac-room-card__media {
+    width: 16rem;
   }
 }
 

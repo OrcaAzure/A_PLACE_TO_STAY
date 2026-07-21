@@ -1,3 +1,149 @@
+/**
+ * Shared responsive layer — mobile-first.
+ *
+ * Breakpoints (project standard):
+ *   mobile:  < 768px
+ *   tablet:  768px – 1024px
+ *   desktop: > 1024px
+ *
+ * Load after page/feature CSS so defensive rules can catch overflow.
+ */
+
+/* ── Defensive globals (previously missing; caused horizontal scroll on small screens) ── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+img,
+video,
+svg,
+canvas {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prefer intrinsic aspect ratio when height is set via CSS elsewhere */
+img[width][height] {
+  height: auto;
+}
+
+p,
+h1, h2, h3, h4, h5, h6,
+li,
+td,
+th,
+label,
+.truncate-safe {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* Soft-clamp interactive rows so long labels never push past the viewport */
+.min-w-0-safe {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* ── Mobile (< 768px) ── */
+@media (max-width: 767px) {
+  .gantt-container {
+    grid-template-columns: 140px 1fr;
+  }
+
+  .timeline-workspace-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* Full-bleed admin CRUD / catalog shells (were inset cards that felt cramped) */
+  #manage-facilities-modal,
+  #manage-venues-modal,
+  #manage-reservations-modal,
+  #manage-venue-bookings-modal,
+  #app-modal,
+  #guest-access-modal,
+  #ga-pending-modal {
+    padding: 0 !important;
+    align-items: stretch !important;
+    justify-content: flex-end !important;
+  }
+
+  #manage-facilities-modal .admin-crud-shell,
+  #manage-venues-modal .admin-crud-shell,
+  #manage-reservations-modal .admin-crud-shell,
+  #manage-venue-bookings-modal .admin-crud-shell,
+  #app-modal .admin-crud-shell,
+  #guest-access-modal .admin-crud-shell,
+  #ga-pending-modal .admin-crud-shell,
+  .catalog-modal__panel.admin-crud-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 100dvh !important;
+    max-height: 100vh !important;
+    height: 100%;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+  }
+
+  /* Reservation / venue wizards — full-bleed on phones */
+  #reservation-wizard-modal,
+  #group-wizard-modal,
+  #venue-wizard-modal {
+    padding: 0 !important;
+    align-items: stretch !important;
+  }
+
+  #reservation-wizard-modal .res-modal,
+  #group-wizard-modal .res-modal,
+  #venue-wizard-modal .res-modal {
+    max-width: 100% !important;
+    max-height: 100dvh !important;
+    max-height: 100vh !important;
+    height: 100%;
+    border-radius: 0 !important;
+  }
+
+  /* Touch-friendly primary controls (scoped — avoid blowing up icon-only chrome) */
+  .btn-primary,
+  .admin-crud-btn-primary,
+  .admin-crud-btn-ghost,
+  .admin-crud-btn-danger,
+  .res-btn,
+  .browse-preview__cta,
+  .browse-preview__ghost,
+  a.lp-mobile-link {
+    min-height: 2.75rem; /* 44px */
+  }
+}
+
+/* ── Tablet (768px – 1024px) ── */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .gantt-container {
+    grid-template-columns: 200px 1fr;
+  }
+}
+
+/* ── Desktop (> 1024px) ── */
+@media (min-width: 1025px) {
+  #sidebar-overlay {
+    display: none !important;
+  }
+}
+
+/* Legacy alias — keep older 1023px admin chrome rules working */
 @media (max-width: 1023px) {
   .gantt-container {
     grid-template-columns: 200px 1fr;

@@ -983,6 +983,13 @@ html.admin-chrome-boot .app-tab-panels {
   min-width: 0;
 }
 
+/* Higher specificity than the flex rule above so tab switches can hide panels.
+   Guest Access already had `.ga-panel.hidden`; Facilities did not (first-visit soft-nav bug). */
+.res-hub-page > .ga-panel.hidden,
+.res-hub-page > .fac-panel.hidden {
+  display: none;
+}
+
 .admin-shell #page-content.res-hub-page > .res-hub-panel,
 .admin-shell #page-content.res-hub-page > section.res-hub-panel {
   flex-shrink: 0;

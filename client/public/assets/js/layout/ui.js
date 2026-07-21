@@ -33,6 +33,15 @@ export const GUEST_NAV = [
   { id: 'settings', label: 'Account', icon: 'person', href: '/guest/settings.html' },
 ];
 
+/** Mobile bottom nav order — Browse centered for thumb reach */
+export const GUEST_MOBILE_NAV = [
+  { id: 'dashboard', label: 'Home', icon: 'home', href: '/guest/dashboard.html' },
+  { id: 'facilities', label: 'Browse', icon: 'explore', href: '/guest/facilities.html' },
+  { id: 'reservations', label: 'History', icon: 'event_available', href: '/guest/reservations.html' },
+  { id: 'billing', label: 'Billing', icon: 'receipt_long', href: '/guest/billing.html' },
+  { id: 'settings', label: 'Account', icon: 'person', href: '/guest/settings.html' },
+];
+
 export const GUEST_NEW_RESERVATION_FOOTER = `
   <div class="mb-md px-sm admin-sidebar-footer-action js-requires-write">
     <a href="/guest/reservations.html#new-reservation" class="w-full flex items-center gap-md px-md py-md bg-primary text-on-primary rounded-lg font-body-md font-semibold hover:bg-primary/90 transition-colors min-h-[3rem] no-underline">
@@ -473,6 +482,7 @@ function buildGuestShell({
     <main class="guest-main lp-main">
       <div id="page-content" class="${pageClass}">${content}</div>
     </main>
+    ${landingHome ? '' : renderGuestBottomNav(GUEST_MOBILE_NAV, activePage)}
     ${templates.notifications || ''}
     ${templates.modal || ''}
   `;
@@ -623,6 +633,11 @@ export async function initAppLayout(config = {}) {
       document.body.className = 'guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen';
       updateActiveNav(activePage, navItems);
       updateGuestChrome({ userName, userRole, userInitial });
+      /* Soft re-entry: ensure bottom nav exists on app pages (was never injected before) */
+      if (!landingHome && !document.querySelector('.guest-bottom-nav')) {
+        document.body.insertAdjacentHTML('beforeend', renderGuestBottomNav(GUEST_MOBILE_NAV, activePage));
+        updateActiveNav(activePage, navItems);
+      }
       await ensureConfirmModalMounted();
       if (activePage === 'reservations') {
         ensureGuestWizardStyles();
