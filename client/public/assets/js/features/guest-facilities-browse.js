@@ -1277,15 +1277,16 @@ function setMountHtml(id, html) {
 
   function detailBlockHtml(title, text, { list = false } = {}) {
     if (!text) return '';
+    const modifier = title === 'Policies' ? ' browse-preview__section--policies' : '';
     if (list) {
       const lines = splitDetailLines(text);
       if (!lines.length) return '';
-      return `<section class="browse-preview__section">
+      return `<section class="browse-preview__section${modifier}">
         <h4>${escapeHtml(title)}</h4>
         <ul class="browse-preview__list">${lines.map((line) => `<li>${escapeHtml(line)}</li>`).join('')}</ul>
       </section>`;
     }
-    return `<section class="browse-preview__section">
+    return `<section class="browse-preview__section${modifier}">
       <h4>${escapeHtml(title)}</h4>
       <p>${escapeHtml(text)}</p>
     </section>`;
