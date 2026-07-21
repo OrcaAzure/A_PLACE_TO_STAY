@@ -76,6 +76,9 @@ app.use('/api', (req, res, next) => {
   const len = Number(req.headers['content-length'] || 0);
   if (len === 0) return next();
   const ct = req.headers['content-type'] || '';
+  const isRoomImageUpload = req.method === 'POST'
+    && /^\/rooms\/[^/]+\/images\/?$/.test(req.path);
+  if (isRoomImageUpload && ct.includes('multipart/form-data')) return next();
   if (!ct.includes('application/json')) {
     return res.status(415).json({ message: 'Content-Type must be application/json' });
   }

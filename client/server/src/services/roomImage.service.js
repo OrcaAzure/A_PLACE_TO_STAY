@@ -45,6 +45,20 @@ function publicPathFor(roomId, filename) {
   return `/images/rooms/${roomId}/${filename}`;
 }
 
+async function removeWithRetry(remove, attempts = 5) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      await remove();
+      return;
+    } catch (err) {
+      if (err.code === 'ENOENT') return;
+      const retryable = err.code === 'EBUSY' || err.code === 'EPERM';
+      if (!retryable || attempt === attempts) throw err;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 50));
+    }
+  }
+}
+
 export async function ensureRoomImageDir(roomId) {
   await fs.mkdir(roomDir(roomId), { recursive: true });
 }
@@ -75,13 +89,11 @@ export async function deleteRoomImageFile(roomId, filename) {
   const safeName = sanitizeRoomImageFilename(filename);
   if (!safeName) throw new Error('Invalid image filename.');
   const filePath = path.join(roomDir(roomId), safeName);
-  await fs.unlink(filePath).catch((err) => {
-    if (err.code !== 'ENOENT') throw err;
-  });
+  await removeWithRetry(() => fs.unlink(filePath));
   return publicPathFor(roomId, safeName);
 }
 
 export async function deleteAllRoomImages(roomId) {
   const dir = roomDir(roomId);
-  await fs.rm(dir, { recursive: true, force: true });
+  await removeWithRetry(() => fs.rm(dir, { recursive: true, force: true }));
 }

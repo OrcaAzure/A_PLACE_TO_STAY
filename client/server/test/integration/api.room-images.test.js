@@ -83,7 +83,7 @@ describe('API room images', { skip: dbReady ? false : 'MySQL not available' }, (
 
     uploadedPaths.push(res.body.preview_images[0]);
     const diskPath = path.join(PUBLIC_DIR, res.body.preview_images[0].replace(/^\//, ''));
-    const meta = await sharp(diskPath).metadata();
+    const meta = await sharp(await fs.readFile(diskPath)).metadata();
     assert.equal(meta.format, 'webp');
   });
 
@@ -107,7 +107,9 @@ describe('API room images', { skip: dbReady ? false : 'MySQL not available' }, (
   });
 
   it('serves uploaded WebP at public path', async () => {
-    const publicPath = uploadedPaths[0];
+    // Serve the second image so Windows does not hold open the file that the
+    // next test deletes in the same process.
+    const publicPath = uploadedPaths[1];
     const res = await admin.get(publicPath);
     assert.equal(res.status, 200);
     assert.match(res.headers['content-type'] || '', /image\/webp/i);
