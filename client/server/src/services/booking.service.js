@@ -1,3 +1,13 @@
+/**
+ * Room booking domain logic — pricing, availability, meals/fees, and guest
+ * resolution shared by booking.controller.js and group.service.js.
+ *
+ * Key responsibilities:
+ *   - stay quotes and grand totals (seasonal rates + meals + extra fees)
+ *   - overlap/availability checks with row locking to prevent double booking
+ *   - resolving or creating the guest user a booking belongs to
+ *   - lifecycle notifications (confirmation / modified / cancelled emails)
+ */
 import { pool } from '../config/db.js';
 import bcrypt from 'bcryptjs';
 import { calcNights, isEmpty } from '../utils/helpers.js';

@@ -12,3 +12,147 @@
     padding-top: 4.25rem;
   }
 }
+
+/* ── Policies page: Meet the team ── */
+.policies-team {
+  margin-top: 2.5rem;
+  padding: 2rem 1.25rem;
+  border-radius: 1.25rem;
+  border: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f8fafc 0%, #fff 42%);
+  scroll-margin-top: 5.5rem;
+}
+
+.policies-team--below-footer {
+  margin-top: 1.75rem;
+}
+
+.policies-team[hidden] {
+  display: none;
+}
+
+.policies-team__head {
+  text-align: center;
+  max-width: 36rem;
+  margin: 0 auto 1.75rem;
+}
+
+.policies-team__label {
+  margin: 0 0 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.policies-team__title {
+  margin: 0 0 0.65rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a365d;
+  line-height: 1.25;
+}
+
+.policies-team__subtitle {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: #64748b;
+}
+
+.policies-team-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.875rem;
+}
+
+@media (min-width: 640px) {
+  .policies-team-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .policies-team-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.policies-team-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 1.25rem 1rem;
+  border-radius: 1rem;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(26, 54, 93, 0.06);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.policies-team-card:hover {
+  border-color: rgba(26, 54, 93, 0.22);
+  box-shadow: 0 8px 24px rgba(26, 54, 93, 0.08);
+  transform: translateY(-2px);
+}
+
+.policies-team-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4rem;
+  height: 4rem;
+  margin-bottom: 0.85rem;
+  border-radius: 9999px;
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1a365d;
+  background: linear-gradient(135deg, #ebf8ff 0%, #bee3f8 100%);
+  box-shadow: 0 4px 14px rgba(26, 54, 93, 0.12);
+}
+
+.policies-team-avatar--photo {
+  object-fit: cover;
+  padding: 0;
+  background: #e2e8f0;
+}
+
+.policies-team-card__name {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+.policies-team-card__role {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+/* Subtle inline footer link — sits after Terms of Service */
+.policy-footer-link--team {
+  color: #94a3b8;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.policy-footer-link--team:hover,
+.policy-footer-link--team:focus-visible {
+  color: #1a365d;
+  text-decoration: underline;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .policies-team-card,
+  .policy-footer-link--team {
+    transition: none;
+  }
+
+  .policies-team-card:hover {
+    transform: none;
+  }
+}

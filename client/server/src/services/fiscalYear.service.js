@@ -1,3 +1,8 @@
+/**
+ * Fiscal-year window — the earliest/latest dates reservations may target.
+ * Validates booking date ranges and exposes admin settings for the window,
+ * layered on top of the season calendar (season.service.js).
+ */
 import { pool } from '../config/db.js';
 import { FISCAL_YEAR_DEFAULTS } from '../utils/constants.js';
 import {

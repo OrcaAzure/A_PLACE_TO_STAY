@@ -1,3 +1,14 @@
+/**
+ * Guest "Browse" page — rooms and venues catalog with booking entry points.
+ *
+ * Renders category tabs (lodging / venues), room and venue cards, and the
+ * preview panel; launches the room booking modal or venue booking flow.
+ *
+ * Image data flow: rooms/venues arrive from the API with `preview_images`
+ * arrays (uploaded photos = source of truth). Cards resolve visuals through
+ * facility-display.js helpers, which fall back to hardcoded placeholders
+ * only when no uploads exist.
+ */
 import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
   import { initAppLayout } from '/assets/js/layout/ui.js';
   import { initSplashIdle } from '/assets/js/layout/splash-idle.js';

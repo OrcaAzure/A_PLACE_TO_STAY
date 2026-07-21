@@ -1,3 +1,12 @@
+/**
+ * All outbound email — booking confirmations, invoices, receipts, guest
+ * access decisions — rendered as inline-styled HTML and sent over SMTP.
+ *
+ * Behavior notes:
+ *   - Without real SMTP credentials (dev mode) emails are logged, not sent.
+ *   - Duplicate sends (same to+subject within 90s) are suppressed.
+ *   - The last transport error is kept for surfacing in admin responses.
+ */
 import nodemailer from 'nodemailer';
 import {
   isProduction,

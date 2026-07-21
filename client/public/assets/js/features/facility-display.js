@@ -7,24 +7,16 @@
  * 2. Hardcoded ROOM_NUMBER_* maps = FALLBACK placeholders during migration
  * 3. Room-type Unsplash galleries = last-resort so every room still shows something
  *
- * Prefer getImagesByRoom() / roomPreviewImage() / roomGalleryImages() — never read
- * ROOM_NUMBER_IMAGE directly in UI. Once every room has DB uploads, the fallback
- * maps can be removed.
+ * Prefer getImagesByRoom() / roomPreviewImage() — never read the fallback maps
+ * directly in UI. Once every room has DB uploads, the fallback maps can be removed.
+ * The maps below are module-private on purpose so all reads go through the
+ * resolver functions.
  */
 
 import { resolveRoomVisualKey } from '/assets/js/features/room-types.js';
 
-export const ROOM_TYPE_ICON = {
-  'Dorm': 'bed',
-  'Superior Guest Room': 'king_bed',
-  'Standard Apartment': 'apartment',
-  VIP: 'workspace_premium',
-  'Deluxe Apartment': 'holiday_village',
-  'Deluxe 2 BR': 'holiday_village',
-  'Deluxe 3 BR': 'holiday_village',
-};
-
-export const ROOM_TYPE_IMAGE = {
+/** FALLBACK ONLY — room-type placeholder photos when a room has no uploads or number-keyed stills. */
+const ROOM_TYPE_IMAGE = {
   'Dorm': 'https://images.unsplash.com/photo-1555854877-bab0e5b6b4f5?auto=format&fit=crop&w=1200&q=80',
   'Superior Guest Room': 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1200&q=80',
   'Standard Apartment': 'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
@@ -40,7 +32,7 @@ export const ROOM_TYPE_IMAGE = {
  * Ignored when admin uploads exist for that room.
  * TODO(migration): remove once every room has preview_images in the DB.
  */
-export const ROOM_NUMBER_IMAGE = {
+const ROOM_NUMBER_IMAGE = {
   '202': ['/images/DormPreview.webp'],
   '204': ['/images/DormPreview.webp'],
   '206': ['/images/DormPreview.webp'],
@@ -222,7 +214,7 @@ export const LANDING_AMENITY_IMAGE = {
  * FALLBACK ONLY — ignored when admin venue uploads exist.
  * TODO(migration): remove once venues have preview_images coverage.
  */
-export const VENUE_NAME_IMAGE = {
+const VENUE_NAME_IMAGE = {
   'GMC Chapel': '/images/GMCChapelPreview.webp',
   'Burdine Commons': 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=1200&q=80',
   'Prayer Mountain': '/images/PrayerMountainPreview.webp',
@@ -277,11 +269,7 @@ const LIVE_BADGES = {
   Maintenance: { label: 'Out of order', badge: 'fac-badge--blocked' },
 };
 
-export function roomTypeIcon(roomType) {
-  return ROOM_TYPE_ICON[roomType] || 'meeting_room';
-}
-
-export function roomTypeImage(roomType) {
+function roomTypeImage(roomType) {
   return ROOM_TYPE_IMAGE[roomType] || DEFAULT_ROOM_IMAGE;
 }
 
@@ -405,7 +393,7 @@ const ROOM_TYPE_GALLERY = {
  * Ignored when admin uploads exist.
  * TODO(migration): remove once every room has preview_images in the DB.
  */
-export const ROOM_NUMBER_GALLERY = {
+const ROOM_NUMBER_GALLERY = {
   '202': [
     '/images/DormPreview.webp',
     '/images/DormPreview2.webp',
@@ -508,7 +496,7 @@ export const ROOM_NUMBER_GALLERY = {
 };
 
 /** Optional multi-photo overrides keyed by venue name / room code. */
-export const VENUE_NAME_GALLERY = {
+const VENUE_NAME_GALLERY = {
   'GMC Chapel': [
     '/images/GMCChapelPreview.webp',
     '/images/GMCChapelPreview2.webp',
@@ -602,14 +590,6 @@ function uniqueUrls(urls = []) {
     out.push(clean);
   }
   return out;
-}
-
-/**
- * Gallery list for a room card/detail modal.
- * Delegates to getImagesByRoom() (uploaded → hardcoded fallback → type placeholder).
- */
-export function roomGalleryImages(room = {}) {
-  return getImagesByRoom(room);
 }
 
 /**
@@ -710,10 +690,6 @@ export function liveStatusBadge(status) {
   return LIVE_BADGES[status] || LIVE_BADGES.Occupied;
 }
 
-export function formatPeso(n) {
-  return `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
-}
-
 /** Guest-facing amenity chips by room type — fallback only when DB inclusions are empty. */
 const ROOM_TYPE_HIGHLIGHTS = {
   Dorm: [
@@ -795,8 +771,4 @@ export function roomTypeHighlights(room = {}) {
     { icon: 'meeting_room', label: 'Campus lodging' },
     { icon: 'wifi', label: 'Wi‑Fi' },
   ];
-}
-
-export function roomHasCustomHighlights(room = {}) {
-  return parseHighlightLines(roomInclusionsText(room)).length > 0;
 }

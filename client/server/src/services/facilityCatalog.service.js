@@ -1,3 +1,9 @@
+/**
+ * Facility catalog reads — venues with their rate rows, grouped for the guest
+ * browse UI and admin boards. Bridges legacy category/item rate keys to the
+ * normalized facilities table, and attaches parsed preview_images so every
+ * consumer receives image lists as arrays.
+ */
 import { pool } from '../config/db.js';
 import {
   GMC_ABLOCK_VENUE_META,

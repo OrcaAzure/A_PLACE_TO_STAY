@@ -1,154 +1,38 @@
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import crypto from 'crypto';
-import sharp from 'sharp';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const PUBLIC_DIR = path.join(__dirname, '../../../public');
-const ROOM_IMAGES_ROOT = path.join(PUBLIC_DIR, 'images', 'rooms');
-
-export const ROOM_IMAGE_MAX_COUNT = 6;
-export const ROOM_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
-export const ROOM_IMAGE_MAX_WIDTH = 1400;
-export const ROOM_IMAGE_WEBP_QUALITY = 82;
-
-const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/jpg']);
-
-function isRoomImagePath(v) {
-  return typeof v === 'string' && v.startsWith('/images/rooms/');
-}
-
 /**
- * Normalize DB JSON (mysql2 may return array, string, Buffer, or double-encoded JSON).
- * Only keeps public paths under /images/rooms/.
+ * Room photo storage — thin wrapper around the shared WebP image store.
+ *
+ * Files land under public/images/rooms/{roomId}/ as WebP; the public paths are
+ * stored in rooms.preview_images (JSON array). Uploaded photos are the source
+ * of truth for room imagery; the client falls back to hardcoded images only
+ * when this array is empty (see client facility-display.js).
+ *
+ * All heavy lifting (validation, sharp conversion, JSON-column parsing, safe
+ * deletes) lives in imageStorage.service.js and is shared with
+ * facilityImage.service.js.
  */
-export function parsePreviewImages(value) {
-  if (value == null || value === '') return [];
-  let raw = value;
-  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(raw)) {
-    raw = raw.toString('utf8');
-  }
-  if (Array.isArray(raw)) return raw.filter(isRoomImagePath);
-  if (typeof raw === 'object') {
-    const vals = Object.values(raw);
-    if (vals.length && vals.every((v) => typeof v === 'string')) return vals.filter(isRoomImagePath);
-    return [];
-  }
-  if (typeof raw === 'string') {
-    const trimmed = raw.trim();
-    if (!trimmed) return [];
-    try {
-      let parsed = JSON.parse(trimmed);
-      // Handle accidental double-encoding from JSON.stringify into a JSON column.
-      if (typeof parsed === 'string') {
-        try {
-          parsed = JSON.parse(parsed);
-        } catch {
-          /* keep string */
-        }
-      }
-      if (Array.isArray(parsed)) return parsed.filter(isRoomImagePath);
-      if (isRoomImagePath(parsed)) return [parsed];
-      return [];
-    } catch {
-      return isRoomImagePath(trimmed) ? [trimmed] : [];
-    }
-  }
-  return [];
-}
+import {
+  createImageStore,
+  sanitizeImageFilename,
+  IMAGE_MAX_COUNT,
+  IMAGE_MAX_BYTES,
+} from './imageStorage.service.js';
 
-/** Bind a JS array to a MySQL JSON column without double-encoding as a JSON string. */
-export function previewImagesForMysql(paths) {
-  const list = parsePreviewImages(paths);
-  if (!list.length) return null;
-  return JSON.stringify(list);
-}
+/* Upload constraints re-exported under room-specific names for multer middleware. */
+export const ROOM_IMAGE_MAX_COUNT = IMAGE_MAX_COUNT;
+export const ROOM_IMAGE_MAX_BYTES = IMAGE_MAX_BYTES;
 
-export function sanitizeRoomImageFilename(filename) {
-  const raw = String(filename || '');
-  if (!raw || raw.includes('..') || raw.includes('/') || raw.includes('\\')) return null;
-  const base = path.basename(raw);
-  if (!/^[a-zA-Z0-9_-]+\.webp$/.test(base)) return null;
-  return base;
-}
+const store = createImageStore({ pathPrefix: '/images/rooms/' });
 
-function roomDir(roomId) {
-  return path.join(ROOM_IMAGES_ROOT, String(roomId));
-}
+/** Normalize a rooms.preview_images JSON value to a clean string[] of public paths. */
+export const parsePreviewImages = store.parsePreviewImages;
 
-function publicPathFor(roomId, filename) {
-  return `/images/rooms/${roomId}/${filename}`;
-}
+/** Serialize a path list for `CAST(? AS JSON)` binding; null when empty. */
+export const previewImagesForMysql = store.previewImagesForMysql;
 
-async function removeWithRetry(remove, attempts = 5) {
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    try {
-      await remove();
-      return;
-    } catch (err) {
-      if (err.code === 'ENOENT') return;
-      const retryable = err.code === 'EBUSY' || err.code === 'EPERM';
-      if (!retryable || attempt === attempts) throw err;
-      await new Promise((resolve) => setTimeout(resolve, attempt * 50));
-    }
-  }
-}
-
-export async function ensureRoomImageDir(roomId) {
-  await fs.mkdir(roomDir(roomId), { recursive: true });
-}
-
-/** Best-effort cleanup when a processed upload should not be kept. */
-export async function unlinkRoomImagePath(publicPath) {
-  if (typeof publicPath !== 'string' || !publicPath.startsWith('/images/rooms/')) return;
-  const rel = publicPath.replace(/^\//, '');
-  await removeWithRetry(() => fs.unlink(path.join(PUBLIC_DIR, rel)));
-}
-
-export async function processRoomImageUpload(file, roomId) {
-  if (!file?.buffer) throw new Error('No image file received.');
-  if (!ALLOWED_MIME.has(file.mimetype)) {
-    throw new Error('Only JPG and PNG images are allowed.');
-  }
-  if (file.size > ROOM_IMAGE_MAX_BYTES) {
-    throw new Error('Each image must be 8 MB or smaller.');
-  }
-
-  const filename = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}.webp`;
-  await ensureRoomImageDir(roomId);
-
-  const outputPath = path.join(roomDir(roomId), filename);
-  await sharp(file.buffer)
-    .rotate()
-    .resize({ width: ROOM_IMAGE_MAX_WIDTH, withoutEnlargement: true })
-    .webp({ quality: ROOM_IMAGE_WEBP_QUALITY })
-    .toFile(outputPath);
-
-  return publicPathFor(roomId, filename);
-}
-
-export async function deleteRoomImageFile(roomId, filename) {
-  const safeName = sanitizeRoomImageFilename(filename);
-  if (!safeName) throw new Error('Invalid image filename.');
-  const filePath = path.join(roomDir(roomId), safeName);
-  await removeWithRetry(() => fs.unlink(filePath));
-  return publicPathFor(roomId, safeName);
-}
-
-/**
- * Write a replacement image, then caller updates DB and deletes the old file.
- * Returns { oldPath, newPath } for the room's preview_images array.
- */
-export async function replaceRoomImageFile(file, roomId, oldFilename) {
-  const safeOld = sanitizeRoomImageFilename(oldFilename);
-  if (!safeOld) throw new Error('Invalid image filename.');
-  const oldPath = publicPathFor(roomId, safeOld);
-  const newPath = await processRoomImageUpload(file, roomId);
-  return { oldPath, newPath, oldFilename: safeOld };
-}
-
-export async function deleteAllRoomImages(roomId) {
-  const dir = roomDir(roomId);
-  await removeWithRetry(() => fs.rm(dir, { recursive: true, force: true }));
-}
+export const sanitizeRoomImageFilename = sanitizeImageFilename;
+export const ensureRoomImageDir = store.ensureImageDir;
+export const unlinkRoomImagePath = store.unlinkImagePath;
+export const processRoomImageUpload = store.processImageUpload;
+export const deleteRoomImageFile = store.deleteImageFile;
+export const replaceRoomImageFile = store.replaceImageFile;
+export const deleteAllRoomImages = store.deleteAllImages;

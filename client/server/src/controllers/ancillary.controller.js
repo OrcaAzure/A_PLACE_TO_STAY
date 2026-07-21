@@ -1,3 +1,7 @@
+/**
+ * REST handlers for the ancillary catalog (/api/ancillary) — admin CRUD for
+ * meal rates and extra-service items consumed by booking pricing.
+ */
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
 

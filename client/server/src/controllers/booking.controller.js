@@ -1,3 +1,10 @@
+/**
+ * REST handlers for room bookings (/api/bookings).
+ *
+ * Thin HTTP layer over booking.service.js: quotes, create/update with
+ * row-locked availability checks, status transitions (approve/decline/cancel),
+ * and admin/guest visibility rules. Group bookings live in group.controller.js.
+ */
 import { pool } from '../config/db.js';
 import Booking from '../models/Booking.js';
 import { isEmpty } from '../utils/helpers.js';

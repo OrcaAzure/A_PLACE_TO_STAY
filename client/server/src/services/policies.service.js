@@ -1,3 +1,7 @@
+/**
+ * Public policies content — admin-editable Markdown for the rooms and venues
+ * policy pages, stored in the settings table with seeded defaults below.
+ */
 import { pool } from '../config/db.js';
 
 const ROOMS_KEY = 'public_policies_rooms';

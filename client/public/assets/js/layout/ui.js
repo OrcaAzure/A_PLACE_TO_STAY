@@ -1,3 +1,17 @@
+/**
+ * App shell builder for both portals — the single entry that turns a bare
+ * page into the admin or guest layout.
+ *
+ * Responsibilities:
+ *   - fetch + cache HTML component templates (sidebar, navs, modals)
+ *   - build the admin shell (sidebar/topbar) or guest shell (top nav,
+ *     mobile bottom nav) around #page-content
+ *   - wire global chrome: drawers, notifications, user dropdown, splash/idle,
+ *     page transitions, and the shared confirm modal
+ *
+ * Every portal page calls initAppLayout() once on load; soft navigations
+ * reuse the existing shell.
+ */
 import { initManageRequestsModal, isManageRequestsModalOpen, closeManageRequestsModal } from '/assets/js/features/manage-requests.js';
 import { initManageReservationsModal, isManageReservationsModalOpen, closeManageReservationsModal } from '/assets/js/features/manage-reservations.js';
 import { initManageVenueBookingsModal, isManageVenueBookingsModalOpen, closeManageVenueBookingsModal } from '/assets/js/features/manage-venue-bookings.js';
@@ -41,14 +55,6 @@ export const GUEST_MOBILE_NAV = [
   { id: 'billing', label: 'Billing', icon: 'receipt_long', href: '/guest/billing.html' },
   { id: 'settings', label: 'Account', icon: 'person', href: '/guest/settings.html' },
 ];
-
-export const GUEST_NEW_RESERVATION_FOOTER = `
-  <div class="mb-md px-sm admin-sidebar-footer-action js-requires-write">
-    <a href="/guest/reservations.html#new-reservation" class="w-full flex items-center gap-md px-md py-md bg-primary text-on-primary rounded-lg font-body-md font-semibold hover:bg-primary/90 transition-colors min-h-[3rem] no-underline">
-      <span class="material-symbols-outlined text-[1.35rem] shrink-0">add</span>
-      <span class="admin-nav-label">New Reservation</span>
-    </a>
-  </div>`;
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
 const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v21';
@@ -381,12 +387,6 @@ function guestTopNavLinkClass(isActive) {
 function guestMobileNavLinkClass(isActive) {
   const base = 'lp-mobile-link';
   return isActive ? `${base} text-primary font-semibold` : base;
-}
-
-function renderGuestTopNavLinks(items, active) {
-  return items.map((item) => `
-    <a class="${guestTopNavLinkClass(active === item.id)}" href="${item.href}" aria-current="${active === item.id ? 'page' : 'false'}">${item.label}</a>
-  `).join('');
 }
 
 function guestPortalNavLinkClass(active) {

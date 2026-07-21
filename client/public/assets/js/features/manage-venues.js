@@ -23,6 +23,7 @@ import { confirmModal } from '/assets/js/layout/ui.js';
 import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 import { isReadOnlyRole } from '/assets/js/services/auth.js';
 import { registerVenueUploadedImages } from '/assets/js/features/facility-display.js';
+import { renderPhotoThumbs, renderPhotoUploadBlock } from '/assets/js/features/photo-grid-ui.js';
 
 /** Sentinel value used by the category <select> to reveal the "new category" field. */
 const ADD_CATEGORY_VALUE = '__add_category__';
@@ -340,59 +341,26 @@ function photoFacilityId() {
   return ids[0] ? Number(ids[0]) : null;
 }
 
-function photoFilename(src) {
-  return String(src || '').split('/').pop();
-}
-
 function venuePhotosSectionHtml() {
   const images = Array.isArray(draft?.preview_images) ? draft.preview_images.filter(Boolean) : [];
   const facilityId = photoFacilityId();
   const canManage = Boolean(facilityId) && !draft?.isNew && !isReadOnlyRole();
-  const atLimit = images.length >= MAX_VENUE_PHOTOS;
 
-  const thumbs = images.length
-    ? `<div class="mf-photo-grid" role="list">${images.map((src) => {
-        const name = photoFilename(src);
-        return `
-        <figure class="mf-photo-thumb" role="listitem">
-          <img src="${escapeHtml(src)}" alt="Venue photo" loading="lazy" decoding="async" />
-          ${canManage ? `
-            <div class="mf-photo-actions">
-              <label class="mf-photo-replace" title="Replace photo">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-                  class="sr-only"
-                  data-venue-photo-replace="${escapeHtml(name)}"
-                  ${uploadingImages ? 'disabled' : ''}
-                />
-                <span class="material-symbols-outlined" aria-hidden="true">sync</span>
-                <span class="sr-only">Replace photo</span>
-              </label>
-              <button type="button" class="mf-photo-remove" data-venue-photo-delete="${escapeHtml(name)}" aria-label="Remove photo">
-                <span class="material-symbols-outlined">close</span>
-              </button>
-            </div>` : ''}
-        </figure>`;
-      }).join('')}</div>`
-    : `<p class="mf-photo-empty">No photos yet. Guests will see a placeholder until you add one.</p>`;
+  const thumbs = renderPhotoThumbs(images, {
+    canManage,
+    uploading: uploadingImages,
+    attrPrefix: 'venue-photo',
+    altText: 'Venue photo',
+  });
 
-  const uploadBlock = canManage ? `
-    <div class="mf-photo-upload">
-      <label class="mf-photo-upload-btn${uploadingImages || atLimit ? ' is-disabled' : ''}">
-        <input
-          id="mv-venue-photos-input"
-          type="file"
-          accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-          multiple
-          class="sr-only"
-          ${uploadingImages || atLimit ? 'disabled' : ''}
-        />
-        <span class="material-symbols-outlined">upload</span>
-        ${uploadingImages ? 'Uploading…' : 'Upload JPG or PNG'}
-      </label>
-      <p class="mf-field-hint">Converted to WebP automatically. Up to ${MAX_VENUE_PHOTOS} photos. Use sync to replace one.</p>
-    </div>` : (draft?.isNew ? `
+  const uploadBlock = canManage
+    ? renderPhotoUploadBlock({
+        inputId: 'mv-venue-photos-input',
+        uploading: uploadingImages,
+        atLimit: images.length >= MAX_VENUE_PHOTOS,
+        hint: `Converted to WebP automatically. Up to ${MAX_VENUE_PHOTOS} photos. Use sync to replace one.`,
+      })
+    : (draft?.isNew ? `
     <p class="mf-field-hint">Save the venue first, then you can upload photos.</p>` : '');
 
   return `

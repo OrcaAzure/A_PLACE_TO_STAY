@@ -80,6 +80,12 @@ describe('guest and billing UI regressions', () => {
       assert.match(page, /public-info-header\.js/);
       assert.doesNotMatch(page, /window\.print|>Print</);
     });
+    assert.match(policies, /id="meet-the-team"/);
+    assert.match(policies, /data-scroll-to-team/);
+    assert.match(policies, /policy-footer-link--team/);
+    assert.match(policies, /Terms of Service[\s\S]*Meet the team/);
+    assert.match(policies, /Back to home/);
+    assert.doesNotMatch(policies, /policy-footer-btn/);
   });
 
   it('centralizes landing and contact-page phone details', () => {

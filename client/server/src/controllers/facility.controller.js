@@ -1,3 +1,11 @@
+/**
+ * REST handlers for venues/facilities and their rates (/api/facilities).
+ *
+ * Covers the guest-facing catalog (grouped venues with rates), the admin
+ * venue CRUD (via venueAdmin.service.js), seasonal rate resolution, and the
+ * facility photo pipeline (facilityImage.service.js -> facilities.preview_images).
+ * Uploaded photos are the source of truth; hardcoded client images are fallback.
+ */
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
 import {

@@ -1,4 +1,5 @@
 import { getPolicies } from '/assets/js/services/api.js';
+import { renderTeamSection } from '/assets/js/features/team-section.js';
 
 function appendParagraph(section, lines) {
   if (!lines.length) return;
@@ -81,8 +82,39 @@ function bindPolicyTabs() {
   });
 }
 
+function scrollToTeamSection() {
+  const target = document.getElementById('meet-the-team');
+  if (!target) return;
+  target.hidden = false;
+  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  target.scrollIntoView({
+    behavior: prefersReducedMotion ? 'auto' : 'smooth',
+    block: 'start',
+  });
+  if (history.replaceState) {
+    history.replaceState(null, '', '#meet-the-team');
+  } else {
+    window.location.hash = 'meet-the-team';
+  }
+}
+
+function bindTeamFooterActions() {
+  document.querySelectorAll('[data-scroll-to-team]').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      scrollToTeamSection();
+    });
+  });
+
+  if (window.location.hash === '#meet-the-team') {
+    requestAnimationFrame(() => scrollToTeamSection());
+  }
+}
+
 async function loadPolicies() {
   bindPolicyTabs();
+  renderTeamSection(document.getElementById('team-section-mount'), { variant: 'policies' });
+  bindTeamFooterActions();
   const error = document.getElementById('policies-error');
   try {
     const policies = await getPolicies();

@@ -1,3 +1,8 @@
+/**
+ * Venue booking math — rate resolution (Regular/Peak, per-hour vs per-event),
+ * totals with extra hours, duration/capacity validation, and slot-overlap
+ * detection. Consumed by facilityBooking.controller.js and payment.service.js.
+ */
 import { pool } from '../config/db.js';
 import { resolveLodgingSeasonForDate, mapLodgingSeasonToFacilitySeason } from './season.service.js';
 import {

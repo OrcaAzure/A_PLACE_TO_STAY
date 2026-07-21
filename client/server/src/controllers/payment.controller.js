@@ -1,3 +1,8 @@
+/**
+ * REST handlers for payments and invoices (/api/payments).
+ * Thin HTTP layer over payment.service.js: list/detail, billing updates,
+ * invoice emails, and marking invoices paid.
+ */
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
 import {

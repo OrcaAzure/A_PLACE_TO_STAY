@@ -1,3 +1,8 @@
+/**
+ * Dashboard statistics (/api/stats) — occupancy, booking counts, revenue,
+ * and recent-activity feeds for the admin dashboard, plus the guest
+ * dashboard's personal summaries.
+ */
 import { pool } from '../config/db.js';
 import { isAdminPortalRole } from '../utils/constants.js';
 

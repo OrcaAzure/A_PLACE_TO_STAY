@@ -1,3 +1,9 @@
+/**
+ * Guest booking-request cart — turns a guest's multi-item request (rooms,
+ * venues, meals) into real bookings: single room bookings, a reservation
+ * group when multiple rooms are requested, and venue bookings, all validated
+ * against availability and the fiscal-year window before insert.
+ */
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
 import { createReservationGroup, getGroupById, notifyGroupCreated } from './group.service.js';

@@ -1,3 +1,9 @@
+/**
+ * Lodging season calendar — resolves which season (Regular / Peak / Super
+ * Peak) applies to a date from admin-configured periods, weekend rules, and
+ * per-date overrides stored in the settings table. Room and venue pricing
+ * both key off this resolution.
+ */
 import { pool } from '../config/db.js';
 
 export const LODGING_SEASONS = ['Regular', 'Peak', 'Super Peak'];

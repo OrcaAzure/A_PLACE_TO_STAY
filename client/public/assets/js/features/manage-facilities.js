@@ -20,6 +20,7 @@ import { confirmModal } from '/assets/js/layout/ui.js';
 import { roomStatusLabel, roomStatusOptions, roomStatusMeta } from '/assets/js/features/room-status.js';
 import { debounce, escapeHtml } from '/assets/js/features/reservation-shared.js';
 import { isReadOnlyRole, refreshAdminReadOnlyUI } from '/assets/js/services/auth.js';
+import { renderPhotoThumbs, renderPhotoUploadBlock } from '/assets/js/features/photo-grid-ui.js';
 
 /** Sentinel value used by the room-type <select> to reveal the "new type" field. */
 const ADD_TYPE_VALUE = '__add_type__';
@@ -374,60 +375,26 @@ function roomPhotoPaths(room, { uploadedOnly = false } = {}) {
   return getImagesByRoom(room);
 }
 
-function photoFilename(src) {
-  return String(src || '').split('/').pop();
-}
-
 function renderRoomPhotosSection(room, { editable = false } = {}) {
   const images = roomPhotoPaths(room, { uploadedOnly: editable });
   const hasRoomId = Boolean(room?.id);
-  const readOnly = isReadOnlyRole();
-  const canManage = editable && hasRoomId && !readOnly;
-  const atLimit = images.length >= MAX_ROOM_PHOTOS;
+  const canManage = editable && hasRoomId && !isReadOnlyRole();
 
-  const thumbs = images.length
-    ? `<div class="mf-photo-grid" role="list">${images.map((src) => {
-        const name = photoFilename(src);
-        return `
-        <figure class="mf-photo-thumb" role="listitem">
-          <img src="${escapeHtml(src)}" alt="Room photo" loading="lazy" decoding="async" />
-          ${canManage ? `
-            <div class="mf-photo-actions">
-              <label class="mf-photo-replace" title="Replace photo">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-                  class="sr-only"
-                  data-room-photo-replace="${escapeHtml(name)}"
-                  ${state.uploadingImages ? 'disabled' : ''}
-                />
-                <span class="material-symbols-outlined" aria-hidden="true">sync</span>
-                <span class="sr-only">Replace photo</span>
-              </label>
-              <button type="button" class="mf-photo-remove" data-room-photo-delete="${escapeHtml(name)}" aria-label="Remove photo">
-                <span class="material-symbols-outlined">close</span>
-              </button>
-            </div>` : ''}
-        </figure>`;
-      }).join('')}</div>`
-    : `<p class="mf-photo-empty">No photos yet. Guests will see a placeholder until you add one.</p>`;
+  const thumbs = renderPhotoThumbs(images, {
+    canManage,
+    uploading: state.uploadingImages,
+    attrPrefix: 'room-photo',
+    altText: 'Room photo',
+  });
 
-  const uploadBlock = canManage ? `
-    <div class="mf-photo-upload">
-      <label class="mf-photo-upload-btn${state.uploadingImages || atLimit ? ' is-disabled' : ''}">
-        <input
-          id="mf-room-photos-input"
-          type="file"
-          accept="image/jpeg,image/png,.jpg,.jpeg,.png"
-          multiple
-          class="sr-only"
-          ${state.uploadingImages || atLimit ? 'disabled' : ''}
-        />
-        <span class="material-symbols-outlined">upload</span>
-        ${state.uploadingImages ? 'Uploading…' : 'Upload JPG or PNG'}
-      </label>
-      <p class="mf-field-hint">Photos are converted to WebP automatically. Up to ${MAX_ROOM_PHOTOS} per room. Use the sync icon on a photo to replace it.</p>
-    </div>` : (!hasRoomId && editable ? `
+  const uploadBlock = canManage
+    ? renderPhotoUploadBlock({
+        inputId: 'mf-room-photos-input',
+        uploading: state.uploadingImages,
+        atLimit: images.length >= MAX_ROOM_PHOTOS,
+        hint: `Photos are converted to WebP automatically. Up to ${MAX_ROOM_PHOTOS} per room. Use the sync icon on a photo to replace it.`,
+      })
+    : (!hasRoomId && editable ? `
     <p class="mf-field-hint">Save the room first, then you can upload photos.</p>` : '');
 
   return `

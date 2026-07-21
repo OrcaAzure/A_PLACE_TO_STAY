@@ -1,3 +1,11 @@
+/**
+ * REST handlers for venue/facility bookings (/api/facility-bookings).
+ *
+ * A facility booking reserves one venue for a date + time slot. This layer
+ * validates slots (overlap, duration, capacity), prices via facility.service.js,
+ * creates invoices on approval, and sends lifecycle emails. Guests can only
+ * modify/cancel their own bookings inside the cutoff window.
+ */
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
 import { ensureInvoiceForFacilityBooking, deletePaymentsForFacilityBooking } from '../services/payment.service.js';

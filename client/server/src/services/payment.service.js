@@ -1,3 +1,11 @@
+/**
+ * Payments and invoicing for room, group, and venue bookings.
+ *
+ * One `payments` row backs each invoice; room and venue payments share the
+ * table but join different booking tables (see the two detail SELECTs below).
+ * Handles invoice creation on approval, subtotal/discount recalculation,
+ * receipt + invoice emails, and cleanup when bookings are removed.
+ */
 import { pool } from '../config/db.js';
 import {
   sendVenueInvoiceEmail,

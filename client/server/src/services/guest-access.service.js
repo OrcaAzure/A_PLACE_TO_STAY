@@ -1,3 +1,8 @@
+/**
+ * Guest access lifecycle — signup requests, approval/rejection, account
+ * review windows, and bulk deactivation of external guest accounts.
+ * Every decision is written to the audit log (audit.service.js).
+ */
 import { pool } from '../config/db.js';
 import { safeUser } from '../utils/helpers.js';
 import { ROLES } from '../utils/constants.js';

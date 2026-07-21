@@ -1,3 +1,8 @@
+/**
+ * Recycle bin — soft delete (deleted_at/deleted_by), restore, and permanent
+ * purge for reservations and related records. Nothing is hard-deleted until
+ * an admin explicitly purges it.
+ */
 import { pool } from '../config/db.js';
 
 async function softDeleteRow(table, id, actorUserId = null) {

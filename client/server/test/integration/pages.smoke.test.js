@@ -81,6 +81,8 @@ describe('Pages smoke (public)', () => {
     const policies = await agent.get('/legal/policies-guidelines.html');
     assert.equal(policies.status, 200);
     assert.match(policies.text, /Policies &amp; Guidelines/i);
+    assert.match(policies.text, /Meet the team/i);
+    assert.match(policies.text, /id="meet-the-team"/);
 
     const contacts = await agent.get('/contacts.html');
     assert.equal(contacts.status, 200);

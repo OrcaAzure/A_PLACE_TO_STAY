@@ -1,3 +1,8 @@
+/**
+ * In-app notification feed (bell icon) — derives items from recent bookings,
+ * payments, and guest-access events at read time; nothing is stored beyond
+ * per-user read markers.
+ */
 import { pool } from '../config/db.js';
 import { isAdminPortalRole } from '../utils/constants.js';
 

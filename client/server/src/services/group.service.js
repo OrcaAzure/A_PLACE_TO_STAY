@@ -1,3 +1,11 @@
+/**
+ * Group reservations — one reservation_groups row spanning multiple room
+ * bookings booked/paid together.
+ *
+ * Reuses booking.service.js for per-room pricing/locking and payment.service.js
+ * for group invoices; adds group-level totals, status transitions that fan out
+ * to member bookings, and group email notifications.
+ */
 import { pool } from '../config/db.js';
 import { isEmpty } from '../utils/helpers.js';
 import {

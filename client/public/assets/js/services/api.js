@@ -157,13 +157,6 @@ export async function getGuestAccessRequests(params = {}) {
   return data.requests || [];
 }
 
-export async function createGuestAccessRequest(payload) {
-  return apiRequest('/users/guest-access/requests', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-}
-
 export async function approveGuestAccessRequest(id) {
   return apiRequest(`/users/guest-access/requests/${id}/approve`, { method: 'POST' });
 }
@@ -191,10 +184,6 @@ export async function getGuestAccessActivity(limit = 25) {
   return data.entries || [];
 }
 
-export async function getGuestUsers(params = {}) {
-  return getUsers({ role: 'Guest', ...params });
-}
-
 export async function createGuestUser(payload) {
   return apiRequest('/users', {
     method: 'POST',
@@ -207,11 +196,6 @@ export async function updateUser(id, payload) {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
-}
-
-export async function getUserById(id) {
-  const data = await apiRequest(`/users/${id}`);
-  return data.user;
 }
 
 export async function getRooms(params = {}) {
@@ -231,11 +215,6 @@ export async function getRoomsOverview(params = {}) {
   if (params.search) qs.set('search', params.search);
   const query = qs.toString();
   return apiRequest(`/rooms/overview${query ? `?${query}` : ''}`);
-}
-
-export async function getRoomById(id) {
-  const data = await apiRequest(`/rooms/${id}`);
-  return data.room;
 }
 
 export async function checkVenueSlotAvailability({
@@ -297,12 +276,6 @@ export async function deleteAdminVenue(functionIds) {
   return apiRequest('/facilities/admin/venues', {
     method: 'DELETE',
     body: JSON.stringify({ function_ids: functionIds }),
-  });
-}
-
-export async function deleteAdminVenueFunction(facilityId) {
-  return apiRequest(`/facilities/admin/venues/functions/${facilityId}`, {
-    method: 'DELETE',
   });
 }
 
@@ -395,14 +368,6 @@ export async function getBookings(params = {}) {
   const query = qs.toString();
   const data = await apiRequest(`/bookings${query ? `?${query}` : ''}`);
   return data.bookings || [];
-}
-
-export async function getStayQuote(payload) {
-  const data = await apiRequest('/bookings/stay-quote', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  return data.quote;
 }
 
 export async function getBookingById(id) {
@@ -692,10 +657,6 @@ export async function purgeRecycleItem(body) {
   return apiRequest('/recycle/purge', { method: 'POST', body: JSON.stringify(body) });
 }
 
-export async function softDeleteReservation(body) {
-  return apiRequest('/recycle/reservations', { method: 'POST', body: JSON.stringify(body) });
-}
-
 export function normalizeRoom(room) {
   const bedCount = room.bed_count != null ? Number(room.bed_count) : null;
   const roomTypeLabel = room.room_type_label || room.roomTypeLabel;
@@ -795,17 +756,6 @@ export function normalizeManageRequest(booking) {
   };
 }
 
-export function normalizeUser(user) {
-  return {
-    id: user.id,
-    name: user.full_name || user.name,
-    email: user.email,
-    role: user.role,
-    status: user.status,
-    createdAt: user.created_at,
-  };
-}
-
 export async function getVenueScheduleOverview(date, { startTime, endTime } = {}) {
   const params = new URLSearchParams({ date: date || new Date().toISOString().slice(0, 10) });
   if (startTime) params.set('start_time', startTime);
@@ -845,10 +795,6 @@ export async function updateFacilityBooking(id, payload) {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
-}
-
-export async function cancelFacilityBooking(id) {
-  return updateFacilityBooking(id, { status: 'Cancelled' });
 }
 
 export async function deleteFacilityBooking(id) {

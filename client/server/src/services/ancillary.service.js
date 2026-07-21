@@ -1,3 +1,8 @@
+/**
+ * Ancillary items — meal rates and extra services (linens, cleaning, etc.)
+ * attached to lodging stays. Provides the rate tables consumed by booking
+ * pricing plus grouping/sanitizing helpers for guest-submitted fees.
+ */
 import { pool } from '../config/db.js';
 import {
   LODGING_EXTRA_ITEM,

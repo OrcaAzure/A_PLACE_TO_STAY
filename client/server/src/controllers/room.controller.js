@@ -1,3 +1,14 @@
+/**
+ * REST handlers for buildings and lodging rooms (/api/rooms).
+ *
+ * Room photo flow: uploads are processed by roomImage.service.js (WebP on
+ * disk), and the public paths live in rooms.preview_images (JSON array).
+ * Uploaded photos are the source of truth; the client falls back to
+ * hardcoded images only when the array is empty.
+ *
+ * Guest requests are filtered by building access (utils/guestAccess.js) so
+ * external guests never see restricted rooms.
+ */
 import { pool } from '../config/db.js';
 import Room from '../models/Room.js';
 import { isEmpty } from '../utils/helpers.js';
