@@ -475,6 +475,11 @@ function paintReviewModal() {
   const arrivalHint = document.getElementById('br-arrival-hint');
   const submitBtn = document.getElementById('br-submit-btn');
   const isGroup = rooms.length > 1;
+  const arrivalDate = rooms[0]?.checkIn
+    ? new Date(`${rooms[0].checkIn}T12:00:00`).toLocaleDateString('en-PH', {
+      month: 'long', day: 'numeric', year: 'numeric',
+    })
+    : '';
 
   if (listEl) listEl.innerHTML = state.items.map(renderReviewItem).join('');
   if (groupWrap) groupWrap.classList.toggle('hidden', !isGroup);
@@ -485,8 +490,8 @@ function paintReviewModal() {
   }
   if (arrivalLabel) {
     arrivalLabel.innerHTML = isGroup
-      ? 'Earliest arrival <span class="text-error">*</span>'
-      : 'Expected arrival <span class="text-error">*</span>';
+      ? `Earliest arrival${arrivalDate ? ` — ${escapeHtml(arrivalDate)}` : ''} <span class="text-error">*</span>`
+      : `Expected arrival${arrivalDate ? ` — ${escapeHtml(arrivalDate)}` : ''} <span class="text-error">*</span>`;
   }
   if (arrivalHint) {
     arrivalHint.textContent = isGroup

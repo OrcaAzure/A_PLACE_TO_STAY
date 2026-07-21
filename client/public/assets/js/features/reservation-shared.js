@@ -84,20 +84,17 @@ export function readMealsFromInputs(root, meals) {
   return next;
 }
 
-/** FY26 pricelist — dorm bookings require at least this many guests. */
-export const DORM_MIN_GUEST_COUNT = 5;
+/** Fallback only; each room's configured capacity_min is authoritative. */
+export const DORM_MIN_GUEST_COUNT = 1;
 
 export function effectiveCapacityMin(room) {
-  if (room?.room_type === 'Dorm') {
-    return Math.max(Number(room.capacity_min) || 1, DORM_MIN_GUEST_COUNT);
-  }
   return Number(room?.capacity_min) || 1;
 }
 
 export function dormPricingGuestCount(room, guestCount) {
   const count = Math.max(1, Number(guestCount) || 1);
   if (room?.room_type !== 'Dorm' && !room?.per_person_pricing) return count;
-  return Math.max(count, room?.dorm_booking_minimum || DORM_MIN_GUEST_COUNT);
+  return Math.max(count, room?.dorm_booking_minimum || room?.capacity_min || DORM_MIN_GUEST_COUNT);
 }
 
 export function isRoomListVisible(status) {
@@ -154,10 +151,12 @@ export function isStandaloneRoomBooking(booking) {
   return groupId == null || groupId === '';
 }
 
-export function dormMinGuestsNotice(guestCount) {
+export function dormMinGuestsNotice(guestCount, room = null) {
+  if (!room || room.room_type !== 'Dorm') return null;
   const count = Number(guestCount) || 1;
-  if (count >= DORM_MIN_GUEST_COUNT) return null;
-  return `Dorm bookings require at least ${DORM_MIN_GUEST_COUNT} guests. Increase the guest count to book.`;
+  const minimum = effectiveCapacityMin(room);
+  if (count >= minimum) return null;
+  return `This dorm requires at least ${minimum} guest${minimum === 1 ? '' : 's'}. Increase the guest count to book.`;
 }
 
 /** Client-side room capacity check (mirrors server validateGuestCapacity). */
@@ -166,9 +165,7 @@ export function validateRoomGuestCapacity(room, guestCount) {
   const count = Number(guestCount) || 0;
   const minGuests = effectiveCapacityMin(room);
   if (count < minGuests) {
-    if (room.room_type === 'Dorm' && minGuests === DORM_MIN_GUEST_COUNT) {
-      return dormMinGuestsNotice(count) || `Minimum ${DORM_MIN_GUEST_COUNT} guest(s) required for dorm bookings`;
-    }
+    if (room.room_type === 'Dorm') return dormMinGuestsNotice(count, room);
     return `Minimum ${minGuests} guest(s) required for this room`;
   }
   const max = Number(room.capacity_max);
@@ -187,8 +184,9 @@ export function dormPriceLabel(room, guestCount, nights) {
   if (!total || !guests || !n) return null;
   const perPerson = Math.round((total / guests / n) * 100) / 100;
   const base = `${formatMoney(perPerson)}/person/night × ${guests} guest${guests === 1 ? '' : 's'}`;
-  if (requested < (room?.dorm_booking_minimum || DORM_MIN_GUEST_COUNT)) {
-    return `${base} (minimum ${room?.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} pax)`;
+  const minimum = room?.dorm_booking_minimum || room?.capacity_min || DORM_MIN_GUEST_COUNT;
+  if (requested < minimum) {
+    return `${base} (minimum ${minimum} pax)`;
   }
   return base;
 }
@@ -796,13 +794,7 @@ export function assignedGuestTotal(rooms = []) {
 export function calcGroupRoomTotal(rooms = [], availableRooms = []) {
   return rooms.reduce((sum, sel) => {
     const room = availableRooms.find((r) => String(r.id) === String(sel.room_id));
-    const perGuest = sel.guest_count || 1;
-    if (room?.estimated_total != null) {
-      const baseGuests = Math.max(room.capacity_min, Math.min(perGuest, room.capacity_max));
-      const ratio = room.estimated_total / (baseGuests || 1);
-      return sum + ratio * perGuest;
-    }
-    return sum;
+    return sum + Number(sel.estimated_total ?? room?.estimated_total ?? 0);
   }, 0);
 }
 
@@ -810,10 +802,7 @@ export function calcGroupGrandTotal(state) {
   const roomTotal = state.selectedRooms.reduce((sum, sel) => {
     const room = state.availableRooms.find((r) => String(r.id) === String(sel.room_id));
     if (!room) return sum;
-    const guests = sel.guest_count || 1;
-    const est = room.estimated_total || 0;
-    const refGuests = Math.max(room.capacity_min, Math.min(guests, room.capacity_max));
-    return sum + (est / (refGuests || 1)) * guests;
+    return sum + Number(sel.estimated_total ?? room.estimated_total ?? 0);
   }, 0);
   return calcGrandTotal(roomTotal, state.meals, state.fees, state.mealRates);
 }
@@ -821,7 +810,7 @@ export function calcGroupGrandTotal(state) {
 export function availLabel(status) {
   const map = {
     available: { text: 'Available', cls: 'res-pill--approved' },
-    dorm_min_guests: { text: 'Min 5 pax', cls: 'res-pill--pending' },
+    dorm_min_guests: { text: 'Below minimum', cls: 'res-pill--pending' },
     booked: { text: 'Already Booked', cls: 'res-pill--rejected' },
     too_small: { text: 'Too Small', cls: 'res-pill--pending' },
     maintenance: { text: 'Maintenance', cls: 'res-pill--cancelled' },

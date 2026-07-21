@@ -16,7 +16,7 @@ import {
   sanitizeGuestSubmittedFees,
   resolveGuestLodgingExtraFees,
 } from './ancillary.service.js';
-import { resolveRateRoomType, formatRoomTypeLabel, DORM_MIN_GUEST_COUNT, SINGLE_DOUBLE_OCCUPANCY_ITEM, DAILY_MAXIMUM_ITEM, SINGLE_DOUBLE_MAX_GUESTS } from '../constants/rooms.js';
+import { resolveRateRoomType, formatRoomTypeLabel, SINGLE_DOUBLE_OCCUPANCY_ITEM, DAILY_MAXIMUM_ITEM, SINGLE_DOUBLE_MAX_GUESTS } from '../constants/rooms.js';
 import {
   DEFAULT_RATE_AGE_BAND,
   DEFAULT_RATE_CURRENCY,
@@ -247,18 +247,12 @@ export function physicalCapacityMin(room) {
 }
 
 export function effectiveCapacityMin(room) {
-  if (room?.room_type === 'Dorm') {
-    return Math.max(physicalCapacityMin(room), DORM_MIN_GUEST_COUNT);
-  }
   return physicalCapacityMin(room);
 }
 
 export function validateGuestCapacity(room, guestCount) {
   const minGuests = effectiveCapacityMin(room);
   if (guestCount < minGuests) {
-    if (room?.room_type === 'Dorm' && minGuests === DORM_MIN_GUEST_COUNT) {
-      return `Minimum ${DORM_MIN_GUEST_COUNT} guest(s) required for dorm bookings`;
-    }
     return `Minimum ${minGuests} guest(s) required for this room`;
   }
   if (guestCount > room.capacity_max) {
@@ -571,7 +565,10 @@ export function calcMealsTotalWithUnitPrices(meals = {}, unitPrices = {}) {
 }
 
 export function calcFeesTotal(fees = []) {
-  return Math.round((fees || []).reduce((s, f) => s + Number(f.amount || 0), 0) * 100) / 100;
+  return Math.round((fees || []).reduce(
+    (sum, fee) => sum + (Number(fee.amount || 0) * Math.max(1, Number(fee.quantity) || 1)),
+    0
+  ) * 100) / 100;
 }
 
 export function mealsPayloadFromRows(rows = []) {
@@ -608,6 +605,7 @@ export async function computeUpdatedBookingGrandTotal(existing, validated, { mea
     : (await getBookingFees(existing.id)).map((f) => ({
       fee_name: f.fee_name || f.service_name || 'Extra service',
       amount: Number(f.amount || 0),
+      quantity: Math.max(1, Number(f.quantity) || 1),
     }));
 
   return computeGrandTotal({
@@ -659,36 +657,35 @@ export async function getBookingFees(bookingId) {
 }
 
 export async function saveBookingFees(bookingId, fees = []) {
-  try {
-    await pool.query('DELETE FROM bookings_extra_services WHERE bookings_room_id = ?', [bookingId]);
-    const merged = new Map();
-    for (const fee of fees || []) {
-      const name = String(fee.service_name || fee.fee_name || fee.name || '').trim();
-      const amount = Number(fee.amount || 0);
-      const qty = Math.max(1, Number(fee.quantity ?? fee.qty ?? 1) || 1);
-      if (!name || amount <= 0) continue;
-      const key = `${name}|${amount}`;
-      const prev = merged.get(key);
-      if (prev) prev.quantity += qty;
-      else merged.set(key, { name, amount, quantity: qty });
-    }
-    for (const fee of merged.values()) {
-      try {
+  await pool.query('DELETE FROM bookings_extra_services WHERE bookings_room_id = ?', [bookingId]);
+  const merged = new Map();
+  for (const fee of fees || []) {
+    const name = String(fee.service_name || fee.fee_name || fee.name || '').trim();
+    const amount = Number(fee.amount || 0);
+    const qty = Math.max(1, Number(fee.quantity ?? fee.qty ?? 1) || 1);
+    if (!name || amount <= 0) continue;
+    const key = `${name}|${amount}`;
+    const prev = merged.get(key);
+    if (prev) prev.quantity += qty;
+    else merged.set(key, { name, amount, quantity: qty });
+  }
+  for (const fee of merged.values()) {
+    try {
+      await pool.query(
+        'INSERT INTO bookings_extra_services (bookings_room_id, service_name, amount, quantity) VALUES (?, ?, ?, ?)',
+        [bookingId, fee.name, fee.amount, fee.quantity]
+      );
+    } catch (err) {
+      if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
+      // Compatibility with older databases that have not added quantity yet.
+      for (let i = 0; i < fee.quantity; i += 1) {
         await pool.query(
-          'INSERT INTO bookings_extra_services (bookings_room_id, service_name, amount, quantity) VALUES (?, ?, ?, ?)',
-          [bookingId, fee.name, fee.amount, fee.quantity]
+          'INSERT INTO bookings_extra_services (bookings_room_id, service_name, amount) VALUES (?, ?, ?)',
+          [bookingId, fee.name, fee.amount]
         );
-      } catch {
-        // Fallback when quantity column is missing: expand rows
-        for (let i = 0; i < fee.quantity; i += 1) {
-          await pool.query(
-            'INSERT INTO bookings_extra_services (bookings_room_id, service_name, amount) VALUES (?, ?, ?)',
-            [bookingId, fee.name, fee.amount]
-          );
-        }
       }
     }
-  } catch { /* tables may not exist yet */ }
+  }
 }
 
 export async function saveBookingMeals(bookingId, meals = {}, rates = null, {
@@ -774,7 +771,7 @@ export async function getAvailableRooms({
 
   for (const room of rooms) {
     const physicalMin = physicalCapacityMin(room);
-    const meetsDormMinimum = room.room_type !== 'Dorm' || count >= DORM_MIN_GUEST_COUNT;
+    const meetsDormMinimum = room.room_type !== 'Dorm' || count >= physicalMin;
     let availabilityStatus = 'available';
 
     if (room.status === 'Maintenance') availabilityStatus = 'maintenance';
@@ -782,9 +779,7 @@ export async function getAvailableRooms({
       availabilityStatus = 'booked';
     } else if (room.status === 'Dirty') availabilityStatus = 'dirty';
     else if (!groupPicker && count > room.capacity_max) availabilityStatus = 'too_small';
-    else if (!groupPicker && room.room_type === 'Dorm' && room.capacity_max < DORM_MIN_GUEST_COUNT) {
-      availabilityStatus = 'too_small';
-    } else if (!groupPicker && room.room_type === 'Dorm' && !meetsDormMinimum) {
+    else if (!groupPicker && room.room_type === 'Dorm' && !meetsDormMinimum) {
       availabilityStatus = 'dorm_min_guests';
     } else if (!groupPicker && room.room_type !== 'Dorm' && count < physicalMin) {
       availabilityStatus = 'too_small';
@@ -792,7 +787,7 @@ export async function getAvailableRooms({
 
     const pricingGuests = (() => {
       if (groupPicker) return Math.max(physicalMin, Math.min(count, room.capacity_max));
-      if (room.room_type === 'Dorm') return Math.max(count, DORM_MIN_GUEST_COUNT);
+      if (room.room_type === 'Dorm') return Math.max(count, physicalMin);
       return count;
     })();
 
@@ -828,7 +823,7 @@ export async function getAvailableRooms({
       bed_count: room.bed_count ?? null,
       capacity_min: physicalMin,
       capacity_max: room.capacity_max,
-      dorm_booking_minimum: room.room_type === 'Dorm' ? DORM_MIN_GUEST_COUNT : null,
+      dorm_booking_minimum: room.room_type === 'Dorm' ? physicalMin : null,
       status: room.status,
       description: room.description ?? null,
       inclusions: room.inclusions ?? room.highlights ?? null,
@@ -836,9 +831,7 @@ export async function getAvailableRooms({
       // Required so booking wizards / guest cards show admin-uploaded photos.
       preview_images: parsePreviewImages(room.preview_images),
       availability_status: availabilityStatus,
-      fits_capacity: (room.room_type === 'Dorm'
-        ? count <= room.capacity_max
-        : count >= physicalMin && count <= room.capacity_max) && meetsDormMinimum,
+      fits_capacity: count >= physicalMin && count <= room.capacity_max && meetsDormMinimum,
       meets_dorm_minimum: meetsDormMinimum,
       per_person_pricing: room.room_type === 'Dorm',
       occupancy_item: occupancyItem,
@@ -860,6 +853,7 @@ export async function getRoomStayEstimate({
   checkIn,
   checkOut,
   guestCount = 1,
+  excludeGroupId = null,
   bypassAdvanceLimit = false,
 }) {
   await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit });
@@ -873,7 +867,7 @@ export async function getRoomStayEstimate({
 
   if (room.status === 'Maintenance') throw new Error('This room is under maintenance');
   if (room.status === 'Dirty') throw new Error('This room is not ready for booking');
-  if (await hasOverlappingBooking(room.id, checkIn, checkOut)) {
+  if (await hasOverlappingBooking(room.id, checkIn, checkOut, null, excludeGroupId)) {
     throw new Error('This room is not available for the selected dates');
   }
 
@@ -906,9 +900,9 @@ export async function getRoomStayEstimate({
     estimated_total: estimatedTotal,
     season: checkInSeason,
     room_type: room.room_type,
-    capacity_min: effectiveCapacityMin(room),
+    capacity_min: physicalCapacityMin(room),
     capacity_max: room.capacity_max,
-    dorm_booking_minimum: room.room_type === 'Dorm' ? DORM_MIN_GUEST_COUNT : null,
+    dorm_booking_minimum: room.room_type === 'Dorm' ? physicalCapacityMin(room) : null,
   };
 }
 

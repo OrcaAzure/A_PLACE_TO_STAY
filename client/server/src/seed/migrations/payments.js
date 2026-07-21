@@ -9,7 +9,7 @@ export async function runPaymentsTableCreate() {
        id         INT AUTO_INCREMENT PRIMARY KEY,
        booking_id INT NOT NULL,
        amount     DECIMAL(10,2) NOT NULL,
-       method     ENUM('Cash', 'GCash', 'Bank Transfer') NOT NULL,
+       method     ENUM('Cash', 'GCash', 'Bank Transfer', 'Waived') NULL DEFAULT NULL,
        status     ENUM('Pending', 'Paid', 'Failed') NOT NULL DEFAULT 'Pending',
        paid_at    TIMESTAMP NULL DEFAULT NULL,
        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -18,7 +18,7 @@ export async function runPaymentsTableCreate() {
          FOREIGN KEY (booking_id) REFERENCES bookings(id)
          ON DELETE RESTRICT
          ON UPDATE CASCADE,
-       CONSTRAINT chk_amount CHECK (amount > 0)
+       CONSTRAINT chk_amount CHECK (amount >= 0)
      )`
   );
 }
@@ -40,6 +40,24 @@ export async function runPaymentsEvolution() {
       await pool.execute('ALTER TABLE payments ADD COLUMN discount_amount DECIMAL(10,2) NOT NULL DEFAULT 0 AFTER subtotal');
     } catch (err) {
       console.warn('[schema] payments.discount_amount skipped:', err.message);
+    }
+  }
+  if (!(await columnExists('payments', 'subtotal_overridden'))) {
+    try {
+      await pool.execute(
+        'ALTER TABLE payments ADD COLUMN subtotal_overridden TINYINT(1) NOT NULL DEFAULT 0 AFTER subtotal'
+      );
+    } catch (err) {
+      console.warn('[schema] payments.subtotal_overridden skipped:', err.message);
+    }
+  }
+  if (!(await columnExists('payments', 'discount_mode'))) {
+    try {
+      await pool.execute(
+        `ALTER TABLE payments ADD COLUMN discount_mode ENUM('percent', 'fixed') NOT NULL DEFAULT 'percent' AFTER discount_amount`
+      );
+    } catch (err) {
+      console.warn('[schema] payments.discount_mode skipped:', err.message);
     }
   }
   if (!(await columnExists('payments', 'discount_note'))) {
@@ -65,10 +83,34 @@ export async function runPaymentsEvolution() {
   }
   try {
     await pool.execute(
-      `ALTER TABLE payments MODIFY method ENUM('Cash', 'GCash', 'Bank Transfer') NULL DEFAULT NULL`
+      `ALTER TABLE payments MODIFY method ENUM('Cash', 'GCash', 'Bank Transfer', 'Waived') NULL DEFAULT NULL`
     );
   } catch {
     /* method may already be nullable */
+  }
+
+  try {
+    await pool.execute('ALTER TABLE payments DROP CHECK chk_amount');
+  } catch {
+    /* check may not exist or may already allow zero */
+  }
+  try {
+    await pool.execute('ALTER TABLE payments ADD CONSTRAINT chk_amount CHECK (amount >= 0)');
+  } catch {
+    /* constraint may already be correct */
+  }
+
+  try {
+    const [indexes] = await pool.execute(
+      `SELECT 1 FROM information_schema.statistics
+       WHERE table_schema = DATABASE() AND table_name = 'payments'
+         AND index_name = 'uq_payment_room' LIMIT 1`
+    );
+    if (!indexes.length) {
+      await pool.execute('ALTER TABLE payments ADD UNIQUE KEY uq_payment_room (bookings_room_id)');
+    }
+  } catch (err) {
+    console.warn('[schema] payments room uniqueness skipped:', err.message);
   }
 
   try {

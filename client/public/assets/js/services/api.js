@@ -520,6 +520,7 @@ export async function getRoomStayEstimate(params = {}) {
   if (params.check_in) qs.set('check_in', params.check_in);
   if (params.check_out) qs.set('check_out', params.check_out);
   if (params.guest_count != null) qs.set('guest_count', String(params.guest_count));
+  if (params.exclude_group_id) qs.set('exclude_group_id', String(params.exclude_group_id));
   return apiRequest(`/bookings/room-estimate?${qs.toString()}`);
 }
 
@@ -597,6 +598,7 @@ export function normalizeManageGroupRequest(group) {
       roomNumber: b.room_number,
       roomType: b.room_type,
       guestCount: b.guest_count,
+      roomTotal: b.room_total != null ? Number(b.room_total) : null,
       totalAmount: b.total_amount != null ? Number(b.total_amount) : null,
     })),
   };
@@ -664,15 +666,15 @@ export async function getRecycleBin() {
 }
 
 export async function restoreRecycleItem(body) {
-  return apiRequest('/recycle/restore', { method: 'POST', body });
+  return apiRequest('/recycle/restore', { method: 'POST', body: JSON.stringify(body) });
 }
 
 export async function purgeRecycleItem(body) {
-  return apiRequest('/recycle/purge', { method: 'POST', body });
+  return apiRequest('/recycle/purge', { method: 'POST', body: JSON.stringify(body) });
 }
 
 export async function softDeleteReservation(body) {
-  return apiRequest('/recycle/reservations', { method: 'POST', body });
+  return apiRequest('/recycle/reservations', { method: 'POST', body: JSON.stringify(body) });
 }
 
 export function normalizeRoom(room) {

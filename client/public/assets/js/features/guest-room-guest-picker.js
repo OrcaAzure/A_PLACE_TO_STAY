@@ -3,7 +3,7 @@
  */
 
 import { getRoomStayEstimate } from '/assets/js/services/api.js';
-import { DORM_MIN_GUEST_COUNT, escapeHtml } from '/assets/js/features/reservation-shared.js';
+import { escapeHtml } from '/assets/js/features/reservation-shared.js';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
@@ -96,7 +96,7 @@ function renderSession(session) {
       </header>
       <div class="room-guest-picker__body">
         <p class="room-guest-picker__label">How many guests will stay in this room?</p>
-        <p class="room-guest-picker__range">${isDorm ? `Minimum ${DORM_MIN_GUEST_COUNT} for dorms · ` : ''}${minGuests}–${maxGuests} guests</p>
+        <p class="room-guest-picker__range">${isDorm ? `Dorm minimum ${minGuests} · ` : ''}${minGuests}–${maxGuests} guests</p>
         <div class="room-guest-picker__qty">
           <button type="button" data-rgp-minus aria-label="Fewer guests" ${guestCount <= minGuests ? 'disabled' : ''}>−</button>
           <span aria-live="polite">${guestCount}</span>

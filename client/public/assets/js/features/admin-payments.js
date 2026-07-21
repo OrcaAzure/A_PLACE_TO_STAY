@@ -32,6 +32,7 @@ let stopBookingPoll = null;
 /** @type {(() => void) | null} */
 let onBookingUpdated = null;
 let paymentsPageBound = false;
+let reloadToken = 0;
 
 function formatDateShort(checkIn, checkOut) {
   if (!checkIn || !checkOut) return '—';
@@ -467,17 +468,20 @@ function readBillingFormValues(form, subtotal = 0) {
   return {
     subtotal: parsedSubtotal,
     discount_amount,
+    discount_mode: mode,
     discount_note: String(form.querySelector('[name="discount_note"]')?.value || '').trim(),
   };
 }
 
 function getFormSubtotal(form) {
   if (!form) return 0;
+  const el = form.querySelector('[data-subtotal-input]');
+  if (el && String(el.value || '').trim() !== '') {
+    return parseFloat(String(el.value).replace(/[^\d.]/g, '')) || 0;
+  }
   const attr = form.getAttribute('data-subtotal');
   if (attr != null && attr !== '') return Number(attr) || 0;
-  const el = form.querySelector('[data-subtotal-input]');
-  if (!el) return 0;
-  return parseFloat(String(el.value || '').replace(/[^\d.]/g, '')) || 0;
+  return 0;
 }
 
 function syncDiscountPanels(form, { seedOnModeChange = false } = {}) {
@@ -521,6 +525,7 @@ function feesFromPaymentRows(fees = []) {
   return (fees || []).map((f) => ({
     fee_name: f.fee_name || f.service_name || 'Extra service',
     amount: Number(f.amount || 0),
+    quantity: Math.max(1, Number(f.quantity) || 1),
   }));
 }
 
@@ -538,7 +543,9 @@ function feesEqual(a, b) {
   const left = feesFromPaymentRows(a);
   const right = feesFromPaymentRows(b);
   if (left.length !== right.length) return false;
-  return left.every((f, i) => f.fee_name === right[i].fee_name && f.amount === right[i].amount);
+  return left.every((f, i) => f.fee_name === right[i].fee_name
+    && f.amount === right[i].amount
+    && f.quantity === right[i].quantity);
 }
 
 function canEditBookingFees(p) {
@@ -554,8 +561,8 @@ function renderReadOnlyFeesList(fees = []) {
     <ul class="billing-fee-readonly">
       ${items.map((f) => `
         <li class="billing-fee-readonly__item">
-          <span>${escapeHtml(f.fee_name)}</span>
-          <strong>${fmt(f.amount)}</strong>
+          <span>${escapeHtml(f.fee_name)}${f.quantity > 1 ? ` × ${f.quantity}` : ''}</span>
+          <strong>${fmt(f.amount * f.quantity)}</strong>
         </li>`).join('')}
     </ul>`;
 }
@@ -1203,7 +1210,10 @@ function renderRoomDetailsCard(p, parsedNotes) {
         ${renderDetailItem('Group', p.group_name)}
         ${renderDetailItem('Phone', p.contact_phone)}
         ${renderDetailItem('Email', p.guest_email, { wide: true })}
-        ${p.expected_arrival_time ? renderDetailItem(p.group_name ? 'Earliest arrival' : 'Expected arrival', String(p.expected_arrival_time).slice(0, 5)) : ''}
+        ${p.expected_arrival_time ? renderDetailItem(
+    p.group_name ? 'Earliest arrival' : 'Expected arrival',
+    `${formatDateLongSingle(p.check_in)} · ${formatTime12(p.expected_arrival_time)}`
+  ) : ''}
         ${mealsSummary ? renderDetailItem('Meals ordered', mealsSummary, { wide: true }) : ''}
         ${p.meal_allergen_notes ? renderDetailItem('Allergen notes', p.meal_allergen_notes, { wide: true, alert: true }) : ''}
         ${notes.guestNotes ? renderDetailItem('Booking notes', notes.guestNotes, { wide: true, multiline: true }) : ''}
@@ -2248,21 +2258,14 @@ function bindReservationEdit(p, detailEl) {
 function renderReservationSection(p) {
   const parsedNotes = parseBookingNotes(p.notes);
   const tracking = renderNoteTrackingCallouts(parsedNotes);
-  const reservationBlock = (title, icon, cardHtml, { editLabel = 'Edit', revertable = false } = {}) => {
-    const editable = canEditReservationDetails(p);
-    const showRevert = revertable && canRevertVenueOvernight(p);
-    return `
+  const reservationBlock = (title, icon, cardHtml) => `
       <section class="billing-panel billing-panel--reservation" data-reservation-root="${p.id}">
-        ${renderReservationPanelHead(title, icon, { editable, editLabel, revertable: showRevert })}
-        <p class="billing-res-catalog-loading hidden" data-res-catalog-loading>Loading venue list…</p>
+        ${renderReservationPanelHead(title, icon, { editable: false })}
         <div class="billing-res-view" data-res-view>
           ${tracking}
           ${cardHtml}
         </div>
-        ${editable ? renderReservationEditForm(p) : ''}
-        ${showRevert ? renderVenueOvernightRevertForm(p) : ''}
       </section>`;
-  };
 
   if (showAsVenueOvernightBilling(p)) {
     const enriched = {
@@ -2276,7 +2279,6 @@ function renderReservationSection(p) {
         'Overnight stay (billing)',
         'night_shelter',
         renderVenueOvernightDetailsCard(enriched, parsedNotes),
-        { editLabel: isVenueConvertedToStay(p) ? 'Edit stay' : 'Edit', revertable: true },
       )}
       <section class="billing-panel billing-panel--charges">
         <h4 class="billing-section-title">
@@ -2291,9 +2293,7 @@ function renderReservationSection(p) {
   if (isVenueInvoice(p)) {
     return `
     <div class="billing-left-stack">
-      ${reservationBlock('Venue booking details', 'meeting_room', renderVenueDetailsCard(p, parsedNotes), {
-        editLabel: canConvertVenueToStay(p) ? 'Edit / convert' : 'Edit',
-      })}
+      ${reservationBlock('Venue booking details', 'meeting_room', renderVenueDetailsCard(p, parsedNotes))}
       <section class="billing-panel billing-panel--charges">
         <h4 class="billing-section-title">
           <span class="material-symbols-outlined" aria-hidden="true">request_quote</span>
@@ -2306,7 +2306,7 @@ function renderReservationSection(p) {
 
   return `
     <div class="billing-left-stack">
-      ${reservationBlock('Reservation details', 'event_available', renderRoomDetailsCard(p, parsedNotes), { editLabel: 'Edit stay' })}
+      ${reservationBlock('Reservation details', 'event_available', renderRoomDetailsCard(p, parsedNotes))}
       ${renderRoomFeesSection(p)}
       <section class="billing-panel billing-panel--charges">
         <h4 class="billing-section-title">
@@ -2433,7 +2433,9 @@ function renderBillingColumn(p, { isPending }) {
   const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
   const discount = Number(p.discount_amount || 0);
   const percent = discountPercent(subtotal, discount);
-  const discountMode = inferDiscountMode(subtotal, discount);
+  const discountMode = p.discount_mode === 'fixed' || p.discount_mode === 'percent'
+    ? p.discount_mode
+    : inferDiscountMode(subtotal, discount);
   const due = dueAmount(p);
   const isWaived = due <= 0;
   const methodOptions = PAYMENT_METHODS.map((m) => `<option value="${m}">${m}</option>`).join('');
@@ -2892,13 +2894,19 @@ function bindDetailActions(p) {
     e.preventDefault();
     const btn = form.querySelector('button[type="submit"]');
     const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
-    const { subtotal: nextSubtotal, discount_amount, discount_note } = readBillingFormValues(form, subtotal);
+    const {
+      subtotal: nextSubtotal,
+      discount_amount,
+      discount_mode,
+      discount_note,
+    } = readBillingFormValues(form, subtotal);
     const nextDue = computeDue(nextSubtotal, discount_amount);
 
     const confirmed = await confirmModal({
       title: 'Save billing changes',
       message: `Apply these invoice changes? New total amount will be <strong>${fmt(nextDue)}</strong>.`,
       confirmLabel: 'Confirm save',
+      elevate: true,
     });
     if (!confirmed) return;
 
@@ -2907,12 +2915,13 @@ function bindDetailActions(p) {
       await updatePayment(p.id, {
         subtotal: nextSubtotal,
         discount_amount,
+        discount_mode,
         discount_note,
       });
       await reload({ keepSelection: true, keepModalOpen: true });
-      showFeedback(detailFeedback, 'Billing updated.', 'ok');
+      showFeedback(document.getElementById('billing-detail-feedback'), 'Billing updated.', 'ok');
     } catch (err) {
-      showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
+      showFeedback(document.getElementById('billing-detail-feedback') || detailFeedback, getBillingErrorMessage(err), 'error');
     } finally {
       btn.disabled = false;
     }
@@ -2922,16 +2931,22 @@ function bindDetailActions(p) {
     const btn = e.currentTarget;
     const fresh = selectedPayment() || p;
     const verb = billingInvoiceEmailed(fresh) ? 'Resend' : 'Email';
-    if (!window.confirm(`${verb} invoice #${fresh.id} to ${fresh.guest_email}?`)) return;
+    const confirmed = await confirmModal({
+      title: `${verb} invoice`,
+      message: `${verb} invoice #${fresh.id} to <strong>${escapeHtml(fresh.guest_email || 'the guest')}</strong>?`,
+      confirmLabel: verb,
+      elevate: true,
+    });
+    if (!confirmed) return;
     btn.disabled = true;
     const label = btn.innerHTML;
     btn.innerHTML = '<span class="material-symbols-outlined" aria-hidden="true">hourglass_top</span> Sending…';
     try {
       const result = await sendPaymentInvoice(fresh.id);
       await reload({ keepSelection: true, keepModalOpen: true });
-      showFeedback(pageFeedback, result.message || 'Invoice emailed.', 'ok');
+      showFeedback(document.getElementById('billing-detail-feedback'), result.message || 'Invoice emailed.', 'ok');
     } catch (err) {
-      showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
+      showFeedback(document.getElementById('billing-detail-feedback') || detailFeedback, getBillingErrorMessage(err), 'error');
       btn.disabled = false;
       btn.innerHTML = label;
     }
@@ -3213,6 +3228,7 @@ async function reloadRecycleBin() {
 }
 
 async function reload({ keepSelection = false, keepModalOpen = false, background = false } = {}) {
+  const token = ++reloadToken;
   const prevId = state.selectedId;
   const modalOpen = isBillingInvoiceModalOpen();
   const feedback = document.getElementById('payments-feedback');
@@ -3220,7 +3236,9 @@ async function reload({ keepSelection = false, keepModalOpen = false, background
   if (modalOpen) keepModalOpen = true;
 
   try {
-    state.payments = await getPayments();
+    const payments = await getPayments();
+    if (token !== reloadToken) return;
+    state.payments = payments;
     updateSummary();
     renderList();
 
@@ -3381,6 +3399,6 @@ export async function loadPaymentsPage() {
   stopBookingPoll?.();
   stopBookingPoll = createBookingPoll(
     () => reload({ background: true }),
-    { shouldPoll: () => !isBillingInvoiceModalOpen() },
+    { intervalMs: 30_000, shouldPoll: () => !isBillingInvoiceModalOpen() },
   );
 }

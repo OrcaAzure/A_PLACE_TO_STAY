@@ -73,7 +73,6 @@ export function roomRateTierLabel(tier) {
   return tier;
 }
 /** FY26 pricelist — dorm bookings require at least this many guests. */
-export const DORM_MIN_GUEST_COUNT = 5;
 
 /** FY26 rate tier — "Deluxe 2 BR" / "Deluxe 3 BR" = two or three bedrooms. */
 export function resolveRateRoomType(room) {

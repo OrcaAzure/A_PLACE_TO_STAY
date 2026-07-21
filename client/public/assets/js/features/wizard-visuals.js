@@ -302,7 +302,7 @@ export function renderWizardRoomCard(room, {
   const img = roomPreviewImage(room);
   const perPerson = dormPriceLabel(room, guestCount, room.nights);
   const capLabel = room.room_type === 'Dorm'
-    ? `Min ${room.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} pax · up to ${room.capacity_max} guests`
+    ? `Min ${room.dorm_booking_minimum || room.capacity_min || DORM_MIN_GUEST_COUNT} pax · up to ${room.capacity_max} guests`
     : `${room.capacity_min}–${room.capacity_max} guests`;
   const topPick = recommended && room.recommendation_rank === 1;
   const building = room.building_name ? `${escapeHtml(room.building_name)} ` : '';
@@ -331,7 +331,7 @@ export function renderWizardRoomCard(room, {
           </div>
           <p class="wiz-room-option__meta">${escapeHtml(room.room_type_label || room.room_type)} · ${capLabel}</p>
           ${perPerson ? `<p class="wiz-room-option__hint">${escapeHtml(perPerson)}</p>` : ''}
-          ${dormMin ? `<p class="wiz-room-option__warn">Minimum ${room.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} guests required to book.</p>` : ''}
+          ${dormMin ? `<p class="wiz-room-option__warn">Minimum ${room.dorm_booking_minimum || room.capacity_min || DORM_MIN_GUEST_COUNT} guests required to book.</p>` : ''}
           ${!bookable && room.availability_status === 'booked' ? '<p class="wiz-room-option__warn">Already booked on these dates.</p>' : ''}
           ${recommended ? `<p class="wiz-room-option__reason">${escapeHtml(recommendationReason(room, guestCount))}</p>` : ''}
         </div>

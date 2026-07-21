@@ -5,6 +5,7 @@ import {
   sendPaymentReceiptEmail,
   getLastEmailError,
   isVenuePayment,
+  isEmailDevMode,
 } from './email.service.js';
 import {
   getBookingMeals,
@@ -91,24 +92,6 @@ export async function listAllPaymentRows({ userId } = {}) {
     pool.query(roomSql, userId ? [userId] : []),
     pool.query(venueSql, userId ? [userId] : []),
   ]);
-
-  // Consolidate open group stays onto one invoice (whole-group total).
-  if (!userId) {
-    const groupIds = [...new Set(
-      roomRows.map((row) => row.group_id).filter((id) => id != null && id !== '')
-    )];
-    if (groupIds.length) {
-      for (const groupId of groupIds) {
-        try {
-          await ensureInvoicesForGroup(groupId);
-        } catch (err) {
-          console.warn(`[billing] Could not consolidate group #${groupId}:`, err.message);
-        }
-      }
-      const [refreshedRooms] = await pool.query(roomSql);
-      roomRows = refreshedRooms;
-    }
-  }
 
   return sortPaymentRows([...roomRows, ...venueRows]);
 }
@@ -394,7 +377,61 @@ export async function enrichPaymentRow(row) {
 }
 
 export async function enrichPaymentRows(rows) {
-  const enriched = await Promise.all(rows.map(enrichPaymentRow));
+  const bookingIds = [...new Set(rows
+    .filter((row) => !isVenuePayment(row) && row.booking_id)
+    .map((row) => Number(row.booking_id)))];
+  const mealsByBooking = new Map();
+  const feesByBooking = new Map();
+
+  if (bookingIds.length) {
+    const [[mealRows], [feeRows]] = await Promise.all([
+      pool.query(
+        `SELECT bookings_room_id, meal_type, meal_date, quantity, unit_price, subtotal
+         FROM bookings_meals WHERE bookings_room_id IN (?) ORDER BY meal_date, meal_type`,
+        [bookingIds]
+      ),
+      pool.query(
+        `SELECT id, bookings_room_id, service_name, amount, quantity
+         FROM bookings_extra_services WHERE bookings_room_id IN (?) ORDER BY id`,
+        [bookingIds]
+      ),
+    ]);
+    for (const meal of mealRows) {
+      if (!mealsByBooking.has(meal.bookings_room_id)) mealsByBooking.set(meal.bookings_room_id, []);
+      mealsByBooking.get(meal.bookings_room_id).push(meal);
+    }
+    for (const fee of feeRows) {
+      if (!feesByBooking.has(fee.bookings_room_id)) feesByBooking.set(fee.bookings_room_id, []);
+      feesByBooking.get(fee.bookings_room_id).push({
+        ...fee,
+        fee_name: fee.service_name,
+        quantity: Math.max(1, Number(fee.quantity) || 1),
+      });
+    }
+  }
+
+  const enriched = rows.map((row) => {
+    if (isVenuePayment(row)) {
+      const stayMeta = parseVenueStayBillingMeta(row.notes);
+      const checkIn = stayMeta.check_in || null;
+      const checkOut = stayMeta.check_out || null;
+      return {
+        ...row,
+        meals: [],
+        fees: [],
+        nights: checkIn && checkOut ? calcNights(checkIn, checkOut) : null,
+        check_in: checkIn,
+        check_out: checkOut,
+        billing_overnight_converted: stayMeta.converted,
+      };
+    }
+    return {
+      ...row,
+      meals: mealsByBooking.get(Number(row.booking_id)) || [],
+      fees: feesByBooking.get(Number(row.booking_id)) || [],
+      nights: calcNights(row.check_in, row.check_out),
+    };
+  });
   return attachSummariesToPayments(enriched);
 }
 
@@ -581,6 +618,7 @@ export async function getInvoiceSnapshot(bookingId) {
     amount: invoice.amount,
     subtotal: invoice.subtotal ?? invoice.amount,
     discount_amount: Number(invoice.discount_amount || 0),
+    discount_mode: invoice.discount_mode || 'percent',
     discount_note: invoice.discount_note,
     invoice_sent_at: invoice.invoice_sent_at,
     paid_at: invoice.paid_at,
@@ -588,23 +626,25 @@ export async function getInvoiceSnapshot(bookingId) {
   };
 }
 
-async function dispatchInvoiceEmail(payment) {
+async function dispatchInvoiceEmail(payment, { allowDuplicate = false } = {}) {
   const user = { full_name: payment.guest_name, email: payment.guest_email };
   if (isVenuePayment(payment)) {
-    return sendVenueInvoiceEmail(user, payment);
+    return sendVenueInvoiceEmail(user, payment, { allowDuplicate });
   }
-  return sendRoomInvoiceEmail(user, payment);
+  return sendRoomInvoiceEmail(user, payment, { allowDuplicate });
 }
 
 export async function sendInvoiceEmail(paymentId) {
   const payment = await loadPaymentDetail(paymentId);
   if (!payment) throw new Error('Invoice not found');
-  if (payment.status === 'Paid') throw new Error('This invoice is already paid');
+  if (payment.status === 'Paid' && Number(payment.amount || 0) > 0) {
+    throw new Error('This invoice is already paid');
+  }
   if (!payment.guest_email) {
     throw new Error('Guest has no email address on file');
   }
 
-  const sent = await dispatchInvoiceEmail(payment);
+  const sent = await dispatchInvoiceEmail(payment, { allowDuplicate: true });
   if (!sent) {
     const detail = getLastEmailError();
     throw new Error(
@@ -612,6 +652,10 @@ export async function sendInvoiceEmail(paymentId) {
         ? `Could not send email: ${detail}`
         : 'Could not send email. Check SMTP settings in client/server/.env.'
     );
+  }
+
+  if (isEmailDevMode()) {
+    return { ...(await loadPaymentDetail(paymentId)), email_preview_only: true };
   }
 
   await pool.query(
@@ -633,7 +677,7 @@ export async function ensureInvoiceForBooking(bookingId, { autoEmail = false } =
 
   const existing = await getInvoiceByBookingId(bookingId);
   if (existing) {
-    if (existing.status !== 'Paid') {
+    if (existing.status !== 'Paid' && !Number(existing.subtotal_overridden)) {
       const amount = computeDueAmount(subtotal, existing.discount_amount);
       await pool.query(
         'UPDATE payments SET subtotal = ?, amount = ? WHERE id = ? AND status != ?',
@@ -671,7 +715,7 @@ export async function ensureInvoiceForFacilityBooking(facilityBookingId, { autoE
 
   const existing = await getInvoiceByFacilityBookingId(facilityBookingId);
   if (existing) {
-    if (existing.status !== 'Paid') {
+    if (existing.status !== 'Paid' && !Number(existing.subtotal_overridden)) {
       const amount = computeDueAmount(subtotal, existing.discount_amount);
       await pool.query(
         'UPDATE payments SET subtotal = ?, amount = ? WHERE id = ? AND status != ?',
@@ -726,7 +770,7 @@ export async function ensureInvoicesForGroup(groupId, { autoEmail = false } = {}
 
   const existing = await getInvoiceByBookingId(primaryBookingId);
   if (existing) {
-    if (existing.status !== 'Paid') {
+    if (existing.status !== 'Paid' && !Number(existing.subtotal_overridden)) {
       const amount = computeDueAmount(groupSubtotal, existing.discount_amount);
       await pool.query(
         'UPDATE payments SET subtotal = ?, amount = ? WHERE id = ? AND status != ?',
@@ -815,12 +859,19 @@ export async function tryAutoSendInvoiceEmail(paymentId) {
     return { sent: false, error: detail || 'Email delivery failed' };
   }
 
+  if (isEmailDevMode()) {
+    return { sent: false, preview: true, reason: 'development_preview', to: payment.guest_email };
+  }
+
   await pool.query('UPDATE payments SET invoice_sent_at = NOW() WHERE id = ?', [paymentId]);
   console.info(`[invoice email] Sent invoice #${paymentId} to ${payment.guest_email}`);
   return { sent: true, to: payment.guest_email };
 }
 
-export async function updateInvoiceBilling(paymentId, { discount_amount, discount_note, subtotal: nextSubtotal } = {}) {
+export async function updateInvoiceBilling(
+  paymentId,
+  { discount_amount, discount_note, discount_mode, subtotal: nextSubtotal } = {}
+) {
   const payment = await loadPaymentDetail(paymentId);
   if (!payment) throw new Error('Invoice not found');
   if (payment.status === 'Paid') throw new Error('Cannot change billing on a paid invoice');
@@ -837,25 +888,45 @@ export async function updateInvoiceBilling(paymentId, { discount_amount, discoun
 
   const amount = computeDueAmount(subtotal, discount);
   const note = discount_note !== undefined ? (discount_note || null) : payment.discount_note;
-
-  await pool.query(
-    `UPDATE payments SET subtotal = ?, discount_amount = ?, discount_note = ?, amount = ? WHERE id = ?`,
-    [subtotal, discount, note, amount, paymentId]
-  );
-
-  if (payment.booking_id && !payment.group_id) {
-    await pool.query(
-      'UPDATE bookings_rooms SET total_amount = ? WHERE id = ?',
-      [subtotal, payment.booking_id]
+  const mode = discount_mode === 'fixed' ? 'fixed' : 'percent';
+  const subtotalOverridden = nextSubtotal != null ? 1 : Number(payment.subtotal_overridden || 0);
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query(
+      `UPDATE payments
+       SET subtotal = ?, subtotal_overridden = ?, discount_amount = ?, discount_mode = ?,
+           discount_note = ?, amount = ?,
+           status = CASE WHEN ? = 0 THEN 'Paid' ELSE status END,
+           method = CASE WHEN ? = 0 THEN 'Waived' ELSE method END,
+           paid_at = CASE WHEN ? = 0 THEN COALESCE(paid_at, NOW()) ELSE paid_at END
+       WHERE id = ?`,
+      [
+        subtotal, subtotalOverridden, discount, mode, note, amount,
+        amount, amount, amount, paymentId,
+      ]
     );
-  } else if (payment.facility_booking_id) {
-    await pool.query(
-      'UPDATE bookings_facilities SET total_amount = ? WHERE id = ?',
-      [subtotal, payment.facility_booking_id]
-    );
+
+    if (payment.booking_id && !payment.group_id) {
+      await conn.query(
+        'UPDATE bookings_rooms SET total_amount = ? WHERE id = ?',
+        [subtotal, payment.booking_id]
+      );
+    } else if (payment.facility_booking_id) {
+      await conn.query(
+        'UPDATE bookings_facilities SET total_amount = ? WHERE id = ?',
+        [subtotal, payment.facility_booking_id]
+      );
+    }
+    await conn.commit();
+  } catch (err) {
+    await conn.rollback();
+    throw mapPaymentDbError(err);
+  } finally {
+    conn.release();
   }
 
-  await syncPaymentStatus(paymentId);
+  if (amount > 0) await syncPaymentStatus(paymentId);
   return loadPaymentDetail(paymentId);
 }
 

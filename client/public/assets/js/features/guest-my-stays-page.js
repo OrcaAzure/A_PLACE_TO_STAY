@@ -29,13 +29,13 @@ export async function bootstrapGuestMyStaysPage() {
       if (!link || !text) return;
       try {
         const contact = await getSupportContact();
-        const email = contact.email || 'facilities@apts.edu.ph';
+        const email = contact.email || 'guestservices@apts.edu';
         text.textContent = email;
         link.href = `mailto:${encodeURIComponent(email)}`;
         link.title = `Email ${contact.label || 'facilities team'} at ${email}`;
       } catch {
-        text.textContent = 'facilities@apts.edu.ph';
-        link.href = 'mailto:facilities@apts.edu.ph';
+        text.textContent = 'guestservices@apts.edu';
+        link.href = 'mailto:guestservices@apts.edu';
       }
     }
     loadSupportReplyMail();

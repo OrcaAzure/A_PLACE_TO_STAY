@@ -130,7 +130,7 @@ export const getRoomAvailability = async (req, res) => {
 
 export const getRoomStayEstimateHandler = async (req, res) => {
   try {
-    const { room_id, check_in, check_out, guest_count } = req.query;
+    const { room_id, check_in, check_out, guest_count, exclude_group_id } = req.query;
     if (isEmpty(room_id) || isEmpty(check_in) || isEmpty(check_out)) {
       return res.status(400).json({ message: 'room_id, check_in, and check_out are required' });
     }
@@ -154,6 +154,7 @@ export const getRoomStayEstimateHandler = async (req, res) => {
       checkIn: check_in,
       checkOut: check_out,
       guestCount: guest_count || 1,
+      excludeGroupId: exclude_group_id || null,
       bypassAdvanceLimit: isAdmin,
     });
     res.status(200).json(estimate);
@@ -478,11 +479,12 @@ export const updateBooking = async (req, res) => {
     const [rows] = await pool.query(`${bookingSelect} WHERE bk.id = ?`, [req.params.id]);
     const booking = await enrichBooking(rows[0]);
 
-    const becameApproved = status === 'Approved' && existing.status !== 'Approved';
-    if (becameApproved || (status === 'Approved' && !booking.invoice)) {
+    const effectiveStatus = status ?? existing.status;
+    const becameApproved = effectiveStatus === 'Approved' && existing.status !== 'Approved';
+    if (becameApproved || (effectiveStatus === 'Approved' && !booking.invoice)) {
       await ensureInvoiceForBooking(req.params.id);
       booking.invoice = await getInvoiceSnapshot(req.params.id);
-    } else if (status === 'Approved' && grandTotal !== Number(existing.total_amount)) {
+    } else if (effectiveStatus === 'Approved' && grandTotal !== Number(existing.total_amount)) {
       await ensureInvoiceForBooking(req.params.id);
       booking.invoice = await getInvoiceSnapshot(req.params.id);
     }

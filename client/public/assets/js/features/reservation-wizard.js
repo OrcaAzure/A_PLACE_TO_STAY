@@ -11,7 +11,7 @@ import {
   loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
   recommendRooms, servicesToQuickFees, applyLoggedInGuestContact, filterRoomsList,
   collectWizardRoomTypes,
-  DORM_MIN_GUEST_COUNT, dormPriceLabel,
+  dormPriceLabel,
   isRoomListVisible, isRoomBookable, dormMinGuestsNotice, validateRoomGuestCapacity,
   readMealsFromInputs, clampMealQty, mealTypesOrdered, ensureMealsShape, isValidEmail,
   guestModifyMinStep, renderGuestModifyProgress, renderGuestModifyReviewSummary, renderGuestModifyReviewCallout,
@@ -165,7 +165,7 @@ function renderStep2() {
       return hint ? `<p class="res-hint">${escapeHtml(hint)}</p>` : '';
     })()}
     ${fields}
-    <p class="res-hint">Room options on the next step will update based on this number. Dorm bookings require at least ${DORM_MIN_GUEST_COUNT} guests (per-person pricing).</p>
+    <p class="res-hint">Room options on the next step update based on this number. Dorms use per-person pricing and each room's listed minimum capacity.</p>
     ${banner}`;
 }
 
@@ -279,7 +279,7 @@ function bindRoomPickDelegation() {
       state.roomId = '';
       state.selectedRoom = null;
       state.roomTotal = 0;
-      state.error = dormMinGuestsNotice(state.guestCount)
+      state.error = dormMinGuestsNotice(state.guestCount, room)
         || 'This room cannot be booked for the current guest count.';
       renderBody();
       return;

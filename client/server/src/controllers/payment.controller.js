@@ -109,7 +109,7 @@ export const sendPaymentInvoice = async (req, res) => {
 
     const updated = await sendInvoiceEmail(paymentId);
     const message = isEmailDevMode()
-      ? `Invoice marked as sent (dev mode — logged to server console, not emailed to ${updated.guest_email})`
+      ? `Invoice preview generated for ${updated.guest_email} (development mode — no email was delivered and sent status was not changed)`
       : `Invoice emailed to ${updated.guest_email}`;
     res.status(200).json({ message, payment: updated, emailDevMode: isEmailDevMode() });
   } catch (error) {
@@ -122,14 +122,19 @@ export const updatePayment = async (req, res) => {
     const paymentId = parsePaymentId(req.params.id);
     if (!paymentId) return res.status(400).json({ message: 'Invalid invoice id' });
 
-    const { status, method, discount_amount, discount_note, subtotal } = req.body;
+    const { status, method, discount_amount, discount_note, discount_mode, subtotal } = req.body;
     const existing = await loadPaymentDetail(paymentId);
     if (!existing) return res.status(404).json({ message: 'Invoice not found' });
 
     let payment = existing;
 
-    if (discount_amount != null || discount_note !== undefined || subtotal != null) {
-      payment = await updateInvoiceBilling(paymentId, { discount_amount, discount_note, subtotal });
+    if (discount_amount != null || discount_note !== undefined || discount_mode != null || subtotal != null) {
+      payment = await updateInvoiceBilling(paymentId, {
+        discount_amount,
+        discount_note,
+        discount_mode,
+        subtotal,
+      });
     }
 
     if (status === 'Paid') {

@@ -4,6 +4,7 @@
 
 import {
   createGroup, updateGroup, getGroupById, getMealRates, getUsers, suggestGroupRooms, getFacilitiesOverview,
+  getRoomStayEstimate,
 } from '/assets/js/services/api.js';
 import {
   GROUP_WIZARD_STEPS, escapeHtml, formatDateLong, formatMoney,
@@ -409,10 +410,7 @@ function renderStep5() {
   const roomTotal = state.selectedRooms.reduce((sum, sel) => {
     const room = state.availableRooms.find((r) => String(r.id) === String(sel.room_id));
     if (!room) return sum;
-    const guests = sel.guest_count || 1;
-    const est = room.estimated_total || 0;
-    const refGuests = Math.max(room.capacity_min, Math.min(guests, room.capacity_max));
-    return sum + (est / (refGuests || 1)) * guests;
+    return sum + Number(sel.estimated_total ?? room.estimated_total ?? 0);
   }, 0);
   const summaryLines = [{ label: 'Rooms', value: roomTotal }];
   mealTypesOrdered(state.mealRates).forEach((t) => {
@@ -464,7 +462,7 @@ function renderStep5() {
       message: state.guestMessage,
     })}
       ${renderGuestModifyReviewSummary(reviewRows, { grandLabel: 'Estimated total', grandTotal: grand })}
-      <label class="res-label" for="gw-arrival-time">Earliest arrival <span class="text-error">*</span></label>
+      <label class="res-label" for="gw-arrival-time">Earliest arrival — ${escapeHtml(formatDateLong(state.checkIn))} <span class="text-error">*</span></label>
       <input id="gw-arrival-time" type="time" class="res-input" required value="${escapeHtml(state.expectedArrivalTime || '')}" />
       <p class="res-hint">If members arrive separately, use the earliest arrival on check-in day.</p>
       <label class="res-label" for="gw-notes">Notes <span class="guest-modify-optional">optional</span></label>
@@ -486,7 +484,7 @@ function renderStep5() {
     grandLabel: state.guestModify || state.fromRequestId ? 'Estimated grand total' : 'Grand total',
     grandTotal: grand,
   })}
-    <label class="res-label" for="gw-arrival-time">Earliest arrival <span class="text-error">*</span></label>
+    <label class="res-label" for="gw-arrival-time">Earliest arrival — ${escapeHtml(formatDateLong(state.checkIn))} <span class="text-error">*</span></label>
     <input id="gw-arrival-time" type="time" class="res-input" required value="${escapeHtml(state.expectedArrivalTime || '')}" />
     <p class="res-hint">If members arrive separately, use the earliest arrival on check-in day.</p>
     <label class="res-label" for="gw-notes">Notes for housing staff</label>
@@ -585,6 +583,23 @@ function readStepFields() {
 
 let fetchRoomsToken = 0;
 
+async function quoteSelectedRoom(selection) {
+  if (!selection || !state.checkIn || !state.checkOut) return;
+  const quote = await getRoomStayEstimate({
+    room_id: selection.room_id,
+    check_in: state.checkIn,
+    check_out: state.checkOut,
+    guest_count: selection.guest_count,
+    exclude_group_id: state.groupId || state.fromRequestId || undefined,
+  });
+  selection.estimated_total = Number(quote.estimated_total) || 0;
+  selection.occupancy_item = quote.occupancy_item || null;
+}
+
+async function refreshSelectedRoomQuotes() {
+  await Promise.all(state.selectedRooms.map((selection) => quoteSelectedRoom(selection)));
+}
+
 async function fetchRooms() {
   readAllFields();
   if (!state.checkIn || !state.checkOut || state.checkOut <= state.checkIn) return;
@@ -625,7 +640,9 @@ function toggleRoom(roomId) {
   if (idx >= 0) {
     state.selectedRooms.splice(idx, 1);
   } else {
-    state.selectedRooms.push({ room_id: Number(roomId), guest_count: room.capacity_min });
+    const selection = { room_id: Number(roomId), guest_count: room.capacity_min };
+    state.selectedRooms.push(selection);
+    void quoteSelectedRoom(selection).then(() => renderBody()).catch(() => {});
   }
   state.error = null;
   renderBody();
@@ -637,6 +654,7 @@ function adjustRoomGuests(roomId, delta) {
   if (!sel || !room) return;
   sel.guest_count = Math.min(room.capacity_max, Math.max(room.capacity_min, sel.guest_count + delta));
   renderBody();
+  void quoteSelectedRoom(sel).then(() => renderBody()).catch(() => {});
 }
 
 function applySuggestion() {
@@ -647,6 +665,7 @@ function applySuggestion() {
   }));
   state.error = null;
   renderBody();
+  void refreshSelectedRoomQuotes().then(() => renderBody()).catch(() => {});
 }
 
 function bindEvents() {
@@ -801,6 +820,19 @@ async function goNext() {
     return;
   }
   if (state.step === 2) await fetchRooms();
+  if (state.step === 4) {
+    state.saving = true;
+    renderBody();
+    try {
+      await refreshSelectedRoomQuotes();
+    } catch (err) {
+      state.error = err.message || 'Could not refresh room pricing.';
+      state.saving = false;
+      renderBody();
+      return;
+    }
+    state.saving = false;
+  }
   if (state.step < 5) state.step++;
   renderSteps();
   renderBody();

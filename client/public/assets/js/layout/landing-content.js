@@ -8,6 +8,7 @@ const PARTIALS = {
   heroPublic: '/components/landing-hero-public.html',
   heroGuest: '/components/landing-hero-guest.html',
   sections: '/components/landing-sections.html',
+  footer: '/components/guest-footer.html',
 };
 
 /** Scenic campus photos for the landing hero background carousel. */
@@ -99,11 +100,12 @@ export async function buildLandingContent({ variant = 'public', firstName = 'Gue
     FIRST_NAME: firstName,
   };
   const heroUrl = variant === 'guest' ? PARTIALS.heroGuest : PARTIALS.heroPublic;
-  const [hero, sections] = await Promise.all([
+  const [hero, sections, footer] = await Promise.all([
     fetchPartial(heroUrl),
     fetchPartial(PARTIALS.sections),
+    fetchPartial(PARTIALS.footer),
   ]);
-  return applyTokens(hero, tokens) + applyTokens(sections, tokens);
+  return applyTokens(hero, tokens) + applyTokens(sections, tokens) + applyTokens(footer, tokens);
 }
 
 /** Mount public landing sections into #lp-main-mount (index.html). */

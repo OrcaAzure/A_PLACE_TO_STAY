@@ -3800,3 +3800,48 @@
   gap: 0.35rem;
   justify-content: flex-end;
 }
+
+/* Keep money-heavy details linear until there is enough room for two columns. */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .billing-detail__columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .billing-detail__col:not(.billing-detail__col--billing),
+  .billing-detail__col--billing {
+    padding: 1.125rem 1.25rem 1.25rem;
+  }
+
+  .billing-detail__col--billing {
+    border-left: 0;
+    border-top: 1px solid #e2e8f0;
+  }
+}
+
+.billing-detail__col,
+.billing-panel,
+.billing-summary-card {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.billing-charge-table-wrap,
+.billing-ledger-wrap,
+.billing-detail table {
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 639px) {
+  .billing-edit-footer,
+  .billing-panel__head,
+  .billing-summary-grid {
+    flex-wrap: wrap;
+  }
+
+  .billing-edit-footer__actions,
+  .billing-edit-footer__save {
+    width: 100%;
+  }
+}

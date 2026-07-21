@@ -507,13 +507,16 @@ CREATE TABLE IF NOT EXISTS payments (
     bookings_room_id      INT NULL,
     bookings_facility_id  INT NULL,
     subtotal              DECIMAL(10,2) DEFAULT NULL,
+    subtotal_overridden   TINYINT(1) NOT NULL DEFAULT 0,
     discount_amount       DECIMAL(10,2) NOT NULL DEFAULT 0,
+    discount_mode         ENUM('percent', 'fixed') NOT NULL DEFAULT 'percent',
     discount_note         VARCHAR(255) DEFAULT NULL,
     amount                DECIMAL(10,2) NOT NULL,
     method     ENUM(
                  'Cash',
                  'GCash',
-                 'Bank Transfer'
+                 'Bank Transfer',
+                 'Waived'
                ) DEFAULT NULL,
     status     ENUM(
                  'Pending',
@@ -546,8 +549,9 @@ CREATE TABLE IF NOT EXISTS payments (
         (bookings_room_id IS NULL AND bookings_facility_id IS NOT NULL)
     ),
 
-    CONSTRAINT chk_amount CHECK (amount > 0),
+    CONSTRAINT chk_amount CHECK (amount >= 0),
 
+    UNIQUE KEY uq_payment_room (bookings_room_id),
     UNIQUE KEY uq_payment_facility (bookings_facility_id)
 );
 

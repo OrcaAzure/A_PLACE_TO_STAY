@@ -1022,10 +1022,12 @@ export function confirmModal({
   return ensureConfirmModalMounted().then(() => new Promise((resolve) => {
     const overlay = document.getElementById('modal-overlay');
     const modal = document.getElementById('app-modal');
+    const lifecycle = new AbortController();
     let settled = false;
     const finish = (value) => {
       if (settled) return;
       settled = true;
+      lifecycle.abort();
       if (elevate) {
         overlay?.style.removeProperty('z-index');
         modal?.style.removeProperty('z-index');
@@ -1057,6 +1059,12 @@ export function confirmModal({
       bodyEl?.querySelector('[data-action="confirm"]')?.addEventListener('click', () => finish(true), { once: true });
       document.getElementById('modal-close')?.addEventListener('click', () => finish(false), { once: true });
       document.getElementById('modal-overlay')?.addEventListener('click', () => finish(false), { once: true });
+      window.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        finish(false);
+      }, { capture: true, signal: lifecycle.signal });
     });
   })).catch(() => false);
 }

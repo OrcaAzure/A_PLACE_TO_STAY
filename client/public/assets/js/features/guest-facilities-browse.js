@@ -167,7 +167,7 @@ function setMountHtml(id, html) {
     const min = Number(room.capacityMin ?? room.capacity_min ?? 1) || 1;
     const avail = availabilityForRoom(room.id);
     const isDorm = room.roomType === 'Dorm' || avail?.room_type === 'Dorm';
-    const dormMin = Number(avail?.dorm_booking_minimum) || 5;
+    const dormMin = Number(avail?.dorm_booking_minimum) || min;
 
     if (remaining <= 0) {
       return null;
@@ -389,7 +389,7 @@ function setMountHtml(id, html) {
       const a = availabilityForRoom(room.id);
       const map = {
         available: { label: 'Available', cls: 'bg-emerald-500 text-white', bookable: true },
-        dorm_min_guests: { label: 'Min 5 pax', cls: 'bg-amber-500 text-white', bookable: false },
+        dorm_min_guests: { label: 'Below minimum', cls: 'bg-amber-500 text-white', bookable: false },
         booked: { label: 'Booked', cls: 'bg-slate-600 text-white', bookable: false },
         occupied: { label: 'Occupied', cls: 'bg-slate-600 text-white', bookable: false },
         too_small: { label: 'Too Small', cls: 'bg-amber-500 text-white', bookable: false },
@@ -577,7 +577,7 @@ function setMountHtml(id, html) {
     const isDorm = room.roomType === 'Dorm' || avail?.room_type === 'Dorm';
     const physicalMin = Number(room.capacityMin ?? room.capacity_min ?? 1) || 1;
     const capacityMax = Number(room.capacityMax ?? room.capacity_max ?? 99) || 99;
-    const dormMin = Number(avail?.dorm_booking_minimum) || DORM_MIN_GUEST_COUNT;
+    const dormMin = Number(avail?.dorm_booking_minimum) || physicalMin;
     const minGuests = isDorm ? Math.max(physicalMin, dormMin) : physicalMin;
 
     let guestCount;
@@ -711,7 +711,7 @@ function setMountHtml(id, html) {
       return `<button type="button" class="browse-preview__ghost" data-refresh-stay-search data-preview-stop>Update search to reserve</button>`;
     }
     const dormNote = avail?.availability_status === 'dorm_min_guests'
-      ? ` · Min ${avail?.dorm_booking_minimum || 5} guests`
+      ? ` · Min ${avail?.dorm_booking_minimum || room.capacityMin || 1} guests`
       : '';
     return `<button disabled class="browse-preview__ghost">${st.label}${dormNote}</button>`;
   }
@@ -737,7 +737,7 @@ function setMountHtml(id, html) {
       ? `<p class="text-body-sm text-on-surface-variant mb-4">${peso(price.perNight)} / night · ${price.nights} night(s)</p>`
       : '<div class="mb-4"></div>';
     const dormNotice = avail?.availability_status === 'dorm_min_guests'
-      ? `<p class="text-body-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">Minimum ${avail?.dorm_booking_minimum || 5} guests required to book this dorm.</p>`
+      ? `<p class="text-body-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">Minimum ${avail?.dorm_booking_minimum || room.capacityMin || 1} guests required to book this dorm.</p>`
       : '';
     return `
       <article
@@ -889,10 +889,10 @@ function setMountHtml(id, html) {
             ? (isMultiRoomBrowse()
               ? (bookCount > 0
                 ? `Showing ${bookCount} room${bookCount === 1 ? '' : 's'} that can host part of your group of ${guests}. Add each room to your booking request.`
-                : `Showing ${availCount} dorm${availCount === 1 ? '' : 's'} — some need at least 5 guests per room.`)
+                : `Showing ${availCount} dorm${availCount === 1 ? '' : 's'} — some selections are below the room's configured minimum.`)
               : (bookCount > 0
                 ? `Showing ${availCount} room${availCount === 1 ? '' : 's'} for ${fmtStayDate(checkIn)} → ${fmtStayDate(checkOut)} (${bookCount} ready to book).`
-                : `Showing ${availCount} dorm${availCount === 1 ? '' : 's'} — increase guests to at least 5 to book.`))
+                : `Showing ${availCount} dorm${availCount === 1 ? '' : 's'} — increase guests to meet the room's configured minimum.`))
             : (isMultiRoomBrowse()
               ? `No rooms are open for these dates. Try different dates or adjust your group size.`
               : 'No rooms are open for these dates. Try different dates or guest count. For large groups, turn on “We need multiple rooms”.'),
@@ -1508,7 +1508,7 @@ function setMountHtml(id, html) {
     }
     if (previewBody) {
       const dorm = avail?.availability_status === 'dorm_min_guests'
-        ? `<p class="browse-preview__alert">Minimum ${avail?.dorm_booking_minimum || 5} guests required to book this dorm.</p>`
+        ? `<p class="browse-preview__alert">Minimum ${avail?.dorm_booking_minimum || room.capacityMin || 1} guests required to book this dorm.</p>`
         : '';
       const stay = price?.nights
         ? `<p class="browse-preview__lead">${peso(price.total)} estimated for ${price.nights} night(s) with your current search.</p>`
@@ -1525,14 +1525,6 @@ function setMountHtml(id, html) {
           ${highlightChipsHtml(highlights)}
         </section>
         ${detailBlockHtml('Policies', policies, { list: true })}
-        <section class="browse-preview__section">
-          <h4>Good to know</h4>
-          <ul class="browse-preview__list">
-            <li>Located in ${escapeHtml(room.building)}</li>
-            <li>Sleeps ${room.capacityMin}–${room.capacityMax} guests</li>
-            <li>Photos are representative — layout may vary by room</li>
-          </ul>
-        </section>
       `;
     }
     if (previewActions) {

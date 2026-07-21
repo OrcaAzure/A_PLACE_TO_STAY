@@ -264,7 +264,7 @@ export async function initGuestRoomBookingModal({
       selectedRoom = null;
       roomInput.value = '';
       submitBtn.disabled = true;
-      errorEl.textContent = dormMinGuestsNotice(Number(document.getElementById('booking-guests').value) || 1)
+      errorEl.textContent = dormMinGuestsNotice(Number(document.getElementById('booking-guests').value) || 1, room)
         || 'This room cannot be booked for the current guest count.';
       errorEl.classList.remove('hidden');
       document.getElementById('booking-summary')?.classList.add('hidden');
@@ -426,7 +426,7 @@ export async function initGuestRoomBookingModal({
       const perPerson = dormPriceLabel(r, guests, r.nights);
       const dormMin = r.availability_status === 'dorm_min_guests';
       const capLabel = r.room_type === 'Dorm'
-        ? `Min ${r.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} pax to book · up to ${r.capacity_max} guests`
+        ? `Min ${r.dorm_booking_minimum || r.capacity_min || DORM_MIN_GUEST_COUNT} pax to book · up to ${r.capacity_max} guests`
         : `${r.capacity_min}–${r.capacity_max} guests`;
       const img = roomPreviewImage(r);
       return `
@@ -438,7 +438,7 @@ export async function initGuestRoomBookingModal({
             <p class="font-label-md font-bold text-body-sm">${r.building_name} ${r.room_number}</p>
             <p class="text-[11px] text-on-surface-variant">${r.room_type_label || r.room_type} · ${capLabel}</p>
             ${perPerson ? `<p class="text-[11px] text-on-surface-variant mt-0.5">${perPerson}</p>` : ''}
-            ${dormMin ? `<p class="text-[11px] text-amber-800 mt-1 font-medium">Minimum ${r.dorm_booking_minimum || DORM_MIN_GUEST_COUNT} guests required to book.</p>` : ''}
+            ${dormMin ? `<p class="text-[11px] text-amber-800 mt-1 font-medium">Minimum ${r.dorm_booking_minimum || r.capacity_min || DORM_MIN_GUEST_COUNT} guests required to book.</p>` : ''}
           </div>
           <div class="text-right shrink-0">
             <p class="font-bold text-primary text-body-sm">${r.estimated_total != null ? peso(r.estimated_total) : '—'}</p>
@@ -564,8 +564,9 @@ export async function initGuestRoomBookingModal({
       errorEl.classList.remove('hidden');
       return;
     }
-    if (selectedRoom?.room_type === 'Dorm' && guestCount < DORM_MIN_GUEST_COUNT) {
-      errorEl.textContent = dormMinGuestsNotice(guestCount);
+    const selectedMinimum = Number(selectedRoom?.capacity_min) || 1;
+    if (selectedRoom?.room_type === 'Dorm' && guestCount < selectedMinimum) {
+      errorEl.textContent = dormMinGuestsNotice(guestCount, selectedRoom);
       errorEl.classList.remove('hidden');
       return;
     }

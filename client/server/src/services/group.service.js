@@ -40,6 +40,18 @@ const groupSelect = `
   JOIN users u ON rg.user_id = u.id
 `;
 
+export function deriveGroupRoomTotal(row, meals = [], fees = []) {
+  const mealsTotal = meals.reduce((sum, meal) => sum + Number(meal.subtotal || 0), 0);
+  const feesTotal = fees.reduce(
+    (sum, fee) => sum + (Number(fee.amount || 0) * Math.max(1, Number(fee.quantity) || 1)),
+    0
+  );
+  return Math.max(
+    0,
+    Math.round((Number(row?.total_amount || 0) - mealsTotal - feesTotal) * 100) / 100
+  );
+}
+
 function notifyGuestGroupSelfModified({ previous, current, wasApproved, message }) {
   void sendGuestGroupSelfModifyEmail(
     {
@@ -130,12 +142,18 @@ async function enrichGroupBookings(groupId) {
     `${bookingSelect} WHERE bk.group_id = ? AND bk.deleted_at IS NULL ORDER BY bk.id`,
     [groupId]
   );
-  const bookings = await Promise.all(rows.map(async (row) => ({
-    ...row,
-    meals: await getBookingMeals(row.id),
-    fees: await getBookingFees(row.id),
-    invoice: await getInvoiceSnapshot(row.id),
-  })));
+  const bookings = await Promise.all(rows.map(async (row) => {
+    const meals = await getBookingMeals(row.id);
+    const fees = await getBookingFees(row.id);
+    const roomTotal = deriveGroupRoomTotal(row, meals, fees);
+    return {
+      ...row,
+      room_total: roomTotal,
+      meals,
+      fees,
+      invoice: await getInvoiceSnapshot(row.id),
+    };
+  }));
   return bookings;
 }
 

@@ -367,7 +367,8 @@ function renderGroupStayDetails(item) {
     const rows = item.bookings.map((b) => {
       const label = [`${b.building_name} ${b.room_number}`.trim(), b.room_type].filter(Boolean).join(' · ');
       const detail = b.guest_count != null ? `${b.guest_count} guest${b.guest_count === 1 ? '' : 's'}` : '';
-      const cost = b.total_amount != null ? formatMoney(b.total_amount) : '';
+      const lodgingTotal = b.room_total ?? b.total_amount;
+      const cost = lodgingTotal != null ? formatMoney(lodgingTotal) : '';
       return factRow(label || 'Room', [detail, cost].filter(Boolean).join(' · '));
     }).join('');
     assignedSection = renderSection('Assigned rooms', rows);

@@ -66,11 +66,17 @@ function createTransporter() {
   }
 
   const auth = { user: SMTP_USER, pass: SMTP_PASS };
+  const timeouts = {
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 20_000,
+  };
 
   if (isGmailHost()) {
     return nodemailer.createTransport({
       service: 'gmail',
       auth,
+      ...timeouts,
     });
   }
 
@@ -80,6 +86,7 @@ function createTransporter() {
     port,
     secure: port === 465,
     auth,
+    ...timeouts,
     ...(port === 587 ? { requireTLS: true } : {}),
   });
 }
@@ -236,6 +243,9 @@ function buildRoomStayDetailSections(booking, { estimate = false } = {}) {
     booking.room_type ? emailDetailItem('Room type', escapeHtml(booking.room_type)) : '',
     emailDetailItem('Check-in', escapeHtml(formatStayDate(booking.check_in))),
     emailDetailItem('Check-out', escapeHtml(formatStayDate(booking.check_out))),
+    booking.expected_arrival_time
+      ? emailDetailItem('Expected arrival', escapeHtml(`${formatStayDate(booking.check_in)} · ${formatTime12(booking.expected_arrival_time)}`))
+      : '',
     emailDetailItem('Length of stay', escapeHtml(nightsLabel)),
     emailDetailItem('Guests in room', escapeHtml(booking.guest_count ?? '—')),
     booking.season ? emailDetailItem('Season', escapeHtml(booking.season)) : '',
@@ -278,7 +288,8 @@ function buildGroupStayDetailSections(group, { estimate = false } = {}) {
   const roomRows = (group.bookings || []).map((b) => {
     const label = [`${b.building_name || ''} Room ${b.room_number || '?'}`.trim(), b.room_type].filter(Boolean).join(' · ');
     const guests = b.guest_count != null ? `${b.guest_count} guest${b.guest_count === 1 ? '' : 's'}` : '';
-    const cost = b.total_amount != null ? fmtPeso(b.total_amount) : '';
+    const lodgingTotal = b.room_total ?? b.total_amount;
+    const cost = lodgingTotal != null ? fmtPeso(lodgingTotal) : '';
     return emailDetailItem(label || 'Room', [guests, cost].filter(Boolean).join(' · '));
   }).filter(Boolean);
 
@@ -286,6 +297,9 @@ function buildGroupStayDetailSections(group, { estimate = false } = {}) {
     emailDetailItem('Group / organization', escapeHtml(group.group_name || '—')),
     emailDetailItem('Check-in', escapeHtml(formatStayDate(group.check_in))),
     emailDetailItem('Check-out', escapeHtml(formatStayDate(group.check_out))),
+    group.expected_arrival_time
+      ? emailDetailItem('Earliest arrival', escapeHtml(`${formatStayDate(group.check_in)} · ${formatTime12(group.expected_arrival_time)}`))
+      : '',
     emailDetailItem('Length of stay', escapeHtml(nightsLabel)),
     emailDetailItem('Total guests', escapeHtml(group.total_guests ?? '—')),
     group.rooms_requested != null ? emailDetailItem('Rooms requested', escapeHtml(String(group.rooms_requested))) : '',
@@ -339,10 +353,12 @@ export function getSupportEmail() {
   if (configured) return configured;
   const smtpUser = String(SMTP_USER || '').trim();
   if (smtpUser && !PLACEHOLDER_USERS.has(smtpUser.toLowerCase())) return smtpUser;
-  return 'facilities@apts.edu.ph';
+  return 'guestservices@apts.edu';
 }
 
-async function sendMail({ to, subject, html, text, replyTo }) {
+async function sendMail({
+  to, subject, html, text, replyTo, dedupeId = '', allowDuplicate = false,
+}) {
   const recipient = String(to || '').trim();
   const cleanSubject = emailSubject(subject);
   if (!recipient) {
@@ -351,10 +367,10 @@ async function sendMail({ to, subject, html, text, replyTo }) {
     return false;
   }
 
-  const dedupeKey = `${recipient.toLowerCase()}\0${cleanSubject.toLowerCase()}`;
+  const dedupeKey = `${recipient.toLowerCase()}\0${cleanSubject.toLowerCase()}\0${String(dedupeId)}`;
   const now = Date.now();
   const lastSentAt = recentEmailSends.get(dedupeKey);
-  if (lastSentAt && now - lastSentAt < EMAIL_DEDUPE_MS) {
+  if (!allowDuplicate && lastSentAt && now - lastSentAt < EMAIL_DEDUPE_MS) {
     console.warn(`[email] Skipped duplicate send (${Math.round((now - lastSentAt) / 1000)}s): ${cleanSubject} → ${recipient}`);
     return false;
   }
@@ -861,7 +877,7 @@ export async function sendVenueBookingRequestReceivedEmail(user, booking, { batc
   });
 }
 
-export async function sendVenueInvoiceEmail(user, payment) {
+export async function sendVenueInvoiceEmail(user, payment, { allowDuplicate = false } = {}) {
   const name = user.full_name || user.guest_name || 'Guest';
   const venue = [payment.facility_category, payment.facility_name || payment.facility_room_code]
     .filter(Boolean)
@@ -879,7 +895,9 @@ export async function sendVenueInvoiceEmail(user, payment) {
 
   return sendMail({
     to: user.email || user.guest_email,
-    subject: 'Venue booking confirmed',
+    subject: `Venue invoice #${payment.id}`,
+    dedupeId: `venue-invoice:${payment.id}`,
+    allowDuplicate,
     html: `
       <h2>Venue Booking Confirmed</h2>
       <p>Hi ${escapeHtml(name)},</p>
@@ -902,7 +920,7 @@ export async function sendVenueInvoiceEmail(user, payment) {
   });
 }
 
-export async function sendRoomInvoiceEmail(user, payment) {
+export async function sendRoomInvoiceEmail(user, payment, { allowDuplicate = false } = {}) {
   const name = user.full_name || user.guest_name || 'Guest';
   const room = [payment.building_name, payment.room_number ? `Room ${payment.room_number}` : null]
     .filter(Boolean)
@@ -922,7 +940,9 @@ export async function sendRoomInvoiceEmail(user, payment) {
 
   return sendMail({
     to: user.email || user.guest_email,
-    subject: 'Housing invoice',
+    subject: `Housing invoice #${payment.id}`,
+    dedupeId: `room-invoice:${payment.id}`,
+    allowDuplicate,
     html: `
       <h2>Housing Invoice</h2>
       <p>Hi ${escapeHtml(name)},</p>
