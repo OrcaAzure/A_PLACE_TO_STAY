@@ -509,6 +509,16 @@ async function runRoomTypeVarcharMigration() {
   await pool.execute(`ALTER TABLE rates_rooms MODIFY item VARCHAR(120) NOT NULL`);
 }
 
+/** Admin-uploaded room preview photos (WebP paths in JSON array). */
+async function runRoomPreviewImagesColumn() {
+  if (!(await tableExists('rooms'))) return;
+  if (await columnExists('rooms', 'preview_images')) return;
+  await pool.execute(
+    `ALTER TABLE rooms ADD COLUMN preview_images JSON DEFAULT NULL AFTER policies`
+  );
+  console.log('[schema] Added rooms.preview_images for admin photo uploads');
+}
+
 export {
   upsertDeluxeRoomRates,
   runDeluxeRoomTypeMigration,
@@ -518,6 +528,7 @@ export {
   runSeasonSettingsMigration,
   runLodgingExtrasMigration,
   runRoomGuestCopyMigration,
+  runRoomPreviewImagesColumn,
   runRoomsDirtyStatusMigration,
   runRoomTypeVarcharMigration,
 };

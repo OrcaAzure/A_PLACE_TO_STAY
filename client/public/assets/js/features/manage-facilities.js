@@ -10,7 +10,10 @@ import {
   createRoom,
   updateRoom,
   deleteRoom,
+  uploadRoomImages,
+  deleteRoomImage,
 } from '/assets/js/services/api.js';
+import { roomGalleryImages } from '/assets/js/features/facility-display.js';
 import { animateModalOpen } from '/assets/js/layout/animations.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
 import { roomStatusLabel, roomStatusOptions, roomStatusMeta } from '/assets/js/features/room-status.js';
@@ -36,6 +39,9 @@ const ROOM_STATUSES = roomStatusOptions().map((opt) => ({
   tone: opt.tone,
 }));
 
+/** Max photos per room (must match server). */
+const MAX_ROOM_PHOTOS = 6;
+
 let initialized = false;
 let previouslyFocused = null;
 let dataChanged = false;
@@ -54,6 +60,7 @@ const state = {
   error: null,
   message: null,
   mobileForm: false,
+  uploadingImages: false,
 };
 
 function roomStatusBadge(status) {
@@ -358,6 +365,61 @@ function renderGuestCopyFields() {
     </div>`;
 }
 
+function roomPhotoPaths(room, { uploadedOnly = false } = {}) {
+  const uploaded = Array.isArray(room?.preview_images) ? room.preview_images.filter(Boolean) : [];
+  if (uploaded.length) return uploaded;
+  if (uploadedOnly || !room) return [];
+  return roomGalleryImages(room);
+}
+
+function photoFilename(src) {
+  return String(src || '').split('/').pop();
+}
+
+function renderRoomPhotosSection(room, { editable = false } = {}) {
+  const images = roomPhotoPaths(room, { uploadedOnly: editable });
+  const hasRoomId = Boolean(room?.id);
+  const readOnly = isReadOnlyRole();
+  const canManage = editable && hasRoomId && !readOnly;
+  const atLimit = images.length >= MAX_ROOM_PHOTOS;
+
+  const thumbs = images.length
+    ? `<div class="mf-photo-grid" role="list">${images.map((src) => `
+        <figure class="mf-photo-thumb" role="listitem">
+          <img src="${escapeHtml(src)}" alt="Room photo" loading="lazy" decoding="async" />
+          ${canManage ? `
+            <button type="button" class="mf-photo-remove" data-room-photo-delete="${escapeHtml(photoFilename(src))}" aria-label="Remove photo">
+              <span class="material-symbols-outlined">close</span>
+            </button>` : ''}
+        </figure>`).join('')}</div>`
+    : `<p class="mf-photo-empty">No photos yet. Guests will see a placeholder until you add one.</p>`;
+
+  const uploadBlock = canManage ? `
+    <div class="mf-photo-upload">
+      <label class="mf-photo-upload-btn${state.uploadingImages || atLimit ? ' is-disabled' : ''}">
+        <input
+          id="mf-room-photos-input"
+          type="file"
+          accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+          multiple
+          class="sr-only"
+          ${state.uploadingImages || atLimit ? 'disabled' : ''}
+        />
+        <span class="material-symbols-outlined">upload</span>
+        ${state.uploadingImages ? 'Uploading…' : 'Upload JPG or PNG'}
+      </label>
+      <p class="mf-field-hint">Photos are converted to WebP automatically. Up to ${MAX_ROOM_PHOTOS} per room.</p>
+    </div>` : (!hasRoomId && editable ? `
+    <p class="mf-field-hint">Save the room first, then you can upload photos.</p>` : '');
+
+  return `
+    <div class="admin-crud-field span-full mf-photo-section">
+      <label class="mf-field-label">Room photos</label>
+      ${thumbs}
+      ${uploadBlock}
+    </div>`;
+}
+
 function renderFormFields() {
   const singleBuilding = state.buildings.length <= 1;
   const bldgOpts = state.buildings.map((b) =>
@@ -386,6 +448,7 @@ function renderFormFields() {
       ${renderCapacityFields()}
       ${renderStatusPills()}
       ${renderGuestCopyFields()}
+      ${state.mode === 'edit' || state.mode === 'create' ? renderRoomPhotosSection(getSelected(), { editable: true }) : ''}
     </form>`;
 }
 
@@ -408,6 +471,7 @@ function renderDetailView(r) {
 
   return `
     <div class="mf-detail">
+      ${renderRoomPhotosSection(r)}
       <div class="mf-detail-head">
         <div>
           <h3 class="mf-detail-title">${escapeHtml(r.room_number)}</h3>
@@ -826,6 +890,67 @@ function cancelForm() {
   render();
 }
 
+function replaceRoomInState(room) {
+  const idx = state.rooms.findIndex((r) => String(r.id) === String(room.id));
+  if (idx >= 0) state.rooms[idx] = room;
+  filterRooms();
+}
+
+async function handlePhotoUpload(fileList) {
+  const room = getSelected();
+  if (!room?.id || isReadOnlyRole() || state.uploadingImages) return;
+
+  const files = [...fileList].filter((f) => f && f.type?.startsWith('image/'));
+  if (!files.length) return;
+
+  state.uploadingImages = true;
+  state.error = null;
+  state.message = null;
+  render();
+
+  try {
+    const result = await uploadRoomImages(room.id, files);
+    if (result?.room) replaceRoomInState(result.room);
+    state.message = result?.message || 'Photos uploaded.';
+    dataChanged = true;
+  } catch (err) {
+    state.error = err.message || 'Could not upload photos.';
+  } finally {
+    state.uploadingImages = false;
+    render();
+  }
+}
+
+async function handlePhotoDelete(filename) {
+  const room = getSelected();
+  if (!room?.id || !filename || isReadOnlyRole() || state.uploadingImages) return;
+
+  const confirmed = await confirmModal({
+    title: 'Remove photo',
+    message: 'Remove this photo from the room gallery?',
+    confirmLabel: 'Remove photo',
+    danger: true,
+    elevate: true,
+  });
+  if (!confirmed) return;
+
+  state.uploadingImages = true;
+  state.error = null;
+  render();
+
+  try {
+    const result = await deleteRoomImage(room.id, filename);
+    if (result?.room) replaceRoomInState(result.room);
+    state.message = result?.message || 'Photo removed.';
+    dataChanged = true;
+  } catch (err) {
+    state.error = err.message || 'Could not remove photo.';
+  } finally {
+    state.uploadingImages = false;
+    render();
+  }
+}
+
 async function saveForm() {
   const payload = readFormForSave();
   const validationError = validateForm(payload);
@@ -853,15 +978,26 @@ async function saveForm() {
 
   try {
     if (state.mode === 'create') {
-      await createRoom(payload);
-      state.message = `Room ${payload.room_number} added.`;
+      const result = await createRoom(payload);
+      state.message = `Room ${payload.room_number} added. You can upload photos below.`;
+      if (result?.room?.id) {
+        state.selectedId = result.room.id;
+        state.mode = 'edit';
+        state.form = roomToForm(result.room);
+      } else {
+        state.mode = 'view';
+      }
     } else if (state.selectedId) {
       await updateRoom(state.selectedId, payload);
       state.message = `Room ${payload.room_number} updated.`;
+      state.mode = 'view';
     }
-    state.mode = 'view';
     dataChanged = true;
     await loadData();
+    if (state.mode === 'edit' && state.selectedId) {
+      const match = getSelected();
+      if (match) state.form = roomToForm(match);
+    }
   } catch (err) {
     state.error = err.message || 'Could not save room. Please try again.';
     render();
@@ -928,6 +1064,11 @@ function handleClick(e) {
   if (e.target.closest('#manage-facilities-save')) { saveForm(); return; }
   if (e.target.closest('#manage-facilities-cancel') || e.target.closest('#manage-facilities-back')) { cancelForm(); return; }
   if (e.target.closest('#manage-facilities-delete')) { removeRoom(); return; }
+  const photoDelete = e.target.closest('[data-room-photo-delete]');
+  if (photoDelete) {
+    handlePhotoDelete(photoDelete.getAttribute('data-room-photo-delete'));
+    return;
+  }
   if (e.target.closest('#manage-facilities-footer-close')) { closeManageFacilitiesModal(); }
 }
 
@@ -938,6 +1079,11 @@ function handleChange(e) {
   }
   if (e.target.id === 'mf-building') {
     state.form.building_id = e.target.value;
+    return;
+  }
+  if (e.target.id === 'mf-room-photos-input') {
+    handlePhotoUpload(e.target.files);
+    e.target.value = '';
   }
 }
 

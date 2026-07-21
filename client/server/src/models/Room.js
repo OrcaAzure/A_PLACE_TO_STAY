@@ -1,4 +1,5 @@
 import { formatRoomTypeLabel } from '../constants/rooms.js';
+import { parsePreviewImages } from '../services/roomImage.service.js';
 
 export default class Room {
   constructor(data) {
@@ -16,6 +17,7 @@ export default class Room {
     this.description   = data.description ?? null;
     this.inclusions    = data.inclusions ?? null;
     this.policies      = data.policies ?? null;
+    this.preview_images = parsePreviewImages(data.preview_images);
     // Legacy column — prefer inclusions
     this.highlights    = data.highlights ?? null;
     this.created_at    = data.created_at;

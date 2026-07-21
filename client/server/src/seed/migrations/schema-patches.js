@@ -8,6 +8,7 @@ import {
   runSeasonSettingsMigration,
   runLodgingExtrasMigration,
   runRoomGuestCopyMigration,
+  runRoomPreviewImagesColumn,
   runRoomsDirtyStatusMigration,
   runRoomTypeVarcharMigration,
 } from './rooms.js';
@@ -94,6 +95,7 @@ export async function runSchemaPatches() {
   await safeRun('season settings migration', runSeasonSettingsMigration);
   await safeRun('lodging extras migration', runLodgingExtrasMigration);
   await safeRun('room guest copy migration', runRoomGuestCopyMigration);
+  await safeRun('room preview images column', runRoomPreviewImagesColumn);
   // 13. Room type VARCHAR → VIP
   await safeRun('room type column migration', runRoomTypeVarcharMigration);
   await safeRun('VIP room migration', runVipRoomMigration);
