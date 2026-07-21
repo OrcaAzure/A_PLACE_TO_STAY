@@ -352,7 +352,10 @@ const catalogCache = { venues: [], meals: [], services: [] };
 
 function catalogOpenError(err) {
   console.error('[facility-catalog] Could not open form:', err);
-  window.alert(err?.message || 'Could not open the price form. Refresh the page and try again.');
+  void showAlertModal(
+    'Could not open form',
+    err?.message || 'Could not open the price form. Refresh the page and try again.'
+  );
 }
 
 async function ensureFacilityCatalogModalMounted() {

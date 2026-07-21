@@ -1,5 +1,9 @@
 import { pool } from '../../config/db.js';
-import { ensureInvoiceForBooking, ensureInvoiceForFacilityBooking } from '../../services/payment.service.js';
+import {
+  ensureInvoiceForBooking,
+  ensureInvoiceForFacilityBooking,
+  ensureInvoicesForGroup,
+} from '../../services/payment.service.js';
 import { tableExists, columnExists } from '../helpers.js';
 
 /** Early payments table create (must run before legacy renames). */
@@ -113,19 +117,6 @@ export async function runPaymentsEvolution() {
     console.warn('[schema] payments room uniqueness skipped:', err.message);
   }
 
-  try {
-    const [missing] = await pool.execute(
-      `SELECT b.id FROM bookings_rooms b
-       LEFT JOIN payments p ON p.bookings_room_id = b.id
-       WHERE b.status = 'Approved' AND b.total_amount > 0 AND p.id IS NULL`
-    );
-    for (const row of missing) {
-      await ensureInvoiceForBooking(row.id);
-    }
-  } catch (err) {
-    console.warn('[schema] invoice backfill skipped:', err.message);
-  }
-
   if (!(await columnExists('payments', 'bookings_facility_id'))) {
     try {
       await pool.execute('ALTER TABLE payments MODIFY bookings_room_id INT NULL');
@@ -141,6 +132,99 @@ export async function runPaymentsEvolution() {
     } catch (err) {
       console.warn('[schema] payments.bookings_facility_id skipped:', err.message);
     }
+  }
+
+  if (!(await columnExists('payments', 'reservation_group_id'))) {
+    try {
+      await pool.execute(
+        'ALTER TABLE payments ADD COLUMN reservation_group_id INT NULL AFTER bookings_room_id'
+      );
+    } catch (err) {
+      console.warn('[schema] payments.reservation_group_id skipped:', err.message);
+    }
+  }
+  try {
+    await pool.execute('ALTER TABLE payments DROP CHECK chk_payment_booking_ref');
+  } catch {
+    /* old ownership check may not exist */
+  }
+  try {
+    const [constraints] = await pool.execute(
+      `SELECT 1 FROM information_schema.table_constraints
+       WHERE table_schema = DATABASE() AND table_name = 'payments'
+         AND constraint_name = 'fk_payments_reservation_group' LIMIT 1`
+    );
+    if (!constraints.length) {
+      await pool.execute(
+        `ALTER TABLE payments
+         ADD CONSTRAINT fk_payments_reservation_group
+         FOREIGN KEY (reservation_group_id) REFERENCES reservation_groups(id)
+         ON DELETE RESTRICT ON UPDATE RESTRICT`
+      );
+    }
+  } catch (err) {
+    console.warn('[schema] payments group foreign key skipped:', err.message);
+  }
+
+  try {
+    const [groups] = await pool.execute(
+      `SELECT DISTINCT group_id AS id
+       FROM bookings_rooms
+       WHERE group_id IS NOT NULL AND status = 'Approved' AND deleted_at IS NULL`
+    );
+    for (const group of groups) {
+      await ensureInvoicesForGroup(group.id);
+    }
+  } catch (err) {
+    console.warn('[schema] group invoice consolidation skipped:', err.message);
+  }
+
+  try {
+    const [indexes] = await pool.execute(
+      `SELECT 1 FROM information_schema.statistics
+       WHERE table_schema = DATABASE() AND table_name = 'payments'
+         AND index_name = 'uq_payment_group' LIMIT 1`
+    );
+    if (!indexes.length) {
+      await pool.execute('ALTER TABLE payments ADD UNIQUE KEY uq_payment_group (reservation_group_id)');
+    }
+  } catch (err) {
+    console.warn('[schema] payments group uniqueness skipped:', err.message);
+  }
+  try {
+    await pool.execute(
+      `ALTER TABLE payments ADD CONSTRAINT chk_payment_booking_ref CHECK (
+         (bookings_room_id IS NOT NULL AND reservation_group_id IS NULL AND bookings_facility_id IS NULL) OR
+         (bookings_room_id IS NULL AND reservation_group_id IS NOT NULL AND bookings_facility_id IS NULL) OR
+         (bookings_room_id IS NULL AND reservation_group_id IS NULL AND bookings_facility_id IS NOT NULL)
+       )`
+    );
+  } catch {
+    /* ownership check may already be correct */
+  }
+
+  try {
+    const [missingGroups] = await pool.execute(
+      `SELECT DISTINCT b.group_id AS id
+       FROM bookings_rooms b
+       LEFT JOIN payments p ON p.reservation_group_id = b.group_id
+       WHERE b.group_id IS NOT NULL AND b.status = 'Approved'
+         AND b.deleted_at IS NULL AND b.total_amount > 0 AND p.id IS NULL`
+    );
+    for (const group of missingGroups) {
+      await ensureInvoicesForGroup(group.id);
+    }
+    const [missingRooms] = await pool.execute(
+      `SELECT b.id FROM bookings_rooms b
+       LEFT JOIN payments p ON p.bookings_room_id = b.id
+       WHERE b.group_id IS NULL AND b.status = 'Approved'
+         AND b.deleted_at IS NULL AND b.total_amount > 0 AND p.id IS NULL`
+    );
+    for (const row of missingRooms) {
+      await ensureInvoiceForBooking(row.id);
+    }
+  } catch (err) {
+    console.warn('[schema] invoice backfill skipped:', err.message);
   }
 
   try {

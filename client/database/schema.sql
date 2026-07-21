@@ -505,6 +505,7 @@ CREATE TABLE IF NOT EXISTS bookings_facilities (
 CREATE TABLE IF NOT EXISTS payments (
     id                    INT AUTO_INCREMENT PRIMARY KEY,
     bookings_room_id      INT NULL,
+    reservation_group_id  INT NULL,
     bookings_facility_id  INT NULL,
     subtotal              DECIMAL(10,2) DEFAULT NULL,
     subtotal_overridden   TINYINT(1) NOT NULL DEFAULT 0,
@@ -544,14 +545,21 @@ CREATE TABLE IF NOT EXISTS payments (
         ON DELETE RESTRICT
         ON UPDATE RESTRICT,
 
+    CONSTRAINT fk_payments_reservation_group
+        FOREIGN KEY (reservation_group_id) REFERENCES reservation_groups(id)
+        ON DELETE RESTRICT
+        ON UPDATE RESTRICT,
+
     CONSTRAINT chk_payment_booking_ref CHECK (
-        (bookings_room_id IS NOT NULL AND bookings_facility_id IS NULL) OR
-        (bookings_room_id IS NULL AND bookings_facility_id IS NOT NULL)
+        (bookings_room_id IS NOT NULL AND reservation_group_id IS NULL AND bookings_facility_id IS NULL) OR
+        (bookings_room_id IS NULL AND reservation_group_id IS NOT NULL AND bookings_facility_id IS NULL) OR
+        (bookings_room_id IS NULL AND reservation_group_id IS NULL AND bookings_facility_id IS NOT NULL)
     ),
 
     CONSTRAINT chk_amount CHECK (amount >= 0),
 
     UNIQUE KEY uq_payment_room (bookings_room_id),
+    UNIQUE KEY uq_payment_group (reservation_group_id),
     UNIQUE KEY uq_payment_facility (bookings_facility_id)
 );
 
@@ -878,7 +886,7 @@ ON DUPLICATE KEY UPDATE rate = VALUES(rate);
 
 CREATE TABLE IF NOT EXISTS system_settings (
     setting_key   VARCHAR(64) PRIMARY KEY,
-    setting_value VARCHAR(255) NOT NULL,
+    setting_value TEXT NOT NULL,
     updated_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 

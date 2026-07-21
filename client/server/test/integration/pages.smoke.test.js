@@ -77,6 +77,14 @@ describe('Pages smoke (public)', () => {
     const terms = await agent.get('/legal/terms.html');
     assert.equal(terms.status, 200);
     assert.match(terms.text, /Terms of Service/i);
+
+    const policies = await agent.get('/legal/policies-guidelines.html');
+    assert.equal(policies.status, 200);
+    assert.match(policies.text, /Policies &amp; Guidelines/i);
+
+    const contacts = await agent.get('/contacts.html');
+    assert.equal(contacts.status, 200);
+    assert.match(contacts.text, /Need help\?/i);
   });
 
   it('GET guest footer has legal links (no coming soon)', async () => {
@@ -84,6 +92,8 @@ describe('Pages smoke (public)', () => {
     assert.equal(res.status, 200);
     assert.match(res.text, /\/legal\/privacy\.html/);
     assert.match(res.text, /\/legal\/terms\.html/);
+    assert.match(res.text, /\/legal\/policies-guidelines\.html/);
+    assert.match(res.text, /\/contacts\.html/);
     assert.doesNotMatch(res.text, /coming soon/i);
   });
 

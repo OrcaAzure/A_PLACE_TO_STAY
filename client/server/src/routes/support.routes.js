@@ -4,7 +4,7 @@ import { requireAuth } from '../middleware/auth.middleware.js';
 
 const router = Router();
 
-router.get('/contact', requireAuth, getSupportContact);
+router.get('/contact', getSupportContact);
 router.post('/message', requireAuth, sendSupportMessage);
 
 export default router;

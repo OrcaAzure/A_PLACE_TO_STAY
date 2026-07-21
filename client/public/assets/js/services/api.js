@@ -68,7 +68,14 @@ export async function getProfile(options = {}) {
 }
 
 export async function getSupportContact() {
-  return apiRequest('/support/contact');
+  return apiRequest('/support/contact', { skipAuthRedirect: true });
+}
+
+export async function updateSupportContact(payload) {
+  return apiRequest('/settings/contact', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
 }
 
 export async function sendSupportMessage(payload) {
@@ -106,6 +113,17 @@ export async function getFiscalYear() {
 
 export async function updateFiscalYearSettings(payload) {
   return apiRequest('/settings/fiscal-year', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getPolicies() {
+  return apiRequest('/settings/policies', { skipAuthRedirect: true });
+}
+
+export async function updatePolicies(payload) {
+  return apiRequest('/settings/policies', {
     method: 'PATCH',
     body: JSON.stringify(payload),
   });
@@ -590,6 +608,7 @@ export function normalizeManageGroupRequest(group) {
     fees: (group.fees || []).map((f) => ({
       fee_name: f.fee_name,
       amount: f.amount != null ? Number(f.amount) : 0,
+      quantity: Math.max(1, Number(f.quantity) || 1),
     })),
     assignedBookings: (group.bookings || []).map((b) => ({
       id: b.id,

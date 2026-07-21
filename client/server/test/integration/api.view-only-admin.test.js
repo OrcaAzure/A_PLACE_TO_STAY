@@ -44,6 +44,21 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
     assert.equal(res.status, 200);
   });
 
+  it('GET /api/settings/policies is publicly readable', async () => {
+    const res = await api().get('/api/settings/policies');
+    assert.equal(res.status, 200);
+    assert.match(res.body.rooms, /Reservation and Deposit Guidelines/);
+    assert.match(res.body.venues, /Facility Setup, Cleanliness, and Restrictions/);
+  });
+
+  it('GET /api/support/contact is publicly readable', async () => {
+    const res = await api().get('/api/support/contact');
+    assert.equal(res.status, 200);
+    assert.ok(res.body.email);
+    assert.ok(res.body.telephone);
+    assert.ok(res.body.mobile);
+  });
+
   it('GET /api/users/guest-access/activity denies View-Only Admin', async () => {
     const agent = api();
     await loginAs(agent, VIEWER_EMAIL);
@@ -81,6 +96,8 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
     const cases = [
       ['post', '/api/users', { full_name: 'Blocked', email: 'blocked@example.org', role: 'Guest' }],
       ['patch', '/api/settings/fiscal-year', { booking_advance_months: 6 }],
+      ['patch', '/api/settings/policies', { rooms: 'Blocked', venues: 'Blocked' }],
+      ['patch', '/api/settings/contact', { telephone: 'Blocked', mobile: 'Blocked' }],
       ['put', '/api/catalog/room-rates', { rates: [] }],
       ['post', '/api/facilities', { name: 'Blocked Facility' }],
       ['delete', '/api/bookings/1', null],
@@ -102,6 +119,31 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
     await loginAs(agent, 'admin@aptspace.com');
     const res = await agent.patch('/api/settings/fiscal-year').send({ booking_advance_months: 12 });
     assert.notEqual(res.status, 403, 'Super Admin should not be blocked by view-only guards');
+  });
+
+  it('Super Admin can update the public contact person and phone numbers', async () => {
+    const original = await api().get('/api/support/contact');
+    const agent = api();
+    await loginAs(agent, 'admin@aptspace.com');
+    try {
+      const updated = await agent.patch('/api/settings/contact').send({
+        name: 'Test Guest Services Contact',
+        telephone: '(6374) 555-0100 Ext. 9',
+        mobile: '0999-555-0100',
+      });
+      assert.equal(updated.status, 200);
+      const publicContact = await api().get('/api/support/contact');
+      assert.equal(publicContact.body.telephone, '(6374) 555-0100 Ext. 9');
+      assert.equal(publicContact.body.mobile, '0999-555-0100');
+      assert.equal(publicContact.body.name, 'Test Guest Services Contact');
+      assert.equal(publicContact.body.email, original.body.email);
+    } finally {
+      await agent.patch('/api/settings/contact').send({
+        name: original.body.name,
+        telephone: original.body.telephone,
+        mobile: original.body.mobile,
+      });
+    }
   });
 
   it('Super Admin retains Guest Access API access', async () => {

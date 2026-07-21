@@ -343,9 +343,14 @@ function syncClearPaidButton() {
 async function handleClearInvoice(id, { closeModal = false, feedbackEl } = {}) {
   const payment = state.payments.find((p) => String(p.id) === String(id));
   const guest = payment?.guest_name || 'this guest';
-  if (!window.confirm(`Delete paid record #${id} for ${guest}?\n\nThis moves the billing record to the recycle bin. The reservation stays on file.`)) {
-    return;
-  }
+  const confirmed = await confirmModal({
+    title: 'Move paid record to recycle bin?',
+    message: `Delete paid record #${escapeHtml(String(id))} for <strong>${escapeHtml(guest)}</strong>? The reservation stays on file and the billing record can be restored later.`,
+    confirmLabel: 'Move to recycle bin',
+    danger: true,
+    elevate: closeModal,
+  });
+  if (!confirmed) return false;
 
   const targetFeedback = feedbackEl || document.getElementById('payments-feedback');
   await withBillingAction({
@@ -358,14 +363,19 @@ async function handleClearInvoice(id, { closeModal = false, feedbackEl } = {}) {
       showFeedback(targetFeedback, result.message || 'Paid record moved to recycle bin.', 'ok');
     },
   });
+  return true;
 }
 
 async function handleClearAllPaid() {
   const paid = state.payments.filter((p) => p.status === 'Paid');
   if (!paid.length) return;
-  if (!window.confirm(`Delete all ${paid.length} paid record${paid.length === 1 ? '' : 's'} from billing?\n\nThey move to the recycle bin. Reservations are not deleted.`)) {
-    return;
-  }
+  const confirmed = await confirmModal({
+    title: 'Clear paid billing records?',
+    message: `Move all <strong>${paid.length}</strong> paid record${paid.length === 1 ? '' : 's'} to the recycle bin? Reservations will not be deleted.`,
+    confirmLabel: 'Move all to recycle bin',
+    danger: true,
+  });
+  if (!confirmed) return;
 
   const feedback = document.getElementById('payments-feedback');
   const clearBtn = document.getElementById('billing-clear-paid');
@@ -732,7 +742,11 @@ function bindBillingFeeEditorEvents(p, detailEl, feeEditor) {
     try {
       await updateBooking(p.booking_id, { fees: feeEditor.fees });
       await reload({ keepSelection: true, keepModalOpen: true });
-      showFeedback(detailFeedback, 'Additional fees saved. Invoice subtotal updated.', 'ok');
+      showFeedback(
+        document.getElementById('billing-detail-feedback'),
+        'Additional fees saved. Invoice subtotal updated.',
+        'ok'
+      );
       window.dispatchEvent(new CustomEvent('booking:updated'));
     } catch (err) {
       showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
@@ -788,9 +802,9 @@ function syncRecordPaymentUi(detailEl, p) {
     : defaultTxAmount(fresh, txType);
   const isWaived = totalDue <= 0 && txType !== 'Refund';
   const method = getPayMethodSelect(detailEl)?.value || txForm?.querySelector('[name="tx_method"]')?.value || '';
-  const displayAmount = txType === 'Refund'
-    ? paymentSummary(fresh).credit_balance
-    : (Number.isFinite(txAmount) && txAmount > 0 ? txAmount : defaultTxAmount(fresh, txType));
+  const displayAmount = Number.isFinite(txAmount) && txAmount > 0
+    ? txAmount
+    : defaultTxAmount(fresh, txType);
 
   const summaryEl = detailEl.querySelector('[data-record-summary]');
   if (summaryEl) summaryEl.innerHTML = recordSummaryHtml(fresh, displayAmount, method, txType);
@@ -975,6 +989,64 @@ function chargeLines(p) {
 
   if (isVenueInvoice(p)) {
     return venueChargeLines(p);
+  }
+
+  const groupRooms = Array.isArray(p.group_rooms) ? p.group_rooms : [];
+  if (groupRooms.length) {
+    const lines = [];
+    groupRooms.forEach((room) => {
+      const meals = (room.meals || []).filter((meal) => Number(meal.quantity) > 0);
+      const fees = aggregateFeeLines(room.fees || []);
+      const roomMealsTotal = meals.reduce((sum, meal) => sum + Number(meal.subtotal || 0), 0);
+      const roomFeesTotal = fees.reduce(
+        (sum, fee) => sum + (Number(fee.amount || 0) * Math.max(1, Number(fee.quantity) || 1)),
+        0
+      );
+      const lodgingTotal = Number(room.room_total ?? Math.max(
+        0,
+        Number(room.total_amount || 0) - roomMealsTotal - roomFeesTotal
+      ));
+      const guests = Number(room.guest_count || 1);
+      lines.push({
+        icon: 'king_bed',
+        label: `${roomLabel(room)} lodging`,
+        detail: `${guests} guest${guests === 1 ? '' : 's'} · ${room.nights || stayNights(room)} night${Number(room.nights || stayNights(room)) === 1 ? '' : 's'}${room.occupancy_item ? ` · ${room.occupancy_item}` : ''}`,
+        amount: lodgingTotal,
+      });
+      meals.forEach((meal) => {
+        lines.push({
+          icon: 'restaurant',
+          label: `Group meals · ${meal.meal_type}`,
+          detail: `${meal.quantity} serving${Number(meal.quantity) === 1 ? '' : 's'} @ ${fmt(meal.unit_price)}`,
+          amount: Number(meal.subtotal || 0),
+        });
+      });
+      fees.forEach((fee) => {
+        const quantity = Math.max(1, Number(fee.quantity) || 1);
+        const unit = Number(fee.amount || 0);
+        lines.push({
+          icon: 'room_service',
+          label: `Group additional fee · ${formatFeeLineLabel(fee)}`,
+          detail: quantity > 1 ? `${quantity} × ${fmt(unit)}` : 'Add-on',
+          amount: unit * quantity,
+        });
+      });
+    });
+    const invoiceSubtotal = Number(p.subtotal ?? groupRooms.reduce(
+      (sum, room) => sum + Number(room.total_amount || 0),
+      0
+    ));
+    const lineTotal = lines.reduce((sum, line) => sum + Number(line.amount || 0), 0);
+    const adjustment = Math.round((invoiceSubtotal - lineTotal) * 100) / 100;
+    if (Math.abs(adjustment) >= 0.01) {
+      lines.push({
+        icon: 'edit_note',
+        label: 'Admin subtotal adjustment',
+        detail: 'Reconciles itemized charges with the saved invoice subtotal',
+        amount: adjustment,
+      });
+    }
+    return { lines, bookingTotal: invoiceSubtotal };
   }
 
   const meals = (p.meals || []).filter((m) => Number(m.quantity) > 0);
@@ -1194,18 +1266,30 @@ function renderVenueStayMetaChips(p) {
 function renderRoomDetailsCard(p, parsedNotes) {
   const notes = parsedNotes ?? parseBookingNotes(p.notes);
   const nights = stayNights(p);
-  const mealsSummary = (p.meals || [])
+  const groupRooms = Array.isArray(p.group_rooms) ? p.group_rooms : [];
+  const allMeals = groupRooms.length
+    ? groupRooms.flatMap((room) => room.meals || [])
+    : (p.meals || []);
+  const mealsSummary = allMeals
     .filter((m) => Number(m.quantity) > 0)
     .map((m) => `${m.meal_type} × ${m.quantity}`)
     .join(', ');
+  const roomDetails = groupRooms.length
+    ? groupRooms.map((room, index) => renderDetailItem(
+      `Room ${index + 1}`,
+      `${roomLabel(room)} · ${Number(room.guest_count || 1)} guest${Number(room.guest_count || 1) === 1 ? '' : 's'} · ${fmt(room.room_total)} lodging`,
+      { wide: true }
+    )).join('')
+    : `
+        ${renderDetailItem('Guests', `${p.guest_count || 1} in room`)}
+        ${renderDetailItem('Room', roomLabel(p))}`;
 
   return `
     <div class="billing-venue-details">
       <div class="billing-venue-details__grid billing-venue-details__grid--unified">
         ${renderDetailItem('Stay', formatDateRange(p.check_in, p.check_out))}
         ${renderDetailItem('Nights', `${nights} night${nights === 1 ? '' : 's'}`)}
-        ${renderDetailItem('Guests', `${p.guest_count || 1} in room`)}
-        ${renderDetailItem('Room', roomLabel(p))}
+        ${roomDetails}
         ${renderDetailItem('Season', p.season)}
         ${renderDetailItem('Group', p.group_name)}
         ${renderDetailItem('Phone', p.contact_phone)}
@@ -1219,8 +1303,10 @@ function renderRoomDetailsCard(p, parsedNotes) {
         ${notes.guestNotes ? renderDetailItem('Booking notes', notes.guestNotes, { wide: true, multiline: true }) : ''}
       </div>
       <div class="billing-venue-details__footer">
-        <span class="billing-venue-details__ref">Booking ref #${escapeHtml(String(p.booking_id))}</span>
-        <span class="billing-venue-details__type">Room stay</span>
+        <span class="billing-venue-details__ref">${p.group_id
+          ? `Group reservation #${escapeHtml(String(p.group_id))}`
+          : `Booking ref #${escapeHtml(String(p.booking_id))}`}</span>
+        <span class="billing-venue-details__type">${p.group_id ? 'Group stay' : 'Room stay'}</span>
       </div>
     </div>`;
 }
@@ -1394,7 +1480,7 @@ function renderRoomStayEditForm(p) {
   const parsedNotes = parseBookingNotes(p.notes);
   const guestNotes = parsedNotes.guestNotes || '';
   return `
-    <form class="billing-res-edit-form hidden" data-res-edit-form="${p.id}" data-res-orig-kind="room" hidden>
+    <form class="billing-res-edit-form hidden" data-res-edit-form="${p.id}" data-res-orig-kind="room" novalidate hidden>
       <p class="billing-res-edit-form__intro">Update stay dates and notes here. For <strong>extra mattress, laundry, corkage</strong>, and other add-ons, use <strong>Additional fees</strong> below — room stays are not converted to venue bookings.</p>
       <div class="billing-res-edit-form__grid">
         <label class="billing-res-edit-field">
@@ -1463,7 +1549,7 @@ function renderVenueReservationEditForm(p, catalogs = {}) {
       </label>` : '';
 
   return `
-    <form class="billing-res-edit-form hidden" data-res-edit-form="${p.id}" data-res-orig-kind="venue" hidden>
+    <form class="billing-res-edit-form hidden" data-res-edit-form="${p.id}" data-res-orig-kind="venue" novalidate hidden>
       <p class="billing-res-edit-form__intro">${conversionIntro}</p>
       <div class="billing-res-convert-notice hidden" data-res-convert-notice hidden role="status"></div>
       <div class="billing-res-current-space">
@@ -1549,7 +1635,7 @@ function renderVenueOvernightEditForm(p) {
   const guestNotes = parsedNotes.guestNotes || '';
   const defaultStayTotal = Math.round(Number(p.subtotal ?? p.booking_total ?? 0) * 100) / 100 || '';
   return `
-    <form class="billing-res-edit-form hidden" data-res-edit-form="${p.id}" data-res-orig-kind="venue_overnight" hidden>
+    <form class="billing-res-edit-form hidden" data-res-edit-form="${p.id}" data-res-orig-kind="venue_overnight" novalidate hidden>
       <p class="billing-res-edit-form__intro">Update overnight stay dates and the billing total for <strong>${escapeHtml(venueSpaceLabel(p))}</strong>. This updates billing only — no housing room is created.</p>
       <div class="billing-res-edit-form__grid">
         <label class="billing-res-edit-field">
@@ -1598,7 +1684,7 @@ function renderVenueOvernightRevertForm(p) {
   const defaultEventDate = sliceDate(p.check_in) || sliceDate(p.event_date) || '';
   const defaultTotal = Math.round(Number(p.subtotal ?? p.booking_total ?? 0) * 100) / 100 || '';
   return `
-    <form class="billing-res-edit-form billing-res-revert-form hidden" data-res-revert-form="${p.id}" hidden>
+    <form class="billing-res-edit-form billing-res-revert-form hidden" data-res-revert-form="${p.id}" novalidate hidden>
       <p class="billing-res-edit-form__intro billing-res-revert-form__intro">
         <strong>Revert to venue event booking</strong> — use this if the overnight conversion was a mistake.
         The invoice goes back to a timed venue reservation; overnight billing tags are removed.
@@ -2181,7 +2267,7 @@ function bindReservationEdit(p, detailEl) {
       await saveReservationEdit(p, draft);
       await reload({ keepSelection: true, keepModalOpen: true });
       showFeedback(
-        detailFeedback,
+        document.getElementById('billing-detail-feedback'),
         converting ? 'Converted to overnight billing. Invoice subtotal updated.'
           : updatingOvernightBilling ? 'Overnight billing updated.'
             : 'Reservation updated. Invoice totals refreshed.',
@@ -2245,7 +2331,11 @@ function bindReservationEdit(p, detailEl) {
     try {
       await saveReservationRevert(p, draft);
       await reload({ keepSelection: true, keepModalOpen: true });
-      showFeedback(detailFeedback, 'Reverted to venue event booking. Invoice totals updated.', 'ok');
+      showFeedback(
+        document.getElementById('billing-detail-feedback'),
+        'Reverted to venue event booking. Invoice totals updated.',
+        'ok'
+      );
       window.dispatchEvent(new CustomEvent('booking:updated'));
     } catch (err) {
       showFeedback(detailFeedback, getBillingErrorMessage(err), 'error');
@@ -2375,7 +2465,7 @@ function renderRefundPanel(p) {
         Record refund
       </h4>
       <p class="billing-refund-lead">Return the overpaid amount to the guest. This creates a Refund ledger entry and clears the credit balance.</p>
-      <form class="billing-tx-form" data-tx-form="${p.id}">
+      <form class="billing-tx-form" data-tx-form="${p.id}" novalidate>
         <input type="hidden" name="tx_type" value="Refund" />
         <label class="billing-edit-form__field">
           <span>Refund amount (₱)</span>
@@ -2497,7 +2587,7 @@ function renderBillingColumn(p, { isPending }) {
         Adjust invoice
       </h4>
 
-      <form class="billing-edit-form" data-detail-form="${p.id}" data-subtotal="${subtotal}">
+      <form class="billing-edit-form" data-detail-form="${p.id}" data-subtotal="${subtotal}" novalidate>
         <label class="billing-edit-form__field billing-edit-form__field--subtotal">
           <span>Invoice subtotal (₱)</span>
           <input type="number" min="1" step="1"
@@ -2562,7 +2652,7 @@ function renderBillingColumn(p, { isPending }) {
         <span class="material-symbols-outlined" aria-hidden="true">payments</span>
         Record payment
       </h4>
-      <form class="billing-tx-form" data-tx-form="${p.id}">
+      <form class="billing-tx-form" data-tx-form="${p.id}" novalidate>
         <label class="billing-edit-form__field">
           <span>Payment type</span>
           <select class="billing-edit-form__input" name="tx_type">
@@ -2649,7 +2739,6 @@ function renderDetailPanel(p) {
         </div>
       </div>
       <div id="billing-detail-feedback" class="billing-detail-feedback hidden" role="status"></div>
-      ${renderReservationConfirmDialog()}
     </div>`;
 }
 
@@ -2894,6 +2983,34 @@ function bindDetailActions(p) {
     e.preventDefault();
     const btn = form.querySelector('button[type="submit"]');
     const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
+    const subtotalInput = form.querySelector('[data-subtotal-input]');
+    const subtotalRaw = String(subtotalInput?.value ?? '').trim();
+    const enteredSubtotal = Number(subtotalRaw);
+    if (!subtotalRaw || !Number.isFinite(enteredSubtotal) || enteredSubtotal <= 0) {
+      showFeedback(detailFeedback, 'Enter an invoice subtotal greater than zero.', 'error');
+      subtotalInput?.focus();
+      return;
+    }
+    const mode = getDiscountMode(form);
+    const discountInput = form.querySelector(
+      mode === 'fixed' ? '[name="discount_amount"]' : '[name="discount_percent"]'
+    );
+    const enteredDiscount = Number(discountInput?.value || 0);
+    if (!Number.isFinite(enteredDiscount) || enteredDiscount < 0) {
+      showFeedback(detailFeedback, 'Enter a valid discount of zero or more.', 'error');
+      discountInput?.focus();
+      return;
+    }
+    if (mode === 'percent' && enteredDiscount > 100) {
+      showFeedback(detailFeedback, 'Percentage discount cannot exceed 100%.', 'error');
+      discountInput?.focus();
+      return;
+    }
+    if (mode === 'fixed' && enteredDiscount > enteredSubtotal) {
+      showFeedback(detailFeedback, 'Fixed discount cannot exceed the invoice subtotal.', 'error');
+      discountInput?.focus();
+      return;
+    }
     const {
       subtotal: nextSubtotal,
       discount_amount,
@@ -3022,14 +3139,26 @@ function bindDetailActions(p) {
         return;
       }
     } else if (!isWaived) {
+      if (!(amount > 0)) {
+        showFeedback(detailFeedback, 'Enter a payment amount greater than zero.', 'error');
+        txForm?.querySelector('[name="tx_amount"]')?.focus();
+        return;
+      }
       const summary = paymentSummary(fresh);
       const projectedPaid = Math.round((Number(summary.amount_paid || 0) + amount) * 100) / 100;
       const overpay = Math.round((projectedPaid - Number(summary.total_due || 0)) * 100) / 100;
       if (overpay > 0) {
-        const ok = window.confirm(
-          `This payment creates an overpayment of ${fmt(overpay)}.\n\n`
-          + 'A refund of that credit will be available after recording. Continue?'
-        );
+        if (type !== 'Advance') {
+          showFeedback(detailFeedback, 'Only an Advance payment may exceed the remaining balance.', 'error');
+          txForm?.querySelector('[name="tx_type"]')?.focus();
+          return;
+        }
+        const ok = await confirmModal({
+          title: 'Record an overpayment?',
+          message: `This advance creates a credit of <strong>${fmt(overpay)}</strong>. The credit will be available for a refund after recording.`,
+          confirmLabel: 'Record advance',
+          elevate: true,
+        });
         if (!ok) return;
       }
     }
@@ -3078,10 +3207,11 @@ function bindDetailActions(p) {
     const btn = e.currentTarget;
     btn.disabled = true;
     try {
-      await handleClearInvoice(id, {
+      const deleted = await handleClearInvoice(id, {
         closeModal: true,
         feedbackEl: pageFeedback,
       });
+      if (!deleted) btn.disabled = false;
     } catch {
       btn.disabled = false;
     }
@@ -3322,20 +3452,28 @@ function bindPaymentsPageEvents() {
     const type = (restoreBtn || purgeBtn).getAttribute(restoreBtn ? 'data-recycle-restore' : 'data-recycle-purge');
     const id = Number((restoreBtn || purgeBtn).getAttribute('data-id'));
     const kind = (restoreBtn || purgeBtn).getAttribute('data-kind') || undefined;
+    const recycleFeedback = document.getElementById('billing-recycle-feedback');
     try {
       if (restoreBtn) {
         await restoreRecycleItem({ type, kind, id });
-        showFeedback(feedback, 'Restored from recycle bin.', 'success');
+        showFeedback(recycleFeedback, 'Restored from recycle bin.', 'ok');
       } else {
-        if (!window.confirm('Permanently delete this item? This cannot be undone.')) return;
+        const confirmed = await confirmModal({
+          title: 'Delete permanently?',
+          message: 'This item will be permanently deleted and cannot be restored.',
+          confirmLabel: 'Delete permanently',
+          danger: true,
+          elevate: true,
+        });
+        if (!confirmed) return;
         await purgeRecycleItem({ type, kind, id });
-        showFeedback(feedback, 'Permanently deleted.', 'success');
+        showFeedback(recycleFeedback, 'Permanently deleted.', 'ok');
       }
       await reloadRecycleBin();
       await reload({ background: true });
       refreshAdminReadOnlyUI();
     } catch (err) {
-      showFeedback(feedback, err.message || 'Recycle bin action failed.', 'error');
+      showFeedback(recycleFeedback, getBillingErrorMessage(err), 'error');
     }
   });
 

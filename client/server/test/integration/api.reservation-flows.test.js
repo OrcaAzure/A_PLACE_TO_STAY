@@ -139,10 +139,28 @@ describe('API reservation flows', { skip: dbReady ? false : 'MySQL not available
     assert.ok(Array.isArray(res.body.group.bookings) && res.body.group.bookings.length >= 1);
   });
 
+  it('keeps one billing record for every room in the group stay', async () => {
+    const groupRes = await admin.get(`/api/groups/${groupId}`);
+    assert.equal(groupRes.status, 200);
+    const invoiceIds = [];
+    for (const booking of groupRes.body.group.bookings || []) {
+      const invoice = await admin.post('/api/payments').send({ booking_id: booking.id });
+      assert.equal(invoice.status, 201, invoice.body?.message);
+      invoiceIds.push(invoice.body.payment.id);
+    }
+    assert.equal(new Set(invoiceIds).size, 1);
+
+    const payments = await admin.get('/api/payments');
+    assert.equal(payments.status, 200);
+    const groupInvoices = (payments.body.payments || [])
+      .filter((payment) => Number(payment.group_id) === Number(groupId));
+    assert.equal(groupInvoices.length, 1);
+  });
+
   it('admin modifies a group reservation', async () => {
     const getRes = await admin.get(`/api/groups/${groupId}`);
     assert.equal(getRes.status, 200);
-    const rooms = (getRes.body.group.rooms || []).map((r) => ({
+    const rooms = (getRes.body.group.bookings || []).map((r) => ({
       room_id: r.room_id,
       guest_count: Number(r.guest_count) + 1,
     }));

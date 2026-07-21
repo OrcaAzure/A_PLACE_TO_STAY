@@ -656,8 +656,9 @@ export async function getBookingFees(bookingId) {
   }
 }
 
-export async function saveBookingFees(bookingId, fees = []) {
-  await pool.query('DELETE FROM bookings_extra_services WHERE bookings_room_id = ?', [bookingId]);
+export async function saveBookingFees(bookingId, fees = [], conn = null) {
+  const db = conn || pool;
+  await db.query('DELETE FROM bookings_extra_services WHERE bookings_room_id = ?', [bookingId]);
   const merged = new Map();
   for (const fee of fees || []) {
     const name = String(fee.service_name || fee.fee_name || fee.name || '').trim();
@@ -671,7 +672,7 @@ export async function saveBookingFees(bookingId, fees = []) {
   }
   for (const fee of merged.values()) {
     try {
-      await pool.query(
+      await db.query(
         'INSERT INTO bookings_extra_services (bookings_room_id, service_name, amount, quantity) VALUES (?, ?, ?, ?)',
         [bookingId, fee.name, fee.amount, fee.quantity]
       );
@@ -679,7 +680,7 @@ export async function saveBookingFees(bookingId, fees = []) {
       if (err.code !== 'ER_BAD_FIELD_ERROR') throw err;
       // Compatibility with older databases that have not added quantity yet.
       for (let i = 0; i < fee.quantity; i += 1) {
-        await pool.query(
+        await db.query(
           'INSERT INTO bookings_extra_services (bookings_room_id, service_name, amount) VALUES (?, ?, ?)',
           [bookingId, fee.name, fee.amount]
         );
@@ -693,7 +694,9 @@ export async function saveBookingMeals(bookingId, meals = {}, rates = null, {
   preserveExisting = false,
   checkIn = null,
   checkOut = null,
+  conn = null,
 } = {}) {
+  const db = conn || pool;
   const mealRates = rates || (await getMealRates());
   const storedPrices = preserveExisting
     ? mealUnitPriceMap(existingRows ?? await getBookingMeals(bookingId))
@@ -702,7 +705,7 @@ export async function saveBookingMeals(bookingId, meals = {}, rates = null, {
   let stayCheckIn = checkIn;
   let stayCheckOut = checkOut;
   if (!stayCheckIn || !stayCheckOut) {
-    const [bookingRows] = await pool.query(
+    const [bookingRows] = await db.query(
       'SELECT check_in, check_out FROM bookings_rooms WHERE id = ? LIMIT 1',
       [bookingId]
     );
@@ -713,13 +716,13 @@ export async function saveBookingMeals(bookingId, meals = {}, rates = null, {
   const mealRows = normalizeMealsPayload(meals, stayCheckIn, stayCheckOut);
 
   try {
-    await pool.query('DELETE FROM bookings_meals WHERE bookings_room_id = ?', [bookingId]);
+    await db.query('DELETE FROM bookings_meals WHERE bookings_room_id = ?', [bookingId]);
     for (const row of mealRows) {
       const unitPrice = preserveExisting && storedPrices[row.meal_type] != null
         ? storedPrices[row.meal_type]
         : (mealRates[row.meal_type] || 0);
       const subtotal = Math.round(unitPrice * row.quantity * 100) / 100;
-      await pool.query(
+      await db.query(
         'INSERT INTO bookings_meals (bookings_room_id, meal_date, meal_type, quantity, unit_price, subtotal) VALUES (?, ?, ?, ?, ?, ?)',
         [bookingId, row.meal_date, row.meal_type, row.quantity, unitPrice, subtotal]
       );

@@ -1,21 +1,19 @@
 import { getMe } from '../services/auth.service.js';
 import {
-  getSupportEmail,
   isEmailDevMode,
   sendSupportMessageEmail,
 } from '../services/email.service.js';
+import { getSupportContactDetails } from '../services/support-contact.service.js';
 
 const MAX_SUBJECT_LEN = 160;
 const MAX_MESSAGE_LEN = 4000;
 
 export const getSupportContact = async (_req, res) => {
-  res.status(200).json({
-    email: getSupportEmail(),
-    label: 'Housing & Guest Services Supervisor',
-    telephone: '(6374) 442-2779 / 442-7068 Ext. 283',
-    fax: '(6374) 442-6378',
-    mobile: '0929-599-1831',
-  });
+  try {
+    res.status(200).json(await getSupportContactDetails());
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 export const sendSupportMessage = async (req, res) => {

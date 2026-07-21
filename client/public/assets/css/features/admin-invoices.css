@@ -88,6 +88,18 @@
   }
 }
 
+/* Billing amounts are typed directly; hide browser stepper controls. */
+.billing-modal input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.billing-modal input[type="number"]::-webkit-inner-spin-button,
+.billing-modal input[type="number"]::-webkit-outer-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+}
+
 @media (max-width: 420px) {
   .billing-page .invoice-summary-grid--billing {
     gap: 0.375rem;
@@ -943,6 +955,11 @@
   justify-content: center;
   padding: 1rem;
   background: rgba(15, 23, 42, 0.45);
+}
+
+.billing-res-confirm.hidden,
+.billing-res-confirm[hidden] {
+  display: none;
 }
 
 .billing-res-confirm__card {

@@ -337,15 +337,63 @@ export async function bootstrapGuestMyStaysPage() {
       const status = guestStatusCopy(booking.status);
       const nights = stayNightCount(booking.startDate, booking.endDate);
       const guests = booking.guestCount || 1;
+      const mealsTotal = meals.reduce(
+        (sum, meal) => sum + Number(meal.subtotal ?? (Number(meal.unit_price || 0) * Number(meal.quantity || 0))),
+        0
+      );
+      const feesTotal = fees.reduce(
+        (sum, fee) => sum + (Number(fee.amount || 0) * Math.max(1, Number(fee.quantity) || 1)),
+        0
+      );
       const roomTitle = booking.kind === 'group'
         ? (booking.title || 'Group stay')
         : (booking.facilityLabel || booking.title || 'Your room');
       const roomList = booking.kind === 'group' && raw.bookings?.length
-        ? raw.bookings.map((r) => ({
+        ? raw.bookings.map((r, index) => ({
           label: `${r.building_name || ''} Room ${r.room_number || ''}`.trim() || 'Room',
           guests: r.guest_count || 1,
+          amount: Number(r.room_total ?? (
+            index === 0
+              ? Math.max(0, Number(r.total_amount || 0) - mealsTotal - feesTotal)
+              : r.total_amount
+          )),
         }))
         : null;
+      const lodgingRows = roomList || [{
+        label: roomTitle,
+        guests,
+        amount: Number(raw.room_total ?? Math.max(
+          0,
+          Number(booking.totalAmount || 0) - mealsTotal - feesTotal
+        )),
+      }];
+      const mealCharges = new Map();
+      meals.forEach((meal) => {
+        const type = meal.meal_type || 'Meal';
+        const current = mealCharges.get(type) || { quantity: 0, amount: 0 };
+        current.quantity += Number(meal.quantity || 0);
+        current.amount += Number(
+          meal.subtotal ?? (Number(meal.unit_price || 0) * Number(meal.quantity || 0))
+        );
+        mealCharges.set(type, current);
+      });
+      const chargeRows = [
+        ...lodgingRows.map((room) => ({
+          label: `Lodging · ${room.label} · ${room.guests} guest${room.guests === 1 ? '' : 's'}`,
+          amount: room.amount,
+        })),
+        ...[...mealCharges.entries()].map(([type, charge]) => ({
+          label: `${type} meals × ${charge.quantity}`,
+          amount: charge.amount,
+        })),
+        ...fees.map((fee) => {
+          const quantity = Math.max(1, Number(fee.quantity) || 1);
+          return {
+            label: `${fee.fee_name || fee.service_name || 'Additional fee'}${quantity > 1 ? ` × ${quantity}` : ''}`,
+            amount: Number(fee.amount || 0) * quantity,
+          };
+        }),
+      ].filter((row) => row.amount > 0);
       const isPending = normStatus(booking.status) === 'pending';
       const totalLabel = isPending ? 'Estimated total' : 'Stay total';
 
@@ -419,7 +467,7 @@ export async function bootstrapGuestMyStaysPage() {
               ${roomList.map((r) => `
                 <li>
                   <span>${escapeHtml(r.label)}</span>
-                  <span>${r.guests} guest${r.guests === 1 ? '' : 's'}</span>
+                  <span>${r.guests} guest${r.guests === 1 ? '' : 's'} · ${formatMoney(r.amount)}</span>
                 </li>`).join('')}
             </ul>
           </section>` : ''}
@@ -448,8 +496,20 @@ export async function bootstrapGuestMyStaysPage() {
             <ul class="gsd-fees">
               ${fees.map((f) => `
                 <li>
-                  <span>${escapeHtml(f.fee_name || f.service_name || 'Add-on')}</span>
-                  <span>${formatMoney(f.amount)}</span>
+                  <span>${escapeHtml(f.fee_name || f.service_name || 'Add-on')}${Number(f.quantity || 1) > 1 ? ` × ${Number(f.quantity)}` : ''}</span>
+                  <span>${formatMoney(Number(f.amount || 0) * Math.max(1, Number(f.quantity) || 1))}</span>
+                </li>`).join('')}
+            </ul>
+          </section>` : ''}
+
+          ${chargeRows.length ? `
+          <section class="gsd-section">
+            <h5 class="gsd-section__title"><span class="material-symbols-outlined">receipt_long</span> Charge breakdown</h5>
+            <ul class="gsd-charges">
+              ${chargeRows.map((charge) => `
+                <li>
+                  <span>${escapeHtml(charge.label)}</span>
+                  <strong>${formatMoney(charge.amount)}</strong>
                 </li>`).join('')}
             </ul>
           </section>` : ''}

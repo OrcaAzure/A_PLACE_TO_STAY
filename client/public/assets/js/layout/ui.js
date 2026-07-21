@@ -711,6 +711,11 @@ export async function initAppLayout(config = {}) {
       ? `guest-shell lp-shell guest-portal bg-background text-on-surface font-body-md overflow-x-hidden min-h-screen${landingHome ? ' lp-ready' : ''}`
       : `admin-shell bg-background text-on-surface font-body-md h-screen overflow-hidden flex relative${collapsed ? ' sidebar-collapsed' : ''}`;
 
+    if (isGuest && landingHome) {
+      const { loadSupportContact } = await import('/assets/js/features/support-contact.js');
+      loadSupportContact(document).catch(() => {});
+    }
+
     bindLayoutEvents({ isGuest });
     if (isGuest) {
       await ensureConfirmModalMounted();
@@ -1050,8 +1055,10 @@ export function confirmModal({
     // Defer one frame so the click that opened this dialog can't hit the overlay.
     requestAnimationFrame(() => {
       if (elevate) {
-        if (overlay) overlay.style.zIndex = '130';
-        if (modal) modal.style.zIndex = '135';
+        // Billing details use z-index 200; elevated confirmations must always
+        // render above the active record modal and its backdrop.
+        if (overlay) overlay.style.zIndex = '300';
+        if (modal) modal.style.zIndex = '310';
       }
       openModal(title, body);
       const bodyEl = document.getElementById('modalBody');

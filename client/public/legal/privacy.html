@@ -10,15 +10,18 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <link rel="stylesheet" href="/assets/css/global/landing.css" />
+  <link rel="stylesheet" href="/assets/css/global/guest-portal.css" />
+  <link rel="stylesheet" href="/assets/css/features/public-info-pages.css" />
 </head>
 <body class="bg-background text-on-surface min-h-screen">
-  <header class="border-b border-outline-variant/30 bg-white">
+  <header id="public-page-header" class="border-b border-outline-variant/30 bg-white">
     <div class="max-w-3xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
       <a href="/" class="inline-flex items-center gap-2 text-primary font-bold no-underline">
         <img src="/assets/logo/apts-mark.svg" alt="" width="28" height="28" class="w-7 h-7" decoding="async"/>
         APTS
       </a>
-      <a href="/login.html" class="text-label-md text-primary hover:underline no-underline">Sign in</a>
+      <a href="/login.html" data-public-auth-link class="text-label-md text-primary hover:underline no-underline">Sign in</a>
     </div>
   </header>
 
@@ -77,10 +80,15 @@
     </div>
 
     <p class="mt-10 text-label-sm text-on-surface-variant">
+      <a href="/contacts.html" class="text-primary hover:underline">Contact</a>
+      <span class="mx-2">·</span>
+      <a href="/legal/policies-guidelines.html" class="text-primary hover:underline">Policies &amp; Guidelines</a>
+      <span class="mx-2">·</span>
       <a href="/legal/terms.html" class="text-primary hover:underline">Terms of Service</a>
       <span class="mx-2">·</span>
       <a href="/" class="text-primary hover:underline">Back to home</a>
     </p>
   </main>
+  <script type="module" src="/assets/js/layout/public-info-header.js"></script>
 </body>
 </html>

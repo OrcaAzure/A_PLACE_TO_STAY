@@ -1445,11 +1445,11 @@ function setMountHtml(id, html) {
     if (window.innerWidth < 900) return;
 
     const galleryHeight = Math.ceil(gallery.getBoundingClientRect().height);
-    const detailsHeight = Math.ceil(details.getBoundingClientRect().height);
-    const rowHeight = Math.max(galleryHeight, detailsHeight);
 
-    if (rowHeight > 0) {
-      const h = `${rowHeight}px`;
+    if (galleryHeight > 0) {
+      // The gallery defines the modal's original desktop height. Long descriptions
+      // scroll inside the right column instead of growing the whole popup.
+      const h = `${galleryHeight}px`;
       gallery.style.minHeight = h;
       details.style.maxHeight = h;
       details.style.height = h;

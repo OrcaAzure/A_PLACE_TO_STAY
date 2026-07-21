@@ -1178,6 +1178,234 @@
   display: none;
 }
 
+.settings-policy-help {
+  padding: 0.85rem 1rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 0.65rem;
+  background: #eff6ff;
+  color: #334155;
+  font-size: 0.8125rem;
+  line-height: 1.55;
+}
+
+.settings-policy-help code {
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  background: #dbeafe;
+  color: #1e3a8a;
+  font-weight: 700;
+}
+
+.settings-policy-editor {
+  display: block;
+  width: 100%;
+  min-height: 25rem;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.settings-policy-editor--large {
+  min-height: 38rem;
+}
+
+.settings-policy-summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.settings-policy-summary__icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 0.75rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.settings-policy-summary__content {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-policy-summary__content h2,
+.settings-policy-summary__content p {
+  margin: 0;
+}
+
+.settings-policy-summary__content h2 {
+  font-size: 0.95rem;
+  color: #0f172a;
+}
+
+.settings-policy-summary__content p {
+  margin-top: 0.25rem;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.settings-policy-summary__updated {
+  font-weight: 600;
+}
+
+.settings-policy-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.settings-policy-modal.hidden,
+.settings-policy-modal[hidden] {
+  display: none;
+}
+
+.settings-policy-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(15, 23, 42, 0.68);
+  backdrop-filter: blur(2px);
+}
+
+.settings-policy-modal__dialog {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  width: min(96vw, 80rem);
+  height: min(92vh, 56rem);
+  overflow: hidden;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+}
+
+.settings-policy-modal__header,
+.settings-policy-modal__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-color: #e2e8f0;
+}
+
+.settings-policy-modal__header {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.settings-policy-modal__header h2,
+.settings-policy-modal__header p {
+  margin: 0;
+}
+
+.settings-policy-modal__header h2 {
+  color: #0f172a;
+  font-size: 1.125rem;
+}
+
+.settings-policy-modal__header p {
+  margin-top: 0.2rem;
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.settings-policy-modal__close {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #475569;
+}
+
+.settings-policy-modal__close:hover {
+  background: #f1f5f9;
+}
+
+.settings-policy-modal__body {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1.25rem;
+}
+
+.settings-policy-modal__editors {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.settings-policy-editor__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.settings-policy-editor__head span {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.settings-policy-modal__footer {
+  border-top: 1px solid #e2e8f0;
+}
+
+.settings-policy-modal__footer .settings-feedback {
+  flex: 1;
+}
+
+.settings-policy-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+@media (max-width: 767px) {
+  .settings-policy-summary {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .settings-policy-summary .btn-primary {
+    width: 100%;
+  }
+
+  .settings-policy-modal {
+    padding: 0;
+  }
+
+  .settings-policy-modal__dialog {
+    width: 100vw;
+    height: 100dvh;
+    border-radius: 0;
+  }
+
+  .settings-policy-modal__editors {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-policy-editor {
+    min-height: 22rem;
+  }
+
+  .settings-policy-modal__footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

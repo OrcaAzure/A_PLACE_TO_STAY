@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Policies &amp; Guidelines | APTS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/js/config/tailwind-theme-base.js"></script>
+  <script src="/assets/js/config/tailwind-guest.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <link rel="stylesheet" href="/assets/css/global/landing.css" />
+  <link rel="stylesheet" href="/assets/css/global/guest-portal.css" />
+  <link rel="stylesheet" href="/assets/css/features/public-info-pages.css" />
+  <style>
+    .policy-tab[aria-selected="true"] { background:#1a365d; color:#fff; border-color:#1a365d; }
+    .policy-document section { padding-top:1.5rem; margin-top:1.5rem; border-top:1px solid #e2e8f0; }
+    .policy-document section:first-child { padding-top:0; margin-top:0; border-top:0; }
+    .policy-document h2 { margin:0 0 .65rem; color:#1a365d; font-size:1.05rem; font-weight:700; }
+    .policy-document p { margin:.6rem 0 0; color:#4a5568; font-size:.9375rem; line-height:1.7; }
+    .policy-document ul { margin:.65rem 0 0; padding-left:1.25rem; list-style:disc; color:#4a5568; }
+    .policy-document li { margin:.3rem 0; line-height:1.6; }
+  </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen">
+  <header id="public-page-header" class="border-b border-outline-variant/30 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
+      <a href="/" class="inline-flex items-center gap-2 text-primary font-bold no-underline">
+        <img src="/assets/logo/apts-mark.svg" alt="" width="28" height="28" class="w-7 h-7" decoding="async"/>
+        APTS
+      </a>
+      <a href="/login.html" data-public-auth-link class="text-label-md text-primary hover:underline no-underline">Sign in</a>
+    </div>
+  </header>
+
+  <main class="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-7">
+      <div>
+        <p class="text-label-sm text-primary font-bold uppercase tracking-wider mb-2">Guest information</p>
+        <h1 class="text-headline-lg font-bold text-primary mb-2">Policies &amp; Guidelines</h1>
+        <p class="text-body-md text-on-surface-variant max-w-2xl">Please review the rules that apply to your accommodation or facility reservation before your scheduled stay or event.</p>
+        <p id="policies-updated" class="text-body-sm text-on-surface-variant mt-2">Loading current policies…</p>
+      </div>
+    </div>
+
+    <div class="policy-tabs flex flex-wrap gap-2 mb-7" role="tablist" aria-label="Policy category">
+      <button type="button" class="policy-tab px-4 py-2.5 rounded-lg border border-outline-variant bg-white font-semibold text-sm" data-policy-tab="rooms" role="tab" aria-selected="true">Rooms / Accommodation</button>
+      <button type="button" class="policy-tab px-4 py-2.5 rounded-lg border border-outline-variant bg-white font-semibold text-sm" data-policy-tab="venues" role="tab" aria-selected="false">Venues / Facilities</button>
+    </div>
+
+    <div id="policies-error" class="hidden p-4 mb-6 rounded-lg border border-red-200 bg-red-50 text-red-800 text-sm" role="alert"></div>
+
+    <article data-policy-panel="rooms" class="bg-white border border-outline-variant rounded-2xl shadow-sm p-5 sm:p-8">
+      <h2 class="text-title-lg font-bold text-on-surface mb-6">Rooms / Accommodation Policies</h2>
+      <div id="rooms-policies" class="policy-document" aria-live="polite"></div>
+    </article>
+
+    <article data-policy-panel="venues" class="hidden bg-white border border-outline-variant rounded-2xl shadow-sm p-5 sm:p-8">
+      <h2 class="text-title-lg font-bold text-on-surface mb-6">Venues / Facilities Usage Policies</h2>
+      <div id="venues-policies" class="policy-document" aria-live="polite"></div>
+    </article>
+
+    <p class="policy-footer-links mt-10 text-label-sm text-on-surface-variant">
+      <a href="/contacts.html" class="text-primary hover:underline">Contact</a>
+      <span class="mx-2">·</span>
+      <a href="/legal/privacy.html" class="text-primary hover:underline">Privacy Policy</a>
+      <span class="mx-2">·</span>
+      <a href="/legal/terms.html" class="text-primary hover:underline">Terms of Service</a>
+      <span class="mx-2">·</span>
+      <a href="/" class="text-primary hover:underline">Back to home</a>
+    </p>
+  </main>
+
+  <script type="module" src="/assets/js/features/public-policies.js"></script>
+  <script type="module" src="/assets/js/layout/public-info-header.js"></script>
+</body>
+</html>

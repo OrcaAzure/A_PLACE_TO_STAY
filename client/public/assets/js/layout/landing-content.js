@@ -114,5 +114,7 @@ export async function mountPublicLandingContent() {
   if (!mount || mount.dataset.landingMounted === '1') return mount;
   mount.innerHTML = await buildLandingContent({ variant: 'public' });
   mount.dataset.landingMounted = '1';
+  const { loadSupportContact } = await import('/assets/js/features/support-contact.js');
+  loadSupportContact(mount).catch(() => {});
   return mount;
 }

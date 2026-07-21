@@ -877,6 +877,43 @@ export async function sendVenueBookingRequestReceivedEmail(user, booking, { batc
   });
 }
 
+export function buildInvoicePaymentSections(payment = {}) {
+  const summary = payment.summary || {};
+  const invoiceTotal = Number(summary.total_due ?? payment.amount ?? payment.subtotal ?? 0);
+  const amountPaid = Number(summary.amount_paid || 0);
+  const balanceDue = Number(summary.balance_due ?? Math.max(0, invoiceTotal - amountPaid));
+  const transactions = Array.isArray(payment.transactions) ? payment.transactions : [];
+  const status = balanceDue <= 0
+    ? 'Paid in full'
+    : amountPaid > 0
+      ? 'Partially paid'
+      : 'Awaiting payment';
+
+  const accountSummary = emailSection('Payment summary', emailDetailList([
+    emailDetailItem('Invoice total', fmtPeso(invoiceTotal)),
+    emailDetailItem('Payments received', fmtPeso(amountPaid)),
+    emailDetailItem(
+      'Balance due',
+      `<strong style="font-size:1.08em;color:${balanceDue > 0 ? '#b45309' : '#047857'};">${fmtPeso(balanceDue)}</strong>`
+    ),
+    emailDetailItem('Payment status', `<strong>${status}</strong>`),
+  ]));
+
+  const historyBody = transactions.length
+    ? emailDetailList(transactions.map((transaction) => {
+      const type = escapeHtml(transaction.type || 'Payment');
+      const method = transaction.method ? ` · ${escapeHtml(transaction.method)}` : '';
+      const date = formatEmailDateTime(transaction.recorded_at);
+      const isRefund = transaction.type === 'Refund';
+      const amount = `${isRefund ? '−' : ''}${fmtPeso(transaction.amount)}`;
+      const notes = transaction.notes ? `<br><span style="color:#718096;">${escapeHtml(transaction.notes)}</span>` : '';
+      return emailDetailItem(`${type}${method}`, `${amount}<br><span style="color:#718096;">${escapeHtml(date)}</span>${notes}`);
+    }))
+    : '<p style="margin:0;color:#718096;">No payments have been recorded for this invoice yet.</p>';
+
+  return `${accountSummary}${emailSection('Payment history', historyBody)}`;
+}
+
 export async function sendVenueInvoiceEmail(user, payment, { allowDuplicate = false } = {}) {
   const name = user.full_name || user.guest_name || 'Guest';
   const venue = [payment.facility_category, payment.facility_name || payment.facility_room_code]
@@ -888,7 +925,6 @@ export async function sendVenueInvoiceEmail(user, payment, { allowDuplicate = fa
   const timeRange = start && end ? `${start} – ${end}` : '—';
   const subtotal = Number(payment.subtotal ?? payment.amount ?? 0);
   const discount = Number(payment.discount_amount || 0);
-  const due = Number(payment.amount ?? subtotal);
   const discountLine = discount > 0
     ? emailDetailItem('Discount', `−${fmtPeso(discount)}${payment.discount_note ? ` (${escapeHtml(payment.discount_note)})` : ''}`)
     : '';
@@ -912,9 +948,8 @@ export async function sendVenueInvoiceEmail(user, payment, { allowDuplicate = fa
         payment.facility_package ? emailDetailItem('Package', escapeHtml(payment.facility_package)) : '',
         emailDetailItem('Subtotal', fmtPeso(subtotal)),
         discountLine,
-        emailDetailItem('Total amount', `<strong>${fmtPeso(due)}</strong>`),
-        emailDetailItem('Status', 'Approved'),
       ].filter(Boolean)))}
+      ${buildInvoicePaymentSections(payment)}
       ${emailFooter({ includePayment: true })}
     `,
   });
@@ -930,13 +965,43 @@ export async function sendRoomInvoiceEmail(user, payment, { allowDuplicate = fal
     : '—';
   const subtotal = Number(payment.subtotal ?? payment.amount ?? 0);
   const discount = Number(payment.discount_amount || 0);
-  const due = Number(payment.amount ?? subtotal);
   const discountLine = discount > 0
     ? emailDetailItem('Discount', `−${fmtPeso(discount)}${payment.discount_note ? ` (${escapeHtml(payment.discount_note)})` : ''}`)
     : '';
   const groupLine = payment.group_name
     ? emailDetailItem('Group stay', escapeHtml(payment.group_name))
     : '';
+  const groupRooms = Array.isArray(payment.group_rooms) ? payment.group_rooms : [];
+  const roomDetailLines = groupRooms.length
+    ? groupRooms.map((groupRoom, index) => {
+      const label = [groupRoom.building_name, groupRoom.room_number ? `Room ${groupRoom.room_number}` : null]
+        .filter(Boolean)
+        .join(' · ') || `Room ${index + 1}`;
+      const guests = Number(groupRoom.guest_count || 1);
+      return emailDetailItem(
+        `Room ${index + 1}`,
+        `${escapeHtml(label)} · ${guests} guest${guests === 1 ? '' : 's'} · ${fmtPeso(groupRoom.room_total)}`
+      );
+    })
+    : [emailDetailItem('Room', escapeHtml(room))];
+  const groupChargeLines = groupRooms.flatMap((groupRoom) => {
+    const roomName = [groupRoom.building_name, groupRoom.room_number ? `Room ${groupRoom.room_number}` : null]
+      .filter(Boolean)
+      .join(' · ') || 'Room';
+    const lodging = [emailDetailItem(`${roomName} lodging`, fmtPeso(groupRoom.room_total))];
+    const meals = (groupRoom.meals || []).map((meal) => emailDetailItem(
+      `Group meals · ${meal.meal_type || 'Meal'} × ${Number(meal.quantity || 0)}`,
+      fmtPeso(meal.subtotal)
+    ));
+    const fees = (groupRoom.fees || []).map((fee) => {
+      const quantity = Math.max(1, Number(fee.quantity) || 1);
+      return emailDetailItem(
+        `Group additional fee · ${fee.fee_name || fee.service_name || 'Additional fee'}${quantity > 1 ? ` × ${quantity}` : ''}`,
+        fmtPeso(Number(fee.amount || 0) * quantity)
+      );
+    });
+    return [...lodging, ...meals, ...fees];
+  });
 
   return sendMail({
     to: user.email || user.guest_email,
@@ -947,18 +1012,20 @@ export async function sendRoomInvoiceEmail(user, payment, { allowDuplicate = fal
       <h2>Housing Invoice</h2>
       <p>Hi ${escapeHtml(name)},</p>
       <p>Here is your invoice for your approved stay at APTS.</p>
-      <p><strong>Invoice #${payment.id}</strong>${payment.booking_id ? ` · Booking #RM-${payment.booking_id}` : ''}</p>
+      <p><strong>Invoice #${payment.id}</strong>${payment.group_id
+        ? ` · Group reservation #GRP-${payment.group_id}`
+        : payment.booking_id ? ` · Booking #RM-${payment.booking_id}` : ''}</p>
       ${emailSection('Stay details', emailDetailList([
         groupLine,
-        emailDetailItem(payment.group_name ? 'Primary room' : 'Room', escapeHtml(room)),
+        ...roomDetailLines,
         emailDetailItem('Stay dates', escapeHtml(stay)),
-        emailDetailItem('Guests', escapeHtml(payment.guest_count || 1)),
+        !groupRooms.length ? emailDetailItem('Guests', escapeHtml(payment.guest_count || 1)) : '',
         payment.season ? emailDetailItem('Season', escapeHtml(payment.season)) : '',
         emailDetailItem('Subtotal', fmtPeso(subtotal)),
         discountLine,
-        emailDetailItem('Total amount', `<strong>${fmtPeso(due)}</strong>`),
-        emailDetailItem('Status', escapeHtml(payment.status || 'Pending')),
       ].filter(Boolean)))}
+      ${groupChargeLines.length ? emailSection('Charge breakdown', emailDetailList(groupChargeLines)) : ''}
+      ${buildInvoicePaymentSections(payment)}
       ${emailFooter({ includePayment: true })}
     `,
   });

@@ -2,12 +2,24 @@
  * Admin settings — profile and booking rules (Chrome-style layout).
  */
 
-import { getProfile, updateProfile, changePassword, getFiscalYear, updateFiscalYearSettings, previewSeasonCalendar } from '/assets/js/services/api.js';
+import {
+  getProfile,
+  updateProfile,
+  changePassword,
+  getFiscalYear,
+  updateFiscalYearSettings,
+  previewSeasonCalendar,
+  getPolicies,
+  updatePolicies,
+  getSupportContact,
+  updateSupportContact,
+} from '/assets/js/services/api.js';
 import { formatRoleLabel, updateCachedUser } from '/assets/js/services/auth.js';
 import { formatDate } from '/assets/js/features/reservation-shared.js';
-import { openModal, closeModal } from '/assets/js/layout/ui.js';
+import { confirmModal } from '/assets/js/layout/ui.js';
 
 let fiscalYearInfo = null;
+let savedPolicies = { rooms: '', venues: '', updated_at: null };
 
 const SEASON_ORDER = ['Peak', 'Super Peak'];
 
@@ -56,6 +68,11 @@ function bindSettingsUi() {
   document.getElementById('settings-save-btn')?.addEventListener('click', saveProfile);
   document.getElementById('settings-password-btn')?.addEventListener('click', savePassword);
   document.getElementById('system-settings-save-btn')?.addEventListener('click', saveSystemSettings);
+  document.getElementById('policies-save-btn')?.addEventListener('click', savePolicies);
+  document.getElementById('support-contact-save-btn')?.addEventListener('click', saveSupportContact);
+  ['policies-rooms', 'policies-venues'].forEach((id) => {
+    document.getElementById(id)?.addEventListener('input', updatePolicyCharacterCounts);
+  });
   document.getElementById('season-add-period')?.addEventListener('click', () => {
     const periods = readSeasonPeriodsFromForm();
     periods.push(defaultPeriodRow());
@@ -77,7 +94,10 @@ export function teardownAdminSettings() {
 export async function loadAdminSettings() {
   bindSettingsUi();
 
-  const [{ user }, fyInfo] = await Promise.all([getProfile(), getFiscalYear()]);
+  const [{ user }, fyInfo] = await Promise.all([
+    getProfile(),
+    getFiscalYear(),
+  ]);
   fiscalYearInfo = fyInfo;
 
   const nameInput = document.getElementById('settings-name');
@@ -89,6 +109,150 @@ export async function loadAdminSettings() {
   if (bannerName) bannerName.dataset.fallback = user.full_name || 'User';
   bindNamePreview();
   renderFiscalYearSettings(fyInfo);
+  try {
+    renderPolicies(await getPolicies());
+  } catch (err) {
+    showFeedback(
+      document.getElementById('policies-feedback'),
+      err.message || 'Policies could not be loaded. Refresh and try again.',
+      true
+    );
+  }
+  try {
+    renderSupportContactSettings(await getSupportContact());
+  } catch (err) {
+    showFeedback(
+      document.getElementById('support-contact-feedback'),
+      err.message || 'Contact information could not be loaded.',
+      true
+    );
+  }
+}
+
+function renderSupportContactSettings(contact) {
+  const name = document.getElementById('support-contact-name');
+  const email = document.getElementById('support-contact-email');
+  const telephone = document.getElementById('support-contact-telephone');
+  const mobile = document.getElementById('support-contact-mobile');
+  const fixed = document.getElementById('support-contact-fixed');
+  if (name) name.value = contact.name || '';
+  if (email) email.textContent = contact.email;
+  if (telephone) telephone.value = contact.telephone || '';
+  if (mobile) mobile.value = contact.mobile || '';
+  if (fixed) fixed.textContent = `Fax: ${contact.fax} · ${contact.address}`;
+}
+
+async function saveSupportContact() {
+  const feedback = document.getElementById('support-contact-feedback');
+  const button = document.getElementById('support-contact-save-btn');
+  const nameInput = document.getElementById('support-contact-name');
+  const telephoneInput = document.getElementById('support-contact-telephone');
+  const mobileInput = document.getElementById('support-contact-mobile');
+  const name = nameInput?.value.trim() || '';
+  const telephone = telephoneInput?.value.trim() || '';
+  const mobile = mobileInput?.value.trim() || '';
+  feedback?.classList.add('hidden');
+  if (!name) {
+    showFeedback(feedback, 'Contact person is required.', true);
+    nameInput?.focus();
+    return;
+  }
+  if (!telephone) {
+    showFeedback(feedback, 'Telephone number is required.', true);
+    telephoneInput?.focus();
+    return;
+  }
+  if (!mobile) {
+    showFeedback(feedback, 'Mobile number is required.', true);
+    mobileInput?.focus();
+    return;
+  }
+  const confirmed = await confirmModal({
+    title: 'Update guest contact numbers?',
+    message: 'The contact person, telephone, and mobile number will be updated on guest-facing pages.',
+    confirmLabel: 'Save contact details',
+  });
+  if (!confirmed || !button) return;
+  button.disabled = true;
+  try {
+    const contact = await updateSupportContact({ name, telephone, mobile });
+    renderSupportContactSettings(contact);
+    showFeedback(feedback, 'Contact information updated.');
+  } catch (err) {
+    showFeedback(feedback, err.message || 'Contact information could not be updated.', true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function renderPolicies(policies) {
+  savedPolicies = {
+    rooms: policies?.rooms || '',
+    venues: policies?.venues || '',
+    updated_at: policies?.updated_at || null,
+  };
+  const rooms = document.getElementById('policies-rooms');
+  const venues = document.getElementById('policies-venues');
+  if (rooms) rooms.value = savedPolicies.rooms;
+  if (venues) venues.value = savedPolicies.venues;
+  const updated = document.getElementById('policies-last-updated');
+  if (updated) {
+    updated.textContent = savedPolicies.updated_at
+      ? `Last published ${new Date(savedPolicies.updated_at).toLocaleString('en-PH', {
+        month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
+      })}`
+      : 'Using the initial published policy content';
+  }
+  updatePolicyCharacterCounts();
+}
+
+function policyDraft() {
+  return {
+    rooms: document.getElementById('policies-rooms')?.value.trim() || '',
+    venues: document.getElementById('policies-venues')?.value.trim() || '',
+  };
+}
+
+function updatePolicyCharacterCounts() {
+  ['rooms', 'venues'].forEach((kind) => {
+    const length = document.getElementById(`policies-${kind}`)?.value.length || 0;
+    const count = document.getElementById(`policies-${kind}-count`);
+    if (count) count.textContent = `${length.toLocaleString()} / 50,000 characters`;
+  });
+}
+
+async function savePolicies() {
+  const feedback = document.getElementById('policies-feedback');
+  const btn = document.getElementById('policies-save-btn');
+  const { rooms, venues } = policyDraft();
+  if (!btn) return;
+  feedback?.classList.add('hidden');
+  if (rooms.length < 100) {
+    showFeedback(feedback, 'Rooms / Accommodation policies must contain at least 100 characters.', true);
+    document.getElementById('policies-rooms')?.focus();
+    return;
+  }
+  if (venues.length < 100) {
+    showFeedback(feedback, 'Venues / Facilities policies must contain at least 100 characters.', true);
+    document.getElementById('policies-venues')?.focus();
+    return;
+  }
+  const confirmed = await confirmModal({
+    title: 'Publish policies?',
+    message: 'These changes will immediately replace the policies shown on the public guest page.',
+    confirmLabel: 'Publish policies',
+  });
+  if (!confirmed) return;
+  btn.disabled = true;
+  try {
+    const result = await updatePolicies({ rooms, venues });
+    renderPolicies(result);
+    showFeedback(feedback, 'Policies published. The public page is now up to date.');
+  } catch (err) {
+    showFeedback(feedback, err.message || 'Policies could not be published.', true);
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function saveProfile() {
@@ -604,22 +768,27 @@ async function saveSystemSettings() {
     ...readSeasonCalendarFromForm(),
   };
 
-  if (Number.isNaN(payload.booking_advance_months)) {
-    showFeedback(feedback, 'Please check the booking window number.', true);
+  if (!Number.isInteger(payload.booking_advance_months)
+      || payload.booking_advance_months < 1
+      || payload.booking_advance_months > 36) {
+    showFeedback(feedback, 'Booking window must be a whole number from 1 to 36 months.', true);
+    document.getElementById('fy-advance-months')?.focus();
     return;
   }
-  if (Number.isNaN(payload.guest_cancellation_cutoff_hours)) {
+  if (!Number.isInteger(payload.guest_cancellation_cutoff_hours)
+      || payload.guest_cancellation_cutoff_hours < 0
+      || payload.guest_cancellation_cutoff_hours > 2160) {
     showFeedback(feedback, 'Cancellation hours must be a number from 0 to 2160.', true);
+    document.getElementById('guest-cancel-cutoff-hours')?.focus();
     return;
   }
 
-  const result = await confirmSaveBookingRules();
-  if (result === 'discard') {
-    if (fiscalYearInfo) renderFiscalYearSettings(fiscalYearInfo);
-    feedback?.classList.add('hidden');
-    return;
-  }
-  if (result !== 'confirm') return;
+  const confirmed = await confirmModal({
+    title: 'Save booking rules?',
+    message: 'These changes will affect future guest booking dates, cancellation access, and seasonal pricing.',
+    confirmLabel: 'Save changes',
+  });
+  if (!confirmed) return;
 
   btn.disabled = true;
   try {
@@ -631,40 +800,4 @@ async function saveSystemSettings() {
   } finally {
     btn.disabled = false;
   }
-}
-
-function confirmSaveBookingRules() {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (value) => {
-      if (settled) return;
-      settled = true;
-      closeModal();
-      resolve(value);
-    };
-
-    openModal(
-      'Save changes',
-      `
-        <p class="text-[0.9375rem] text-on-surface-variant leading-relaxed m-0">
-          Are you sure you want to save your changes?
-        </p>
-        <div class="flex justify-end gap-3 mt-6 pt-5 border-t border-outline-variant">
-          <button type="button" class="settings-confirm-cancel px-4 py-2.5 rounded-lg border border-outline-variant text-on-surface-variant font-semibold text-sm hover:bg-surface-variant/30 transition-colors min-h-[2.75rem]" data-action="discard">
-            Cancel
-          </button>
-          <button type="button" class="settings-confirm-save btn-primary px-5 py-2.5 min-h-[2.75rem]" data-action="confirm">
-            Confirm
-          </button>
-        </div>
-      `,
-    );
-
-    const body = document.getElementById('modalBody');
-    body?.querySelector('[data-action="discard"]')?.addEventListener('click', () => finish('discard'), { once: true });
-    body?.querySelector('[data-action="confirm"]')?.addEventListener('click', () => finish('confirm'), { once: true });
-
-    document.getElementById('modal-close')?.addEventListener('click', () => finish('discard'), { once: true });
-    document.getElementById('modal-overlay')?.addEventListener('click', () => finish('discard'), { once: true });
-  });
 }

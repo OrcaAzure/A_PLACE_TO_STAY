@@ -1,0 +1,14 @@
+.guest-public-nav {
+  padding-top: 4.25rem;
+}
+
+.guest-public-nav .guest-top-nav {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(14px);
+}
+
+@media (max-width: 639px) {
+  .guest-public-nav {
+    padding-top: 4.25rem;
+  }
+}

@@ -4,6 +4,7 @@ import {
   computeDueAmount,
   computePaymentSummary,
 } from '../../src/services/payment.service.js';
+import { buildInvoicePaymentSections } from '../../src/services/email.service.js';
 
 describe('billing calculations', () => {
   it('supports fixed, percentage-derived, cleared, and full discounts', () => {
@@ -46,5 +47,29 @@ describe('billing calculations', () => {
         credit_balance: 0,
       }
     );
+  });
+
+  it('renders a clear payment history and remaining balance in invoice emails', () => {
+    const html = buildInvoicePaymentSections({
+      summary: {
+        total_due: 10_000,
+        amount_paid: 4_000,
+        balance_due: 6_000,
+      },
+      transactions: [{
+        type: 'Deposit',
+        amount: 4_000,
+        method: 'Bank Transfer',
+        notes: 'Initial deposit',
+        recorded_at: '2026-07-21T04:00:00.000Z',
+      }],
+    });
+    assert.match(html, /Payment summary/);
+    assert.match(html, /Payments received/);
+    assert.match(html, /Balance due/);
+    assert.match(html, /₱6,000\.00/);
+    assert.match(html, /Payment history/);
+    assert.match(html, /Deposit · Bank Transfer/);
+    assert.match(html, /Initial deposit/);
   });
 });

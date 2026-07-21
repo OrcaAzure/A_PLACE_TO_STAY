@@ -417,13 +417,10 @@ function paymentStatusBadge(item) {
 
   if (item.kind === 'group' || item.bookings?.length) {
     const bookings = item.bookings || [];
-    const withInvoice = bookings.filter((b) => b.invoice);
-    const unpaid = withInvoice.filter((b) => b.invoice?.status === 'Pending');
-    const paid = withInvoice.filter((b) => b.invoice?.status === 'Paid');
-    if (unpaid.length) return `<span class="res-pill res-pill--pending">Housing unpaid (${unpaid.length})</span>`;
-    if (paid.length && paid.length === withInvoice.length) return '<span class="res-pill res-pill--approved">Housing paid</span>';
-    if (!withInvoice.length) return '<span class="res-pill res-pill--pending">Invoice pending</span>';
-    return '';
+    const invoice = bookings.find((b) => b.invoice)?.invoice;
+    if (!invoice) return '<span class="res-pill res-pill--pending">Group invoice pending</span>';
+    if (invoice.status === 'Paid') return '<span class="res-pill res-pill--approved">Housing paid</span>';
+    return '<span class="res-pill res-pill--pending">Housing unpaid</span>';
   }
 
   const inv = item.invoice;
@@ -437,14 +434,21 @@ function renderHousingPaymentSection(item) {
   if (status !== 'approved') return '';
 
   if (item.bookings?.length) {
-    const rows = item.bookings.map((b) => {
+    const invoice = item.bookings.find((b) => b.invoice)?.invoice;
+    const roomRows = item.bookings.map((b) => {
       const label = [`${b.building_name} ${b.room_number}`.trim(), b.room_type].filter(Boolean).join(' · ');
-      const inv = b.invoice;
-      if (!inv) return factRow(label, 'Invoice not created yet');
-      if (inv.status === 'Paid') return factRow(label, `Paid · ${formatMoney(inv.amount)}`);
-      return factRow(label, `Unpaid · ${formatMoney(inv.amount)} due`);
+      const lodging = b.room_total ?? b.total_amount;
+      return factRow(label, `${b.guest_count || 1} guest${Number(b.guest_count) === 1 ? '' : 's'} · ${formatMoney(lodging)}`);
     }).join('');
-    return renderSection('Housing payment', rows);
+    const invoiceRow = invoice
+      ? factRow(
+        'Group invoice',
+        invoice.status === 'Paid'
+          ? `Paid · ${formatMoney(invoice.amount)}${invoice.method ? ` via ${invoice.method}` : ''}`
+          : `Unpaid · ${formatMoney(invoice.amount)} due`
+      )
+      : factRow('Group invoice', 'Invoice will appear after approval');
+    return renderSection('Housing payment', `${roomRows}${invoiceRow}`);
   }
 
   const inv = item.invoice;

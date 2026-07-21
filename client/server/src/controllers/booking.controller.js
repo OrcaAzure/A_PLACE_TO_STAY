@@ -29,7 +29,12 @@ import { canGuestAccessBuilding, filterRoomsForGuestUser } from '../utils/guestA
 import { assertCanCancelRoomBooking, assertCanModifyRoomBooking, getGuestCancellationCutoffHours } from '../services/reservationLifecycle.service.js';
 import { fetchExtraServiceRows, sanitizeGuestSubmittedFees, resolveGuestLodgingExtraFees } from '../services/ancillary.service.js';
 import { extractDeclineReason } from '../services/email.service.js';
-import { getInvoiceSnapshot, ensureInvoiceForBooking, deletePaymentsForRoomBooking } from '../services/payment.service.js';
+import {
+  getInvoiceSnapshot,
+  ensureInvoiceForBooking,
+  ensureInvoicesForGroup,
+  deletePaymentsForRoomBooking,
+} from '../services/payment.service.js';
 
 import { isAdminRole, isAdminPortalRole } from '../utils/constants.js';
 
@@ -481,11 +486,15 @@ export const updateBooking = async (req, res) => {
 
     const effectiveStatus = status ?? existing.status;
     const becameApproved = effectiveStatus === 'Approved' && existing.status !== 'Approved';
+    const syncApprovedInvoice = async () => {
+      if (existing.group_id) await ensureInvoicesForGroup(existing.group_id, { forceSync: true });
+      else await ensureInvoiceForBooking(req.params.id, { forceSync: true });
+    };
     if (becameApproved || (effectiveStatus === 'Approved' && !booking.invoice)) {
-      await ensureInvoiceForBooking(req.params.id);
+      await syncApprovedInvoice();
       booking.invoice = await getInvoiceSnapshot(req.params.id);
     } else if (effectiveStatus === 'Approved' && grandTotal !== Number(existing.total_amount)) {
-      await ensureInvoiceForBooking(req.params.id);
+      await syncApprovedInvoice();
       booking.invoice = await getInvoiceSnapshot(req.params.id);
     }
 

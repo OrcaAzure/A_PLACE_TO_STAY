@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Contact Guest Services | APTS</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/js/config/tailwind-theme-base.js"></script>
+  <script src="/assets/js/config/tailwind-guest.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <link rel="stylesheet" href="/assets/css/global/landing.css" />
+  <link rel="stylesheet" href="/assets/css/global/guest-portal.css" />
+  <link rel="stylesheet" href="/assets/css/features/public-info-pages.css" />
+</head>
+<body class="bg-background text-on-surface min-h-screen">
+  <header id="public-page-header" class="border-b border-outline-variant/30 bg-white">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
+      <a href="/" class="inline-flex items-center gap-2 text-primary font-bold no-underline">
+        <img src="/assets/logo/apts-mark.svg" alt="" width="28" height="28" class="w-7 h-7" decoding="async"/>
+        APTS
+      </a>
+      <a href="/login.html" data-public-auth-link class="text-label-md text-primary hover:underline no-underline">Sign in</a>
+    </div>
+  </header>
+
+  <main data-support-contact>
+    <section class="lp-contact py-16 sm:py-20">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6">
+        <div class="lp-section-head max-w-2xl mb-9">
+          <p class="lp-section-label text-label-sm text-primary uppercase mb-3">Get in touch</p>
+          <h1 class="text-3xl lg:text-headline-lg font-bold text-on-surface mb-4">Need help?</h1>
+          <p class="text-body-lg text-on-surface-variant leading-relaxed mb-6">For booking questions, account access, or special arrangements — reach the Housing &amp; Guest Services Supervisor directly.</p>
+          <p class="lp-contact-note inline-flex items-center gap-2 text-body-sm text-on-surface-variant">
+            <span class="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">schedule</span>
+            We typically reply within 1–2 business days.
+          </p>
+        </div>
+
+        <div class="lp-contact-cards">
+          <a href="mailto:guestservices@apts.edu" class="lp-contact-card lp-contact-card--link group no-underline" data-contact-email-link>
+            <div class="lp-contact-card__icon" aria-hidden="true">
+              <span class="material-symbols-outlined">mail</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="lp-contact-card__label">Email</p>
+              <p class="lp-contact-card__value" data-contact-email>guestservices@apts.edu</p>
+              <p class="lp-contact-card__hint">Tap to send a message</p>
+            </div>
+            <span class="lp-contact-card__arrow material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </a>
+
+          <a href="tel:+639295991831" class="lp-contact-card lp-contact-card--link group no-underline" data-contact-phone-link>
+            <div class="lp-contact-card__icon" aria-hidden="true">
+              <span class="material-symbols-outlined">call</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="lp-contact-card__label" data-contact-name>Merlyn Ramos</p>
+              <p class="lp-contact-card__hint" data-contact-label>Housing &amp; Guest Services Supervisor</p>
+              <p class="lp-contact-card__value" data-contact-telephone>(6374) 442-2779 / 442-7068 Ext. 283</p>
+              <p class="lp-contact-card__hint">Mobile: <span data-contact-mobile>0929-599-1831</span> · Fax: <span data-contact-fax>(6374) 442-6378</span></p>
+            </div>
+            <span class="lp-contact-card__arrow material-symbols-outlined" aria-hidden="true">arrow_forward</span>
+          </a>
+
+          <div class="lp-contact-card lp-contact-card--location">
+            <div class="lp-contact-card__icon" aria-hidden="true">
+              <span class="material-symbols-outlined">location_on</span>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="lp-contact-card__label">Campus</p>
+              <p class="lp-contact-card__value" data-contact-address>444 Ambuklao, Baguio City</p>
+              <p class="lp-contact-card__hint">Philippines · Asia Pacific Theological Seminary</p>
+            </div>
+            <a href="https://maps.google.com/?q=444+Ambuklao+Baguio+City+Philippines" target="_blank" rel="noopener noreferrer" class="lp-contact-card__map" aria-label="Open campus location in Google Maps">
+              <span class="material-symbols-outlined text-[18px]" aria-hidden="true">map</span>
+              Map
+            </a>
+          </div>
+        </div>
+
+        <p class="mt-10 text-label-sm text-on-surface-variant">
+          <a href="/legal/policies-guidelines.html" class="text-primary hover:underline">Policies &amp; Guidelines</a>
+          <span class="mx-2">·</span>
+          <a href="/legal/privacy.html" class="text-primary hover:underline">Privacy Policy</a>
+          <span class="mx-2">·</span>
+          <a href="/legal/terms.html" class="text-primary hover:underline">Terms of Service</a>
+          <span class="mx-2">·</span>
+          <a href="/" class="text-primary hover:underline">Back to home</a>
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { loadSupportContact } from '/assets/js/features/support-contact.js';
+    loadSupportContact(document).catch(() => {});
+  </script>
+  <script type="module" src="/assets/js/layout/public-info-header.js"></script>
+</body>
+</html>

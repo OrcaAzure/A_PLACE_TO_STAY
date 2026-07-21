@@ -257,6 +257,7 @@ export async function saveGroupBookings({
   fees,
   meal_allergen_notes,
   bypassAdvanceLimit = false,
+  allowCustomFees = false,
 }) {
   await validateRoomAssignments({ checkIn, checkOut, rooms, excludeGroupId: groupId });
 
@@ -286,7 +287,7 @@ export async function saveGroupBookings({
     let groupGrandTotal = 0;
 
     let feesToSave = fees;
-    if (fees != null && fees.length) {
+    if (!allowCustomFees && fees != null && fees.length) {
       const catalogRows = await fetchExtraServiceRows();
       const sanitized = sanitizeGuestSubmittedFees(fees, catalogRows, []);
       feesToSave = await resolveGuestLodgingExtraFees(sanitized, { checkIn, checkOut });
@@ -342,8 +343,9 @@ export async function saveGroupBookings({
           preserveExisting: preserveMealPrices,
           checkIn,
           checkOut,
+          conn,
         });
-        await saveBookingFees(firstBookingId, feesToSave);
+        await saveBookingFees(firstBookingId, feesToSave, conn);
       }
       } finally {
         await releaseRoomBookingLock(conn, room_id);
@@ -451,6 +453,7 @@ export async function createReservationGroup(raw = {}) {
       fees,
       meal_allergen_notes,
       bypassAdvanceLimit: isAdmin,
+      allowCustomFees: isAdmin,
     });
   }
 
@@ -563,6 +566,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
         fees: feesToSave,
         meal_allergen_notes,
         bypassAdvanceLimit: false,
+        allowCustomFees: false,
       });
       notifyGuestGroupSelfModified({
         previous: group,
@@ -680,6 +684,7 @@ export async function updateReservationGroup(groupId, body, { isAdmin, userId })
       fees,
       meal_allergen_notes,
       bypassAdvanceLimit: isAdmin,
+      allowCustomFees: isAdmin,
     });
     const fresh = await getGroupById(groupId);
     if (nextStatus === 'Cancelled' && isAdmin) {

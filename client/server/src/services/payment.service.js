@@ -26,7 +26,8 @@ import {
 export const paymentRoomDetailSelect = `
   SELECT p.id, p.bookings_room_id AS booking_id, p.bookings_facility_id AS facility_booking_id,
          'room' AS invoice_kind,
-         p.subtotal, p.discount_amount, p.discount_note,
+         p.reservation_group_id, p.subtotal, p.subtotal_overridden,
+         p.discount_amount, p.discount_mode, p.discount_note,
          p.amount, p.method, p.status, p.paid_at, p.invoice_sent_at, p.billing_invoice_sent_at, p.created_at, p.updated_at,
          b.user_id, b.check_in, b.check_out, b.status AS booking_status, b.guest_count,
          b.total_amount AS booking_total, b.group_id, b.season, b.occupancy_item,
@@ -50,7 +51,8 @@ export const paymentRoomDetailSelect = `
 export const paymentVenueDetailSelect = `
   SELECT p.id, NULL AS booking_id, p.bookings_facility_id AS facility_booking_id,
          'venue' AS invoice_kind,
-         p.subtotal, p.discount_amount, p.discount_note,
+         p.reservation_group_id, p.subtotal, p.subtotal_overridden,
+         p.discount_amount, p.discount_mode, p.discount_note,
          p.amount, p.method, p.status, p.paid_at, p.invoice_sent_at, p.billing_invoice_sent_at, p.created_at, p.updated_at,
          fb.user_id, NULL AS check_in, NULL AS check_out, fb.status AS booking_status, fb.guest_count,
          fb.total_amount AS booking_total, NULL AS group_id, fb.season, NULL AS occupancy_item,
@@ -62,12 +64,35 @@ export const paymentVenueDetailSelect = `
          fb.facility_id,
          f.facility_group AS facility_category, f.name AS facility_name,
          f.room_code AS facility_room_code, f.package_name AS facility_package,
-         rf.rate AS facility_rate
+         NULL AS facility_rate
   FROM payments p
   JOIN bookings_facilities fb ON p.bookings_facility_id = fb.id
   JOIN users u ON fb.user_id = u.id
   JOIN facilities f ON fb.facility_id = f.id
-  LEFT JOIN rates_facilities rf ON rf.facility_id = f.id AND rf.season = fb.season
+`;
+
+export const paymentGroupDetailSelect = `
+  SELECT p.id,
+         (SELECT MIN(br.id) FROM bookings_rooms br
+          WHERE br.group_id = rg.id AND br.status = 'Approved' AND br.deleted_at IS NULL) AS booking_id,
+         NULL AS facility_booking_id,
+         'room' AS invoice_kind,
+         p.reservation_group_id, p.subtotal, p.subtotal_overridden,
+         p.discount_amount, p.discount_mode, p.discount_note,
+         p.amount, p.method, p.status, p.paid_at, p.invoice_sent_at, p.billing_invoice_sent_at, p.created_at, p.updated_at,
+         rg.user_id, rg.check_in, rg.check_out, rg.status AS booking_status,
+         rg.total_guests AS guest_count, p.subtotal AS booking_total, rg.id AS group_id,
+         NULL AS season, NULL AS occupancy_item,
+         rg.notes, rg.contact_phone, NULL AS meal_allergen_notes, rg.expected_arrival_time, rg.pricing_category,
+         u.full_name AS guest_name, u.email AS guest_email,
+         NULL AS room_id, NULL AS room_number, NULL AS room_type, NULL AS room_status,
+         NULL AS building_name, rg.group_name,
+         NULL AS event_date, NULL AS start_time, NULL AS end_time,
+         NULL AS facility_id, NULL AS facility_category, NULL AS facility_name,
+         NULL AS facility_room_code, NULL AS facility_package
+  FROM payments p
+  JOIN reservation_groups rg ON p.reservation_group_id = rg.id
+  JOIN users u ON rg.user_id = u.id
 `;
 
 function sortPaymentRows(rows) {
@@ -87,13 +112,17 @@ export async function listAllPaymentRows({ userId } = {}) {
   const venueSql = userId
     ? `${paymentVenueDetailSelect} WHERE fb.status = 'Approved' AND fb.user_id = ? AND p.deleted_at IS NULL AND fb.deleted_at IS NULL`
     : `${paymentVenueDetailSelect} WHERE fb.status = 'Approved' AND p.deleted_at IS NULL AND fb.deleted_at IS NULL`;
+  const groupSql = userId
+    ? `${paymentGroupDetailSelect} WHERE rg.status = 'Approved' AND rg.user_id = ? AND p.deleted_at IS NULL AND rg.deleted_at IS NULL`
+    : `${paymentGroupDetailSelect} WHERE rg.status = 'Approved' AND p.deleted_at IS NULL AND rg.deleted_at IS NULL`;
 
-  let [[roomRows], [venueRows]] = await Promise.all([
+  const [[roomRows], [groupRows], [venueRows]] = await Promise.all([
     pool.query(roomSql, userId ? [userId] : []),
+    pool.query(groupSql, userId ? [userId] : []),
     pool.query(venueSql, userId ? [userId] : []),
   ]);
 
-  return sortPaymentRows([...roomRows, ...venueRows]);
+  return sortPaymentRows([...roomRows, ...groupRows, ...venueRows]);
 }
 
 function calcNights(checkIn, checkOut) {
@@ -330,7 +359,7 @@ export async function revertVenueOvernightBilling(paymentId, payload = {}) {
       );
       await conn.query(
         `UPDATE payments
-         SET bookings_room_id = NULL, bookings_facility_id = ?, subtotal = ?, amount = ?
+         SET bookings_room_id = NULL, reservation_group_id = NULL, bookings_facility_id = ?, subtotal = ?, amount = ?
          WHERE id = ?`,
         [facilityBookingId, totalAmount, computeDueAmount(totalAmount, payment.discount_amount), paymentId],
       );
@@ -374,6 +403,40 @@ export async function enrichPaymentRow(row) {
     fees,
     nights: calcNights(row.check_in, row.check_out),
   };
+}
+
+async function getGroupInvoiceRooms(groupId) {
+  if (!groupId) return [];
+  const [rows] = await pool.query(
+    `SELECT b.id AS booking_id, b.check_in, b.check_out, b.guest_count,
+            b.total_amount, b.season, b.occupancy_item, b.meal_allergen_notes,
+            b.expected_arrival_time, b.notes,
+            r.id AS room_id, r.room_number, r.room_type, bl.name AS building_name
+     FROM bookings_rooms b
+     JOIN rooms r ON b.room_id = r.id
+     JOIN buildings bl ON r.building_id = bl.id
+     WHERE b.group_id = ? AND b.status = 'Approved' AND b.deleted_at IS NULL
+     ORDER BY b.id ASC`,
+    [groupId]
+  );
+  return Promise.all(rows.map(async (room) => {
+    const [meals, fees] = await Promise.all([
+      getBookingMeals(room.booking_id),
+      getBookingFees(room.booking_id),
+    ]);
+    const mealsTotal = meals.reduce((sum, meal) => sum + Number(meal.subtotal || 0), 0);
+    const feesTotal = fees.reduce(
+      (sum, fee) => sum + (Number(fee.amount || 0) * Math.max(1, Number(fee.quantity) || 1)),
+      0
+    );
+    return {
+      ...room,
+      meals,
+      fees,
+      nights: calcNights(room.check_in, room.check_out),
+      room_total: Math.max(0, roundMoney(Number(room.total_amount || 0) - mealsTotal - feesTotal)),
+    };
+  }));
 }
 
 export async function enrichPaymentRows(rows) {
@@ -595,8 +658,23 @@ export async function attachSummariesToPayments(rows) {
 
 export async function getInvoiceByBookingId(bookingId) {
   const [rows] = await pool.query(
-    'SELECT * FROM payments WHERE bookings_room_id = ? AND deleted_at IS NULL LIMIT 1',
+    `SELECT p.*
+     FROM bookings_rooms b
+     JOIN payments p
+       ON (b.group_id IS NOT NULL AND p.reservation_group_id = b.group_id)
+       OR (b.group_id IS NULL AND p.bookings_room_id = b.id)
+     WHERE b.id = ? AND p.deleted_at IS NULL
+     ORDER BY p.reservation_group_id IS NOT NULL DESC, p.id ASC
+     LIMIT 1`,
     [bookingId]
+  );
+  return rows[0] || null;
+}
+
+export async function getInvoiceByGroupId(groupId) {
+  const [rows] = await pool.query(
+    'SELECT * FROM payments WHERE reservation_group_id = ? AND deleted_at IS NULL LIMIT 1',
+    [groupId]
   );
   return rows[0] || null;
 }
@@ -665,23 +743,33 @@ export async function sendInvoiceEmail(paymentId) {
   return loadPaymentDetail(paymentId);
 }
 
-export async function ensureInvoiceForBooking(bookingId, { autoEmail = false } = {}) {
+export async function ensureInvoiceForBooking(
+  bookingId,
+  { autoEmail = false, forceSync = false } = {}
+) {
   const [bookings] = await pool.query(
-    'SELECT id, total_amount, status FROM bookings_rooms WHERE id = ?',
+    'SELECT id, group_id, total_amount, status FROM bookings_rooms WHERE id = ?',
     [bookingId]
   );
   if (!bookings.length || bookings[0].status !== 'Approved') return null;
+  if (bookings[0].group_id) {
+    const [invoiceId] = await ensureInvoicesForGroup(bookings[0].group_id, { autoEmail, forceSync });
+    return invoiceId || null;
+  }
 
   const subtotal = Number(bookings[0].total_amount || 0);
   if (subtotal <= 0) return null;
 
   const existing = await getInvoiceByBookingId(bookingId);
   if (existing) {
-    if (existing.status !== 'Paid' && !Number(existing.subtotal_overridden)) {
+    if (existing.status !== 'Paid' && (forceSync || !Number(existing.subtotal_overridden))) {
       const amount = computeDueAmount(subtotal, existing.discount_amount);
       await pool.query(
-        'UPDATE payments SET subtotal = ?, amount = ? WHERE id = ? AND status != ?',
-        [subtotal, amount, existing.id, 'Paid']
+        `UPDATE payments
+         SET subtotal = ?, amount = ?,
+             subtotal_overridden = CASE WHEN ? THEN 0 ELSE subtotal_overridden END
+         WHERE id = ? AND status != ?`,
+        [subtotal, amount, forceSync, existing.id, 'Paid']
       );
     }
     if (autoEmail && existing.status === 'Pending' && !existing.invoice_sent_at) {
@@ -741,10 +829,13 @@ export async function ensureInvoiceForFacilityBooking(facilityBookingId, { autoE
   return paymentId;
 }
 
-export async function ensureInvoicesForGroup(groupId, { autoEmail = false } = {}) {
+export async function ensureInvoicesForGroup(
+  groupId,
+  { autoEmail = false, forceSync = false } = {}
+) {
   const [rows] = await pool.query(
     `SELECT id, total_amount FROM bookings_rooms
-     WHERE group_id = ? AND status = 'Approved'
+     WHERE group_id = ? AND status = 'Approved' AND deleted_at IS NULL
      ORDER BY id ASC`,
     [groupId]
   );
@@ -753,43 +844,100 @@ export async function ensureInvoicesForGroup(groupId, { autoEmail = false } = {}
   const groupSubtotal = roundMoney(rows.reduce((sum, row) => sum + Number(row.total_amount || 0), 0));
   if (groupSubtotal <= 0) return [];
 
-  const primaryBookingId = rows[0].id;
-
-  // One invoice for the whole group stay — drop unused sibling room invoices.
-  for (const row of rows.slice(1)) {
-    const sibling = await getInvoiceByBookingId(row.id);
-    if (!sibling || sibling.status !== 'Pending') continue;
-    const [txs] = await pool.query(
-      'SELECT COUNT(*) AS c FROM payment_transactions WHERE payment_id = ?',
-      [sibling.id]
+  const bookingIds = rows.map((row) => row.id);
+  const conn = await pool.getConnection();
+  let paymentId;
+  try {
+    await conn.beginTransaction();
+    const [payments] = await conn.query(
+      `SELECT p.*
+       FROM payments p
+       WHERE p.deleted_at IS NULL
+         AND (p.reservation_group_id = ? OR p.bookings_room_id IN (?))
+       ORDER BY (p.reservation_group_id = ?) DESC, p.id ASC
+       FOR UPDATE`,
+      [groupId, bookingIds, groupId]
     );
-    if (Number(txs[0]?.c || 0) === 0) {
-      await pool.query('DELETE FROM payments WHERE id = ?', [sibling.id]);
-    }
-  }
 
-  const existing = await getInvoiceByBookingId(primaryBookingId);
-  if (existing) {
-    if (existing.status !== 'Paid' && !Number(existing.subtotal_overridden)) {
-      const amount = computeDueAmount(groupSubtotal, existing.discount_amount);
-      await pool.query(
-        'UPDATE payments SET subtotal = ?, amount = ? WHERE id = ? AND status != ?',
-        [groupSubtotal, amount, existing.id, 'Paid']
+    let canonical = payments[0] || null;
+    if (!canonical) {
+      const amount = computeDueAmount(groupSubtotal, 0);
+      const [result] = await conn.query(
+        `INSERT INTO payments
+           (bookings_room_id, reservation_group_id, subtotal, discount_amount, discount_note, amount, status)
+         VALUES (NULL, ?, ?, 0, NULL, ?, 'Pending')`,
+        [groupId, groupSubtotal, amount]
+      );
+      paymentId = result.insertId;
+    } else {
+      paymentId = canonical.id;
+      for (const payment of payments) {
+        const [[txCount]] = await conn.query(
+          'SELECT COUNT(*) AS count FROM payment_transactions WHERE payment_id = ?',
+          [payment.id]
+        );
+        if (payment.status === 'Paid' && Number(txCount.count || 0) === 0 && Number(payment.amount || 0) > 0) {
+          await conn.query(
+            `INSERT INTO payment_transactions
+               (payment_id, type, amount, method, notes, recorded_at)
+             VALUES (?, 'Settlement', ?, ?, ?, COALESCE(?, CURRENT_TIMESTAMP))`,
+            [
+              payment.id,
+              Number(payment.amount),
+              payment.method || 'Cash',
+              `Imported while consolidating legacy group invoice #${payment.id}`,
+              payment.paid_at,
+            ]
+          );
+        }
+        if (payment.id === paymentId) continue;
+        await conn.query(
+          'UPDATE payment_transactions SET payment_id = ? WHERE payment_id = ?',
+          [paymentId, payment.id]
+        );
+        await conn.query(
+          `UPDATE payments canonical
+           SET canonical.invoice_sent_at = COALESCE(canonical.invoice_sent_at, ?),
+               canonical.billing_invoice_sent_at = COALESCE(canonical.billing_invoice_sent_at, ?),
+               canonical.method = COALESCE(canonical.method, ?)
+           WHERE canonical.id = ?`,
+          [payment.invoice_sent_at, payment.billing_invoice_sent_at, payment.method, paymentId]
+        );
+        await conn.query('DELETE FROM payments WHERE id = ?', [payment.id]);
+      }
+      await conn.query(
+        `UPDATE payments
+         SET bookings_room_id = NULL, bookings_facility_id = NULL, reservation_group_id = ?
+         WHERE id = ?`,
+        [groupId, paymentId]
       );
     }
-    if (autoEmail && existing.status === 'Pending' && !existing.invoice_sent_at) {
-      void tryAutoSendInvoiceEmail(existing.id);
+    await conn.commit();
+  } catch (error) {
+    await conn.rollback();
+    if (error?.code === 'ER_DUP_ENTRY') {
+      const existing = await getInvoiceByGroupId(groupId);
+      if (existing) paymentId = existing.id;
+      else throw error;
+    } else {
+      throw error;
     }
-    return [existing.id];
+  } finally {
+    conn.release();
   }
 
-  const amount = computeDueAmount(groupSubtotal, 0);
-  const [result] = await pool.query(
-    `INSERT INTO payments (bookings_room_id, subtotal, discount_amount, discount_note, amount, status)
-     VALUES (?, ?, 0, NULL, ?, 'Pending')`,
-    [primaryBookingId, groupSubtotal, amount]
-  );
-  const paymentId = result.insertId;
+  await syncPaymentStatus(paymentId);
+  const existing = await getInvoiceByGroupId(groupId);
+  if (existing && existing.status !== 'Paid' && (forceSync || !Number(existing.subtotal_overridden))) {
+    const amount = computeDueAmount(groupSubtotal, existing.discount_amount);
+    await pool.query(
+      `UPDATE payments
+       SET subtotal = ?, amount = ?,
+           subtotal_overridden = CASE WHEN ? THEN 0 ELSE subtotal_overridden END
+       WHERE id = ? AND status != 'Paid'`,
+      [groupSubtotal, amount, forceSync, existing.id]
+    );
+  }
   if (autoEmail) {
     void tryAutoSendInvoiceEmail(paymentId);
   }
@@ -798,7 +946,8 @@ export async function ensureInvoicesForGroup(groupId, { autoEmail = false } = {}
 
 export async function loadPaymentDetail(paymentId) {
   const [meta] = await pool.query(
-    'SELECT bookings_room_id, bookings_facility_id FROM payments WHERE id = ? LIMIT 1',
+    `SELECT bookings_room_id, reservation_group_id, bookings_facility_id
+     FROM payments WHERE id = ? AND deleted_at IS NULL LIMIT 1`,
     [paymentId]
   );
   if (!meta.length) return null;
@@ -807,17 +956,21 @@ export async function loadPaymentDetail(paymentId) {
   if (meta[0].bookings_facility_id) {
     const [rows] = await pool.query(`${paymentVenueDetailSelect} WHERE p.id = ? AND p.deleted_at IS NULL LIMIT 1`, [paymentId]);
     row = rows[0];
+  } else if (meta[0].reservation_group_id) {
+    const [rows] = await pool.query(`${paymentGroupDetailSelect} WHERE p.id = ? AND p.deleted_at IS NULL LIMIT 1`, [paymentId]);
+    row = rows[0];
   } else {
     const [rows] = await pool.query(`${paymentRoomDetailSelect} WHERE p.id = ? AND p.deleted_at IS NULL LIMIT 1`, [paymentId]);
     row = rows[0];
   }
 
-  if (!row) {
-    throw new Error('Invoice booking record is missing or incomplete');
-  }
+  if (!row) return null;
 
   const payment = await enrichPaymentRow(row);
   if (!payment) return null;
+  if (payment.group_id) {
+    payment.group_rooms = await getGroupInvoiceRooms(payment.group_id);
+  }
 
   const transactions = await getPaymentLedger(paymentId);
   const summary = computePaymentSummary(payment, transactions);
@@ -1285,7 +1438,7 @@ export async function convertPaymentReservationKind(paymentId, payload = {}) {
       );
       await conn.query(
         `UPDATE payments
-         SET bookings_room_id = NULL, bookings_facility_id = ?, subtotal = ?, amount = ?
+         SET bookings_room_id = NULL, reservation_group_id = NULL, bookings_facility_id = ?, subtotal = ?, amount = ?
          WHERE id = ?`,
         [newFacilityBookingId, totalAmount, computeDueAmount(totalAmount, payment.discount_amount), paymentId]
       );

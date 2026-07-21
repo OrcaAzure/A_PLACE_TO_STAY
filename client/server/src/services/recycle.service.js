@@ -23,16 +23,19 @@ async function restoreRow(table, id) {
 export async function listRecycleInvoices() {
   const [rows] = await pool.query(
     `SELECT p.id, p.amount, p.status, p.paid_at, p.deleted_at, p.deleted_by,
-            p.bookings_room_id, p.bookings_facility_id,
-            COALESCE(ur.full_name, uf.full_name) AS guest_name,
-            COALESCE(ur.email, uf.email) AS guest_email,
+            p.bookings_room_id, p.reservation_group_id, p.bookings_facility_id,
+            COALESCE(ur.full_name, ug.full_name, uf.full_name) AS guest_name,
+            COALESCE(ur.email, ug.email, uf.email) AS guest_email,
             CASE
               WHEN p.bookings_facility_id IS NOT NULL THEN 'venue'
+              WHEN p.reservation_group_id IS NOT NULL THEN 'group'
               ELSE 'room'
             END AS invoice_kind
      FROM payments p
      LEFT JOIN bookings_rooms br ON p.bookings_room_id = br.id
      LEFT JOIN users ur ON br.user_id = ur.id
+     LEFT JOIN reservation_groups rg ON p.reservation_group_id = rg.id
+     LEFT JOIN users ug ON rg.user_id = ug.id
      LEFT JOIN bookings_facilities bf ON p.bookings_facility_id = bf.id
      LEFT JOIN users uf ON bf.user_id = uf.id
      WHERE p.deleted_at IS NOT NULL
@@ -50,7 +53,7 @@ export async function listRecycleReservations() {
      JOIN users u ON br.user_id = u.id
      LEFT JOIN rooms r ON br.room_id = r.id
      LEFT JOIN buildings b ON r.building_id = b.id
-     WHERE br.deleted_at IS NOT NULL
+     WHERE br.deleted_at IS NOT NULL AND br.group_id IS NULL
      ORDER BY br.deleted_at DESC`
   );
 
@@ -109,6 +112,23 @@ export async function softDeleteAllPaidInvoices(actorUserId = null) {
 }
 
 export async function restoreInvoice(paymentId) {
+  const [parents] = await pool.query(
+    `SELECT p.id,
+            br.deleted_at AS room_deleted_at,
+            rg.deleted_at AS group_deleted_at,
+            bf.deleted_at AS facility_deleted_at
+     FROM payments p
+     LEFT JOIN bookings_rooms br ON p.bookings_room_id = br.id
+     LEFT JOIN reservation_groups rg ON p.reservation_group_id = rg.id
+     LEFT JOIN bookings_facilities bf ON p.bookings_facility_id = bf.id
+     WHERE p.id = ? AND p.deleted_at IS NOT NULL
+     LIMIT 1`,
+    [paymentId]
+  );
+  if (!parents.length) throw new Error('Invoice not found in recycle bin');
+  if (parents[0].room_deleted_at || parents[0].group_deleted_at || parents[0].facility_deleted_at) {
+    throw new Error('Restore the reservation first; its invoice will be restored with it.');
+  }
   const ok = await restoreRow('payments', paymentId);
   if (!ok) throw new Error('Invoice not found in recycle bin');
   return { id: Number(paymentId) };
@@ -146,6 +166,18 @@ async function assertNoActivePaidInvoiceForVenue(facilityBookingId) {
   );
   if (rows.length) {
     throw new Error('This reservation has a paid invoice. Delete the paid billing record first (it moves to the recycle bin).');
+  }
+}
+
+async function assertNoActivePaidInvoiceForGroup(groupId) {
+  const [rows] = await pool.query(
+    `SELECT id FROM payments
+     WHERE reservation_group_id = ? AND status = 'Paid' AND deleted_at IS NULL
+     LIMIT 1`,
+    [groupId]
+  );
+  if (rows.length) {
+    throw new Error('This group reservation has a paid invoice. Delete the paid billing record first (it moves to the recycle bin).');
   }
 }
 
@@ -191,19 +223,12 @@ export async function softDeleteGroup(groupId, actorUserId = null) {
   );
   if (!rows.length) throw new Error('Group reservation not found');
 
-  const [roomRows] = await pool.query(
-    `SELECT id FROM bookings_rooms WHERE group_id = ? AND deleted_at IS NULL`,
-    [groupId]
-  );
-  for (const room of roomRows) {
-    await assertNoActivePaidInvoiceForRoom(room.id);
-  }
+  await assertNoActivePaidInvoiceForGroup(groupId);
 
   await pool.query(
-    `UPDATE payments p
-     JOIN bookings_rooms br ON p.bookings_room_id = br.id
-     SET p.deleted_at = CURRENT_TIMESTAMP, p.deleted_by = ?
-     WHERE br.group_id = ? AND p.deleted_at IS NULL AND p.status <> 'Paid'`,
+    `UPDATE payments
+     SET deleted_at = CURRENT_TIMESTAMP, deleted_by = ?
+     WHERE reservation_group_id = ? AND deleted_at IS NULL AND status <> 'Paid'`,
     [actorUserId, groupId]
   );
   await pool.query(
@@ -247,10 +272,8 @@ export async function restoreReservation({ kind, id }) {
       [id]
     );
     await pool.query(
-      `UPDATE payments p
-       JOIN bookings_rooms br ON p.bookings_room_id = br.id
-       SET p.deleted_at = NULL, p.deleted_by = NULL
-       WHERE br.group_id = ? AND p.deleted_at IS NOT NULL`,
+      `UPDATE payments SET deleted_at = NULL, deleted_by = NULL
+       WHERE reservation_group_id = ? AND deleted_at IS NOT NULL`,
       [id]
     );
     return { id: Number(id), kind };
@@ -297,6 +320,15 @@ export async function purgeReservation({ kind, id }) {
       [id]
     );
     if (!rows.length) throw new Error('Group reservation not found in recycle bin');
+    const [groupPayments] = await pool.query(
+      'SELECT id FROM payments WHERE reservation_group_id = ?',
+      [id]
+    );
+    if (groupPayments.length) {
+      const paymentIds = groupPayments.map((payment) => payment.id);
+      await pool.query('DELETE FROM payment_transactions WHERE payment_id IN (?)', [paymentIds]);
+      await pool.query('DELETE FROM payments WHERE reservation_group_id = ?', [id]);
+    }
     const [roomRows] = await pool.query('SELECT id FROM bookings_rooms WHERE group_id = ?', [id]);
     for (const room of roomRows) {
       await purgeReservation({ kind: 'room', id: room.id });

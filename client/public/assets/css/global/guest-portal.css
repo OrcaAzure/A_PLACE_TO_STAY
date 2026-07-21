@@ -1671,24 +1671,6 @@ body.browse-preview-open {
   margin-top: 0.35rem;
 }
 
-.browse-preview__section--policies .browse-preview__list {
-  max-height: 8.75rem;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  padding-right: 0.5rem;
-  scrollbar-width: thin;
-  scrollbar-color: #cbd5e1 transparent;
-}
-
-.browse-preview__section--policies .browse-preview__list::-webkit-scrollbar {
-  width: 5px;
-}
-
-.browse-preview__section--policies .browse-preview__list::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 999px;
-}
-
 .browse-preview__use-notes {
   margin-top: 0.35rem;
   padding: 0.55rem 0.7rem;
