@@ -11,6 +11,9 @@ desktop.ini
 *.log
 client/server/logs/
 
+# Local artifacts / debug dumps
+ci-logs.zip
+
 # Local Python deps used only for one-off spreadsheet inspection (e.g. openpyxl)
 client/.tmp_py/
 .tmp-mysql-data/
