@@ -224,10 +224,12 @@ async function loadGuestTemplates() {
       loadComponent('/components/guest-nav.html'),
       loadComponent('/components/notifications.html'),
       loadComponent('/components/modal.html'),
-    ]).then(([guestNav, notifications, modal]) => ({
+      loadComponent('/components/guest-footer.html'),
+    ]).then(([guestNav, notifications, modal, guestFooter]) => ({
       guestNav,
       notifications,
       modal,
+      guestFooter,
     }));
   }
   return guestTemplatesPromise;
@@ -485,6 +487,7 @@ function buildGuestShell({
     <main class="guest-main lp-main">
       <div id="page-content" class="${pageClass}">${content}</div>
     </main>
+    ${templates.guestFooter || ''}
     ${landingHome ? '' : renderGuestBottomNav(GUEST_MOBILE_NAV, activePage)}
     ${templates.notifications || ''}
     ${templates.modal || ''}
@@ -640,6 +643,12 @@ export async function initAppLayout(config = {}) {
       if (!landingHome && !document.querySelector('.guest-bottom-nav')) {
         document.body.insertAdjacentHTML('beforeend', renderGuestBottomNav(GUEST_MOBILE_NAV, activePage));
         updateActiveNav(activePage, navItems);
+      }
+      if (!landingHome && !document.querySelector('footer.bg-white.border-t')) {
+        loadComponent('/components/guest-footer.html').then((footerHtml) => {
+          const main = document.querySelector('.guest-main');
+          if (main && footerHtml) main.insertAdjacentHTML('afterend', footerHtml);
+        }).catch(() => {});
       }
       await ensureConfirmModalMounted();
       if (activePage === 'reservations') {

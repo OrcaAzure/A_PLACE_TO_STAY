@@ -12,7 +12,7 @@ export const DEFAULT_ROOMS_POLICIES = `## Purpose
 These accommodation policies serve as a guide for guests staying within the Asia Pacific Theological Seminary (APTS) campus. They outline reservation requirements, payment guidelines, guest conduct expectations, meal arrangements, and important reminders to help ensure a safe, peaceful, and orderly stay.
 
 ## Reservation and Deposit Guidelines
-Upon approval of a reservation, a twenty-five percent (25%) deposit is required to confirm the booking. An additional fifty percent (50%) deposit must be paid at least thirty (30) days before the scheduled stay. For reservations made less than thirty (30) days before the scheduled stay, a fifty percent (50%) deposit shall be required upon approval.
+Upon approval, a **twenty-five percent (25%) deposit** is required before the reservation is officially confirmed. Until this deposit is received, the booking remains in a **pending confirmation** state. An additional fifty percent (50%) deposit must be paid at least thirty (30) days before the scheduled stay. For reservations made less than thirty (30) days before the scheduled stay, a fifty percent (50%) deposit shall be required upon approval.
 
 All displayed rates are for reference only and may still be reviewed by the Housing Office. Final charges may vary depending on the approved reservation details, room assignment, number of guests, additional requests, and applicable fees.
 
@@ -22,7 +22,7 @@ If a reservation is cancelled more than thirty (30) days before the scheduled st
 Cancellation requests are subject to review and must follow the official reservation guidelines of APTS.
 
 ## Check-In and Check-Out
-The standard check-in and check-out time for all accommodations is 12:00 noon. Guests are requested to complete check-in and check-out procedures during regular business hours.
+Standard check-in is **2:00 PM** and standard check-out is **12:00 PM (noon)**. Guests are requested to complete check-in and check-out procedures during regular business hours. Early check-in may be arranged when availability allows — contact the Housing Office in advance.
 
 Payment for bills incurred is required upon check-in. Guests who plan to vacate their accommodations outside regular business hours must settle any additional charges at the Housing Office or Business Office on the day before departure.
 

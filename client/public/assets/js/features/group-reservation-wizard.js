@@ -9,13 +9,14 @@ import {
 import {
   GROUP_WIZARD_STEPS, escapeHtml, formatDateLong, formatMoney,
   emptyGroupWizardState, mealsFromBooking, calcGroupGrandTotal,
-  assignedGuestTotal, debounce, servicesToQuickFees, applyLoggedInGroupContact, sanitizeGuestModifyFees,
+  assignedGuestTotal, servicesToQuickFees, applyLoggedInGroupContact, sanitizeGuestModifyFees,
   filterRoomsList, collectWizardRoomTypes,
   loadFiscalYearBounds, applyBookingDateBounds, formatBookingWindowHint,
-  readMealsFromInputs, clampMealQty, mealTypesOrdered, ensureMealsShape, isValidEmail,
+  readMealsFromInputs, clampMealQty, mealTypesOrdered, ensureMealsShape, isInvalidOptionalEmail,
   guestModifyMinStep, renderGuestModifyProgress, renderGuestModifyReviewSummary, renderGuestModifyReviewCallout,
-  aggregateFeeLines, formatFeeLineLabel,
+  aggregateFeeLines, formatFeeLineLabel, guestRoomingNoticeHtml,
 } from '/assets/js/features/reservation-shared.js';
+import { checkInOutPolicyNoteHtml } from '/assets/js/constants/booking-policy.js';
 import {
   renderWizardMealGrid,
   renderGuestModifyMealList,
@@ -39,6 +40,7 @@ let feeGroups = [];
 let quickFees = [];
 let feePickerClickBound = false;
 let mealDelegationBound = false;
+let groupSearchDelegationBound = false;
 
 function $(id) { return document.getElementById(id); }
 
@@ -136,7 +138,7 @@ function applyGroupRecordToState(group) {
     quantity: f.quantity,
   }));
   state.originalFees = state.fees.map((f) => ({ ...f }));
-  state.expectedArrivalTime = String(group.expected_arrival_time || '').slice(0, 5);
+  state.expectedArrivalTime = '';
   state.selectedRooms = (group.bookings || []).map((b) => ({
     room_id: b.room_id,
     guest_count: b.guest_count,
@@ -158,8 +160,8 @@ function renderStep1() {
     <select id="gw-user" class="res-input"><option value="">— Type contact below —</option>${opts}</select>
     <label class="res-label" for="gw-contact">Contact person</label>
     <input id="gw-contact" class="res-input" type="text" value="${escapeHtml(state.contactName)}" placeholder="Full name" />
-    <label class="res-label" for="gw-email">Email <span class="res-label-required">(required)</span></label>
-    <input id="gw-email" class="res-input" type="email" value="${escapeHtml(state.email)}" placeholder="email@example.com" autocomplete="email" required />
+    <label class="res-label" for="gw-email">Email <span class="res-label-optional">(optional)</span></label>
+    <input id="gw-email" class="res-input" type="email" value="${escapeHtml(state.email)}" placeholder="email@example.com" autocomplete="email" />
     <label class="res-label" for="gw-phone">Contact number <span class="res-label-optional">(optional)</span></label>
     <input id="gw-phone" class="res-input" type="tel" value="${escapeHtml(state.contactPhone)}" placeholder="09XX XXX XXXX" autocomplete="tel" />`;
 }
@@ -186,6 +188,7 @@ function renderStep2() {
         </div>
         <label class="res-label">Total guests</label>
         <input id="gw-total-guests" class="res-input res-input--short" type="number" min="1" max="500" value="${state.totalGuests}" inputmode="numeric" />
+        ${guestRoomingNoticeHtml('group')}
         ${banner}
       </div>`;
   }
@@ -212,6 +215,51 @@ function getFilteredRooms() {
     roomType: state.roomTypeFilter,
     includeStatuses: ['available'],
   }).sort((a, b) => String(a.room_number).localeCompare(String(b.room_number), undefined, { numeric: true }));
+}
+
+function renderGroupRoomListInner() {
+  const eligible = getFilteredRooms();
+  return eligible.length
+    ? eligible.map(renderGroupRoomRow).join('')
+    : '<div class="res-empty-box"><p>No rooms match your search. Try clearing filters or go back to change dates.</p></div>';
+}
+
+/** Re-filter the room list without re-rendering the search field (keeps keyboard focus). */
+function refreshGroupRoomList() {
+  if (state.step !== 3) return;
+  const list = $('gw-room-list');
+  if (!list) return;
+  list.innerHTML = renderGroupRoomListInner();
+  bindGroupRoomRowEvents(list);
+}
+
+function bindGroupRoomRowEvents(scope) {
+  const root = scope || $('group-wizard-body');
+  if (!root) return;
+  root.querySelectorAll('[data-room-toggle]').forEach((btn) => {
+    btn.onclick = () => toggleRoom(btn.getAttribute('data-room-toggle'));
+  });
+  root.querySelectorAll('[data-remove-room]').forEach((btn) => {
+    btn.onclick = (e) => { e.stopPropagation(); toggleRoom(btn.getAttribute('data-remove-room')); };
+  });
+  root.querySelectorAll('[data-room-guest-plus]').forEach((btn) => {
+    btn.onclick = () => adjustRoomGuests(btn.getAttribute('data-room-guest-plus'), 1);
+  });
+  root.querySelectorAll('[data-room-guest-minus]').forEach((btn) => {
+    btn.onclick = () => adjustRoomGuests(btn.getAttribute('data-room-guest-minus'), -1);
+  });
+}
+
+function bindGroupSearchDelegation() {
+  if (groupSearchDelegationBound) return;
+  const modal = $('group-wizard-modal');
+  if (!modal) return;
+  groupSearchDelegationBound = true;
+  modal.addEventListener('input', (e) => {
+    if (e.target.id !== 'gw-room-search') return;
+    state.roomSearch = e.target.value || '';
+    refreshGroupRoomList();
+  });
 }
 
 function renderGroupRoomFilters() {
@@ -283,7 +331,6 @@ function renderGroupRoomRow(room) {
 }
 
 function renderStep3() {
-  const eligible = getFilteredRooms();
   const modifyBanner = state.modifyRequest && !state.guestModify
     ? `<div class="res-banner res-banner--warn">Review or change room assignments below, then continue to meals and confirm.</div>`
     : '';
@@ -294,9 +341,8 @@ function renderStep3() {
       ${renderSelectedSummary()}
       ${state.loadingRooms ? '<p class="res-hint">Loading rooms…</p>' : ''}
       <input id="gw-room-search" type="search" class="res-input guest-modify-search" placeholder="Search rooms…" value="${escapeHtml(state.roomSearch)}" />
-      <div class="guest-modify-group-rooms">
-        ${eligible.length ? eligible.map(renderGroupRoomRow).join('')
-          : '<div class="res-empty-box"><p>No rooms available. Try different dates.</p></div>'}
+      <div id="gw-room-list" class="guest-modify-group-rooms">
+        ${renderGroupRoomListInner()}
       </div>`;
   }
 
@@ -306,9 +352,8 @@ function renderStep3() {
     ${renderSelectedSummary()}
     ${renderGroupRoomFilters()}
     ${state.loadingRooms ? '<p class="res-hint">Loading rooms…</p>' : ''}
-    <div class="wiz-group-room-list">
-      ${eligible.length ? eligible.map(renderGroupRoomRow).join('')
-        : '<div class="res-empty-box"><p>No rooms match your search. Try clearing filters or go back to change dates.</p></div>'}
+    <div id="gw-room-list" class="wiz-group-room-list">
+      ${renderGroupRoomListInner()}
     </div>`;
 }
 
@@ -462,9 +507,7 @@ function renderStep5() {
       message: state.guestMessage,
     })}
       ${renderGuestModifyReviewSummary(reviewRows, { grandLabel: 'Estimated total', grandTotal: grand })}
-      <label class="res-label" for="gw-arrival-time">Earliest arrival — ${escapeHtml(formatDateLong(state.checkIn))} <span class="text-error">*</span></label>
-      <input id="gw-arrival-time" type="time" class="res-input" required value="${escapeHtml(state.expectedArrivalTime || '')}" />
-      <p class="res-hint">If members arrive separately, use the earliest arrival on check-in day.</p>
+      ${checkInOutPolicyNoteHtml()}
       <label class="res-label" for="gw-notes">Notes <span class="guest-modify-optional">optional</span></label>
       <textarea id="gw-notes" class="res-input" rows="2" placeholder="Anything else for housing…">${escapeHtml(state.notes)}</textarea>`;
   }
@@ -484,9 +527,7 @@ function renderStep5() {
     grandLabel: state.guestModify || state.fromRequestId ? 'Estimated grand total' : 'Grand total',
     grandTotal: grand,
   })}
-    <label class="res-label" for="gw-arrival-time">Earliest arrival — ${escapeHtml(formatDateLong(state.checkIn))} <span class="text-error">*</span></label>
-    <input id="gw-arrival-time" type="time" class="res-input" required value="${escapeHtml(state.expectedArrivalTime || '')}" />
-    <p class="res-hint">If members arrive separately, use the earliest arrival on check-in day.</p>
+    ${checkInOutPolicyNoteHtml()}
     <label class="res-label" for="gw-notes">Notes for housing staff</label>
     <textarea id="gw-notes" class="res-input" rows="2">${escapeHtml(state.notes)}</textarea>`;
 }
@@ -550,7 +591,6 @@ function readAllFields() {
   const rr = $('gw-rooms-req')?.value;
   if ($('gw-rooms-req')) state.roomsRequested = rr ? Math.max(1, Number(rr)) : null;
   state.notes = $('gw-notes')?.value?.trim() ?? state.notes;
-  state.expectedArrivalTime = $('gw-arrival-time')?.value?.trim() ?? state.expectedArrivalTime;
   state.guestMessage = $('gw-guest-message')?.value?.trim() ?? state.guestMessage;
   if ($('gw-meal-allergens')) state.mealAllergenNotes = $('gw-meal-allergens').value?.trim() || '';
   if ($('gw-room-search')) state.roomSearch = $('gw-room-search').value;
@@ -628,7 +668,6 @@ async function fetchRooms() {
   } finally {
     if (token !== fetchRoomsToken) return;
     state.loadingRooms = false;
-    renderSteps();
     renderBody();
   }
 }
@@ -678,23 +717,21 @@ function bindEvents() {
     renderBody();
   });
 
-  const onStayChange = () => {
+  const onDatesChange = () => {
     readStepFields();
     if (!state.guestModify) state.selectedRooms = [];
     fetchRooms();
   };
-  $('gw-check-in')?.addEventListener('change', onStayChange);
-  $('gw-check-out')?.addEventListener('change', onStayChange);
-  // Use change (not input) so multi-digit guest counts like 25 are not remounted mid-typing.
-  $('gw-total-guests')?.addEventListener('change', onStayChange);
+  const onGuestCountChange = () => {
+    readStepFields();
+    fetchRooms();
+  };
+  $('gw-check-in')?.addEventListener('change', onDatesChange);
+  $('gw-check-out')?.addEventListener('change', onDatesChange);
+  $('gw-total-guests')?.addEventListener('change', onGuestCountChange);
 
   $('gw-use-suggested')?.addEventListener('click', applySuggestion);
 
-  const debouncedSearch = debounce(() => {
-    state.roomSearch = $('gw-room-search')?.value || '';
-    renderBody();
-  }, 200);
-  $('gw-room-search')?.addEventListener('input', debouncedSearch);
   bindWizardRoomTypeFilter($('group-wizard-body'), {
     idPrefix: 'gw',
     onChange: (value) => {
@@ -703,18 +740,7 @@ function bindEvents() {
     },
   });
 
-  $('group-wizard-body')?.querySelectorAll('[data-room-toggle]').forEach((btn) => {
-    btn.addEventListener('click', () => toggleRoom(btn.getAttribute('data-room-toggle')));
-  });
-  $('group-wizard-body')?.querySelectorAll('[data-remove-room]').forEach((btn) => {
-    btn.addEventListener('click', (e) => { e.stopPropagation(); toggleRoom(btn.getAttribute('data-remove-room')); });
-  });
-  $('group-wizard-body')?.querySelectorAll('[data-room-guest-plus]').forEach((btn) => {
-    btn.addEventListener('click', () => adjustRoomGuests(btn.getAttribute('data-room-guest-plus'), 1));
-  });
-  $('group-wizard-body')?.querySelectorAll('[data-room-guest-minus]').forEach((btn) => {
-    btn.addEventListener('click', () => adjustRoomGuests(btn.getAttribute('data-room-guest-minus'), -1));
-  });
+  if (state.step === 3) bindGroupRoomRowEvents();
 
   if (!feePickerClickBound) {
     $('group-wizard-body')?.addEventListener('click', (e) => {
@@ -777,8 +803,8 @@ function validate() {
   if (state.step === 1 && !state.guestModify) {
     if (!state.groupName) { state.error = 'Please enter the group name.'; return false; }
     if (!state.contactName) { state.error = 'Please enter a contact person.'; return false; }
-    if (!isValidEmail(state.email)) {
-      state.error = 'Please enter a valid email address for the contact person.';
+    if (isInvalidOptionalEmail(state.email)) {
+      state.error = 'Please enter a valid email address, or leave the field blank.';
       return false;
     }
   }
@@ -850,9 +876,9 @@ function goBack() {
 async function confirmSave() {
   readAllFields();
   state.error = null;
-  if (!state.guestModify && !isValidEmail(state.email)) {
+  if (!state.guestModify && isInvalidOptionalEmail(state.email)) {
     state.step = 1;
-    showWizardError('Please enter a valid email address for the contact person.');
+    showWizardError('Please enter a valid email address, or leave the field blank.');
     return;
   }
   if (!state.groupName) { state.error = 'Please enter the group name.'; renderBody(); return; }
@@ -885,11 +911,6 @@ async function confirmSave() {
     renderBody();
     return;
   }
-  if (!state.expectedArrivalTime) {
-    state.error = 'Enter the earliest arrival time for the group.';
-    renderBody();
-    return;
-  }
   state.saving = true;
   renderBody();
 
@@ -912,7 +933,6 @@ async function confirmSave() {
     total_guests: state.totalGuests,
     rooms_requested: state.roomsRequested || undefined,
     notes: combinedNotes,
-    expected_arrival_time: state.expectedArrivalTime || undefined,
     status: state.guestModify ? 'Pending' : 'Approved',
     rooms: state.selectedRooms,
     meals: state.meals,
@@ -1095,6 +1115,7 @@ export function initGroupWizard() {
   $('group-wizard-confirm')?.addEventListener('click', confirmSave);
   window.addEventListener('group-wizard:open', (e) => openGroupWizard(e.detail || {}));
   bindMealDelegation();
+  bindGroupSearchDelegation();
 
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || !isOpen) return;

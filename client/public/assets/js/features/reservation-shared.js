@@ -15,6 +15,13 @@ export function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
 }
 
+/** Optional email — blank is OK; non-blank must be valid. */
+export function isInvalidOptionalEmail(value) {
+  const v = String(value ?? '').trim();
+  if (!v) return false;
+  return !isValidEmail(v);
+}
+
 export function clampMealQty(value) {
   const n = Math.floor(Number(value));
   if (Number.isNaN(n) || n < 0) return 0;
@@ -99,7 +106,7 @@ export function dormPricingGuestCount(room, guestCount) {
 
 export function isRoomListVisible(status) {
   const s = String(status || '').trim();
-  return s === 'available' || s === 'dorm_min_guests';
+  return s === 'available' || s === 'dorm_min_guests' || s === 'too_small';
 }
 
 export function isRoomBookable(status) {
@@ -818,6 +825,18 @@ export function availLabel(status) {
     dirty: { text: 'Preparing', cls: 'res-pill--pending' },
   };
   return map[status] || map.booked;
+}
+
+/** Informational rooming notice for guest self-service only (not a required field). */
+export function guestRoomingNoticeHtml(variant = 'direct') {
+  const copy = variant === 'group'
+    ? 'Male and female guests are typically assigned to <strong>separate rooms</strong> unless your group is staying as a family. Housing will arrange rooming accordingly.'
+    : 'Male and female guests are typically assigned to <strong>separate rooms</strong> unless you are staying as a family. Housing will confirm room assignment after approval.';
+  return `
+    <div class="guest-rooming-notice res-banner res-banner--info" role="note">
+      <span class="material-symbols-outlined" aria-hidden="true">info</span>
+      <p>${copy}</p>
+    </div>`;
 }
 
 let cachedFiscalYear = null;

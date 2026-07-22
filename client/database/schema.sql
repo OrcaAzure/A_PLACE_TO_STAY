@@ -774,8 +774,8 @@ INSERT INTO facilities (name, room_code, description, package_name, facility_gro
     ('Osgood Garden', NULL, 'Outdoor garden venue.', NULL, 'Garden', 1, 150, NULL, NULL),
     -- Prayer Mountain: hourly ₱6k / ₱6.5k with a 4-hour booking floor (not a flat package)
     ('Prayer Mountain', NULL, NULL, 'Retreat use', 'Prayer Mountain', NULL, NULL, 4, 6000.00),
-    ('Prayer Tower', NULL, NULL, 'Function', 'Prayer Tower', NULL, NULL, NULL, NULL),
-    ('Prayer Tower', NULL, NULL, 'Baptism', 'Prayer Tower', NULL, NULL, NULL, NULL),
+    ('Prayer Tower / Baptismal Pool', NULL, NULL, 'Function', 'Prayer Tower / Baptismal Pool', NULL, NULL, NULL, NULL),
+    ('Prayer Tower / Baptismal Pool', NULL, NULL, 'Baptism', 'Prayer Tower / Baptismal Pool', NULL, NULL, NULL, NULL),
     ('Basketball Court', NULL, NULL, 'Sporting event', 'Recreation', NULL, NULL, NULL, NULL),
     ('Childrens Playground', NULL, NULL, 'Playground use', 'Recreation', NULL, NULL, NULL, NULL),
     ('Recreational Center', NULL, NULL, 'Recreation use', 'Recreation', NULL, NULL, NULL, NULL),
@@ -810,10 +810,10 @@ JOIN (
     SELECT 'Garden', NULL, NULL, 'Peak', 20000.00 UNION ALL
     SELECT 'Prayer Mountain', 'Retreat use', NULL, 'Regular', 6000.00 UNION ALL
     SELECT 'Prayer Mountain', 'Retreat use', NULL, 'Peak', 6500.00 UNION ALL
-    SELECT 'Prayer Tower', 'Function', NULL, 'Regular', 5500.00 UNION ALL
-    SELECT 'Prayer Tower', 'Function', NULL, 'Peak', 6000.00 UNION ALL
-    SELECT 'Prayer Tower', 'Baptism', NULL, 'Regular', 1000.00 UNION ALL
-    SELECT 'Prayer Tower', 'Baptism', NULL, 'Peak', 1000.00 UNION ALL
+    SELECT 'Prayer Tower / Baptismal Pool', 'Function', NULL, 'Regular', 5500.00 UNION ALL
+    SELECT 'Prayer Tower / Baptismal Pool', 'Function', NULL, 'Peak', 6000.00 UNION ALL
+    SELECT 'Prayer Tower / Baptismal Pool', 'Baptism', NULL, 'Regular', 1000.00 UNION ALL
+    SELECT 'Prayer Tower / Baptismal Pool', 'Baptism', NULL, 'Peak', 1000.00 UNION ALL
     SELECT 'Recreation', 'Sporting event', NULL, 'Regular', 500.00 UNION ALL
     SELECT 'Recreation', 'Sporting event', NULL, 'Peak', 625.00 UNION ALL
     SELECT 'Recreation', 'Playground use', NULL, 'Regular', 250.00 UNION ALL
@@ -895,9 +895,9 @@ INSERT INTO system_settings (setting_key, setting_value) VALUES
     ('fiscal_year_start_day', '1'),
     ('booking_advance_months', '12'),
     ('active_lodging_season', 'Regular'),
-    ('deposit_required', '0'),
+    ('deposit_required', '1'),
     ('deposit_mode', 'percent'),
-    ('deposit_value', '50')
+    ('deposit_value', '25')
 ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value);
 
 -- Demo bookings, payments, and room status samples are seeded by the server

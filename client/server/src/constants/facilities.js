@@ -28,6 +28,7 @@ export const FACILITY_GROUP_ICONS = {
   'Burdine Commons': 'groups',
   Garden: 'park',
   'Prayer Mountain': 'landscape',
+  'Prayer Tower / Baptismal Pool': 'water_lux',
   'Prayer Tower': 'water_lux',
   Recreation: 'sports_basketball',
   'Childrens Playground': 'child_care',

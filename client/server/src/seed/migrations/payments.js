@@ -280,9 +280,9 @@ export async function runPaymentsEvolution() {
   try {
     await pool.execute(
       `INSERT INTO system_settings (setting_key, setting_value) VALUES
-         ('deposit_required', '0'),
+         ('deposit_required', '1'),
          ('deposit_mode', 'percent'),
-         ('deposit_value', '50')
+         ('deposit_value', '25')
        ON DUPLICATE KEY UPDATE setting_key = setting_key`
     );
   } catch (err) {

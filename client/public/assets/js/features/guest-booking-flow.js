@@ -10,6 +10,7 @@ import {
 } from '/assets/js/config/guest-access.js';
 import { isRoomListVisible } from '/assets/js/features/reservation-shared.js';
 import { LANDING_AMENITY_IMAGE } from '/assets/js/features/facility-display.js';
+import { guestBookingPolicyNoticeHtml } from '/assets/js/constants/booking-policy.js';
 
 export { isInternalGuest, canGuestAccessRoom };
 export { EXTERNAL_ROOM_BUILDINGS, GUEST_BLOCKED_BUILDINGS };
@@ -81,11 +82,7 @@ export const BROWSE_CATEGORIES = [
 ];
 
 export function priceNoticeHtml(className = '') {
-  return `
-    <div class="guest-price-notice flex items-start gap-2 rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-body-sm text-amber-950 ${className}" role="note">
-      <span class="material-symbols-outlined text-[18px] text-amber-600 shrink-0 mt-0.5">info</span>
-      <p>${PRICE_DISCLAIMER}</p>
-    </div>`;
+  return guestBookingPolicyNoticeHtml({ className });
 }
 
 export function buildBookReservationUrl({ roomId, checkIn, checkOut, guests } = {}) {
@@ -291,6 +288,7 @@ const VENUE_BROWSE_BY_CATEGORY = {
   'GMC Chapel': 'chapel-garden',
   Garden: 'chapel-garden',
   'Prayer Mountain': 'prayer-mountain',
+  'Prayer Tower / Baptismal Pool': 'prayer-mountain',
   'Prayer Tower': 'prayer-mountain',
   Recreation: 'sports-rec',
   'Basketball Court': 'sports-rec',

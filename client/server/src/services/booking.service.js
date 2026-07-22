@@ -100,6 +100,17 @@ export async function getRate(roomType, occupancyItem, season) {
   return match ? Number(match.rate) : null;
 }
 
+/** Lodging rate tiers (Regular / Peak / Super Peak) for guest browse cards. */
+export async function getRoomRateTiers(roomType, occupancyItem) {
+  const seasons = ['Regular', 'Peak', 'Super Peak'];
+  const tiers = [];
+  for (const season of seasons) {
+    const rate = await getRate(roomType, occupancyItem, season);
+    if (rate != null) tiers.push({ season, rate });
+  }
+  return tiers;
+}
+
 export async function roomHasRateItem(roomType, item) {
   if (!roomType || !item) return false;
   const [rows] = await pool.query(
@@ -854,6 +865,7 @@ export async function getAvailableRooms({
       season: checkInSeason,
       seasons_in_stay: staySeasons,
       mixed_season_pricing: staySeasons.length > 1,
+      rate_tiers: await getRoomRateTiers(rateRoomType, occupancyItem),
     });
   }
 

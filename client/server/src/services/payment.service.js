@@ -588,7 +588,7 @@ export async function getDepositSettings() {
   return {
     deposit_required: map.deposit_required === '1',
     deposit_mode: map.deposit_mode === 'fixed' ? 'fixed' : 'percent',
-    deposit_value: Number(map.deposit_value) || 50,
+    deposit_value: Number(map.deposit_value) || 25,
   };
 }
 
@@ -698,6 +698,9 @@ export async function getInvoiceByFacilityBookingId(facilityBookingId) {
 export async function getInvoiceSnapshot(bookingId) {
   const invoice = await getInvoiceByBookingId(bookingId);
   if (!invoice) return null;
+  const settings = await getDepositSettings();
+  const totalDue = Number(invoice.subtotal ?? invoice.amount ?? 0);
+  const suggested_deposit = computeSuggestedDeposit(totalDue, settings);
   return {
     id: invoice.id,
     status: invoice.status,
@@ -709,6 +712,10 @@ export async function getInvoiceSnapshot(bookingId) {
     invoice_sent_at: invoice.invoice_sent_at,
     paid_at: invoice.paid_at,
     method: invoice.method,
+    deposit_required: settings.deposit_required,
+    deposit_percent: settings.deposit_mode === 'percent' ? settings.deposit_value : null,
+    suggested_deposit,
+    pending_confirmation: settings.deposit_required && invoice.status !== 'Paid',
   };
 }
 

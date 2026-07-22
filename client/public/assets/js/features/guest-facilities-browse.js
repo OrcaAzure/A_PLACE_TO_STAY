@@ -43,7 +43,9 @@ import { requireAuth, applyRoleUI } from '/assets/js/services/auth.js';
     registerRoomsUploadedImages,
     registerVenuesUploadedImages,
     registerVenueUploadedImages,
+    formatVenueDisplayName,
   } from '/assets/js/features/facility-display.js';
+  import { initVenueTimeSelects } from '/assets/js/features/venue-time-select.js';
   import {
     addBookingRequestItem,
     sharedStayDates,
@@ -527,6 +529,13 @@ function setMountHtml(id, html) {
     return applyFiltersToList(visible);
   }
 
+  function formatRateTierLine(avail) {
+    const tiers = avail?.rate_tiers || [];
+    if (!tiers.length) return '';
+    const labels = { Regular: 'Regular', Peak: 'Peak', 'Super Peak': 'Super rate' };
+    return tiers.map((t) => `${labels[t.season] || t.season}: ${peso(t.rate)}`).join(' · ');
+  }
+
   function priceFor(room) {
     const a = availabilityForRoom(room.id);
     if (!a) return null;
@@ -744,9 +753,13 @@ function setMountHtml(id, html) {
     const images = getImagesByRoom(room);
     const img = images[0] || roomPreviewImage(room);
     const galleryCount = images.length;
-    const priceLine = price && price.perNight != null
-      ? `<p class="text-body-sm text-on-surface-variant mb-4">${peso(price.perNight)} / night · ${price.nights} night(s)</p>`
-      : '<div class="mb-4"></div>';
+    const tierLine = formatRateTierLine(avail);
+    const priceBlock = price && price.perNight != null
+      ? `<p class="text-body-sm text-on-surface-variant mb-1">${peso(price.perNight)} / night · ${price.nights} night(s)${avail?.season ? ` · ${escapeHtml(avail.season)} rate` : ''}</p>`
+      : '';
+    const tiersBlock = tierLine
+      ? `<p class="text-label-sm text-on-surface-variant/90 mb-4">${escapeHtml(tierLine)}</p>`
+      : (priceBlock ? '' : '<div class="mb-4"></div>');
     const dormNotice = avail?.availability_status === 'dorm_min_guests'
       ? `<p class="text-body-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">Minimum ${avail?.dorm_booking_minimum || room.capacityMin || 1} guests required to book this dorm.</p>`
       : '';
@@ -784,8 +797,9 @@ function setMountHtml(id, html) {
             </div>
           </div>
           <p class="text-body-sm text-on-surface-variant mb-1">${room.roomType}</p>
-          ${dormNotice}
-          ${priceLine}
+      ${dormNotice}
+      ${priceBlock}
+      ${tiersBlock}
           ${roomViewDetailsControl()}
         </div>
       </article>`;
@@ -1849,7 +1863,7 @@ function setMountHtml(id, html) {
     }
     useWrap?.classList.toggle('hidden', venue.uses.length <= 1);
 
-    if (titleEl) titleEl.textContent = `Book — ${venue.name}${venue.room_code ? ` (${venue.room_code})` : ''}`;
+    if (titleEl) titleEl.textContent = `Book — ${formatVenueDisplayName(venue.name)}${venue.room_code ? ` (${venue.room_code})` : ''}`;
     if (subtitleEl) subtitleEl.textContent = 'Set the date and time, then submit your request.';
 
     const dateEl = document.getElementById('vbm-date');
@@ -1878,6 +1892,13 @@ function setMountHtml(id, html) {
     }
     renderVenueInfo(venue);
     applySelectedUse();
+    initVenueTimeSelects({
+      minDurationHours: minHours,
+      onChange: () => {
+        feedback?.classList.add('hidden');
+        checkVenueSlot();
+      },
+    });
     resetVenueSuccessState();
     modal?.classList.remove('hidden');
   }

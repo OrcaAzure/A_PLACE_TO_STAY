@@ -238,6 +238,20 @@ export function resolveMinHours(facility) {
   return parsePackageHours(facility?.package_name || facility?.item) || null;
 }
 
+/** Basketball, playground, and recreation-center venues — always simple hourly billing. */
+export function isRecreationVenue(facility) {
+  const cat = String(facility?.category || facility?.facility_category || '').trim();
+  if (cat === 'Recreation') return true;
+  const label = `${facility?.item || ''} ${facility?.package_name || ''} ${facility?.name || ''}`.toLowerCase();
+  return /basketball|playground|recreational center|recreation use|sporting event/.test(label);
+}
+
+/** Venues billed as a minimum-hour package block (e.g. 4-hr chapel packages). */
+export function isSegmentBlockVenue(facility) {
+  if (isRecreationVenue(facility)) return false;
+  return Boolean(resolveMinHours(facility));
+}
+
 /** Per-hour price for time beyond the minimum block. */
 export function resolveExtraHourRate(facility, baseRate, minHours) {
   const configured = Number(facility?.hourly_rate);
@@ -255,6 +269,7 @@ export function resolveExtraHourRate(facility, baseRate, minHours) {
  * Hourly-floor venues: hourly_rate set near the catalog season rate.
  */
 export function isHourlyMinimumVenue(facility) {
+  if (isRecreationVenue(facility)) return false;
   const minHours = resolveMinHours(facility);
   if (!minHours) return false;
   const rate = Number(facility?.rate);
@@ -284,10 +299,14 @@ export function computeVenueTotal(facility, startTime, endTime) {
   const minHours = resolveMinHours(facility);
   const round = (n) => Math.round(n * 100) / 100;
 
+  // Recreation / sports — flat hourly rate regardless of admin min_hours metadata.
+  if (isRecreationVenue(facility)) {
+    return round(rate * Math.max(hours, 1));
+  }
   if (minHours && isHourlyMinimumVenue(facility)) {
     return round(rate * Math.max(hours, 1));
   }
-  if (minHours) {
+  if (minHours && isSegmentBlockVenue(facility)) {
     if (hours <= minHours) return round(rate);
     const perHour = resolveExtraHourRate(facility, rate, minHours);
     return round(rate + perHour * (hours - minHours));

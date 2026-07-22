@@ -190,7 +190,7 @@ export const VENUE_CATEGORY_IMAGE = {
   'GMC Conference Rooms': '/images/A-101Preview.webp',
   GMC: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
   'Prayer Mountain': '/images/PrayerMountainPreview.webp',
-  'Prayer Tower': '/images/PrayerTowerPreview.webp',
+  'Prayer Tower / Baptismal Pool': '/images/PrayerTowerPreview.webp',
   Garden: '/images/GardenPreview.webp',
   Recreation: '/images/RecreationPreview.webp',
   'Basketball Court': '/images/BasketballCourtPreview.webp',
@@ -202,7 +202,7 @@ export const VENUE_CATEGORY_IMAGE = {
 export const LANDING_AMENITY_IMAGE = {
   garden: VENUE_CATEGORY_IMAGE.Garden,
   prayerMountain: VENUE_CATEGORY_IMAGE['Prayer Mountain'],
-  prayerTower: VENUE_CATEGORY_IMAGE['Prayer Tower'],
+  prayerTower: VENUE_CATEGORY_IMAGE['Prayer Tower / Baptismal Pool'],
   recreation: VENUE_CATEGORY_IMAGE.Recreation,
   chapel: VENUE_CATEGORY_IMAGE['GMC Chapel'],
   conference: VENUE_CATEGORY_IMAGE['GMC Conference Rooms'],
@@ -218,7 +218,7 @@ const VENUE_NAME_IMAGE = {
   'GMC Chapel': '/images/GMCChapelPreview.webp',
   'Burdine Commons': 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?auto=format&fit=crop&w=1200&q=80',
   'Prayer Mountain': '/images/PrayerMountainPreview.webp',
-  'Prayer Tower': '/images/PrayerTowerPreview.webp',
+  'Prayer Tower / Baptismal Pool': '/images/PrayerTowerPreview.webp',
   Garden: '/images/GardenPreview.webp',
   'Osgood Hall': '/images/GardenPreview.webp',
   'Osgood Garden': '/images/GardenPreview.webp',
@@ -242,7 +242,7 @@ function inferVenueCategory(blob) {
   const text = String(blob || '').toLowerCase();
   if (/chapel|church|wedding|baptism/.test(text)) return 'GMC Chapel';
   if (/prayer mountain|retreat|hut/.test(text)) return 'Prayer Mountain';
-  if (/prayer tower/.test(text)) return 'Prayer Tower';
+  if (/prayer tower|baptismal pool/.test(text)) return 'Prayer Tower / Baptismal Pool';
   if (/garden|osgood/.test(text)) return 'Garden';
   if (/basketball/.test(text)) return 'Basketball Court';
   if (/playground|recreation|sport|court|gym/.test(text)) return 'Recreation';
@@ -548,6 +548,11 @@ const VENUE_CATEGORY_GALLERY = {
     '/images/PrayerMountainPreview3.webp',
     '/images/HutPreview.webp',
   ],
+  'Prayer Tower / Baptismal Pool': [
+    '/images/PrayerTowerPreview.webp',
+    '/images/PrayerTowerPreview2.webp',
+    '/images/PrayerTowerPreview3.webp',
+  ],
   'Prayer Tower': [
     '/images/PrayerTowerPreview.webp',
     '/images/PrayerTowerPreview2.webp',
@@ -651,6 +656,12 @@ function normalizeVenueKey(value) {
  * Resolve a venue photo.
  * Priority: admin uploads → room_code → exact name/item/label → facility_group/category → default.
  */
+export function formatVenueDisplayName(name) {
+  const n = String(name || '').trim();
+  if (n === 'Prayer Tower') return 'Prayer Tower / Baptismal Pool';
+  return n;
+}
+
 export function venuePreviewImage(venue = {}) {
   const uploaded = uploadedVenueImagesFor(venue);
   if (uploaded.length) return uploaded[0];

@@ -294,8 +294,6 @@ export async function initGuestRoomBookingModal({
     resetCloseButton(closeBtn);
     document.getElementById('booking-form-error').classList.add('hidden');
     document.getElementById('booking-notes').value = '';
-    const arrivalEl = document.getElementById('booking-arrival-time');
-    if (arrivalEl) arrivalEl.value = '';
     bookingExtras.reset();
   }
 
@@ -598,20 +596,12 @@ export async function initGuestRoomBookingModal({
         renderRoomResults();
         return;
       }
-      const arrivalTime = document.getElementById('booking-arrival-time')?.value?.trim() || '';
-      if (!arrivalTime) {
-        errorEl.textContent = 'Enter your expected arrival time.';
-        errorEl.classList.remove('hidden');
-        document.getElementById('booking-arrival-time')?.focus();
-        return;
-      }
       await createBooking({
         room_id: Number(roomInput.value),
         check_in: checkIn,
         check_out: checkOut,
         guest_count: guestCount,
         notes: document.getElementById('booking-notes').value.trim() || null,
-        expected_arrival_time: arrivalTime,
         meals,
         fees,
         meal_allergen_notes,

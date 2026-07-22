@@ -246,11 +246,6 @@ export async function submitGuestBookingRequest({
     }
     await validateReservationDates(checkIn, checkOut, { bypassAdvanceLimit: false });
     arrivalTime = normalizeArrivalTime(expectedArrivalTime);
-    if (!arrivalTime) {
-      throw new Error(rooms.length > 1
-        ? 'Earliest arrival time is required for group stays.'
-        : 'Expected arrival time is required.');
-    }
 
     const isGroupStay = isGroupStayFlag === true || rooms.length > 1;
 

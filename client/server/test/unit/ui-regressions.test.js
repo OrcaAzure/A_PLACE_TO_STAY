@@ -23,9 +23,10 @@ describe('guest and billing UI regressions', () => {
     assert.doesNotMatch(browse, /<h4>Good to know<\/h4>/);
   });
 
-  it('shows the stay date with earliest arrival', () => {
+  it('shows check-in and check-out policy on group confirm step', () => {
     const groupWizard = readPublic('assets/js/features/group-reservation-wizard.js');
-    assert.match(groupWizard, /Earliest arrival — \$\{escapeHtml\(formatDateLong\(state\.checkIn\)\)\}/);
+    assert.match(groupWizard, /checkInOutPolicyNoteHtml/);
+    assert.doesNotMatch(groupWizard, /gw-arrival-time/);
   });
 
   it('keeps billing details single-column on medium screens', () => {

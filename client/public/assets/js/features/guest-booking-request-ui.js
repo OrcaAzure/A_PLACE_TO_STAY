@@ -25,7 +25,9 @@ import {
   mealTypesOrdered,
   formatFeeLineLabel,
   aggregateFeeLines,
+  guestRoomingNoticeHtml,
 } from '/assets/js/features/reservation-shared.js';
+import { PENDING_CONFIRMATION_NOTE, DEPOSIT_PERCENT, checkInOutPolicyNoteHtml } from '/assets/js/constants/booking-policy.js';
 
 const peso = (n) => `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
@@ -278,21 +280,18 @@ function ensureChrome() {
                 <div id="br-fee-submenu" class="guest-service-drawer hidden" aria-live="polite"></div>
               </div>
             </section>
-            <div id="br-arrival-wrap" class="br-review-field hidden">
-              <label class="br-review-label" for="br-arrival-time" id="br-arrival-label">Expected arrival <span class="text-error">*</span></label>
-              <input id="br-arrival-time" type="time" class="br-review-input" />
-              <p class="br-review-hint" id="br-arrival-hint">Tell housing when you expect to arrive on check-in day.</p>
-            </div>
+            <div id="br-checkin-notice" class="br-review-field hidden" role="note"></div>
             <div class="br-review-field">
               <label class="br-review-label" for="br-notes">Notes for housing staff</label>
               <textarea id="br-notes" rows="2" class="br-review-input" placeholder="Special requests for housing (optional)…"></textarea>
             </div>
             <div id="br-review-breakdown" class="br-review-breakdown" aria-live="polite"></div>
+            <div id="br-rooming-notice" class="hidden"></div>
             <div class="br-review-total-row">
               <span>Estimated total</span>
               <span id="br-review-total">—</span>
             </div>
-            <p class="br-review-modal__fine">Final pricing is confirmed after admin review.</p>
+            <p class="br-review-modal__fine">Final pricing is confirmed after admin review. ${DEPOSIT_PERCENT}% deposit is required before your stay is fully confirmed — ${PENDING_CONFIRMATION_NOTE}</p>
           </form>
         </div>
       </div>
@@ -469,36 +468,34 @@ function paintReviewModal() {
   const listEl = document.getElementById('br-review-list');
   const groupWrap = document.getElementById('br-group-name-wrap');
   const extrasPanel = document.getElementById('br-extras-panel');
-  const arrivalWrap = document.getElementById('br-arrival-wrap');
-  const arrivalInput = document.getElementById('br-arrival-time');
-  const arrivalLabel = document.getElementById('br-arrival-label');
-  const arrivalHint = document.getElementById('br-arrival-hint');
+  const checkinNotice = document.getElementById('br-checkin-notice');
   const submitBtn = document.getElementById('br-submit-btn');
   const isGroup = rooms.length > 1;
-  const arrivalDate = rooms[0]?.checkIn
-    ? new Date(`${rooms[0].checkIn}T12:00:00`).toLocaleDateString('en-PH', {
-      month: 'long', day: 'numeric', year: 'numeric',
-    })
-    : '';
 
   if (listEl) listEl.innerHTML = state.items.map(renderReviewItem).join('');
   if (groupWrap) groupWrap.classList.toggle('hidden', !isGroup);
   if (extrasPanel) extrasPanel.classList.toggle('hidden', rooms.length < 1);
-  if (arrivalWrap) {
-    arrivalWrap.classList.toggle('hidden', rooms.length < 1);
-    if (arrivalInput) arrivalInput.required = rooms.length > 0;
-  }
-  if (arrivalLabel) {
-    arrivalLabel.innerHTML = isGroup
-      ? `Earliest arrival${arrivalDate ? ` — ${escapeHtml(arrivalDate)}` : ''} <span class="text-error">*</span>`
-      : `Expected arrival${arrivalDate ? ` — ${escapeHtml(arrivalDate)}` : ''} <span class="text-error">*</span>`;
-  }
-  if (arrivalHint) {
-    arrivalHint.textContent = isGroup
-      ? 'If members arrive at different times, enter the earliest arrival on check-in day.'
-      : 'Tell housing when you expect to arrive on check-in day.';
+  if (checkinNotice) {
+    checkinNotice.classList.toggle('hidden', rooms.length < 1);
+    if (rooms.length > 0) {
+      checkinNotice.innerHTML = checkInOutPolicyNoteHtml({
+        className: 'br-review-hint m-0',
+        includeEarlyNote: true,
+      });
+    }
   }
   if (submitBtn) submitBtn.disabled = state.items.length < 1;
+
+  const roomingEl = document.getElementById('br-rooming-notice');
+  if (roomingEl) {
+    if (rooms.length > 0) {
+      roomingEl.classList.remove('hidden');
+      roomingEl.innerHTML = guestRoomingNoticeHtml(isGroup ? 'group' : 'direct');
+    } else {
+      roomingEl.classList.add('hidden');
+      roomingEl.innerHTML = '';
+    }
+  }
 
   if (bookingExtras) {
     bookingExtras.setRoomSelected(rooms.length > 0);
@@ -573,16 +570,6 @@ async function submitBookingRequestForm() {
   }
   const stay = sharedStayDates(state);
   const extrasPayload = rooms.length && bookingExtras ? bookingExtras.getPayload() : { meals: {}, fees: [], meal_allergen_notes: undefined };
-  const arrivalTime = document.getElementById('br-arrival-time')?.value?.trim() || '';
-
-  if (rooms.length && !arrivalTime) {
-    errorEl.textContent = rooms.length > 1
-      ? 'Enter the earliest arrival time for your group.'
-      : 'Enter your expected arrival time.';
-    errorEl?.classList.remove('hidden');
-    document.getElementById('br-arrival-time')?.focus();
-    return;
-  }
 
   submitBtn.disabled = true;
   submitBtn.textContent = 'Submitting…';
@@ -595,7 +582,6 @@ async function submitBookingRequestForm() {
       check_in: stay?.checkIn,
       check_out: stay?.checkOut,
       notes: document.getElementById('br-notes')?.value?.trim() || undefined,
-      expected_arrival_time: rooms.length ? arrivalTime : undefined,
       meals: extrasPayload.meals,
       fees: extrasPayload.fees,
       meal_allergen_notes: extrasPayload.meal_allergen_notes,
@@ -626,7 +612,7 @@ async function submitBookingRequestForm() {
           <div class="guest-booking-success__copy">
             <h4 class="guest-booking-success__title">Request submitted</h4>
             <p class="guest-booking-success__msg">Your booking request has been sent and is pending approval.${ref}</p>
-            <p class="guest-booking-success__hint">Housing will review your request and email you when it is confirmed.</p>
+            <p class="guest-booking-success__hint">Housing will review your request. Your stay is <strong>not fully confirmed</strong> until the ${DEPOSIT_PERCENT}% deposit is paid after approval.</p>
           </div>
           <div class="guest-booking-success__actions">
             <a href="/guest/reservations.html" class="guest-booking-success__primary">View Reservation History</a>

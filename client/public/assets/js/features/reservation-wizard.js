@@ -13,8 +13,9 @@ import {
   collectWizardRoomTypes,
   dormPriceLabel,
   isRoomListVisible, isRoomBookable, dormMinGuestsNotice, validateRoomGuestCapacity,
-  readMealsFromInputs, clampMealQty, mealTypesOrdered, ensureMealsShape, isValidEmail,
+  readMealsFromInputs, clampMealQty, mealTypesOrdered, ensureMealsShape, isInvalidOptionalEmail,
   guestModifyMinStep, renderGuestModifyProgress, renderGuestModifyReviewSummary, renderGuestModifyReviewCallout,
+  guestRoomingNoticeHtml,
 } from '/assets/js/features/reservation-shared.js';
 import {
   renderWizardMealGrid,
@@ -40,6 +41,7 @@ let quickFees = [];
 let feePickerClickBound = false;
 let mealDelegationBound = false;
 let roomPickBound = false;
+let reservationSearchDelegationBound = false;
 
 function $(id) { return document.getElementById(id); }
 
@@ -131,8 +133,8 @@ function renderStep1() {
     <select id="wiz-user" class="res-input"><option value="">— Type new guest below —</option>${opts}</select>
     <label class="res-label" for="wiz-name">Guest name</label>
     <input id="wiz-name" class="res-input" type="text" value="${escapeHtml(state.guestName)}" placeholder="Full name" />
-    <label class="res-label" for="wiz-email">Email <span class="res-label-required">(required)</span></label>
-    <input id="wiz-email" class="res-input" type="email" value="${escapeHtml(state.email)}" placeholder="email@example.com" autocomplete="email" required />
+    <label class="res-label" for="wiz-email">Email <span class="res-label-optional">(optional)</span></label>
+    <input id="wiz-email" class="res-input" type="email" value="${escapeHtml(state.email)}" placeholder="email@example.com" autocomplete="email" />
     <label class="res-label" for="wiz-phone">Contact number <span class="res-label-optional">(optional)</span></label>
     <input id="wiz-phone" class="res-input" type="tel" value="${escapeHtml(state.contactPhone)}" placeholder="09XX XXX XXXX" autocomplete="tel" />`;
 }
@@ -156,7 +158,7 @@ function renderStep2() {
     <label class="res-label">Guests</label>
     <input id="wiz-guests" class="res-input res-input--short" type="number" min="1" max="500" value="${state.guestCount}" inputmode="numeric" />`;
   if (state.guestModify) {
-    return `<div class="guest-modify-panel">${fields}${banner}</div>`;
+    return `<div class="guest-modify-panel">${fields}${guestRoomingNoticeHtml('direct')}${banner}</div>`;
   }
   return `
     <p class="res-lead">Pick the stay dates and how many people will stay.</p>
@@ -191,6 +193,44 @@ function getFilteredAvailableRooms() {
     search: state.roomSearch,
     roomType: state.roomTypeFilter,
     includeStatuses: statuses,
+  });
+}
+
+function renderReservationMainRoomListInner() {
+  const filtered = getFilteredAvailableRooms();
+  if (!filtered.length) {
+    return state.loadingRooms
+      ? ''
+      : '<div class="res-empty-box"><p>No rooms available. Try different dates.</p></div>';
+  }
+  return filtered.map((r) => renderRoomRow(r)).join('');
+}
+
+/** Re-filter room lists without re-rendering the search field (keeps keyboard focus). */
+function refreshReservationRoomLists() {
+  if (state.step !== 3) return;
+  const list = $('wiz-room-list');
+  if (list) list.innerHTML = renderReservationMainRoomListInner();
+  const heading = $('wiz-room-list-heading');
+  if (heading) {
+    heading.textContent = `Available rooms (${getFilteredAvailableRooms().length})`;
+  }
+  const rec = $('wiz-rec-list');
+  if (rec && state.showRecommendations) {
+    const recommended = recommendRooms(getFilteredAvailableRooms(), state.guestCount, 3);
+    rec.innerHTML = recommended.map((r) => renderRoomRow(r, { recommended: true })).join('');
+  }
+}
+
+function bindReservationSearchDelegation() {
+  if (reservationSearchDelegationBound) return;
+  const modal = $('reservation-wizard-modal');
+  if (!modal) return;
+  reservationSearchDelegationBound = true;
+  modal.addEventListener('input', (e) => {
+    if (e.target.id !== 'wiz-room-search') return;
+    state.roomSearch = e.target.value || '';
+    refreshReservationRoomLists();
   });
 }
 
@@ -237,15 +277,12 @@ function renderStep3() {
   const recBlock = (!state.guestModify && state.showRecommendations && recommended.length) ? `
     <div class="res-rec-section">
       <h3 class="res-rec-head"><span class="material-symbols-outlined">star</span> Suggested for ${state.guestCount} guest(s)</h3>
-      <div class="res-room-list wiz-room-list">${recommended.map((r) => renderRoomRow(r, { recommended: true })).join('')}</div>
+      <div id="wiz-rec-list" class="res-room-list wiz-room-list">${recommended.map((r) => renderRoomRow(r, { recommended: true })).join('')}</div>
     </div>` : '';
 
-  const listBlock = filtered.length ? `
-    ${state.guestModify ? '' : `<h3 class="res-subhead res-subhead--spaced">Available rooms (${filtered.length})</h3>`}
-    <div class="wiz-room-list${state.guestModify ? ' wiz-room-list--compact' : ''}">${filtered.map((r) => renderRoomRow(r)).join('')}</div>`
-    : (!state.loadingRooms
-      ? '<div class="res-empty-box"><p>No rooms available. Try different dates.</p></div>'
-      : '');
+  const listBlock = `
+    ${state.guestModify ? '' : `<h3 id="wiz-room-list-heading" class="res-subhead res-subhead--spaced">Available rooms (${filtered.length})</h3>`}
+    <div id="wiz-room-list" class="wiz-room-list${state.guestModify ? ' wiz-room-list--compact' : ''}">${renderReservationMainRoomListInner()}</div>`;
 
   if (state.guestModify) {
     return `
@@ -572,7 +609,6 @@ async function fetchRooms() {
   } finally {
     if (token !== fetchRoomsToken) return;
     state.loadingRooms = false;
-    renderSteps();
     renderBody();
   }
 }
@@ -601,7 +637,7 @@ function bindEvents() {
     $(id)?.addEventListener('input', clearWizardError);
   });
 
-  const onStayChange = () => {
+  const onDatesChange = () => {
     readFields();
     if (!state.guestModify) {
       state.roomId = '';
@@ -610,15 +646,15 @@ function bindEvents() {
     state.error = null;
     fetchRooms();
   };
-  $('wiz-check-in')?.addEventListener('change', onStayChange);
-  $('wiz-check-out')?.addEventListener('change', onStayChange);
-  // Use change (not input) so multi-digit guest counts like 25 are not remounted mid-typing.
-  $('wiz-guests')?.addEventListener('change', onStayChange);
+  const onGuestCountChange = () => {
+    readFields();
+    state.error = null;
+    fetchRooms();
+  };
+  $('wiz-check-in')?.addEventListener('change', onDatesChange);
+  $('wiz-check-out')?.addEventListener('change', onDatesChange);
+  $('wiz-guests')?.addEventListener('change', onGuestCountChange);
 
-  $('wiz-room-search')?.addEventListener('input', (e) => {
-    state.roomSearch = e.target.value;
-    renderBody();
-  });
   bindWizardRoomTypeFilter($('reservation-wizard-body'), {
     idPrefix: 'wiz',
     onChange: (value) => {
@@ -681,8 +717,8 @@ function validate() {
   state.error = null;
   if (state.step === 1 && !state.guestModify) {
     if (!state.guestName) { state.error = 'Please enter the guest name.'; return false; }
-    if (!isValidEmail(state.email)) {
-      state.error = 'Please enter a valid email address for the guest.';
+    if (isInvalidOptionalEmail(state.email)) {
+      state.error = 'Please enter a valid email address, or leave the field blank.';
       return false;
     }
   }
@@ -736,9 +772,9 @@ function goBack() {
 
 async function confirmSave() {
   readFields();
-  if (!state.guestModify && !isValidEmail(state.email)) {
+  if (!state.guestModify && isInvalidOptionalEmail(state.email)) {
     state.step = 1;
-    showWizardError('Please enter a valid email address for the guest.');
+    showWizardError('Please enter a valid email address, or leave the field blank.');
     return;
   }
   if (state.modifyRequest && !state.guestModify && !state.guestMessage?.trim()) {
@@ -1013,4 +1049,5 @@ export function initReservationWizard() {
   window.addEventListener('reservation-wizard:open', (e) => openReservationWizard(e.detail || {}));
   bindMealDelegation();
   bindRoomPickDelegation();
+  bindReservationSearchDelegation();
 }
