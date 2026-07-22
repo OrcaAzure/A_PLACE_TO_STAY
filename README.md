@@ -30,7 +30,7 @@ You can develop locally **and** prepare staging in parallel — they use **separ
 | `npm run start:staging:local` | `.env.staging.local` | **Practice staging on your PC** (port 3001) |
 | `npm run docker:up` | Docker | **Practice cloud deploy locally** (port 3000) |
 
-Cloud VM guide: [deploy/FREE-CLOUD.md](deploy/FREE-CLOUD.md)
+Cloud VM guide: [deploy/FREE-CLOUD.md](deploy/FREE-CLOUD.md) · **Server dev handoff:** [deploy/ORACLE-PRACTICE-DEPLOY.md](deploy/ORACLE-PRACTICE-DEPLOY.md)
 
 ## Configuration
 

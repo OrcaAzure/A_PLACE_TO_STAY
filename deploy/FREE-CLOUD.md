@@ -2,6 +2,8 @@
 
 Practice real deployment before APTS IT gives you access. **Local dev (`npm run dev`) is unchanged.**
 
+**Sending this to a server engineer?** Use the full handoff guide: **[ORACLE-PRACTICE-DEPLOY.md](./ORACLE-PRACTICE-DEPLOY.md)** (step-by-step + sign-off checklist).
+
 ## Recommended: Oracle Cloud Always Free
 
 **Why this one:** Full Linux VM (like a real server), always free, runs Node + MySQL on the same machine — same pattern as APTS staging.
