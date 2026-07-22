@@ -446,6 +446,23 @@ export async function sendGuestAccessEmail(user, tempPassword) {
   });
 }
 
+export async function sendPortalStaffAccessEmail(user, tempPassword) {
+  const name = user.full_name || 'Staff member';
+  const appUrl = process.env.APP_URL || 'http://localhost:3000';
+  return sendMail({
+    to: user.email,
+    subject: 'Your APTS admin portal access',
+    html: `
+      <h2>APTS admin portal access, ${name}</h2>
+      <p>A Housing Administrator has granted you <strong>view-only</strong> access to the APTS admin portal. You can review reservations, billing, and facilities but cannot make changes.</p>
+      <p><strong>Login email:</strong> ${user.email}</p>
+      <p><strong>Temporary password:</strong> ${tempPassword}</p>
+      <p>Sign in at <a href="${appUrl}/login.html">${appUrl}/login.html</a> and change your password after your first login.</p>
+      <p>If you did not expect this access, please contact the Housing Department.</p>
+    `,
+  });
+}
+
 function bookingRoomLabel(booking) {
   return booking.building_name
     ? `${booking.building_name} — Room ${booking.room_number}`

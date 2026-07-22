@@ -133,12 +133,12 @@ export function guardGuestAccessPage() {
 
 export function getAdminNavItems() {
   if (canAccessGuestAccess()) return ADMIN_NAV;
-  return ADMIN_NAV.filter((item) => item.id !== 'residents');
+  return ADMIN_NAV.filter((item) => item.id !== 'residents' && item.id !== 'team');
 }
 
 export function getAdminMobileNavItems() {
   if (canAccessGuestAccess()) return ADMIN_MOBILE_NAV;
-  return ADMIN_MOBILE_NAV.filter((item) => item.id !== 'residents');
+  return ADMIN_MOBILE_NAV.filter((item) => item.id !== 'residents' && item.id !== 'team');
 }
 
 /**
@@ -176,6 +176,11 @@ export function applyRoleUI() {
 function hideGuestAccessNavForReadOnly() {
   if (canAccessGuestAccess()) return;
   document.querySelectorAll('a[href*="/admin/residents.html"]').forEach((link) => {
+    link.classList.add('hidden', 'readonly-nav-suppressed');
+    link.setAttribute('aria-hidden', 'true');
+    link.tabIndex = -1;
+  });
+  document.querySelectorAll('a[href*="/admin/team.html"]').forEach((link) => {
     link.classList.add('hidden', 'readonly-nav-suppressed');
     link.setAttribute('aria-hidden', 'true');
     link.tabIndex = -1;
@@ -251,6 +256,7 @@ const ADMIN_EDITABLE_FIELD_SCOPES = [
   '#page-content',
   '.admin-crud-shell',
   '#guest-access-modal',
+  '#team-access-modal',
   '#catalog-modal',
   '#manage-requests-modal',
   '.billing-detail',

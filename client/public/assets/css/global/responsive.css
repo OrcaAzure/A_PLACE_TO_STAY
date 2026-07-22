@@ -74,6 +74,7 @@ label,
   #manage-venue-bookings-modal,
   #app-modal,
   #guest-access-modal,
+  #team-access-modal,
   #ga-pending-modal {
     padding: 0 !important;
     align-items: stretch !important;

@@ -74,6 +74,13 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
     assert.equal(res.status, 403);
   });
 
+  it('GET /api/users/portal-staff denies View-Only Admin', async () => {
+    const agent = api();
+    await loginAs(agent, VIEWER_EMAIL);
+    const res = await agent.get('/api/users/portal-staff');
+    assert.equal(res.status, 403);
+  });
+
   it('GET /api/recycle denies View-Only Admin', async () => {
     const agent = api();
     await loginAs(agent, VIEWER_EMAIL);

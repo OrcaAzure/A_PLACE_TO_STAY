@@ -19,10 +19,20 @@ import {
   getGuestAccessActivity,
   deleteGuestAccountHandler,
 } from '../controllers/guest-access.controller.js';
+import {
+  getPortalStaffOverview,
+  createPortalStaffHandler,
+  updatePortalStaffHandler,
+  getPortalStaffActivity,
+} from '../controllers/portal-staff.controller.js';
 
 const router = Router();
 
 router.get('/guest-access/activity', ...guestAccess, getGuestAccessActivity);
+router.get('/portal-staff/activity', ...guestAccess, getPortalStaffActivity);
+router.get('/portal-staff', ...guestAccess, getPortalStaffOverview);
+router.post('/portal-staff', ...guestAccess, createPortalStaffHandler);
+router.patch('/portal-staff/:id', ...guestAccess, updatePortalStaffHandler);
 router.get('/guest-access/requests', ...guestAccess, getGuestAccessRequests);
 router.get('/guest-access', ...guestAccess, getGuestAccessOverview);
 router.post('/guest-access/requests', ...guestAccess, postGuestAccessRequest);

@@ -9,10 +9,29 @@ export const AUDIT_ACTIONS = {
   GUEST_ACCESS_REQUEST_CREATED: 'guest_access_request_created',
   GUEST_ACCESS_REQUEST_APPROVED: 'guest_access_request_approved',
   GUEST_ACCESS_REQUEST_REJECTED: 'guest_access_request_rejected',
+  PORTAL_STAFF_CREATED: 'portal_staff_created',
+  PORTAL_STAFF_ACTIVATED: 'portal_staff_activated',
+  PORTAL_STAFF_DEACTIVATED: 'portal_staff_deactivated',
   UNAUTHORIZED_WRITE_ATTEMPT: 'unauthorized_write_attempt',
 };
 
-const GUEST_ACCESS_ACTIONS = new Set(Object.values(AUDIT_ACTIONS));
+const GUEST_ACCESS_ACTIONS = new Set([
+  AUDIT_ACTIONS.GUEST_ACCOUNT_CREATED,
+  AUDIT_ACTIONS.GUEST_ACCOUNT_ACTIVATED,
+  AUDIT_ACTIONS.GUEST_ACCOUNT_DEACTIVATED,
+  AUDIT_ACTIONS.GUEST_ACCOUNT_DELETED,
+  AUDIT_ACTIONS.GUEST_BULK_DEACTIVATED,
+  AUDIT_ACTIONS.GUEST_ACCESS_REQUEST_CREATED,
+  AUDIT_ACTIONS.GUEST_ACCESS_REQUEST_APPROVED,
+  AUDIT_ACTIONS.GUEST_ACCESS_REQUEST_REJECTED,
+  AUDIT_ACTIONS.UNAUTHORIZED_WRITE_ATTEMPT,
+]);
+
+const PORTAL_STAFF_ACTIONS = new Set([
+  AUDIT_ACTIONS.PORTAL_STAFF_CREATED,
+  AUDIT_ACTIONS.PORTAL_STAFF_ACTIVATED,
+  AUDIT_ACTIONS.PORTAL_STAFF_DEACTIVATED,
+]);
 
 export async function logAudit({ actorUserId = null, action, entityType, entityId = null, details = null }) {
   await pool.query(
@@ -73,6 +92,12 @@ function formatAuditSummary(row) {
       return `${actor} approved access request for ${target || 'a guest'}`;
     case AUDIT_ACTIONS.GUEST_ACCESS_REQUEST_REJECTED:
       return `${actor} rejected access request for ${target || 'a guest'}`;
+    case AUDIT_ACTIONS.PORTAL_STAFF_CREATED:
+      return `${actor} granted view-only admin access to ${target || 'a staff member'}`;
+    case AUDIT_ACTIONS.PORTAL_STAFF_ACTIVATED:
+      return `${actor} reactivated view-only admin access for ${target || 'a staff member'}`;
+    case AUDIT_ACTIONS.PORTAL_STAFF_DEACTIVATED:
+      return `${actor} deactivated view-only admin access for ${target || 'a staff member'}`;
     case AUDIT_ACTIONS.UNAUTHORIZED_WRITE_ATTEMPT:
       return `${actor} attempted unauthorized ${details.method || 'write'} on ${details.path || 'an endpoint'}`;
     default:
@@ -82,6 +107,31 @@ function formatAuditSummary(row) {
 
 export async function listGuestAccessActivity(limit = 25) {
   const actions = [...GUEST_ACCESS_ACTIONS];
+  const placeholders = actions.map(() => '?').join(',');
+
+  const [rows] = await pool.query(
+    `SELECT al.*, u.full_name AS actor_name
+     FROM audit_logs al
+     LEFT JOIN users u ON u.id = al.actor_user_id
+     WHERE al.action IN (${placeholders})
+     ORDER BY al.created_at DESC
+     LIMIT ?`,
+    [...actions, limit]
+  );
+
+  return rows.map((row) => ({
+    id: row.id,
+    action: row.action,
+    entityType: row.entity_type,
+    entityId: row.entity_id,
+    actorName: row.actor_name || 'System',
+    summary: formatAuditSummary(row),
+    createdAt: row.created_at,
+  }));
+}
+
+export async function listPortalStaffActivity(limit = 25) {
+  const actions = [...PORTAL_STAFF_ACTIONS];
   const placeholders = actions.map(() => '?').join(',');
 
   const [rows] = await pool.query(

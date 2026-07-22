@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Team Access | APTS Admin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="/assets/js/config/tailwind-theme-base.js"></script>
+  <script src="/assets/js/config/tailwind-admin.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <link rel="stylesheet" href="/assets/css/components/components.css" />
+  <link rel="stylesheet" href="/assets/css/global/responsive.css" />
+  <link rel="stylesheet" href="/assets/css/global/admin-accessibility.css" />
+  <link rel="stylesheet" href="/assets/css/global/portal-mobile.css" />
+  <link rel="stylesheet" href="/assets/css/features/manage-requests-modal.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-crud-modal.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-facilities-page.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-settings-page.css" />
+  <link rel="stylesheet" href="/assets/css/features/admin-guest-access.css" />
+</head>
+<body class="h-full bg-slate-50/50">
+
+  <div id="page-content" class="res-hub-page p-6 max-w-[1600px] mx-auto w-full antialiased text-slate-700">
+
+    <nav class="res-hub-tabs" aria-label="Team access sections">
+      <button type="button" data-ta-tab="main" class="res-hub-tab is-active">Accounts</button>
+      <button type="button" data-ta-tab="activity" class="res-hub-tab">Activity</button>
+    </nav>
+
+    <div id="ta-panel-main" class="ga-panel">
+      <div class="ga-stats ga-stats--ops">
+        <article class="ga-stat ga-stat--ops">
+          <span class="ga-stat__value" id="ta-stat-total">—</span>
+          <span class="ga-stat__label">View-only admins</span>
+        </article>
+        <article class="ga-stat ga-stat--ops">
+          <span class="ga-stat__value" id="ta-stat-active">—</span>
+          <span class="ga-stat__label">Active</span>
+        </article>
+        <article class="ga-stat ga-stat--ops">
+          <span class="ga-stat__value" id="ta-stat-inactive">—</span>
+          <span class="ga-stat__label">Inactive</span>
+        </article>
+      </div>
+
+      <section class="res-hub-panel res-hub-panel--table">
+        <div class="res-hub-toolbar">
+          <div class="res-hub-toolbar__search">
+            <span class="material-symbols-outlined" aria-hidden="true">search</span>
+            <input id="team-access-search" type="search" class="res-input" placeholder="Search by name or email…" autocomplete="off" />
+          </div>
+          <div class="res-hub-toolbar__actions">
+            <div class="ga-filter-wrap">
+              <button type="button" id="ta-filter-toggle" class="ga-filter-btn" aria-expanded="false" aria-controls="ta-filter-panel" aria-haspopup="true">
+                <span class="material-symbols-outlined" aria-hidden="true">filter_list</span>
+                <span id="ta-filter-label">All accounts</span>
+              </button>
+              <div id="ta-filter-panel" class="ga-filter-panel hidden" role="menu" aria-label="Filter team accounts">
+                <p class="ga-filter-panel__title">Show accounts</p>
+                <button type="button" class="ga-filter-option is-active" data-ta-filter="all" role="menuitem">All accounts</button>
+                <button type="button" class="ga-filter-option" data-ta-filter="active" role="menuitem">Active only</button>
+                <button type="button" class="ga-filter-option" data-ta-filter="inactive" role="menuitem">Inactive only</button>
+              </div>
+            </div>
+            <button type="button" id="add-team-btn" class="res-btn res-btn--primary js-requires-write">
+              <span class="material-symbols-outlined" aria-hidden="true">person_add</span>
+              Add view-only admin
+            </button>
+          </div>
+        </div>
+        <p id="ta-accounts-count" class="res-hub-count">Loading team accounts…</p>
+        <div class="ga-table-wrap">
+          <table class="data-table ga-table w-full">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Access</th>
+                <th class="ga-col-actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="team-access-tbody">
+              <tr><td colspan="5"><p class="ga-empty">Loading team accounts…</p></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div id="ta-panel-activity" class="ga-panel hidden">
+      <section class="res-hub-panel res-hub-panel--flush">
+        <ul id="team-activity-list" class="ga-activity-list">
+          <li class="ga-empty">Loading activity…</li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <script type="module">
+    import { requireAuth, guardGuestAccessPage } from '/assets/js/services/auth.js';
+    import { initAppLayout } from '/assets/js/layout/ui.js';
+    import { initTeamAccessPage, loadTeamAccessPage } from '/assets/js/features/admin-team-access.js';
+
+    if (!(await requireAuth())) throw new Error('Not authenticated');
+    if (!guardGuestAccessPage()) throw new Error('Team Access not permitted');
+
+    await initAppLayout({
+      portal:     'admin',
+      activePage: 'team',
+      title:      'Team Access',
+      subtitle:   'Manage view-only admin accounts for supervisory staff',
+      deferEnhancements: true,
+    });
+
+    initTeamAccessPage();
+    await loadTeamAccessPage();
+  </script>
+</body>
+</html>

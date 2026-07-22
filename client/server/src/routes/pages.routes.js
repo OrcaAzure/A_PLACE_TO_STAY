@@ -64,6 +64,20 @@ router.get(
 
 
 
+router.get(
+
+  '/admin/team.html',
+
+  requirePortalPage('admin'),
+
+  requireSuperAdminPage,
+
+  (req, res) => sendView(res, 'admin/team.html'),
+
+);
+
+
+
 const guestPages = ['dashboard', 'reservations', 'facilities', 'settings', 'booking-request', 'billing'];
 
 for (const page of guestPages) {

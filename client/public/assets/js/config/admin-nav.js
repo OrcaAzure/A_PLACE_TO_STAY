@@ -6,6 +6,7 @@ export const ADMIN_NAV = [
   { id: 'reservations', label: 'Reservations', icon: 'event_note', href: '/admin/reservations.html' },
   { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/admin/facilities.html' },
   { id: 'residents', label: 'Guest Access', icon: 'badge', href: '/admin/residents.html' },
+  { id: 'team', label: 'Team Access', icon: 'visibility', href: '/admin/team.html' },
   { id: 'payments', label: 'Billing', icon: 'payments', href: '/admin/payments.html' },
   { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings.html' },
 ];
@@ -17,6 +18,7 @@ export const ADMIN_MOBILE_NAV = [
   { id: 'reservations', label: 'Manage', icon: 'event_note', href: '/admin/reservations.html' },
   { id: 'facilities', label: 'Facilities', icon: 'domain', href: '/admin/facilities.html' },
   { id: 'residents', label: 'Guest Access', icon: 'badge', href: '/admin/residents.html' },
+  { id: 'team', label: 'Team', icon: 'visibility', href: '/admin/team.html' },
   { id: 'payments', label: 'Billing', icon: 'payments', href: '/admin/payments.html' },
   { id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings.html' },
 ];

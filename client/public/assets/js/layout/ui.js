@@ -57,7 +57,7 @@ export const GUEST_MOBILE_NAV = [
 ];
 
 const SIDEBAR_COLLAPSED_KEY = 'admin-sidebar-collapsed';
-const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v21';
+const TEMPLATE_CACHE_KEY = 'aptspace.admin.templates.v22';
 const COMPONENT_FETCH_MS = 10000;
 const BOOT_LOADER_ID = 'apt-boot-loader';
 const SHELL_BOOT_TIMEOUT_MS = 8000;
@@ -167,7 +167,7 @@ function writeTemplateCache(templates) {
 
 async function loadAdminTemplates() {
   const cached = readTemplateCache();
-  if (cached?.sidebar && cached?.guestAccessModals && cached?.manageVenues) return cached;
+  if (cached?.sidebar && cached?.guestAccessModals && cached?.teamAccessModals && cached?.manageVenues) return cached;
 
   if (!templatesPromise) {
     templatesPromise = Promise.all([
@@ -185,7 +185,8 @@ async function loadAdminTemplates() {
       loadComponent('/components/manage-venue-bookings-modal.html'),
       loadComponent('/components/notifications.html'),
       loadComponent('/components/guest-access-modals.html'),
-    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, manageVenues, reservationWizard, groupWizard, venueWizard, manageVenueBookings, notifications, guestAccessModals]) => {
+      loadComponent('/components/team-access-modals.html'),
+    ]).then(([sidebar, header, drawer, modal, manageRequests, manageReservations, manageFacilities, manageVenues, reservationWizard, groupWizard, venueWizard, manageVenueBookings, notifications, guestAccessModals, teamAccessModals]) => {
       const bundle = {
         sidebar,
         header,
@@ -201,6 +202,7 @@ async function loadAdminTemplates() {
         manageVenueBookings,
         notifications,
         guestAccessModals,
+        teamAccessModals,
       };
       writeTemplateCache(bundle);
       return bundle;
@@ -329,6 +331,7 @@ function buildAdminShell({
     ${templates.manageVenueBookings || ''}
     ${templates.notifications || ''}
     ${templates.guestAccessModals || ''}
+    ${templates.teamAccessModals || ''}
   `;
 }
 

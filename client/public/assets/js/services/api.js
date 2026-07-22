@@ -184,6 +184,29 @@ export async function getGuestAccessActivity(limit = 25) {
   return data.entries || [];
 }
 
+export async function getPortalStaffOverview() {
+  return apiRequest('/users/portal-staff');
+}
+
+export async function createPortalStaffUser(payload) {
+  return apiRequest('/users/portal-staff', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function updatePortalStaffUser(id, payload) {
+  return apiRequest(`/users/portal-staff/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getPortalStaffActivity(limit = 25) {
+  const data = await apiRequest(`/users/portal-staff/activity?limit=${limit}`);
+  return data.entries || [];
+}
+
 export async function createGuestUser(payload) {
   return apiRequest('/users', {
     method: 'POST',
