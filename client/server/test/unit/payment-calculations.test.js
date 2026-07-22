@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   computeDueAmount,
   computePaymentSummary,
+  computeLodgingSubtotal,
 } from '../../src/services/payment.service.js';
 import { buildInvoicePaymentSections } from '../../src/services/email.service.js';
 
@@ -47,6 +48,16 @@ describe('billing calculations', () => {
         credit_balance: 0,
       }
     );
+  });
+
+  it('derives lodging-only subtotal for room invoices (excludes meals and fees)', () => {
+    const lodging = computeLodgingSubtotal({
+      subtotal: 12_000,
+      meals: [{ subtotal: 1_500 }, { subtotal: 500 }],
+      fees: [{ amount: 200, quantity: 1 }],
+    });
+    assert.equal(lodging, 9_800);
+    assert.equal(computeDueAmount(12_000, 980), 11_020);
   });
 
   it('renders a clear payment history and remaining balance in invoice emails', () => {

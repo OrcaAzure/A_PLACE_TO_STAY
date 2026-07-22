@@ -298,16 +298,33 @@ function defaultTxAmount(p, type) {
   return summary.balance_due;
 }
 
-function discountPercent(subtotal, discountAmount) {
-  const base = Number(subtotal || 0);
+function discountPercent(discountBase, discountAmount) {
+  const base = Number(discountBase || 0);
   if (base <= 0) return 0;
   return Math.round((Number(discountAmount || 0) / base) * 10000) / 100;
 }
 
-function discountFromPercent(subtotal, percent) {
-  const base = Number(subtotal || 0);
+function discountFromPercent(discountBase, percent) {
+  const base = Number(discountBase || 0);
   const p = Math.max(0, Math.min(100, Number(percent) || 0));
   return Math.round(base * (p / 100) * 100) / 100;
+}
+
+function lodgingSubtotal(p) {
+  if (isVenueInvoice(p) || showAsVenueOvernightBilling(p)) {
+    return Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
+  }
+  const { lines } = chargeLines(p);
+  const lodging = lines
+    .filter((line) => line.kind === 'lodging' || /lodging/i.test(line.label))
+    .reduce((sum, line) => sum + Number(line.amount || 0), 0);
+  if (lodging > 0) return lodging;
+  const bookingTotal = Number(p.subtotal ?? p.booking_total ?? 0);
+  const meals = (p.meals || []).filter((m) => Number(m.quantity) > 0);
+  const fees = aggregateFeeLines(p.fees || []);
+  const mealTotal = meals.reduce((s, m) => s + Number(m.subtotal || 0), 0);
+  const feeTotal = fees.reduce((s, f) => s + Number(f.amount || 0) * Math.max(1, Number(f.quantity) || 1), 0);
+  return Math.max(0, Math.round((bookingTotal - mealTotal - feeTotal) * 100) / 100);
 }
 
 function parsePackageHours(itemName) {
@@ -462,19 +479,20 @@ function getDiscountMode(form) {
   return form?.querySelector('[name="discount_mode"]:checked')?.value || 'percent';
 }
 
-function inferDiscountMode(subtotal, discountAmount) {
+function inferDiscountMode(discountBase, discountAmount) {
   if (!discountAmount) return 'percent';
-  const roundTrip = discountFromPercent(subtotal, discountPercent(subtotal, discountAmount));
+  const roundTrip = discountFromPercent(discountBase, discountPercent(discountBase, discountAmount));
   return Math.abs(roundTrip - Number(discountAmount)) < 0.005 ? 'percent' : 'fixed';
 }
 
-function readBillingFormValues(form, subtotal = 0) {
+function readBillingFormValues(form, subtotal = 0, lodgingBase = subtotal) {
   if (!form) return { discount_amount: 0, discount_note: '', subtotal };
   const mode = getDiscountMode(form);
   const parsedSubtotal = Math.round(Number(getFormSubtotal(form) || subtotal) * 100) / 100;
+  const base = Number(form.getAttribute('data-lodging-subtotal') || lodgingBase || parsedSubtotal);
   const discount_amount = mode === 'fixed'
-    ? Math.max(0, Math.min(parsedSubtotal, Number(form.querySelector('[name="discount_amount"]')?.value || 0)))
-    : discountFromPercent(parsedSubtotal, form.querySelector('[name="discount_percent"]')?.value);
+    ? Math.max(0, Math.min(base, Number(form.querySelector('[name="discount_amount"]')?.value || 0)))
+    : discountFromPercent(base, form.querySelector('[name="discount_percent"]')?.value);
   return {
     subtotal: parsedSubtotal,
     discount_amount,
@@ -497,15 +515,15 @@ function getFormSubtotal(form) {
 function syncDiscountPanels(form, { seedOnModeChange = false } = {}) {
   if (!form) return;
   const mode = getDiscountMode(form);
-  const subtotal = getFormSubtotal(form);
+  const discountBase = Number(form.getAttribute('data-lodging-subtotal') || getFormSubtotal(form) || 0);
   const percentInput = form.querySelector('[name="discount_percent"]');
   const fixedInput = form.querySelector('[name="discount_amount"]');
 
   if (seedOnModeChange) {
     if (mode === 'fixed' && percentInput && fixedInput) {
-      fixedInput.value = String(discountFromPercent(subtotal, percentInput.value));
+      fixedInput.value = String(discountFromPercent(discountBase, percentInput.value));
     } else if (mode === 'percent' && percentInput && fixedInput) {
-      percentInput.value = String(discountPercent(subtotal, Number(fixedInput.value || 0)));
+      percentInput.value = String(discountPercent(discountBase, Number(fixedInput.value || 0)));
     }
   }
 
@@ -521,7 +539,7 @@ function syncDiscountPanels(form, { seedOnModeChange = false } = {}) {
 function hasUnsavedBillingChanges(p, form) {
   if (!form) return false;
   const savedSubtotal = Math.round(Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0) * 100) / 100;
-  const { subtotal, discount_amount, discount_note } = readBillingFormValues(form, savedSubtotal);
+  const { subtotal, discount_amount, discount_note } = readBillingFormValues(form, savedSubtotal, lodgingSubtotal(p));
   const savedDiscount = Number(p.discount_amount || 0);
   const savedNote = String(p.discount_note || '').trim();
   return subtotal !== savedSubtotal
@@ -792,7 +810,7 @@ function syncRecordPaymentUi(detailEl, p) {
 
   const form = getBillingForm(detailEl);
   const subtotal = Number(fresh.subtotal ?? fresh.booking_total ?? fresh.amount ?? 0);
-  const { discount_amount } = readBillingFormValues(form, subtotal);
+  const { discount_amount } = readBillingFormValues(form, subtotal, lodgingSubtotal(fresh));
   const totalDue = computeDue(subtotal, discount_amount);
   const txForm = detailEl.querySelector('[data-tx-form]');
   const txType = txForm?.querySelector('[name="tx_type"]')?.value || defaultTxType(fresh);
@@ -1009,6 +1027,7 @@ function chargeLines(p) {
       const guests = Number(room.guest_count || 1);
       lines.push({
         icon: 'king_bed',
+        kind: 'lodging',
         label: `${roomLabel(room)} lodging`,
         detail: `${guests} guest${guests === 1 ? '' : 's'} · ${room.nights || stayNights(room)} night${Number(room.nights || stayNights(room)) === 1 ? '' : 's'}${room.occupancy_item ? ` · ${room.occupancy_item}` : ''}`,
         amount: lodgingTotal,
@@ -1063,6 +1082,7 @@ function chargeLines(p) {
   if (roomTotal > 0) {
     lines.push({
       icon: 'king_bed',
+      kind: 'lodging',
       label: 'Room lodging',
       detail: `${roomLabel(p)} · ${nights} night${nights === 1 ? '' : 's'}${p.occupancy_item ? ` · ${p.occupancy_item}` : ''}`,
       amount: roomTotal,
@@ -1103,8 +1123,9 @@ function renderChargeTable(p) {
     return '<p class="billing-charges-empty">No line-item breakdown on file.</p>';
   }
   const subtotal = Number(p.subtotal ?? bookingTotal ?? 0);
+  const lodgingBase = lodgingSubtotal(p);
   const discount = Number(p.discount_amount || 0);
-  const percent = discountPercent(subtotal, discount);
+  const percent = discountPercent(lodgingBase, discount);
   const due = computeDue(subtotal, discount);
   const rows = lines.map((line) => `
     <tr>
@@ -1133,7 +1154,7 @@ function renderChargeTable(p) {
         </tr>
         ${discount > 0 ? `
         <tr class="billing-charges-discount">
-          <td>Discount${percent > 0 ? ` (${percent}%)` : ''}${p.discount_note ? ` — ${escapeHtml(p.discount_note)}` : ''}</td>
+          <td>Discount on lodging${percent > 0 ? ` (${percent}%)` : ''}${p.discount_note ? ` — ${escapeHtml(p.discount_note)}` : ''}</td>
           <td class="billing-charge-amount">−${fmt(discount)}</td>
         </tr>` : ''}
         <tr class="billing-charges-due">
@@ -2521,11 +2542,12 @@ function renderLedger(p) {
 
 function renderBillingColumn(p, { isPending }) {
   const subtotal = Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
+  const lodgingBase = lodgingSubtotal(p);
   const discount = Number(p.discount_amount || 0);
-  const percent = discountPercent(subtotal, discount);
+  const percent = discountPercent(lodgingBase, discount);
   const discountMode = p.discount_mode === 'fixed' || p.discount_mode === 'percent'
     ? p.discount_mode
-    : inferDiscountMode(subtotal, discount);
+    : inferDiscountMode(lodgingBase, discount);
   const due = dueAmount(p);
   const isWaived = due <= 0;
   const methodOptions = PAYMENT_METHODS.map((m) => `<option value="${m}">${m}</option>`).join('');
@@ -2587,7 +2609,7 @@ function renderBillingColumn(p, { isPending }) {
         Adjust invoice
       </h4>
 
-      <form class="billing-edit-form" data-detail-form="${p.id}" data-subtotal="${subtotal}" novalidate>
+      <form class="billing-edit-form" data-detail-form="${p.id}" data-subtotal="${subtotal}" data-lodging-subtotal="${lodgingBase}" novalidate>
         <label class="billing-edit-form__field billing-edit-form__field--subtotal">
           <span>Invoice subtotal (₱)</span>
           <input type="number" min="1" step="1"
@@ -2622,12 +2644,14 @@ function renderBillingColumn(p, { isPending }) {
             </label>
             <label class="billing-discount-panel${discountMode === 'fixed' ? '' : ' hidden'}" data-discount-panel="fixed"${discountMode === 'fixed' ? '' : ' hidden'}>
               <span class="billing-discount-panel__label">Amount off (₱)</span>
-              <input type="number" min="0" max="${subtotal}" step="0.01"
+              <input type="number" min="0" max="${lodgingBase}" step="0.01"
                 class="billing-edit-form__input billing-discount-field__input"
                 name="discount_amount" value="${discount}" data-live-due${discountMode === 'fixed' ? '' : ' disabled'} />
             </label>
           </div>
-          <p class="billing-discount-hint" data-discount-peso>−${fmt(discount)} off subtotal</p>
+          <p class="billing-discount-hint" data-discount-peso>${isVenueInvoice(p)
+    ? `−${fmt(discount)} off subtotal`
+    : `−${fmt(discount)} off lodging (meals &amp; fees excluded)`}</p>
         </div>
         <label class="billing-edit-form__field">
           <span>Discount reason</span>
@@ -2752,8 +2776,9 @@ function updateLiveDue(form) {
 
   const savedTotal = Number(dueEl?.getAttribute('data-saved-total') || dueStrong.textContent.replace(/[^\d.]/g, '') || 0);
   const subtotal = getFormSubtotal(form);
+  const lodgingBase = Number(form.getAttribute('data-lodging-subtotal') || subtotal);
   const mode = getDiscountMode(form);
-  const { discount_amount } = readBillingFormValues(form, subtotal);
+  const { discount_amount } = readBillingFormValues(form, subtotal, lodgingBase);
   const draftDue = computeDue(subtotal, discount_amount);
   const isWaived = draftDue <= 0;
   const draftChanged = Math.abs(draftDue - savedTotal) > 0.004;
@@ -2765,7 +2790,12 @@ function updateLiveDue(form) {
   dueEl?.classList.toggle('billing-detail-total--waived', Number(savedTotal) <= 0);
   form.setAttribute('data-subtotal', String(subtotal));
 
-  if (pesoHint) pesoHint.textContent = `−${fmt(discount_amount)} off subtotal`;
+  const lodgingOnly = lodgingBase < subtotal - 0.01;
+  if (pesoHint) {
+    pesoHint.textContent = lodgingOnly
+      ? `−${fmt(discount_amount)} off lodging (meals & fees excluded)`
+      : `−${fmt(discount_amount)} off subtotal`;
+  }
 
   if (previewEl) {
     if (draftChanged) {
@@ -2786,10 +2816,10 @@ function updateLiveDue(form) {
   const fixedInput = form.querySelector('[name="discount_amount"]');
   if (mode === 'percent' && fixedInput) {
     fixedInput.value = String(discount_amount);
-    fixedInput.max = String(subtotal);
+    fixedInput.max = String(lodgingBase);
   } else if (mode === 'fixed' && percentInput) {
-    percentInput.value = String(discountPercent(subtotal, discount_amount));
-    if (fixedInput) fixedInput.max = String(subtotal);
+    percentInput.value = String(discountPercent(lodgingBase, discount_amount));
+    if (fixedInput) fixedInput.max = String(lodgingBase);
   }
 }
 
@@ -3006,8 +3036,8 @@ function bindDetailActions(p) {
       discountInput?.focus();
       return;
     }
-    if (mode === 'fixed' && enteredDiscount > enteredSubtotal) {
-      showFeedback(detailFeedback, 'Fixed discount cannot exceed the invoice subtotal.', 'error');
+    if (mode === 'fixed' && enteredDiscount > lodgingSubtotal(p)) {
+      showFeedback(detailFeedback, 'Fixed discount cannot exceed the lodging total (meals and fees are excluded).', 'error');
       discountInput?.focus();
       return;
     }
@@ -3016,7 +3046,7 @@ function bindDetailActions(p) {
       discount_amount,
       discount_mode,
       discount_note,
-    } = readBillingFormValues(form, subtotal);
+    } = readBillingFormValues(form, subtotal, lodgingSubtotal(p));
     const nextDue = computeDue(nextSubtotal, discount_amount);
 
     const confirmed = await confirmModal({
@@ -3099,7 +3129,7 @@ function bindDetailActions(p) {
     const fresh = selectedPayment() || p;
     const billingForm = getBillingForm(detailEl);
     const subtotal = Number(fresh.subtotal ?? fresh.booking_total ?? fresh.amount ?? 0);
-    const { discount_amount } = readBillingFormValues(billingForm, subtotal);
+    const { discount_amount } = readBillingFormValues(billingForm, subtotal, lodgingSubtotal(fresh));
     const totalDue = computeDue(subtotal, discount_amount);
     const type = txForm?.querySelector('[name="tx_type"]')?.value || 'Settlement';
     const isWaived = totalDue <= 0 && type !== 'Refund';

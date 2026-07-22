@@ -184,6 +184,12 @@
 
     <div id="fac-panel-venue-prices" class="fac-panel hidden">
       <section class="res-hub-panel res-hub-panel--flush">
+        <div class="admin-notice admin-notice--inline" role="note">
+          <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">info</span>
+          <div class="admin-notice__body">
+            <p><strong>Enter prices per hour.</strong> Regular and Peak amounts below are the hourly rate guests see (e.g. ₱1,000/hr). The system multiplies by booked hours at checkout. Most venues require a <strong>4-hour minimum</strong> — set per venue under <strong>Venues → Manage venues</strong>. Basketball court and children&rsquo;s playground have no 4-hour minimum.</p>
+          </div>
+        </div>
         <div class="res-hub-toolbar res-hub-toolbar--actions-only">
           <div class="res-hub-toolbar__actions">
             <button type="button" data-venue-rates-edit-toggle class="res-btn js-requires-write" aria-pressed="false">
@@ -195,7 +201,7 @@
         <div class="admin-notice admin-notice--inline hidden" data-venue-rates-hint role="note">
           <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">edit</span>
           <div class="admin-notice__body">
-            <p>Editing mode — each venue lists its booking uses. Rename a use, type a <strong>Regular</strong> price (and optional <strong>Peak</strong>), add or remove uses, then tap <strong>Save</strong> on that venue. A use with no price stays hidden from guests. Set up the space itself (capacity, hours, inclusions) under <strong>Venues → Manage venues</strong>.</p>
+            <p>Editing mode — each venue lists its booking uses. Rename a use, type a <strong>Regular (₱/hr)</strong> price (and optional <strong>Peak (₱/hr)</strong>), add or remove uses, then tap <strong>Save</strong> on that venue. A use with no price stays hidden from guests. Set minimum booking hours and capacity under <strong>Venues → Manage venues</strong>.</p>
           </div>
         </div>
         <div id="venue-rates-grid-mount" class="fac-catalog-grid fac-catalog-grid--room-rates">

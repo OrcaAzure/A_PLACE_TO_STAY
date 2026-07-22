@@ -235,6 +235,17 @@ export async function saveAdminVenue(payload = {}) {
     throw badRequest('Maximum capacity must be greater than or equal to the minimum.');
   }
   const minH = toIntOrNull(min_hours);
+  let resolvedMinHours = minH;
+  if (resolvedMinHours == null) {
+    const { isRecreationVenue } = await import('./facility.service.js');
+    const probe = {
+      category: group,
+      facility_group: group,
+      item: cleanFns[0]?.function_name,
+      name: venueName,
+    };
+    if (!isRecreationVenue(probe)) resolvedMinHours = 4;
+  }
   const venueHourly = toRate(hourly_rate);
 
   const venue = {
@@ -244,7 +255,7 @@ export async function saveAdminVenue(payload = {}) {
     facility_group: group,
     capacity_min: capMin,
     capacity_max: capMax,
-    min_hours: minH,
+    min_hours: resolvedMinHours,
     hourly_rate: venueHourly,
     inclusions: inclusions && String(inclusions).trim() ? String(inclusions).trim() : null,
     policies: policies && String(policies).trim() ? String(policies).trim() : null,

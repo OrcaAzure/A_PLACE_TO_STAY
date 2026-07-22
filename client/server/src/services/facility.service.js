@@ -287,31 +287,15 @@ export function isHourlyMinimumVenue(facility) {
 }
 
 /**
- * Total venue price.
- * - Hourly + minimum (rate === hourly_rate): base rate × hours (floor enforced by validateVenueDuration).
- * - Minimum-block / package (min_hours set): base rate covers the minimum block,
- *   each extra hour is charged at the overflow rate.
- * - Pure hourly venues: base rate × hours (at least one hour).
+ * Total venue price — catalog rate is always **per hour**.
+ * Recreation / basketball / playground: no minimum block; bill hours × rate.
+ * Other venues: validateVenueDuration enforces admin-configured min_hours (default 4).
  */
 export function computeVenueTotal(facility, startTime, endTime) {
   const rate = Number(facility?.rate);
   const hours = bookingDurationHours(startTime, endTime);
-  const minHours = resolveMinHours(facility);
-  const round = (n) => Math.round(n * 100) / 100;
-
-  // Recreation / sports — flat hourly rate regardless of admin min_hours metadata.
-  if (isRecreationVenue(facility)) {
-    return round(rate * Math.max(hours, 1));
-  }
-  if (minHours && isHourlyMinimumVenue(facility)) {
-    return round(rate * Math.max(hours, 1));
-  }
-  if (minHours && isSegmentBlockVenue(facility)) {
-    if (hours <= minHours) return round(rate);
-    const perHour = resolveExtraHourRate(facility, rate, minHours);
-    return round(rate + perHour * (hours - minHours));
-  }
-  return round(rate * Math.max(hours, 1));
+  const billableHours = Math.max(hours, 1);
+  return Math.round(rate * billableHours * 100) / 100;
 }
 
 export function validateVenueCapacity(facilityRow, guestCount) {
@@ -333,6 +317,7 @@ export function validateVenueCapacity(facilityRow, guestCount) {
 export function validateVenueDuration(facility, startTime, endTime) {
   const hours = bookingDurationHours(startTime, endTime);
   if (hours <= 0) return 'End time must be after start time.';
+  if (isRecreationVenue(facility)) return null;
   const minHours = resolveMinHours(facility);
   if (minHours && hours < minHours) {
     return `This venue has a ${minHours}-hour minimum booking. Please select at least ${minHours} hours.`;
@@ -342,32 +327,16 @@ export function validateVenueDuration(facility, startTime, endTime) {
 
 export function venueRateMeta(facility) {
   const rate = Number(facility?.rate);
-  const minHours = resolveMinHours(facility);
+  const minHours = isRecreationVenue(facility) ? null : resolveMinHours(facility);
   const fmt = (n) => Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });
-  if (minHours && isHourlyMinimumVenue(facility)) {
-    return {
-      min_hours: minHours,
-      package_hours: null,
-      hourly_rate: rate,
-      rate_type: 'hourly_minimum',
-      rate_label: `₱${fmt(rate)} / hour · ${minHours}-hr minimum`,
-    };
-  }
-  if (minHours) {
-    const perHour = resolveExtraHourRate(facility, rate, minHours);
-    return {
-      min_hours: minHours,
-      package_hours: minHours,
-      hourly_rate: perHour,
-      rate_type: 'minimum',
-      rate_label: `${minHours}-hr minimum · ₱${fmt(rate)} (+₱${fmt(perHour)}/extra hr)`,
-    };
-  }
+  const rateLabel = minHours
+    ? `₱${fmt(rate)} / hour · ${minHours}-hr minimum`
+    : `₱${fmt(rate)} / hour`;
   return {
-    min_hours: null,
+    min_hours: minHours,
     package_hours: null,
     hourly_rate: rate,
-    rate_type: 'hourly',
-    rate_label: `₱${fmt(rate)} / hour`,
+    rate_type: minHours ? 'hourly_minimum' : 'hourly',
+    rate_label: rateLabel,
   };
 }

@@ -173,11 +173,11 @@ function renderUseRow(draft, fnView) {
         </td>
         <td class="fac-rate-cell">
           <input type="number" min="1" step="1" inputmode="numeric" class="fac-rate-input" data-use-field="regular_rate"
-            value="${escapeHtml(fnView.regular_rate)}" placeholder="—" aria-label="Regular price" />
+            value="${escapeHtml(fnView.regular_rate)}" placeholder="—" aria-label="Regular price per hour" />
         </td>
         <td class="fac-rate-cell">
           <input type="number" min="1" step="1" inputmode="numeric" class="fac-rate-input" data-use-field="peak_rate"
-            value="${escapeHtml(fnView.peak_rate)}" placeholder="—" aria-label="Peak price" />
+            value="${escapeHtml(fnView.peak_rate)}" placeholder="—" aria-label="Peak price per hour" />
         </td>
         <td class="venue-rate-cell-action">
           <button type="button" class="venue-rate-remove" data-remove-use="${fnView._cid}"
@@ -197,16 +197,16 @@ function renderUseRow(draft, fnView) {
         <span class="fac-rate-row-title">${escapeHtml(name || 'Unnamed use')}</span>
         ${unpriced ? '<span class="venue-rate-flag">Set a price to make bookable</span>' : ''}
       </th>
-      <td class="fac-rate-cell">${reg ? `<span class="fac-rate-price">${reg}</span>` : '<span class="fac-rate-empty">—</span>'}</td>
-      <td class="fac-rate-cell">${peak ? `<span class="fac-rate-price">${peak}</span>` : '<span class="fac-rate-empty">—</span>'}</td>
+      <td class="fac-rate-cell">${reg ? `<span class="fac-rate-price">${reg}<span class="fac-rate-unit"> / hr</span></span>` : '<span class="fac-rate-empty">—</span>'}</td>
+      <td class="fac-rate-cell">${peak ? `<span class="fac-rate-price">${peak}<span class="fac-rate-unit"> / hr</span></span>` : '<span class="fac-rate-empty">—</span>'}</td>
     </tr>`;
 }
 
 function renderCard(draft) {
   const coded = Boolean(String(draft.room_code || '').trim());
   const headCols = editMode
-    ? `<th class="fac-rate-row-label">Use</th><th class="fac-rate-season">Regular</th><th class="fac-rate-season">Peak</th><th class="venue-rate-cell-action"></th>`
-    : `<th class="fac-rate-corner"></th><th class="fac-rate-season">Regular</th><th class="fac-rate-season">Peak</th>`;
+    ? `<th class="fac-rate-row-label">Use</th><th class="fac-rate-season">Regular (₱/hr)</th><th class="fac-rate-season">Peak (₱/hr)</th><th class="venue-rate-cell-action"></th>`
+    : `<th class="fac-rate-corner"></th><th class="fac-rate-season">Regular (₱/hr)</th><th class="fac-rate-season">Peak (₱/hr)</th>`;
 
   const rows = draft.functions.map((fn) => renderUseRow(draft, decorateFn(fn))).join('');
 

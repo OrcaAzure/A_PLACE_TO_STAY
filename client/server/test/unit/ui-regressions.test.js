@@ -29,6 +29,12 @@ describe('guest and billing UI regressions', () => {
     assert.doesNotMatch(groupWizard, /gw-arrival-time/);
   });
 
+  it('includes Meet the Team in the shared guest footer', () => {
+    const footer = readPublic('components/guest-footer.html');
+    assert.match(footer, /meet-the-team\.html/);
+    assert.match(footer, /Meet the Team/);
+  });
+
   it('keeps billing details single-column on medium screens', () => {
     const css = readPublic('assets/css/features/admin-invoices.css');
     assert.match(css, /min-width:\s*768px\)\s*and\s*\(max-width:\s*1099px/);
@@ -81,10 +87,8 @@ describe('guest and billing UI regressions', () => {
       assert.match(page, /public-info-header\.js/);
       assert.doesNotMatch(page, /window\.print|>Print</);
     });
-    assert.match(policies, /id="meet-the-team"/);
-    assert.match(policies, /data-scroll-to-team/);
-    assert.match(policies, /policy-footer-link--team/);
-    assert.match(policies, /Terms of Service[\s\S]*Meet the team/);
+    assert.match(policies, /meet-the-team\.html/);
+    assert.match(policies, /Meet the Team/);
     assert.match(policies, /Back to home/);
     assert.doesNotMatch(policies, /policy-footer-btn/);
   });

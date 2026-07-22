@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html class="h-full" lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Meet the Team | APTS Guest Services</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/assets/js/config/tailwind-theme-base.js"></script>
+  <script src="/assets/js/config/tailwind-guest.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/assets/css/global/main.css" />
+  <link rel="stylesheet" href="/assets/css/global/landing.css" />
+  <link rel="stylesheet" href="/assets/css/global/guest-portal.css" />
+  <link rel="stylesheet" href="/assets/css/features/public-info-pages.css" />
+</head>
+<body class="bg-background text-on-surface min-h-screen flex flex-col">
+  <header id="public-page-header" class="border-b border-outline-variant/30 bg-white shrink-0">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between gap-4">
+      <a href="/" class="inline-flex items-center gap-2 text-primary font-bold no-underline">
+        <img src="/assets/logo/apts-mark.svg" alt="" width="28" height="28" class="w-7 h-7" decoding="async"/>
+        APTS
+      </a>
+      <a href="/login.html" data-public-auth-link class="text-label-md text-primary hover:underline no-underline">Sign in</a>
+    </div>
+  </header>
+
+  <main class="flex-1">
+    <section class="py-12 sm:py-16">
+      <div class="max-w-4xl mx-auto px-4 sm:px-6">
+        <div class="lp-section-head max-w-2xl mb-8">
+          <p class="lp-section-label text-label-sm text-primary uppercase mb-3">Guest services</p>
+          <h1 class="text-3xl lg:text-headline-lg font-bold text-on-surface mb-4">Meet the team</h1>
+          <p class="text-body-lg text-on-surface-variant leading-relaxed">The Housing &amp; Guest Services team welcomes visitors, coordinates lodging, and helps with campus venue bookings.</p>
+        </div>
+        <div id="team-section-mount"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="guest-footer-mount"></div>
+
+  <script type="module">
+    import { renderTeamSection } from '/assets/js/features/team-section.js';
+    renderTeamSection(document.getElementById('team-section-mount'), { variant: 'policies' });
+  </script>
+  <script type="module">
+    import { loadComponent } from '/assets/js/layout/ui.js';
+    loadComponent('/components/guest-footer.html').then((html) => {
+      const mount = document.getElementById('guest-footer-mount');
+      if (mount && html) mount.innerHTML = html;
+    }).catch(() => {});
+  </script>
+  <script type="module" src="/assets/js/layout/public-info-header.js"></script>
+</body>
+</html>

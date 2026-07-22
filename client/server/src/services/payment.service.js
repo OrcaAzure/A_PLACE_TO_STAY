@@ -511,6 +511,34 @@ export function computeDueAmount(subtotal, discountAmount = 0) {
   return Math.max(0, Math.round(due * 100) / 100);
 }
 
+/** Lodging-only portion of a room/group invoice — discounts apply here, not to meals or fees. */
+export function computeLodgingSubtotal(payment) {
+  if (!payment) return 0;
+  if (payment.facility_booking_id) {
+    return roundMoney(Number(payment.subtotal ?? payment.booking_total ?? payment.amount ?? 0));
+  }
+  const groupRooms = payment.group_rooms;
+  if (Array.isArray(groupRooms) && groupRooms.length) {
+    return roundMoney(groupRooms.reduce((sum, room) => {
+      const preset = Number(room.room_total);
+      if (Number.isFinite(preset) && preset >= 0) return sum + preset;
+      const meals = (room.meals || []).reduce((s, m) => s + Number(m.subtotal || 0), 0);
+      const fees = (room.fees || []).reduce(
+        (s, f) => s + Number(f.amount || 0) * Math.max(1, Number(f.quantity) || 1),
+        0
+      );
+      return sum + Math.max(0, Number(room.total_amount || 0) - meals - fees);
+    }, 0));
+  }
+  const bookingTotal = Number(payment.subtotal ?? payment.booking_total ?? payment.amount ?? 0);
+  const mealTotal = (payment.meals || []).reduce((s, m) => s + Number(m.subtotal || 0), 0);
+  const feeTotal = (payment.fees || []).reduce(
+    (s, f) => s + Number(f.amount || 0) * Math.max(1, Number(f.quantity) || 1),
+    0
+  );
+  return Math.max(0, roundMoney(bookingTotal - mealTotal - feeTotal));
+}
+
 const PAYMENT_IN_TYPES = ['Deposit', 'Advance', 'Settlement'];
 const PAYMENT_OUT_TYPES = ['Refund'];
 
@@ -1052,7 +1080,13 @@ export async function updateInvoiceBilling(
   }
 
   const discount = Math.max(0, Number(discount_amount ?? payment.discount_amount ?? 0));
-  if (discount > subtotal) throw new Error('Discount cannot be greater than the subtotal');
+  const lodgingBase = computeLodgingSubtotal(payment);
+  const discountCap = payment.facility_booking_id ? subtotal : lodgingBase;
+  if (discount > discountCap) {
+    throw new Error(payment.facility_booking_id
+      ? 'Discount cannot be greater than the subtotal'
+      : 'Discount cannot be greater than the lodging total (meals and fees are excluded)');
+  }
 
   const amount = computeDueAmount(subtotal, discount);
   const note = discount_note !== undefined ? (discount_note || null) : payment.discount_note;

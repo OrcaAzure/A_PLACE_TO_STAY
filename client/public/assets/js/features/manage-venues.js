@@ -425,6 +425,12 @@ function renderDetail() {
 
     <section class="mv-section">
       <p class="mv-section-title">Capacity &amp; booking rules</p>
+      <div class="admin-notice admin-notice--inline mv-notice" role="note">
+        <span class="material-symbols-outlined admin-notice__icon" aria-hidden="true">info</span>
+        <div class="admin-notice__body">
+          <p>Set <strong>minimum booking hours</strong> per venue (default <strong>4 hours</strong> for most spaces). Basketball court and children&rsquo;s playground typically have no minimum. Hourly rates are entered under <strong>Facilities → Venue prices</strong> — guests see ₱/hour.</p>
+        </div>
+      </div>
       <div class="admin-crud-form-grid mv-form">
         <div class="admin-crud-field">
           <label for="mv-cap-min">Minimum capacity <span class="text-slate-400 font-normal">(optional)</span></label>
@@ -435,14 +441,14 @@ function renderDetail() {
           <input id="mv-cap-max" type="number" min="1" step="1" value="${escapeHtml(draft.capacity_max)}" placeholder="e.g. 100" />
         </div>
         <div class="admin-crud-field">
-          <label for="mv-min-hours">Minimum booking hours <span class="text-slate-400 font-normal">(optional)</span></label>
-          <input id="mv-min-hours" type="number" min="1" step="1" value="${escapeHtml(draft.min_hours)}" placeholder="e.g. 4" />
-          <p class="mf-field-hint mv-hint">Set 4 for a 4-hour minimum. Leave blank to bill purely by the hour.</p>
+          <label for="mv-min-hours">Minimum booking hours</label>
+          <input id="mv-min-hours" type="number" min="1" step="1" value="${escapeHtml(draft.min_hours)}" placeholder="4 (most venues)" />
+          <p class="mf-field-hint mv-hint">Most venues: 4. Basketball court &amp; playground: leave blank. Guests must book at least this many hours.</p>
         </div>
         <div class="admin-crud-field">
-          <label for="mv-hourly-rate">Extra hour rate <span class="text-slate-400 font-normal">(optional)</span></label>
-          <input id="mv-hourly-rate" type="number" min="0" step="1" value="${escapeHtml(draft.hourly_rate)}" placeholder="auto from base price" />
-          <p class="mf-field-hint mv-hint">Charged for each hour beyond the minimum. Leave blank to split the base price evenly.</p>
+          <label for="mv-hourly-rate">Legacy overflow rate <span class="text-slate-400 font-normal">(optional)</span></label>
+          <input id="mv-hourly-rate" type="number" min="0" step="1" value="${escapeHtml(draft.hourly_rate)}" placeholder="Not used — prices are per hour in Venue prices" />
+          <p class="mf-field-hint mv-hint">Billing uses the hourly rate from Venue prices. This field is kept for older records only.</p>
         </div>
       </div>
     </section>

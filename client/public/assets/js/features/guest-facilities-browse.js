@@ -1150,9 +1150,11 @@ function setMountHtml(id, html) {
     if (!rates.length) return '—';
     const min = Math.min(...rates);
     const many = venue.uses.length > 1;
-    const base = `₱${Number(min).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-    if (venue.min_hours) return `${many ? 'From ' : ''}${base} · ${venue.min_hours}-hr minimum`;
-    return `${many ? 'From ' : ''}${base} / hr`;
+    const base = `₱${Number(min).toLocaleString('en-PH', { minimumFractionDigits: 0 })}`;
+    const minNote = venue.min_hours && !/recreation|basketball|playground/i.test(`${venue.category} ${venue.name}`)
+      ? ` · ${venue.min_hours}-hr minimum`
+      : '';
+    return `${many ? 'From ' : ''}${base} / hr${minNote}`;
   }
 
   function venueCapacityText(venue) {

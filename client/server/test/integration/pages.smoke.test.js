@@ -81,8 +81,13 @@ describe('Pages smoke (public)', () => {
     const policies = await agent.get('/legal/policies-guidelines.html');
     assert.equal(policies.status, 200);
     assert.match(policies.text, /Policies &amp; Guidelines/i);
-    assert.match(policies.text, /Meet the team/i);
-    assert.match(policies.text, /id="meet-the-team"/);
+    assert.match(policies.text, /Meet the Team/i);
+    assert.match(policies.text, /meet-the-team\.html/);
+
+    const teamPage = await agent.get('/meet-the-team.html');
+    assert.equal(teamPage.status, 200);
+    assert.match(teamPage.text, /Meet the team/i);
+    assert.match(teamPage.text, /team-section-mount/);
 
     const contacts = await agent.get('/contacts.html');
     assert.equal(contacts.status, 200);
@@ -96,6 +101,7 @@ describe('Pages smoke (public)', () => {
     assert.match(res.text, /\/legal\/terms\.html/);
     assert.match(res.text, /\/legal\/policies-guidelines\.html/);
     assert.match(res.text, /\/contacts\.html/);
+    assert.match(res.text, /\/meet-the-team\.html/);
     assert.doesNotMatch(res.text, /coming soon/i);
   });
 

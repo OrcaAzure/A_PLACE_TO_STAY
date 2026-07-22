@@ -644,11 +644,10 @@ export async function initAppLayout(config = {}) {
         document.body.insertAdjacentHTML('beforeend', renderGuestBottomNav(GUEST_MOBILE_NAV, activePage));
         updateActiveNav(activePage, navItems);
       }
-      if (!landingHome && !document.querySelector('footer.bg-white.border-t')) {
-        loadComponent('/components/guest-footer.html').then((footerHtml) => {
-          const main = document.querySelector('.guest-main');
-          if (main && footerHtml) main.insertAdjacentHTML('afterend', footerHtml);
-        }).catch(() => {});
+      if (!landingHome && !document.querySelector('footer.guest-site-footer, footer.bg-white.border-t')) {
+        const footerHtml = await loadComponent('/components/guest-footer.html');
+        const main = document.querySelector('.guest-main');
+        if (main && footerHtml) main.insertAdjacentHTML('afterend', footerHtml);
       }
       await ensureConfirmModalMounted();
       if (activePage === 'reservations') {
