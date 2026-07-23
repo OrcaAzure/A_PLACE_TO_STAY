@@ -17,9 +17,14 @@ import {
 import { formatRoleLabel, updateCachedUser } from '/assets/js/services/auth.js';
 import { formatDate } from '/assets/js/features/reservation-shared.js';
 import { confirmModal } from '/assets/js/layout/ui.js';
+import {
+  initPolicyEditor,
+  setPolicyEditorContent,
+  getPolicyEditorContent,
+} from '/assets/js/features/policy-editor.js';
 
 let fiscalYearInfo = null;
-let savedPolicies = { rooms: '', venues: '', updated_at: null };
+let policyEditorReady = false;
 
 const SEASON_ORDER = ['Peak', 'Super Peak'];
 
@@ -70,9 +75,11 @@ function bindSettingsUi() {
   document.getElementById('system-settings-save-btn')?.addEventListener('click', saveSystemSettings);
   document.getElementById('policies-save-btn')?.addEventListener('click', savePolicies);
   document.getElementById('support-contact-save-btn')?.addEventListener('click', saveSupportContact);
-  ['policies-rooms', 'policies-venues'].forEach((id) => {
-    document.getElementById(id)?.addEventListener('input', updatePolicyCharacterCounts);
-  });
+  const policyMount = document.getElementById('policy-editor-mount');
+  if (policyMount && !policyEditorReady) {
+    initPolicyEditor(policyMount);
+    policyEditorReady = true;
+  }
   document.getElementById('season-add-period')?.addEventListener('click', () => {
     const periods = readSeasonPeriodsFromForm();
     periods.push(defaultPeriodRow());
@@ -186,55 +193,21 @@ async function saveSupportContact() {
 }
 
 function renderPolicies(policies) {
-  savedPolicies = {
-    rooms: policies?.rooms || '',
-    venues: policies?.venues || '',
-    updated_at: policies?.updated_at || null,
-  };
-  const rooms = document.getElementById('policies-rooms');
-  const venues = document.getElementById('policies-venues');
-  if (rooms) rooms.value = savedPolicies.rooms;
-  if (venues) venues.value = savedPolicies.venues;
-  const updated = document.getElementById('policies-last-updated');
-  if (updated) {
-    updated.textContent = savedPolicies.updated_at
-      ? `Last published ${new Date(savedPolicies.updated_at).toLocaleString('en-PH', {
-        month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
-      })}`
-      : 'Using the initial published policy content';
-  }
-  updatePolicyCharacterCounts();
-}
-
-function policyDraft() {
-  return {
-    rooms: document.getElementById('policies-rooms')?.value.trim() || '',
-    venues: document.getElementById('policies-venues')?.value.trim() || '',
-  };
-}
-
-function updatePolicyCharacterCounts() {
-  ['rooms', 'venues'].forEach((kind) => {
-    const length = document.getElementById(`policies-${kind}`)?.value.length || 0;
-    const count = document.getElementById(`policies-${kind}-count`);
-    if (count) count.textContent = `${length.toLocaleString()} / 50,000 characters`;
-  });
+  setPolicyEditorContent(policies);
 }
 
 async function savePolicies() {
   const feedback = document.getElementById('policies-feedback');
   const btn = document.getElementById('policies-save-btn');
-  const { rooms, venues } = policyDraft();
+  const { rooms, venues } = getPolicyEditorContent();
   if (!btn) return;
   feedback?.classList.add('hidden');
   if (rooms.length < 100) {
     showFeedback(feedback, 'Rooms / Accommodation policies must contain at least 100 characters.', true);
-    document.getElementById('policies-rooms')?.focus();
     return;
   }
   if (venues.length < 100) {
     showFeedback(feedback, 'Venues / Facilities policies must contain at least 100 characters.', true);
-    document.getElementById('policies-venues')?.focus();
     return;
   }
   const confirmed = await confirmModal({

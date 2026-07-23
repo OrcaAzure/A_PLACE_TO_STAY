@@ -65,14 +65,17 @@ describe('guest and billing UI regressions', () => {
     assert.match(css, /\.billing-res-confirm\.hidden[\s\S]*display:\s*none/);
   });
 
-  it('uses in-app dialogs and large inline policy editors', () => {
+  it('uses in-app dialogs and visual policy editor', () => {
     const paymentsUi = readPublic('assets/js/features/admin-payments.js');
     const settingsUi = readPublic('assets/js/features/settings.js');
+    const policyEditor = readPublic('assets/js/features/policy-editor.js');
     const settingsPage = fs.readFileSync(path.join(serverRoot, 'views/admin/settings.html'), 'utf8');
     assert.doesNotMatch(paymentsUi, /window\.(?:alert|confirm|prompt)\s*\(/);
     assert.match(paymentsUi, /confirmModal\(\{/);
     assert.match(settingsUi, /confirmModal\(\{/);
-    assert.match(settingsPage, /settings-policy-editor--large/);
+    assert.match(settingsUi, /initPolicyEditor/);
+    assert.match(policyEditor, /policy-section-card/);
+    assert.match(settingsPage, /id="policy-editor-mount"/);
     assert.doesNotMatch(settingsPage, /id="settings-policies-modal"/);
   });
 

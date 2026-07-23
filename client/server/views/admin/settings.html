@@ -292,25 +292,7 @@
 
             <section class="admin-panel">
               <div class="admin-panel-body settings-form">
-                <div class="settings-policy-help">
-                  <strong>Formatting:</strong> Start section headings with <code>##</code>, list items with <code>-</code>, and separate paragraphs with a blank line. HTML is not accepted.
-                </div>
-
-                <div class="settings-form-group">
-                  <div class="settings-policy-editor__head">
-                    <label class="settings-form-group__label" for="policies-rooms">Rooms / Accommodation Policies</label>
-                    <span id="policies-rooms-count">0 characters</span>
-                  </div>
-                  <textarea id="policies-rooms" class="settings-input settings-policy-editor settings-policy-editor--large" maxlength="50000" spellcheck="true"></textarea>
-                </div>
-
-                <div class="settings-form-group">
-                  <div class="settings-policy-editor__head">
-                    <label class="settings-form-group__label" for="policies-venues">Venues / Facilities Usage Policies</label>
-                    <span id="policies-venues-count">0 characters</span>
-                  </div>
-                  <textarea id="policies-venues" class="settings-input settings-policy-editor settings-policy-editor--large" maxlength="50000" spellcheck="true"></textarea>
-                </div>
+                <div id="policy-editor-mount" class="policy-editor-mount" aria-label="Policy editor"></div>
 
                 <div class="settings-form-actions settings-form-actions--save-row">
                   <button type="button" id="policies-save-btn" class="btn-primary js-requires-write">Publish policies</button>
