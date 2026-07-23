@@ -311,6 +311,7 @@ function discountFromPercent(discountBase, percent) {
 }
 
 function lodgingSubtotal(p) {
+  // Venue invoices: discount base is the full subtotal. Room/group: lodging lines only.
   if (isVenueInvoice(p) || showAsVenueOvernightBilling(p)) {
     return Number(p.subtotal ?? p.booking_total ?? p.amount ?? 0);
   }

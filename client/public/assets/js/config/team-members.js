@@ -10,8 +10,8 @@ export const TEAM_INTRO = {
 
 /** @type {{ name: string, role: string, initials: string, photo?: string }[]} */
 export const TEAM_MEMBERS = [
-  { name: 'Team member', role: 'Development', initials: '1' },
-  { name: 'Team member', role: 'Design & UX', initials: '2' },
-  { name: 'Team member', role: 'Backend & database', initials: '3' },
-  { name: 'Team member', role: 'Project coordination', initials: '4' },
+  { name: 'Lyshael Bernal', role: 'Developer', initials: 'LB' },
+  { name: 'Francis Calulut', role: 'Developer', initials: 'FC' },
+  { name: 'Jhorone Lance Roxas', role: 'Developer', initials: 'JR' },
+  { name: 'Archilles Kyle Sambot', role: 'Developer', initials: 'AK' },
 ];

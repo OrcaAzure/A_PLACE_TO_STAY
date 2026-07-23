@@ -15,6 +15,7 @@ export const EARLY_CHECK_IN_ALLOWED = true;
 /** Deposit required to move from approved/pending to confirmed billing. */
 export const DEPOSIT_PERCENT = 25;
 
+/** Shown on invoices and guest UI while deposit is outstanding. */
 export const DEPOSIT_CONFIRMATION_MESSAGE =
   'Your reservation is not fully confirmed until the required deposit is received. Housing will send an invoice after approval.';
 

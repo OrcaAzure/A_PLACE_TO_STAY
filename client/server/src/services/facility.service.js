@@ -326,6 +326,7 @@ export function validateVenueDuration(facility, startTime, endTime) {
 }
 
 export function venueRateMeta(facility) {
+  // rates_facilities rows are per-hour; min_hours comes from manage-venues (guest-facing label).
   const rate = Number(facility?.rate);
   const minHours = isRecreationVenue(facility) ? null : resolveMinHours(facility);
   const fmt = (n) => Number(n).toLocaleString('en-PH', { minimumFractionDigits: 0 });

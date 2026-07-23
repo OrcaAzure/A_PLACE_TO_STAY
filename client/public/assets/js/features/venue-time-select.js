@@ -3,6 +3,7 @@
  */
 
 const SLOT_MINUTES = 30;
+/** Earliest bookable slot (6:00 AM) through latest start (10:00 PM), in minutes from midnight. */
 const DAY_START = 6 * 60;
 const DAY_END = 22 * 60;
 

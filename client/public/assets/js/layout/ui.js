@@ -644,6 +644,7 @@ export async function initAppLayout(config = {}) {
         document.body.insertAdjacentHTML('beforeend', renderGuestBottomNav(GUEST_MOBILE_NAV, activePage));
         updateActiveNav(activePage, navItems);
       }
+      /* Soft re-entry: inject shared guest footer when navigating between app pages without full reload. */
       if (!landingHome && !document.querySelector('footer.guest-site-footer, footer.bg-white.border-t')) {
         const footerHtml = await loadComponent('/components/guest-footer.html');
         const main = document.querySelector('.guest-main');

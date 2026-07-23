@@ -235,6 +235,7 @@ export async function saveAdminVenue(payload = {}) {
     throw badRequest('Maximum capacity must be greater than or equal to the minimum.');
   }
   const minH = toIntOrNull(min_hours);
+  // Default 4-hour minimum for new/edited venues; basketball & playground stay hourly-only.
   let resolvedMinHours = minH;
   if (resolvedMinHours == null) {
     const { isRecreationVenue } = await import('./facility.service.js');

@@ -104,6 +104,7 @@ export function dormPricingGuestCount(room, guestCount) {
   return Math.max(count, room?.dorm_booking_minimum || room?.capacity_min || DORM_MIN_GUEST_COUNT);
 }
 
+/** Guest browse/wizard: show all rooms including under-capacity (too_small), not only perfect fits. */
 export function isRoomListVisible(status) {
   const s = String(status || '').trim();
   return s === 'available' || s === 'dorm_min_guests' || s === 'too_small';

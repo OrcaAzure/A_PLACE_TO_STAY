@@ -234,6 +234,7 @@ function refreshGroupRoomList() {
 }
 
 function bindGroupRoomRowEvents(scope) {
+  // onclick (not addEventListener) so re-binding after list refresh does not stack handlers.
   const root = scope || $('group-wizard-body');
   if (!root) return;
   root.querySelectorAll('[data-room-toggle]').forEach((btn) => {
@@ -251,6 +252,7 @@ function bindGroupRoomRowEvents(scope) {
 }
 
 function bindGroupSearchDelegation() {
+  // One listener on the modal — survives step re-renders without losing search focus.
   if (groupSearchDelegationBound) return;
   const modal = $('group-wizard-modal');
   if (!modal) return;

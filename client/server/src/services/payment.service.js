@@ -1081,6 +1081,7 @@ export async function updateInvoiceBilling(
 
   const discount = Math.max(0, Number(discount_amount ?? payment.discount_amount ?? 0));
   const lodgingBase = computeLodgingSubtotal(payment);
+  // Room/group: cap discount at lodging total. Venue: cap at full subtotal.
   const discountCap = payment.facility_booking_id ? subtotal : lodgingBase;
   if (discount > discountCap) {
     throw new Error(payment.facility_booking_id

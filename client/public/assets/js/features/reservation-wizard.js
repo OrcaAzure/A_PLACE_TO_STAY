@@ -223,6 +223,7 @@ function refreshReservationRoomLists() {
 }
 
 function bindReservationSearchDelegation() {
+  // One listener on the modal — survives step re-renders without losing search focus.
   if (reservationSearchDelegationBound) return;
   const modal = $('reservation-wizard-modal');
   if (!modal) return;
