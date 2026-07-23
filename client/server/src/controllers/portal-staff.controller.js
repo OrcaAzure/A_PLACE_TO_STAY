@@ -2,6 +2,7 @@ import {
   listPortalStaff,
   createViewOnlyAdminUser,
   updatePortalStaffUser,
+  deletePortalStaffUser,
 } from '../services/portal-staff.service.js';
 import { listPortalStaffActivity } from '../services/audit.service.js';
 import { invalidateSession } from '../services/session.service.js';
@@ -37,6 +38,15 @@ export const updatePortalStaffHandler = async (req, res) => {
     }
 
     res.status(200).json({ message: 'Account updated', user });
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
+export const deletePortalStaffHandler = async (req, res) => {
+  try {
+    const result = await deletePortalStaffUser(Number(req.params.id), req.user.id);
+    res.status(200).json({ message: 'View-only admin account deleted', ...result });
   } catch (error) {
     res.status(400).json({ message: error.message });
   }

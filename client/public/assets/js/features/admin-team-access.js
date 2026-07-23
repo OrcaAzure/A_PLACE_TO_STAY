@@ -7,6 +7,7 @@ import {
   getPortalStaffOverview,
   createPortalStaffUser,
   updatePortalStaffUser,
+  deletePortalStaffUser,
   getPortalStaffActivity,
 } from '/assets/js/services/api.js';
 import { openModal, closeModal } from '/assets/js/layout/ui.js';
@@ -262,15 +263,19 @@ function toggleRowMenu(memberId) {
 function actionMenu(member) {
   const isActive = member.status === 'Active';
   const menuId = `ta-row-menu-${member.id}`;
-  const items = isActive
-    ? `<button type="button" class="ga-row-menu__item ga-row-menu__item--danger" role="menuitem" data-ta-deactivate="${member.id}">Deactivate</button>`
-    : `<button type="button" class="ga-row-menu__item" role="menuitem" data-ta-activate="${member.id}">Reactivate</button>`;
+  const items = [];
+  if (isActive) {
+    items.push(`<button type="button" class="ga-row-menu__item ga-row-menu__item--danger" role="menuitem" data-ta-deactivate="${member.id}">Deactivate</button>`);
+  } else {
+    items.push(`<button type="button" class="ga-row-menu__item" role="menuitem" data-ta-activate="${member.id}">Reactivate</button>`);
+  }
+  items.push(`<button type="button" class="ga-row-menu__item ga-row-menu__item--danger" role="menuitem" data-ta-delete="${member.id}">Delete account</button>`);
 
   return `<div class="ga-row-menu" data-ta-row-menu="${member.id}">
     <button type="button" class="ga-row-menu__trigger" aria-label="Actions for ${escapeHtml(member.full_name)}" aria-haspopup="true" aria-expanded="false" aria-controls="${menuId}" data-ta-menu-toggle="${member.id}">
       <span class="material-symbols-outlined" aria-hidden="true">more_vert</span>
     </button>
-    <div id="${menuId}" class="ga-row-menu__panel hidden" role="menu">${items}</div>
+    <div id="${menuId}" class="ga-row-menu__panel hidden" role="menu">${items.join('')}</div>
   </div>`;
 }
 
@@ -416,6 +421,30 @@ async function submitAddTeam(e) {
   }
 }
 
+async function deleteStaffAccount(id) {
+  const member = overview.staff.find((u) => u.id === Number(id));
+  if (!member) return;
+
+  const label = `${escapeHtml(member.full_name)} (${escapeHtml(member.email)})`;
+  const confirmed = await confirmAction(
+    'Delete view-only admin',
+    `Permanently delete ${label}?<br><br>This removes the account from Team Access and cannot be undone.<br><br>If the account has reservation history on file, use <strong>Deactivate</strong> instead.`,
+    { confirmLabel: 'Delete account', danger: true },
+  );
+  if (!confirmed) return;
+
+  try {
+    await deletePortalStaffUser(id);
+    await refreshTeamAccessData({ background: true });
+  } catch (err) {
+    await showAlertModal(
+      'Cannot delete account',
+      escapeHtml(err.message || 'Could not delete this view-only admin account.'),
+      { confirmLabel: 'OK' },
+    );
+  }
+}
+
 async function toggleStaffStatus(id, nextStatus) {
   const member = overview.staff.find((u) => u.id === Number(id));
   if (!member) return;
@@ -497,6 +526,12 @@ function bindPageListeners() {
     if (activate) {
       closeAllRowMenus();
       toggleStaffStatus(activate.getAttribute('data-ta-activate'), 'Active');
+      return;
+    }
+    const del = e.target.closest('[data-ta-delete]');
+    if (del) {
+      closeAllRowMenus();
+      deleteStaffAccount(del.getAttribute('data-ta-delete'));
     }
   }, { signal });
 

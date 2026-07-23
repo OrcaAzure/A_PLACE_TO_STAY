@@ -64,6 +64,22 @@ describe('API portal staff (Team Access)', { skip: dbReady ? false : 'MySQL not 
     assert.equal(res.body.user.status, 'Inactive');
   });
 
+  it('DELETE /api/users/portal-staff/:id removes view-only admin', async () => {
+    const agent = api();
+    await loginAs(agent, 'admin@aptspace.com');
+
+    const list = await agent.get('/api/users/portal-staff');
+    const member = list.body.staff.find((u) => u.email === TEST_STAFF_EMAIL);
+    assert.ok(member, 'expected test staff account from prior test');
+
+    const res = await agent.delete(`/api/users/portal-staff/${member.id}`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.deleted, true);
+
+    const after = await agent.get('/api/users/portal-staff');
+    assert.ok(!after.body.staff.some((u) => u.id === member.id));
+  });
+
   it('GET /api/users/portal-staff/activity allows Super Admin', async () => {
     const agent = api();
     await loginAs(agent, 'admin@aptspace.com');

@@ -218,3 +218,39 @@ export async function updatePortalStaffUser(userId, { full_name, status }, actor
   const [updated] = await pool.query(`SELECT ${STAFF_COLUMNS} FROM users WHERE id = ?`, [userId]);
   return safeUser(updated[0]);
 }
+
+/** Permanently remove a View-Only Admin account from Team Access. */
+export async function deletePortalStaffUser(userId, actorUserId = null) {
+  const [existing] = await pool.query(`SELECT ${STAFF_COLUMNS} FROM users WHERE id = ? LIMIT 1`, [userId]);
+  if (!existing.length) throw new Error('User not found');
+
+  const target = existing[0];
+  if (target.role !== ROLES.VIEW_ONLY_ADMIN) {
+    throw new Error('Only view-only admin accounts can be deleted from Team Access');
+  }
+
+  await invalidateSession(userId);
+
+  try {
+    await pool.query('DELETE FROM users WHERE id = ?', [userId]);
+  } catch (err) {
+    if (err?.code === 'ER_ROW_IS_REFERENCED_2' || err?.errno === 1451) {
+      throw new Error(
+        'This account has related records on file and cannot be permanently deleted. Deactivate the account instead.',
+      );
+    }
+    throw err;
+  }
+
+  if (actorUserId) {
+    await logAudit({
+      actorUserId,
+      action: AUDIT_ACTIONS.PORTAL_STAFF_DELETED,
+      entityType: 'user',
+      entityId: Number(userId),
+      details: { full_name: target.full_name, email: target.email },
+    });
+  }
+
+  return { deleted: true, userId: Number(userId) };
+}

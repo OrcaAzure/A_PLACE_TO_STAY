@@ -23,6 +23,7 @@ import {
   getPortalStaffOverview,
   createPortalStaffHandler,
   updatePortalStaffHandler,
+  deletePortalStaffHandler,
   getPortalStaffActivity,
 } from '../controllers/portal-staff.controller.js';
 
@@ -33,6 +34,7 @@ router.get('/portal-staff/activity', ...guestAccess, getPortalStaffActivity);
 router.get('/portal-staff', ...guestAccess, getPortalStaffOverview);
 router.post('/portal-staff', ...guestAccess, createPortalStaffHandler);
 router.patch('/portal-staff/:id', ...guestAccess, updatePortalStaffHandler);
+router.delete('/portal-staff/:id', ...guestAccess, deletePortalStaffHandler);
 router.get('/guest-access/requests', ...guestAccess, getGuestAccessRequests);
 router.get('/guest-access', ...guestAccess, getGuestAccessOverview);
 router.post('/guest-access/requests', ...guestAccess, postGuestAccessRequest);

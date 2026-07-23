@@ -12,6 +12,7 @@ export const AUDIT_ACTIONS = {
   PORTAL_STAFF_CREATED: 'portal_staff_created',
   PORTAL_STAFF_ACTIVATED: 'portal_staff_activated',
   PORTAL_STAFF_DEACTIVATED: 'portal_staff_deactivated',
+  PORTAL_STAFF_DELETED: 'portal_staff_deleted',
   UNAUTHORIZED_WRITE_ATTEMPT: 'unauthorized_write_attempt',
 };
 
@@ -31,6 +32,7 @@ const PORTAL_STAFF_ACTIONS = new Set([
   AUDIT_ACTIONS.PORTAL_STAFF_CREATED,
   AUDIT_ACTIONS.PORTAL_STAFF_ACTIVATED,
   AUDIT_ACTIONS.PORTAL_STAFF_DEACTIVATED,
+  AUDIT_ACTIONS.PORTAL_STAFF_DELETED,
 ]);
 
 export async function logAudit({ actorUserId = null, action, entityType, entityId = null, details = null }) {
@@ -98,6 +100,8 @@ function formatAuditSummary(row) {
       return `${actor} reactivated view-only admin access for ${target || 'a staff member'}`;
     case AUDIT_ACTIONS.PORTAL_STAFF_DEACTIVATED:
       return `${actor} deactivated view-only admin access for ${target || 'a staff member'}`;
+    case AUDIT_ACTIONS.PORTAL_STAFF_DELETED:
+      return `${actor} deleted view-only admin account for ${target || 'a staff member'}`;
     case AUDIT_ACTIONS.UNAUTHORIZED_WRITE_ATTEMPT:
       return `${actor} attempted unauthorized ${details.method || 'write'} on ${details.path || 'an endpoint'}`;
     default:

@@ -202,6 +202,10 @@ export async function updatePortalStaffUser(id, payload) {
   });
 }
 
+export async function deletePortalStaffUser(id) {
+  return apiRequest(`/users/portal-staff/${id}`, { method: 'DELETE' });
+}
+
 export async function getPortalStaffActivity(limit = 25) {
   const data = await apiRequest(`/users/portal-staff/activity?limit=${limit}`);
   return data.entries || [];
