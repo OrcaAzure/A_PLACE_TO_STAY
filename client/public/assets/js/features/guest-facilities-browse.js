@@ -92,8 +92,13 @@ function setMountHtml(id, html) {
     activeCategoryLabel.textContent = `Selected · ${getBrowseCategoryMeta(selectedCategory, isInternal).label}`;
   }
 
-  setMountHtml('browse-price-notice', priceNoticeHtml());
-  setMountHtml('vbm-price-notice', priceNoticeHtml('mt-1'));
+  function paintBrowsePriceNotice() {
+    const includeCheckInOut = categoryShowsRooms(selectedCategory);
+    setMountHtml('browse-price-notice', priceNoticeHtml('', { includeCheckInOut }));
+  }
+
+  paintBrowsePriceNotice();
+  setMountHtml('vbm-price-notice', priceNoticeHtml('mt-1', { includeCheckInOut: false }));
   setMountHtml('booking-price-notice', priceNoticeHtml());
   setMountHtml('guest-access-notice', guestAccessNoticeHtml(isInternal));
 
@@ -453,6 +458,7 @@ function setMountHtml(id, html) {
     updateBrowseHeadings();
     applyCategoryVisibility();
     updateRoomBrowseVisibility();
+    paintBrowsePriceNotice();
   }
 
   function setSelectedCategory(categoryId, { scroll = false } = {}) {

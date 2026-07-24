@@ -2024,3 +2024,49 @@ body.lp-scroll-snap-active .lp-section-scroller {
     scroll-behavior: auto;
   }
 }
+
+/* Room 416 lead slide — interior photo reads better centered */
+.lp-hero-bg-slide:first-child {
+  background-position: center center;
+}
+
+/* Safari / iOS — scoped fixes; other browsers ignore these rules */
+@supports (-webkit-touch-callout: none) {
+  .lp-hero {
+    min-height: -webkit-fill-available;
+  }
+
+  @media (max-width: 767px) {
+    .lp-hero {
+      min-height: auto;
+      height: auto;
+    }
+  }
+}
+
+/* Safari < 16: overflow-x clip is not supported */
+.lp-hero.lp-hero--comfort {
+  overflow-x: hidden;
+}
+
+/* Prevent horizontal scroll bleed on iOS without touching desktop layout */
+@supports (-webkit-touch-callout: none) {
+  html:has(body.lp-shell),
+  body.lp-shell {
+    overflow-x: hidden;
+    width: 100%;
+  }
+}
+
+/* Fixed chrome: own layer stops Safari scroll overlap glitches */
+header.lp-nav,
+.lp-mobile-cta {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+}
+
+@media (max-width: 767px) {
+  .lp-mobile-cta {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+  }
+}

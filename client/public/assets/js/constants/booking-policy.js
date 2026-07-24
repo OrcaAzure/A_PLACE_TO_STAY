@@ -25,7 +25,13 @@ export function checkInOutPolicyNoteHtml({ className = 'res-hint', includeEarlyN
 }
 
 /** Combined price + deposit notice for guest browse and booking surfaces. */
-export function guestBookingPolicyNoticeHtml({ className = '' } = {}) {
+export function guestBookingPolicyNoticeHtml({ className = '', includeCheckInOut = true } = {}) {
+  const checkInOutBlock = includeCheckInOut
+    ? `<p class="flex items-start gap-2 m-0 pl-7 text-amber-900/90">
+        <span class="material-symbols-outlined text-[16px] shrink-0">schedule</span>
+        <span>Check-in ${STANDARD_CHECK_IN_LABEL} · Check-out ${STANDARD_CHECK_OUT_LABEL}. ${EARLY_CHECK_IN_NOTE}</span>
+      </p>`
+    : '';
   return `
     <div class="guest-price-notice flex flex-col gap-2 rounded-xl border border-amber-200/80 bg-amber-50 px-4 py-3 text-body-sm text-amber-950 ${className}" role="note">
       <p class="flex items-start gap-2 m-0">
@@ -33,9 +39,6 @@ export function guestBookingPolicyNoticeHtml({ className = '' } = {}) {
         <span>Prices shown are estimates. Final totals are confirmed by housing after review.</span>
       </p>
       <p class="flex items-start gap-2 m-0 pl-7">${DEPOSIT_CONFIRMATION_HTML}</p>
-      <p class="flex items-start gap-2 m-0 pl-7 text-amber-900/90">
-        <span class="material-symbols-outlined text-[16px] shrink-0">schedule</span>
-        <span>Check-in ${STANDARD_CHECK_IN_LABEL} · Check-out ${STANDARD_CHECK_OUT_LABEL}. ${EARLY_CHECK_IN_NOTE}</span>
-      </p>
+      ${checkInOutBlock}
     </div>`;
 }

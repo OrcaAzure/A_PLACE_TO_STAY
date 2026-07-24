@@ -29,6 +29,14 @@ describe('guest and billing UI regressions', () => {
     assert.doesNotMatch(groupWizard, /gw-arrival-time/);
   });
 
+  it('omits check-in/out notice on venue browse surfaces', () => {
+    const browse = readPublic('assets/js/features/guest-facilities-browse.js');
+    const policy = readPublic('assets/js/constants/booking-policy.js');
+    assert.match(browse, /vbm-price-notice.*includeCheckInOut:\s*false/s);
+    assert.match(browse, /paintBrowsePriceNotice/);
+    assert.match(policy, /includeCheckInOut = true/);
+  });
+
   it('includes Meet the Team in the shared guest footer', () => {
     const footer = readPublic('components/guest-footer.html');
     assert.match(footer, /meet-the-team\.html/);
@@ -131,9 +139,11 @@ describe('guest and billing UI regressions', () => {
     });
   });
 
-  it('keeps mobile landing nav and login password toggle scoped correctly', () => {
+  it('leads the hero carousel with room 416 and keeps mobile nav scoped', () => {
+    const landingContent = readPublic('assets/js/layout/landing-content.js');
     const landingCss = readPublic('assets/css/global/landing.css');
     const loginPage = fs.readFileSync(path.join(serverRoot, 'views/auth/login.html'), 'utf8');
+    assert.match(landingContent, /HERO_CAROUSEL_IMAGES\s*=\s*\[\s*\n\s*'\/images\/416Preview5\.webp'/);
     assert.match(landingCss, /@media \(max-width: 767px\)[\s\S]*\.lp-mobile-menu:not\(\.hidden\)/);
     assert.match(landingCss, /@media \(min-width: 768px\)[\s\S]*\.lp-mobile-menu[\s\S]*display:\s*none !important/);
     assert.match(loginPage, /\.password-field__toggle\s*\{[\s\S]*position:\s*absolute/);

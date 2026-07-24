@@ -11,9 +11,9 @@ const PARTIALS = {
   footer: '/components/guest-footer.html',
 };
 
-/** Scenic campus photos for the landing hero background carousel. */
+/** Hero background carousel — lead with a room photo not shown elsewhere on the page. */
 export const HERO_CAROUSEL_IMAGES = [
-  LANDING_AMENITY_IMAGE.garden,
+  '/images/416Preview5.webp',
   LANDING_AMENITY_IMAGE.chapel,
   LANDING_AMENITY_IMAGE.prayerMountain,
   LANDING_AMENITY_IMAGE.prayerTower,

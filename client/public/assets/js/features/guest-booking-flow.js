@@ -81,8 +81,8 @@ export const BROWSE_CATEGORIES = [
   },
 ];
 
-export function priceNoticeHtml(className = '') {
-  return guestBookingPolicyNoticeHtml({ className });
+export function priceNoticeHtml(className = '', { includeCheckInOut = true } = {}) {
+  return guestBookingPolicyNoticeHtml({ className, includeCheckInOut });
 }
 
 export function buildBookReservationUrl({ roomId, checkIn, checkOut, guests } = {}) {
