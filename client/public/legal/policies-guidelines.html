@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Policies &amp; Guidelines | APTS</title>
-  <link rel="stylesheet" href="/assets/css/global/tailwind-built.css" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/assets/css/global/main.css" />
@@ -20,6 +19,8 @@
     .policy-document ul { margin:.65rem 0 0; padding-left:1.25rem; list-style:disc; color:#4a5568; }
     .policy-document li { margin:.3rem 0; line-height:1.6; }
   </style>
+  <!-- Tailwind utilities last so they win ties, matching old CDN injection order -->
+  <link rel="stylesheet" href="/assets/css/global/tailwind-built.css" />
 </head>
 <body class="bg-background text-on-surface min-h-screen">
   <header id="public-page-header" class="border-b border-outline-variant/30 bg-white">

@@ -266,9 +266,11 @@ function ensureGuestWizardStyles() {
 }
 
 if (typeof window !== 'undefined') {
-  ensureBootLoader();
   const path = window.location.pathname;
+  // Boot loader is portal chrome — public pages import ui.js for helpers
+  // (e.g. loadComponent) and must not show the loading overlay.
   if (path.includes('/admin/') || path.includes('/guest/')) {
+    ensureBootLoader();
     scheduleShellBootFallback();
   }
 }

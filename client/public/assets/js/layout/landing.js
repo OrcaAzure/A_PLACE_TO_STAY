@@ -347,6 +347,10 @@ export function initMobileMenu() {
     link.addEventListener('click', () => setOpen(false));
   });
 
+  window.matchMedia('(min-width: 768px)').addEventListener('change', (e) => {
+    if (e.matches) setOpen(false);
+  });
+
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') setOpen(false);
   });

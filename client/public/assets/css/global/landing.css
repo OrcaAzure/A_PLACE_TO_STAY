@@ -162,12 +162,38 @@ body:not(.lp-ready) #lp-page .lp-mobile-cta a[href*="login"] {
 }
 
 .lp-mobile-menu {
+  display: none;
   border-top: 1px solid rgba(203, 213, 224, 0.5);
   background: #ffffff;
 }
 
-.lp-mobile-menu:not(.hidden) {
-  display: block;
+@media (max-width: 767px) {
+  .lp-mobile-menu:not(.hidden) {
+    display: block;
+  }
+}
+
+@media (min-width: 768px) {
+  .lp-mobile-menu,
+  .lp-mobile-menu:not(.hidden) {
+    display: none !important;
+  }
+
+  .lp-menu-btn {
+    display: none !important;
+  }
+
+  .lp-nav-links {
+    display: flex !important;
+    flex: 1;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .lp-login-btn {
+    display: inline-flex !important;
+  }
 }
 
 .lp-mobile-link {

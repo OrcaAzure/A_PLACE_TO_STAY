@@ -104,4 +104,39 @@ describe('guest and billing UI regressions', () => {
     assert.match(contacts, /data-contact-telephone/);
     assert.match(renderer, /getSupportContact/);
   });
+
+  it('loads tailwind-built.css last in head so utilities win ties (old CDN order)', () => {
+    const pages = [];
+    const collect = (dir) => {
+      fs.readdirSync(dir, { withFileTypes: true }).forEach((entry) => {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) collect(full);
+        else if (entry.name.endsWith('.html')) pages.push(full);
+      });
+    };
+    collect(publicRoot);
+    collect(path.join(serverRoot, 'views'));
+
+    pages.forEach((page) => {
+      const html = fs.readFileSync(page, 'utf8');
+      const head = html.split('</head>')[0];
+      const tailwindAt = head.indexOf('tailwind-built.css');
+      if (tailwindAt === -1) return;
+      const afterTailwind = head.slice(tailwindAt);
+      assert.doesNotMatch(
+        afterTailwind,
+        /<link[^>]+rel="stylesheet"|<style/,
+        `${page} loads other CSS after tailwind-built.css — utilities must come last`,
+      );
+    });
+  });
+
+  it('keeps mobile landing nav and login password toggle scoped correctly', () => {
+    const landingCss = readPublic('assets/css/global/landing.css');
+    const loginPage = fs.readFileSync(path.join(serverRoot, 'views/auth/login.html'), 'utf8');
+    assert.match(landingCss, /@media \(max-width: 767px\)[\s\S]*\.lp-mobile-menu:not\(\.hidden\)/);
+    assert.match(landingCss, /@media \(min-width: 768px\)[\s\S]*\.lp-mobile-menu[\s\S]*display:\s*none !important/);
+    assert.match(loginPage, /\.password-field__toggle\s*\{[\s\S]*position:\s*absolute/);
+    assert.doesNotMatch(loginPage, /\.password-field__toggle\s*\{[\s\S]*position:\s*relative/);
+  });
 });
