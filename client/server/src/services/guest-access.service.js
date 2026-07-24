@@ -494,6 +494,40 @@ async function loadGuestForDeletion(userId) {
   return rows[0] || null;
 }
 
+/** Remove all reservation and billing rows for a guest so the account can be deleted. */
+async function removeGuestReservationHistory(userId, conn = pool) {
+  const [paymentRows] = await conn.query(
+    `SELECT DISTINCT p.id
+     FROM payments p
+     LEFT JOIN bookings_rooms br ON p.bookings_room_id = br.id
+     LEFT JOIN bookings_facilities bf ON p.bookings_facility_id = bf.id
+     LEFT JOIN reservation_groups rg ON p.reservation_group_id = rg.id
+     WHERE br.user_id = ? OR bf.user_id = ? OR rg.user_id = ?`,
+    [userId, userId, userId],
+  );
+  const paymentIds = paymentRows.map((row) => row.id);
+  if (paymentIds.length) {
+    await conn.query('DELETE FROM payment_transactions WHERE payment_id IN (?)', [paymentIds]);
+    await conn.query('DELETE FROM payments WHERE id IN (?)', [paymentIds]);
+  }
+
+  const [roomRows] = await conn.query(
+    `SELECT id FROM bookings_rooms
+     WHERE user_id = ?
+        OR group_id IN (SELECT id FROM reservation_groups WHERE user_id = ?)`,
+    [userId, userId],
+  );
+  const roomIds = roomRows.map((row) => row.id);
+  if (roomIds.length) {
+    await conn.query('DELETE FROM bookings_meals WHERE bookings_room_id IN (?)', [roomIds]);
+    await conn.query('DELETE FROM bookings_extra_services WHERE bookings_room_id IN (?)', [roomIds]);
+    await conn.query('DELETE FROM bookings_rooms WHERE id IN (?)', [roomIds]);
+  }
+
+  await conn.query('DELETE FROM bookings_facilities WHERE user_id = ?', [userId]);
+  await conn.query('DELETE FROM reservation_groups WHERE user_id = ?', [userId]);
+}
+
 export async function assessGuestAccountDeletion(userId) {
   const guest = await loadGuestForDeletion(userId);
   if (!guest) {
@@ -508,7 +542,7 @@ export async function assessGuestAccountDeletion(userId) {
 
   const [[{ pendingRooms }]] = await pool.query(
     `SELECT COUNT(*) AS pendingRooms FROM bookings_rooms
-     WHERE user_id = ? AND status = 'Pending' AND group_id IS NULL`,
+     WHERE user_id = ? AND status = 'Pending' AND group_id IS NULL AND deleted_at IS NULL`,
     [userId],
   );
   if (Number(pendingRooms) > 0) {
@@ -517,7 +551,7 @@ export async function assessGuestAccountDeletion(userId) {
 
   const [[{ pendingGroups }]] = await pool.query(
     `SELECT COUNT(*) AS pendingGroups FROM reservation_groups
-     WHERE user_id = ? AND status = 'Pending'`,
+     WHERE user_id = ? AND status = 'Pending' AND deleted_at IS NULL`,
     [userId],
   );
   if (Number(pendingGroups) > 0) {
@@ -526,7 +560,7 @@ export async function assessGuestAccountDeletion(userId) {
 
   const [[{ pendingVenues }]] = await pool.query(
     `SELECT COUNT(*) AS pendingVenues FROM bookings_facilities
-     WHERE user_id = ? AND status = 'Pending'`,
+     WHERE user_id = ? AND status = 'Pending' AND deleted_at IS NULL`,
     [userId],
   );
   if (Number(pendingVenues) > 0) {
@@ -535,7 +569,7 @@ export async function assessGuestAccountDeletion(userId) {
 
   const [[{ activeRooms }]] = await pool.query(
     `SELECT COUNT(*) AS activeRooms FROM bookings_rooms
-     WHERE user_id = ? AND status = 'Approved' AND check_out > ?`,
+     WHERE user_id = ? AND status = 'Approved' AND check_out > ? AND deleted_at IS NULL`,
     [userId, today],
   );
   if (Number(activeRooms) > 0) {
@@ -544,7 +578,7 @@ export async function assessGuestAccountDeletion(userId) {
 
   const [[{ activeGroups }]] = await pool.query(
     `SELECT COUNT(*) AS activeGroups FROM reservation_groups
-     WHERE user_id = ? AND status = 'Approved' AND check_out > ?`,
+     WHERE user_id = ? AND status = 'Approved' AND check_out > ? AND deleted_at IS NULL`,
     [userId, today],
   );
   if (Number(activeGroups) > 0) {
@@ -553,7 +587,7 @@ export async function assessGuestAccountDeletion(userId) {
 
   const [[{ activeVenues }]] = await pool.query(
     `SELECT COUNT(*) AS activeVenues FROM bookings_facilities
-     WHERE user_id = ? AND status = 'Approved' AND event_date >= ?`,
+     WHERE user_id = ? AND status = 'Approved' AND event_date >= ? AND deleted_at IS NULL`,
     [userId, today],
   );
   if (Number(activeVenues) > 0) {
@@ -564,9 +598,15 @@ export async function assessGuestAccountDeletion(userId) {
     `SELECT COUNT(*) AS unpaidInvoices FROM payments p
      LEFT JOIN bookings_rooms b ON p.bookings_room_id = b.id
      LEFT JOIN bookings_facilities fb ON p.bookings_facility_id = fb.id
-     WHERE p.status = 'Pending'
-       AND ((b.user_id = ? AND b.status = 'Approved') OR (fb.user_id = ? AND fb.status = 'Approved'))`,
-    [userId, userId],
+     LEFT JOIN reservation_groups rg ON p.reservation_group_id = rg.id
+     WHERE p.deleted_at IS NULL
+       AND p.status = 'Pending'
+       AND (
+         (b.user_id = ? AND b.status = 'Approved' AND b.deleted_at IS NULL)
+         OR (fb.user_id = ? AND fb.status = 'Approved' AND fb.deleted_at IS NULL)
+         OR (rg.user_id = ? AND rg.status = 'Approved' AND rg.deleted_at IS NULL)
+       )`,
+    [userId, userId, userId],
   );
   if (Number(unpaidInvoices) > 0) {
     blockers.push(`${unpaidInvoices} unpaid invoice${Number(unpaidInvoices) === 1 ? '' : 's'}`);
@@ -599,15 +639,25 @@ export async function deleteGuestAccount(userId, actorUserId) {
 
   await invalidateSession(userId);
 
+  const conn = await pool.getConnection();
   try {
-    await pool.query('DELETE FROM users WHERE id = ?', [userId]);
+    await conn.beginTransaction();
+    await removeGuestReservationHistory(userId, conn);
+    const [result] = await conn.query('DELETE FROM users WHERE id = ?', [userId]);
+    if (!result.affectedRows) {
+      throw new Error('Guest account not found');
+    }
+    await conn.commit();
   } catch (err) {
+    await conn.rollback();
     if (err?.code === 'ER_ROW_IS_REFERENCED_2' || err?.errno === 1451) {
       throw new Error(
-        'This guest has reservation records on file and cannot be permanently deleted. Deactivate the account instead.',
+        'This guest still has related records on file and cannot be permanently deleted. Deactivate the account instead.',
       );
     }
     throw err;
+  } finally {
+    conn.release();
   }
 
   if (actorUserId) {

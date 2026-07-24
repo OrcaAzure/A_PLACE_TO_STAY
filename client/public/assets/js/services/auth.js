@@ -1,4 +1,4 @@
-import { getProfile, logout as logoutApi } from '/assets/js/services/api.js';
+import { getProfile, getSession, logout as logoutApi } from '/assets/js/services/api.js';
 import { isInternalGuestEmail } from '/assets/js/config/guest-access.js';
 import { ADMIN_NAV, ADMIN_MOBILE_NAV } from '/assets/js/config/admin-nav.js';
 import {
@@ -63,11 +63,15 @@ export async function requireAuth() {
 
 export async function redirectIfLoggedIn() {
   try {
-    const { user } = await getProfile({ skipAuthRedirect: true });
-    setAuthSession(user);
+    const data = await getSession({ skipAuthRedirect: true });
+    if (!data.authenticated || !data.user) {
+      clearAuthSession();
+      return;
+    }
+    setAuthSession(data.user);
     const params = new URLSearchParams(window.location.search);
     const next = params.get('next');
-    const role = user?.role || '';
+    const role = data.user?.role || '';
     const dest = next || (ADMIN_PORTAL_ROLES.includes(role) ? '/admin/dashboard.html' : '/guest/dashboard.html');
     window.location.href = dest;
   } catch {

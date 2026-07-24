@@ -1,7 +1,8 @@
 import * as authService from '../services/auth.service.js';
 import { setAuthCookie, clearAuthCookie } from '../utils/cookies.js';
-import { extractToken } from '../utils/authToken.js';
+import { extractToken, resolveAuthUser } from '../utils/authToken.js';
 import { invalidateSession } from '../services/session.service.js';
+import { safeUser } from '../utils/helpers.js';
 import jwt from 'jsonwebtoken';
 import { JWT_SECRET } from '../config/env.js';
 
@@ -41,6 +42,25 @@ export const register = async (req, res) => {
     res.status(201).json(result);
   } catch (error) {
     res.status(400).json({ message: error.message });
+  }
+};
+
+// GET /api/auth/session — silent session probe (always 200; no 401 noise for anonymous visitors)
+export const getSession = async (req, res) => {
+  const token = extractToken(req);
+  if (!token) {
+    return res.status(200).json({ authenticated: false, user: null });
+  }
+
+  try {
+    const user = await resolveAuthUser(token);
+    if (!user) {
+      return res.status(200).json({ authenticated: false, user: null });
+    }
+    if (token) setAuthCookie(res, token);
+    return res.status(200).json({ authenticated: true, user: safeUser(user) });
+  } catch {
+    return res.status(200).json({ authenticated: false, user: null });
   }
 };
 

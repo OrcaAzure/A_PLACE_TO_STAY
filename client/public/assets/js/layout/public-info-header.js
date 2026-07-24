@@ -1,4 +1,4 @@
-import { getProfile } from '/assets/js/services/api.js';
+import { getSession } from '/assets/js/services/api.js';
 import {
   ADMIN_PORTAL_ROLES,
   doLogout,
@@ -48,7 +48,9 @@ async function mountGuestHeader(user) {
 
 async function initPublicInfoHeader() {
   try {
-    const { user } = await getProfile({ skipAuthRedirect: true });
+    const data = await getSession({ skipAuthRedirect: true });
+    if (!data.authenticated || !data.user) return;
+    const user = data.user;
     setAuthSession(user);
     if (user?.role === 'Guest') {
       await mountGuestHeader(user);

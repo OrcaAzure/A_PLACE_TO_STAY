@@ -91,14 +91,6 @@ export function registerRoomUploadedImages(room = {}) {
     if (imgs.length) UPLOADED_ROOM_GALLERY[num] = imgs;
     else delete UPLOADED_ROOM_GALLERY[num];
   }
-  if (imgs.length) {
-    console.log('[facility-display] room images assigned', {
-      id,
-      roomNumber: num,
-      count: imgs.length,
-      paths: imgs,
-    });
-  }
   return imgs;
 }
 
@@ -133,15 +125,6 @@ export function registerVenueUploadedImages(venue = {}) {
   if (code) {
     if (imgs.length) UPLOADED_VENUE_GALLERY[code] = imgs;
     else delete UPLOADED_VENUE_GALLERY[code];
-  }
-  if (imgs.length) {
-    console.log('[facility-display] venue images assigned', {
-      id,
-      name: venue.name,
-      room_code: code,
-      count: imgs.length,
-      paths: imgs,
-    });
   }
   return imgs;
 }

@@ -32,6 +32,12 @@ function shouldLog(req) {
   return req.method === 'GET';
 }
 
+function isExpectedClientNoise(status, target = '') {
+  if (status === 401 && (target.includes('/auth/me') || target.includes('/auth/session'))) return true;
+  if (status === 404 && target.includes('/auth/me')) return true;
+  return false;
+}
+
 function statusSymbol(status) {
   if (status >= 500) return '✗';
   if (status >= 400) return '!';
@@ -56,11 +62,15 @@ export function requestLogger(req, res, next) {
   res.on('finish', () => {
     const ms = Number(process.hrtime.bigint() - start) / 1e6;
     const status = res.statusCode;
-    const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'log';
+    const level = status >= 500
+      ? 'error'
+      : (status >= 400 && !isExpectedClientNoise(status, target))
+        ? 'warn'
+        : 'log';
 
     logLine(level, [
       `[${tag}] `,
-      statusSymbol(status),
+      status >= 500 ? '✗' : (status >= 400 && !isExpectedClientNoise(status, target)) ? '!' : '→',
       ' ',
       req.method,
       ' ',

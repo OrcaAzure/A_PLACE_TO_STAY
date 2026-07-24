@@ -5,8 +5,9 @@ export const API_URL = `${window.location.origin}/api`;
 
 export async function apiRequest(endpoint, options = {}) {
   const { skipAuthRedirect = false, ...fetchOptions } = options;
+  const hasBody = fetchOptions.body != null && fetchOptions.body !== '';
   const headers = {
-    'Content-Type': 'application/json',
+    ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
     ...fetchOptions.headers,
   };
 
@@ -65,6 +66,10 @@ export async function logout() {
 
 export async function getProfile(options = {}) {
   return apiRequest('/auth/me', options);
+}
+
+export async function getSession(options = {}) {
+  return apiRequest('/auth/session', options);
 }
 
 export async function getSupportContact() {
@@ -267,11 +272,17 @@ export async function getVenueRateQuote(categoryOrOpts, item, date) {
     if (o.room_code) params.set('room_code', o.room_code);
     if (o.category) params.set('category', o.category);
     if (o.item) params.set('item', o.item);
-    params.set('date', o.date);
+    if (o.date) params.set('date', o.date);
   } else {
     params.set('category', categoryOrOpts);
     params.set('item', item);
-    params.set('date', date);
+    if (date) params.set('date', date);
+  }
+  if (!params.get('date')) {
+    throw new Error('date is required');
+  }
+  if (!params.get('facility_id') && !params.get('room_code') && !(params.get('category') && params.get('item'))) {
+    throw new Error('facility_id, room_code, or category and item are required');
   }
   return apiRequest(`/facilities/venue-rate?${params}`);
 }
@@ -514,6 +525,9 @@ export async function deleteFacilityImage(facilityId, filename) {
 }
 
 export async function getRoomAvailability(params = {}) {
+  if (!params.check_in || !params.check_out) {
+    throw new Error('check_in and check_out are required');
+  }
   const qs = new URLSearchParams();
   if (params.check_in) qs.set('check_in', params.check_in);
   if (params.check_out) qs.set('check_out', params.check_out);
@@ -525,6 +539,9 @@ export async function getRoomAvailability(params = {}) {
 }
 
 export async function getRoomStayEstimate(params = {}) {
+  if (!params.room_id || !params.check_in || !params.check_out) {
+    throw new Error('room_id, check_in, and check_out are required');
+  }
   const qs = new URLSearchParams();
   if (params.room_id) qs.set('room_id', String(params.room_id));
   if (params.check_in) qs.set('check_in', params.check_in);

@@ -549,11 +549,6 @@ async function applyVenuePhotoResult(result) {
       preview_images: result.preview_images || result.venue.preview_images || [],
     };
     registerVenueUploadedImages(venue);
-    console.log('[manage-venues] upload assigned', {
-      facilityId: result.facility_id,
-      name: venue.name,
-      preview_images: venue.preview_images,
-    });
     const idx = venues.findIndex((v) => v.key === venue.key);
     if (idx >= 0) venues[idx] = venue;
     else venues.push(venue);

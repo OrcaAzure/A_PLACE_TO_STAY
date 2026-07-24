@@ -938,11 +938,6 @@ async function handlePhotoUpload(fileList) {
     if (result?.preview_images && !assigned.preview_images?.length) {
       assigned.preview_images = result.preview_images;
     }
-    console.log('[manage-facilities] upload assigned', {
-      roomId: assigned.id,
-      roomNumber: assigned.room_number,
-      preview_images: assigned.preview_images,
-    });
     replaceRoomInState(assigned);
     state.message = result?.message || 'Photos uploaded.';
     dataChanged = true;
