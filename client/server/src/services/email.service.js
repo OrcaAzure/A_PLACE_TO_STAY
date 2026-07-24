@@ -102,6 +102,21 @@ function createTransporter() {
 
 const transporter = createTransporter();
 
+/** Verify SMTP connectivity (no message sent). Dev mode always succeeds. */
+export async function verifyEmailTransport() {
+  if (isEmailDevMode()) {
+    return { ok: true, devMode: true };
+  }
+  try {
+    await transporter.verify();
+    lastEmailError = null;
+    return { ok: true, devMode: false };
+  } catch (err) {
+    lastEmailError = err.message || String(err);
+    return { ok: false, devMode: false, error: lastEmailError };
+  }
+}
+
 const fromAddress = () => SMTP_FROM || 'noreply@APTS.com';
 
 function formatTime12(t) {
@@ -429,12 +444,13 @@ async function sendMail({
   }
 }
 
-export async function sendGuestAccessEmail(user, tempPassword) {
+export async function sendGuestAccessEmail(user, tempPassword, { allowDuplicate = false } = {}) {
   const name = user.full_name || 'Guest';
   const appUrl = process.env.APP_URL || 'http://localhost:3000';
   return sendMail({
     to: user.email,
     subject: 'Your APTS guest access',
+    allowDuplicate,
     html: `
       <h2>Welcome to APTS, ${name}</h2>
       <p>The APTS Housing Department has created a guest account for you. You can now log in and submit reservation requests online.</p>
@@ -446,12 +462,13 @@ export async function sendGuestAccessEmail(user, tempPassword) {
   });
 }
 
-export async function sendPortalStaffAccessEmail(user, tempPassword) {
+export async function sendPortalStaffAccessEmail(user, tempPassword, { allowDuplicate = false } = {}) {
   const name = user.full_name || 'Staff member';
   const appUrl = process.env.APP_URL || 'http://localhost:3000';
   return sendMail({
     to: user.email,
     subject: 'Your APTS admin portal access',
+    allowDuplicate,
     html: `
       <h2>APTS admin portal access, ${name}</h2>
       <p>A Housing Administrator has granted you <strong>view-only</strong> access to the APTS admin portal. You can review reservations, billing, and facilities but cannot make changes.</p>
