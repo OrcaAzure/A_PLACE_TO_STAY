@@ -85,6 +85,8 @@ describe('guest and billing UI regressions', () => {
     assert.match(policyEditor, /policy-section-card/);
     assert.match(settingsPage, /id="policy-editor-mount"/);
     assert.doesNotMatch(settingsPage, /id="settings-policies-modal"/);
+    assert.match(settingsPage, /settings-subsection js-readonly-allow[\s\S]*settings-password-btn/);
+    assert.match(settingsPage, /id="settings-password-btn"[^>]*js-readonly-allow/);
   });
 
   it('keeps authenticated guest navigation on public information pages', () => {

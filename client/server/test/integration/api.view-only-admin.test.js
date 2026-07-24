@@ -96,6 +96,30 @@ describe('API View-Only Admin permissions', { skip: dbReady ? false : 'MySQL not
     assert.equal(res.status, 200);
   });
 
+  it('PATCH /api/auth/me/password allows View-Only Admin to change their own password', async () => {
+    const agent = api();
+    await loginAs(agent, VIEWER_EMAIL);
+    const res = await agent.patch('/api/auth/me/password').send({
+      current_password: 'password',
+      new_password: 'viewer-new-pass-1',
+    });
+    assert.equal(res.status, 200, res.body?.message);
+    try {
+      const relogin = await agent.post('/api/auth/login').send({
+        email: VIEWER_EMAIL,
+        password: 'viewer-new-pass-1',
+      });
+      assert.equal(relogin.status, 200);
+    } finally {
+      const restore = api();
+      await loginAs(restore, VIEWER_EMAIL, 'viewer-new-pass-1');
+      await restore.patch('/api/auth/me/password').send({
+        current_password: 'viewer-new-pass-1',
+        new_password: 'password',
+      });
+    }
+  });
+
   it('write endpoints return 403 for View-Only Admin', async () => {
     const agent = api();
     await loginAs(agent, VIEWER_EMAIL);
